@@ -359,7 +359,9 @@ static int check_process_access(struct task_struct *ca_task, int type)
 		return -EPERM;
 	}
 
+
 	path = get_process_path(ca_task, tpath);
+	TCDEBUG("get_process_path %s - %s\n", path, tpath);
 	if (!IS_ERR_OR_NULL(path)) {
 		errno_t sret;
 
@@ -731,8 +733,10 @@ static int set_login_information(TC_NS_DEV_File *dev_file,
 				 TC_NS_ClientContext *context)
 {
 	/* The daemon has failed to get login information or not supplied */
-	if (0 == dev_file->pkg_name_len)
+	if (0 == dev_file->pkg_name_len) {
+		TCERR("Failed to get login informations\n");
 		return -1;
+	}
 
 	/* The 3rd parameter buffer points to the pkg name buffer in the
 	* device file pointer */
@@ -1529,6 +1533,85 @@ static void remove_unused_session(TC_NS_Service *service,
 	put_session_struct(saved_session);
 }
 
+
+/*
+HASH Original Huawei EMUI 9.1 Potter
+[   41.804473] [pid:836,cpu5,android.hardwar]TC_NS_OpenSession(836, android.hardwar): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.keymaster@3.0-service
+[   41.804473] [pid:836,cpu5,android.hardwar]TC_NS_OpenSession(836, android.hardwar): 0xAA, 0x3B, 0x24, 0x94, 0xD7, 0xB8, 0x05, 0x42,
+[   41.804473] [pid:836,cpu5,android.hardwar]TC_NS_OpenSession(836, android.hardwar): 0x34, 0x65, 0x7E, 0x10, 0x6A, 0xC8, 0x5B, 0x64,
+[   41.804473] [pid:836,cpu5,android.hardwar]TC_NS_OpenSession(836, android.hardwar): 0xBD, 0xFE, 0x7F, 0x65, 0x77, 0xED, 0x26, 0x2F,
+[   41.804473] [pid:836,cpu5,android.hardwar]TC_NS_OpenSession(836, android.hardwar): 0x15, 0x2A, 0x8A, 0x8C, 0x03, 0x1D, 0x81, 0x69,
+
+[   44.316406] [pid:955,cpu4,android.hardwar]TC_NS_OpenSession(955, android.hardwar): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.gatekeeper@1.0-service
+[   44.316406] [pid:955,cpu4,android.hardwar]TC_NS_OpenSession(955, android.hardwar): 0xAF, 0x49, 0x6D, 0x17, 0x5E, 0x66, 0xC0, 0x45,
+[   44.316406] [pid:955,cpu4,android.hardwar]TC_NS_OpenSession(955, android.hardwar): 0xEE, 0xFC, 0xC0, 0xA9, 0x0B, 0x04, 0x2E, 0xB2,
+[   44.316406] [pid:955,cpu4,android.hardwar]TC_NS_OpenSession(955, android.hardwar): 0x32, 0x18, 0xA4, 0x9F, 0x73, 0xA3, 0x67, 0x29,
+[   44.316436] [pid:955,cpu4,android.hardwar]TC_NS_OpenSession(955, android.hardwar): 0x16, 0xAD, 0x47, 0x90, 0x3F, 0x50, 0xA1, 0xA9,
+
+[   45.129974] [pid:1025,cpu2,aptouch_other]TC_NS_OpenSession(1025, aptouch_other): TC_NS_OpenSession try to hash for /system/vendor/bin/aptouch_daemon
+[   45.129974] [pid:1025,cpu2,aptouch_other]TC_NS_OpenSession(1025, aptouch_other): 0x3F, 0x6B, 0x74, 0xF3, 0xE0, 0x79, 0x15, 0x29,
+[   45.129974] [pid:1025,cpu2,aptouch_other]TC_NS_OpenSession(1025, aptouch_other): 0x07, 0x57, 0x64, 0x42, 0x9C, 0x05, 0x98, 0x9F,
+[   45.129974] [pid:1025,cpu2,aptouch_other]TC_NS_OpenSession(1025, aptouch_other): 0xBE, 0x24, 0x5E, 0x30, 0x3C, 0xDD, 0x50, 0x25,
+[   45.129974] [pid:1025,cpu2,aptouch_other]TC_NS_OpenSession(1025, aptouch_other): 0xF1, 0xD0, 0xB1, 0x3C, 0x36, 0x32, 0xEC, 0x8D,
+
+[   46.616485] [pid:1259,cpu6,vendor.huawei.h]TC_NS_OpenSession(1259, vendor.huawei.h): TC_NS_OpenSession try to hash for /vendor/bin/hw/vendor.huawei.hardware.biometrics.fingerprint@2.1-service
+[   46.616485] [pid:1259,cpu6,vendor.huawei.h]TC_NS_OpenSession(1259, vendor.huawei.h): 0x2F, 0x63, 0xF0, 0x29, 0x92, 0x51, 0x86, 0xB2,
+[   46.616485] [pid:1259,cpu6,vendor.huawei.h]TC_NS_OpenSession(1259, vendor.huawei.h): 0xDF, 0xB3, 0xA3, 0x14, 0x15, 0xC3, 0xAD, 0x30,
+[   46.616485] [pid:1259,cpu6,vendor.huawei.h]TC_NS_OpenSession(1259, vendor.huawei.h): 0x7E, 0x52, 0x75, 0x5A, 0xBC, 0x43, 0x7B, 0xAE,
+[   46.616485] [pid:1259,cpu6,vendor.huawei.h]TC_NS_OpenSession(1259, vendor.huawei.h): 0x42, 0x3E, 0x9C, 0x38, 0xAB, 0x45, 0x52, 0xCB,
+
+[   52.883911] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.media.omx@1.0-service
+[   52.883911] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+[   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+[   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+[   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+*/
+
+/*
+HASH Original Huawei EMUI 9.1 for ANE
+[   41.101959] [pid:430,cpu7,keymaster@3.0-s]TC_NS_OpenSession(430, keymaster@3.0-s): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.keymaster@3.0-service
+[   41.101959] [pid:430,cpu7,keymaster@3.0-s]TC_NS_OpenSession(430, keymaster@3.0-s): 0xAA, 0x3B, 0x24, 0x94, 0xD7, 0xB8, 0x05, 0x42,
+[   41.101959] [pid:430,cpu7,keymaster@3.0-s]TC_NS_OpenSession(430, keymaster@3.0-s): 0x34, 0x65, 0x7E, 0x10, 0x6A, 0xC8, 0x5B, 0x64,
+[   41.101959] [pid:430,cpu7,keymaster@3.0-s]TC_NS_OpenSession(430, keymaster@3.0-s): 0xBD, 0xFE, 0x7F, 0x65, 0x77, 0xED, 0x26, 0x2F,
+[   41.101959] [pid:430,cpu7,keymaster@3.0-s]TC_NS_OpenSession(430, keymaster@3.0-s): 0x15, 0x2A, 0x8A, 0x8C, 0x03, 0x1D, 0x81, 0x69,
+
+[   29.162353] [pid:521,cpu7,android.hardwar]TC_NS_OpenSession(521, android.hardwar): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.gatekeeper@1.0-service
+[   29.162353] [pid:521,cpu7,android.hardwar]TC_NS_OpenSession(521, android.hardwar): 0xAF, 0x49, 0x6D, 0x17, 0x5E, 0x66, 0xC0, 0x45,
+[   29.162384] [pid:521,cpu7,android.hardwar]TC_NS_OpenSession(521, android.hardwar): 0xEE, 0xFC, 0xC0, 0xA9, 0x0B, 0x04, 0x2E, 0xB2,
+[   29.162384] [pid:521,cpu7,android.hardwar]TC_NS_OpenSession(521, android.hardwar): 0x32, 0x18, 0xA4, 0x9F, 0x73, 0xA3, 0x67, 0x29,
+[   29.162384] [pid:521,cpu7,android.hardwar]TC_NS_OpenSession(521, android.hardwar): 0x16, 0xAD, 0x47, 0x90, 0x3F, 0x50, 0xA1, 0xA9,
+
+[   44.410980] [pid:1840,cpu2,HwBinder:541_1]TC_NS_OpenSession(1840, HwBinder:541_1): TC_NS_OpenSession try to hash for /vendor/bin/hw/vendor.huawei.hardware.hwsecurity-service
+[   44.411010] [pid:1840,cpu2,HwBinder:541_1]TC_NS_OpenSession(1840, HwBinder:541_1): 0xCB, 0xEF, 0xCD, 0xC2, 0xFE, 0x90, 0xDA, 0x83,
+[   44.411010] [pid:1840,cpu2,HwBinder:541_1]TC_NS_OpenSession(1840, HwBinder:541_1): 0xF4, 0x1E, 0x11, 0x9B, 0xFE, 0x81, 0x9A, 0xBD,
+[   44.411010] [pid:1840,cpu2,HwBinder:541_1]TC_NS_OpenSession(1840, HwBinder:541_1): 0x94, 0xE3, 0xE2, 0xFE, 0xD1, 0xB6, 0x95, 0x41,
+[   44.411010] [pid:1840,cpu2,HwBinder:541_1]TC_NS_OpenSession(1840, HwBinder:541_1): 0x7A, 0x1D, 0x57, 0xB5, 0x84, 0x54, 0xA7, 0x21,
+
+[   30.335174] [pid:652,cpu4,vendor.huawei.h]TC_NS_OpenSession(652, vendor.huawei.h): TC_NS_OpenSession try to hash for /vendor/bin/hw/vendor.huawei.hardware.biometrics.hwfacerecognize@1.1-service
+[   30.335174] [pid:652,cpu4,vendor.huawei.h]TC_NS_OpenSession(652, vendor.huawei.h): 0xA5, 0x0C, 0x3D, 0xA9, 0x63, 0x02, 0xEA, 0xC1,
+[   30.335205] [pid:652,cpu4,vendor.huawei.h]TC_NS_OpenSession(652, vendor.huawei.h): 0x2E, 0x5A, 0xF2, 0x1B, 0xEF, 0x77, 0x9C, 0x11,
+[   30.335205] [pid:652,cpu4,vendor.huawei.h]TC_NS_OpenSession(652, vendor.huawei.h): 0x33, 0xE7, 0x48, 0x8F, 0x3C, 0xB5, 0x5C, 0xF1,
+[   30.335205] [pid:652,cpu4,vendor.huawei.h]TC_NS_OpenSession(652, vendor.huawei.h): 0x3E, 0x41, 0x00, 0x79, 0x40, 0x1F, 0x58, 0xEC,
+[   31.201660] [pid:747,cpu5,vendor.huawei.h]TC_NS_OpenSession(747, vendor.huawei.h): TC_NS_OpenSession try to hash for /vendor/bin/hw/vendor.huawei.hardware.biometrics.fingerprint@2.1-service
+[   31.201660] [pid:747,cpu5,vendor.huawei.h]TC_NS_OpenSession(747, vendor.huawei.h): 0x2F, 0x63, 0xF0, 0x29, 0x92, 0x51, 0x86, 0xB2,
+[   31.201660] [pid:747,cpu5,vendor.huawei.h]TC_NS_OpenSession(747, vendor.huawei.h): 0xDF, 0xB3, 0xA3, 0x14, 0x15, 0xC3, 0xAD, 0x30,
+[   31.201690] [pid:747,cpu5,vendor.huawei.h]TC_NS_OpenSession(747, vendor.huawei.h): 0x7E, 0x52, 0x75, 0x5A, 0xBC, 0x43, 0x7B, 0xAE,
+[   31.201690] [pid:747,cpu5,vendor.huawei.h]TC_NS_OpenSession(747, vendor.huawei.h): 0x42, 0x3E, 0x9C, 0x38, 0xAB, 0x45, 0x52, 0xCB,
+
+[   52.412841] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): TC_NS_OpenSession try to hash for system_server
+[   52.412841] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xFC, 0xC9, 0xD9, 0x43, 0x9D, 0x52, 0xDD, 0xEE,
+[   52.412841] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xED, 0xB5, 0xC1, 0xC1, 0x72, 0x49, 0x5E, 0x8D,
+[   52.412841] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0x96, 0xA5, 0xE2, 0x97, 0xCF, 0x06, 0xDA, 0x84,
+[   52.412872] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xED, 0x2A, 0x0C, 0x61, 0x10, 0x90, 0x33, 0x6B,
+
+[  598.698242] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): TC_NS_OpenSession try to hash for com.huawei.systemserver
+[  598.698242] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xFC, 0xC9, 0xD9, 0x43, 0x9D, 0x52, 0xDD, 0xEE,
+[  598.698272] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xED, 0xB5, 0xC1, 0xC1, 0x72, 0x49, 0x5E, 0x8D,
+[  598.698272] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0x96, 0xA5, 0xE2, 0x97, 0xCF, 0x06, 0xDA, 0x84,
+[  598.698272] [pid:432,cpu6,libteec@2.0-ser]TC_NS_OpenSession(432, libteec@2.0-ser): 0xED, 0x2A, 0x0C, 0x61, 0x10, 0x90, 0x33, 0x6B,
+*/
+
+
 int TC_NS_OpenSession(TC_NS_DEV_File *dev_file, TC_NS_ClientContext *context)
 {
 	int ret = -EINVAL;
@@ -1538,8 +1621,36 @@ int TC_NS_OpenSession(TC_NS_DEV_File *dev_file, TC_NS_ClientContext *context)
 	uint8_t flags = TC_CALL_GLOBAL;
 	unsigned char *hash_buf = NULL;
 	bool hidl_access = false;
+	char my_pkname[256];
+
+	unsigned char keystore_hash[32] = {0xAA, 0x3B, 0x24, 0x94, 0xD7, 0xB8, 0x05, 0x42,
+					   0x34, 0x65, 0x7E, 0x10, 0x6A, 0xC8, 0x5B, 0x64,
+					   0xBD, 0xFE, 0x7F, 0x65, 0x77, 0xED, 0x26, 0x2F,
+					   0x15, 0x2A, 0x8A, 0x8C, 0x03, 0x1D, 0x81, 0x69};
+
+	unsigned char gatekeeper_hash[32] = {0xAF, 0x49, 0x6D, 0x17, 0x5E, 0x66, 0xC0, 0x45,
+					   0xEE, 0xFC, 0xC0, 0xA9, 0x0B, 0x04, 0x2E, 0xB2,
+					   0x32, 0x18, 0xA4, 0x9F, 0x73, 0xA3, 0x67, 0x29,
+					   0x16, 0xAD, 0x47, 0x90, 0x3F, 0x50, 0xA1, 0xA9};
+
+	unsigned char fingerprint_hash[32] = {0x2F, 0x63, 0xF0, 0x29, 0x92, 0x51, 0x86, 0xB2,
+					    0xDF, 0xB3, 0xA3, 0x14, 0x15, 0xC3, 0xAD, 0x30,
+					    0x7E, 0x52, 0x75, 0x5A, 0xBC, 0x43, 0x7B, 0xAE,
+					    0x42, 0x3E, 0x9C, 0x38, 0xAB, 0x45, 0x52, 0xCB};
+
+	unsigned char aptouch_hash[32] = {0x3F, 0x6B, 0x74, 0xF3, 0xE0, 0x79, 0x15, 0x29,
+					  0x07, 0x57, 0x64, 0x42, 0x9C, 0x05, 0x98, 0x9F,
+					  0xBE, 0x24, 0x5E, 0x30, 0x3C, 0xDD, 0x50, 0x25,
+					  0xF1, 0xD0, 0xB1, 0x3C, 0x36, 0x32, 0xEC, 0x8D};
+
+	unsigned char omx_hash[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 
 	CFC_FUNC_ENTRY(TC_NS_OpenSession);
+
 
 	if (dev_file == NULL || context == NULL) {
 		TCERR("invalid dev_file or context\n");
@@ -1552,6 +1663,7 @@ int TC_NS_OpenSession(TC_NS_DEV_File *dev_file, TC_NS_ClientContext *context)
 		TCERR("libteec hidl service may be exploited ret 0x%x\n",ret);
 		return -EPERM;
 	}
+
 	if(hidl_access) {
 		if(!g_hidl_hash_enable) {
 			if(memset_s((void *)hidl_hash, sizeof(hidl_hash), 0x00, sizeof(hidl_hash))) {
@@ -1565,6 +1677,8 @@ int TC_NS_OpenSession(TC_NS_DEV_File *dev_file, TC_NS_ClientContext *context)
 			}
 		}
 	}
+
+
 	mutex_lock(&dev_file->service_lock);
 	service = tc_find_service(&dev_file->services_list, context->uuid); /*lint !e64 */
 
@@ -1629,6 +1743,7 @@ find_service:
 		goto error;
 	}
 
+
 	if (tee_init_crypto("sha256")) {
 		tloge("init code hash error!!!\n");
 		kfree(hash_buf);
@@ -1662,6 +1777,40 @@ find_service:
 		ret = -EFAULT;
 		goto error;
 	}
+
+
+	memset(my_pkname,0,256);
+	memcpy(my_pkname,dev_file->pkg_name,dev_file->pkg_name_len);
+	TCDEBUG("TC_NS_OpenSession try to hash for %s\n",my_pkname);
+
+
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+0),*(hash_buf+1),*(hash_buf+2),*(hash_buf+3),*(hash_buf+4),*(hash_buf+5),*(hash_buf+6),*(hash_buf+7));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+8),*(hash_buf+9),*(hash_buf+10),*(hash_buf+11),*(hash_buf+12),*(hash_buf+13),*(hash_buf+14),*(hash_buf+15));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X,  ",*(hash_buf+16),*(hash_buf+17),*(hash_buf+18),*(hash_buf+19),*(hash_buf+20),*(hash_buf+21),*(hash_buf+22),*(hash_buf+23));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+24),*(hash_buf+25),*(hash_buf+26),*(hash_buf+27),*(hash_buf+28),*(hash_buf+29),*(hash_buf+30),*(hash_buf+31));
+
+
+	/* Hardcode hash - same of the native_packages */
+	if (!strncmp(dev_file->pkg_name, "/vendor/bin/hw/vendor.huawei.hardware.biometrics.fingerprint@2.1-service", 72))
+		memcpy(hash_buf, fingerprint_hash, MAX_SHA_256_SZ);
+
+	if (!strncmp(dev_file->pkg_name, "/vendor/bin/hw/android.hardware.keymaster@3.0-service", 53))
+		memcpy(hash_buf, keystore_hash, MAX_SHA_256_SZ);
+
+	if (!strncmp(dev_file->pkg_name, "/vendor/bin/hw/android.hardware.gatekeeper@1.0-service", 54))
+		memcpy(hash_buf, gatekeeper_hash, MAX_SHA_256_SZ);
+
+	if (!strncmp(dev_file->pkg_name, "/system/vendor/bin/aptouch_daemon", 33))
+		memcpy(hash_buf, aptouch_hash, MAX_SHA_256_SZ);
+
+	if (!strncmp(dev_file->pkg_name, "/vendor/bin/hw/android.hardware.media.omx@1.0-service", 53))
+		memcpy(hash_buf, omx_hash, MAX_SHA_256_SZ);
+
+	TCDEBUG("TC_NS_OpenSession new hash for %s\n",my_pkname);
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+0),*(hash_buf+1),*(hash_buf+2),*(hash_buf+3),*(hash_buf+4),*(hash_buf+5),*(hash_buf+6),*(hash_buf+7));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+8),*(hash_buf+9),*(hash_buf+10),*(hash_buf+11),*(hash_buf+12),*(hash_buf+13),*(hash_buf+14),*(hash_buf+15));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X,  ",*(hash_buf+16),*(hash_buf+17),*(hash_buf+18),*(hash_buf+19),*(hash_buf+20),*(hash_buf+21),*(hash_buf+22),*(hash_buf+23));
+	TCDEBUG("0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, 0x%02X, ",*(hash_buf+24),*(hash_buf+25),*(hash_buf+26),*(hash_buf+27),*(hash_buf+28),*(hash_buf+29),*(hash_buf+30),*(hash_buf+31));
 
 	/* use the lock to make sure the TA sessions cannot be concurrency opened */
 	mutex_lock(&g_operate_session_lock);
@@ -1709,6 +1858,7 @@ find_service:
 
 	if (ret != 0) {
 		TCERR("smc_call returns error, ret=0x%x\n", ret);
+		TCERR("TEE_ERROR_CA_AUTH_FAIL = 0xFFFFCFE5\n");
 		goto error;
 	} else
 		TCDEBUG("smc_call returns right\n");
@@ -1749,7 +1899,6 @@ error:
 	put_service_struct(service);
 	return ret;
 }
-
 
 int TC_NS_CloseSession(TC_NS_DEV_File *dev_file, TC_NS_ClientContext *context)
 {
@@ -2045,7 +2194,7 @@ static int TC_NS_need_load_image(unsigned int file_id,
 	mb_pack->operation.params[0].memref.size = SZ_4K;
 
 	/* load image smc command */
-	TCDEBUG("smc cmd id %d\n", client_context.cmd_id);
+        TCDEBUG("smc cmd id %d\n", smc_cmd.cmd_id);
 	smc_cmd.cmd_id = GLOBAL_CMD_ID_NEED_LOAD_APP;
 	mb_pack->uuid[0] = 1;
 	smc_cmd.uuid_phys = virt_to_phys((void *)mb_pack->uuid);
@@ -2317,7 +2466,7 @@ static int tc_client_mmap(struct file *filp, struct vm_area_struct *vma)
 		}
 		mutex_unlock(&dev_file->shared_mem_lock);
 	}
-        
+
 	if (shared_mem == NULL && !only_remap )
 		shared_mem = tc_mem_allocate(len, is_teecd);
 
