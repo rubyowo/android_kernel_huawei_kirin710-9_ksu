@@ -19,8 +19,8 @@
 oal_file *oal_kernel_file_open(oal_uint8 *file_path, oal_int32 ul_attribute)
 {
     oal_file *pst_file = NULL;
-    if (OAL_UNLIKELY(file_path == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(file_path == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
     pst_file = filp_open((oal_int8 *)file_path, ul_attribute, 0777);
@@ -39,11 +39,11 @@ oal_file *oal_kernel_file_open(oal_uint8 *file_path, oal_int32 ul_attribute)
  */
 loff_t oal_kernel_file_size(oal_file *pst_file)
 {
-    struct inode *pst_inode;
+    struct inode *pst_inode = NULL;
     loff_t ul_fsize = 0;
 
-    if (OAL_UNLIKELY(pst_file == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_file == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -69,8 +69,8 @@ ssize_t oal_kernel_file_read(oal_file *pst_file, oal_uint8 *pst_buff, loff_t ul_
 {
     loff_t *pos = NULL;
 
-    if (OAL_UNLIKELY((pst_file == NULL) || (pst_buff == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_file == NULL) || (pst_buff == NULL))) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -89,8 +89,8 @@ oal_int oal_kernel_file_write(oal_file *pst_file, oal_uint8 *pst_buf, loff_t fsi
 {
     loff_t *pst_pos = &(pst_file->f_pos);
 
-    if (OAL_UNLIKELY((pst_file == NULL) || (pst_buf == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_file == NULL) || (pst_buf == NULL))) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -111,7 +111,7 @@ oal_int oal_kernel_file_print(oal_file *pst_file, const oal_int8 *pc_fmt, ...)
     OAL_VA_LIST pc_args;
     oal_int32 ret;
 
-    if (OAL_ANY_NULL_PTR2(pst_file, pc_fmt)) {
+    if (oal_any_null_ptr2(pst_file, pc_fmt)) {
         return OAL_FAIL;
     }
 
@@ -129,30 +129,30 @@ oal_int oal_kernel_file_print(oal_file *pst_file, const oal_int8 *pc_fmt, ...)
 
 #ifdef _PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT
 
-OAL_STATIC oal_kobject *conn_syfs_root_object = NULL;
-OAL_STATIC oal_kobject *conn_syfs_root_boot_object = NULL;
+OAL_STATIC oal_kobject *g_conn_syfs_root_object = NULL;
+OAL_STATIC oal_kobject *g_conn_syfs_root_boot_object = NULL;
 
 oal_kobject *oal_get_sysfs_root_object(oal_void)
 {
-    if (conn_syfs_root_object != NULL) {
-        return conn_syfs_root_object;
+    if (g_conn_syfs_root_object != NULL) {
+        return g_conn_syfs_root_object;
     }
-    conn_syfs_root_object = kobject_create_and_add("hisys", OAL_PTR_NULL);
-    return conn_syfs_root_object;
+    g_conn_syfs_root_object = kobject_create_and_add("hisys", OAL_PTR_NULL);
+    return g_conn_syfs_root_object;
 }
 
 oal_kobject *oal_get_sysfs_root_boot_object(oal_void)
 {
     OAL_STATIC oal_kobject *root_boot_object = NULL;
-    if (conn_syfs_root_boot_object) {
-        return conn_syfs_root_boot_object;
+    if (g_conn_syfs_root_boot_object) {
+        return g_conn_syfs_root_boot_object;
     }
     root_boot_object = oal_get_sysfs_root_object();
     if (root_boot_object == NULL) {
         return NULL;
     }
-    conn_syfs_root_boot_object = kobject_create_and_add("boot", root_boot_object);
-    return conn_syfs_root_boot_object;
+    g_conn_syfs_root_boot_object = kobject_create_and_add("boot", root_boot_object);
+    return g_conn_syfs_root_boot_object;
 }
 
 oal_kobject *oal_conn_sysfs_root_obj_init(oal_void)
@@ -162,17 +162,17 @@ oal_kobject *oal_conn_sysfs_root_obj_init(oal_void)
 
 oal_void oal_conn_sysfs_root_obj_exit(oal_void)
 {
-    if (conn_syfs_root_object != NULL) {
-        kobject_del(conn_syfs_root_object);
-        conn_syfs_root_object = NULL;
+    if (g_conn_syfs_root_object != NULL) {
+        kobject_del(g_conn_syfs_root_object);
+        g_conn_syfs_root_object = NULL;
     }
 }
 
 oal_void oal_conn_sysfs_root_boot_obj_exit(oal_void)
 {
-    if (conn_syfs_root_boot_object != NULL) {
-        kobject_del(conn_syfs_root_boot_object);
-        conn_syfs_root_boot_object = NULL;
+    if (g_conn_syfs_root_boot_object != NULL) {
+        kobject_del(g_conn_syfs_root_boot_object);
+        g_conn_syfs_root_boot_object = NULL;
     }
 }
 oal_module_symbol(oal_get_sysfs_root_object);

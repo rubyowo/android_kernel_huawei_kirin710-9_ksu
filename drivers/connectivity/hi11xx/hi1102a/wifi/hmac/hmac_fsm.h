@@ -3,24 +3,25 @@
 #ifndef __HMAC_FSM_H__
 #define __HMAC_FSM_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 其他头文件包含 */
 #include "oal_ext_if.h"
 #include "hmac_main.h"
 #include "hmac_vap.h"
 #include "hmac_rx_filter.h"
 #include "hmac_config.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_FSM_H
 /* 2 宏定义 */
 typedef oal_uint32 (*hmac_fsm_func)(hmac_vap_stru *pst_hmac_vap, oal_void *p_param);
 
-extern oal_uint32 hmac_config_sta_update_rates(mac_vap_stru *pst_mac_vap, mac_cfg_mode_param_stru *pst_cfg_mode, mac_bss_dscr_stru *pst_bss_dscr);
+extern oal_uint32 hmac_config_sta_update_rates(mac_vap_stru *pst_mac_vap, mac_cfg_mode_param_stru *pst_cfg_mode,
+    mac_bss_dscr_stru *pst_bss_dscr);
 
 /* 3 枚举定义 */
 /* 状态机输入类型枚举 */
@@ -30,7 +31,7 @@ typedef enum {
     HMAC_FSM_INPUT_RX_DATA,
     HMAC_FSM_INPUT_TX_DATA,
     HMAC_FSM_INPUT_TIMER0_OUT,
-    HMAC_FSM_INPUT_MISC,           /* TBTT 异常 等其他输入类型 */
+    HMAC_FSM_INPUT_MISC, /* TBTT 异常 等其他输入类型 */
 
     /* AP 独有的输入类型 */
     HMAC_FSM_INPUT_START_REQ,
@@ -41,7 +42,7 @@ typedef enum {
     HMAC_FSM_INPUT_AUTH_REQ,
     HMAC_FSM_INPUT_ASOC_REQ,
 
-    HMAC_FSM_INPUT_LISTEN_REQ,     /*  监听请求 */
+    HMAC_FSM_INPUT_LISTEN_REQ, /* 监听请求 */
     HMAC_FSM_INPUT_LISTEN_TIMEOUT,
     HMAC_FSM_INPUT_SCHED_SCAN_REQ, /* PNO调度扫描请求 */
 
@@ -76,9 +77,9 @@ typedef oal_uint8 hmac_misc_input_enum_uint8;
 /* 7 STRUCT定义 */
 /* MISC输入类型，入参结构体定义 */
 typedef struct {
-    hmac_misc_input_enum_uint8  en_type;
-    oal_uint8                   auc_resv[3];
-    oal_void                   *p_data;
+    hmac_misc_input_enum_uint8 en_type;
+    oal_uint8 auc_resv[3];
+    oal_void *p_data;
 } hmac_misc_input_stru;
 
 /* 8 UNION定义 */

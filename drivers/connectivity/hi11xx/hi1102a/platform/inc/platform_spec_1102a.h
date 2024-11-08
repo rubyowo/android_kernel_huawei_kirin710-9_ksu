@@ -83,7 +83,11 @@
 /* 2.3 oam相关的spec */
 #if (((_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION) || (_PRE_OS_VERSION_WIN32_RAW == _PRE_OS_VERSION)) || \
      (_PRE_OS_VERSION_WINDOWS == _PRE_OS_VERSION))
+#ifndef _PRE_LINUX_TEST
 #define WLAN_OAM_FILE_PATH "C:\\OAM.log" /* WIN32和WINDOWS下,LOG文件默认的保存位置 */
+#else
+#define WLAN_OAM_FILE_PATH "./wifi_log/host.txt" /* WIN32和WINDOWS下,LOG文件默认的保存位置 */
+#endif
 #elif ((_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) || (_PRE_OS_VERSION_RAW == _PRE_OS_VERSION))
 #define WLAN_OAM_FILE_PATH "\\home\\oam.log" /* LINUX和裸系统下,LOG文件默认的保存位置 */
 #endif
@@ -191,9 +195,6 @@
 #endif
 
 #define WLAN_WPS_IE_MAX_SIZE (WLAN_MEM_EVENT_SIZE2 - 32) /* 32表示事件自身占用的空间 */
-#ifdef _PRE_WLAN_FEATURE_HILINK
-#define WLAN_OKC_IE_MAX_SIZE (WLAN_MEM_EVENT_SIZE2 - 32) /* 32表示事件自身占用的空间 */
-#endif
 /* 2.4.7 用户内存池 */
 #define WLAN_MEM_MIB_SIZE1 920 /* mib结构体大小 20180508当前FTM宏没开大小864 */
 /* 原来为((WLAN_VAP_SUPPORT_MAX_NUM_LIMIT - 1) * 2) */ /* 配置VAP没有MIB */

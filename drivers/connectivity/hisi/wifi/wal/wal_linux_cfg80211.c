@@ -4936,6 +4936,23 @@ ERR_STEP:
     return ERR_PTR(-EAGAIN);
 }
 
+OAL_STATIC oal_bool_enum_uint8 wal_cfg80211_check_is_primary_netdev(oal_wiphy_stru *wiphy, oal_net_device_stru *net_dev)
+{
+    mac_device_stru *mac_device;
+    mac_wiphy_priv_stru *wiphy_priv;
+    wiphy_priv = oal_wiphy_priv(wiphy);
+    if (wiphy_priv == OAL_PTR_NULL) {
+        OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_check_is_primary_netdev::pst_wiphy_priv is null!}");
+        return OAL_FALSE;
+    }
+    mac_device = wiphy_priv->pst_mac_device;
+    if (mac_device == OAL_PTR_NULL) {
+        OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_check_is_primary_netdev::pst_mac_device is null!}");
+        return OAL_FALSE;
+    }
+    return mac_device->st_p2p_info.pst_primary_net_device == net_dev;
+}
+
 
 OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst_wiphy,
                                                    oal_wireless_dev_stru    *pst_wdev)
@@ -4944,9 +4961,6 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
     wal_msg_write_stru           st_write_msg;
     wal_msg_stru               *pst_rsp_msg;
     oal_int32                    l_ret;
-#ifdef _PRE_WLAN_FEATURE_P2P
-    wlan_p2p_mode_enum_uint8     en_p2p_mode = WLAN_LEGACY_VAP_MODE;
-#endif
     oal_net_device_stru         *pst_net_dev;
     mac_vap_stru                *pst_mac_vap;
     hmac_vap_stru               *pst_hmac_vap;
@@ -4988,7 +5002,10 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
         OAM_ERROR_LOG1(0,OAM_SF_ANY,"{wal_cfg80211_del_virtual_intf::mac_res_get_hmac_vap fail.vap_id[%u]}",pst_mac_vap->uc_vap_id);
         return -OAL_EINVAL;
     }
-
+    if (wal_cfg80211_check_is_primary_netdev(pst_wiphy, pst_net_dev)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_del_virtual_intf::cannot del primary netdev}");
+        return -OAL_EINVAL;
+    }
 
     oal_net_tx_stop_all_queues(pst_net_dev);
     wal_netdev_stop(pst_net_dev);
@@ -5003,8 +5020,7 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
     ((mac_cfg_del_vap_param_stru *)st_write_msg.auc_value)->pst_net_dev = pst_net_dev;
 #ifdef _PRE_WLAN_FEATURE_P2P
     pst_wdev = pst_net_dev->ieee80211_ptr;
-    en_p2p_mode = wal_wireless_iftype_to_mac_p2p_mode(pst_wdev->iftype);
-    if (WLAN_P2P_BUTT == en_p2p_mode)
+    if (wal_wireless_iftype_to_mac_p2p_mode(pst_wdev->iftype) == WLAN_P2P_BUTT)
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_del_virtual_intf::wal_wireless_iftype_to_mac_p2p_mode return BUTT}\r\n");
         return -OAL_EINVAL;

@@ -23,8 +23,8 @@
 /* head and end */
 #define SDT_DRV_PKT_START_FLG        0x7e
 #define SDT_DRV_PKT_END_FLG          0x7e
-#define SDT_DRV_GET_LOW_BYTE(_data)  ((oal_uint8)((_data) & 0xff))
-#define SDT_DRV_GET_HIGH_BYTE(_data) ((oal_uint8)(((_data) & 0xff00) >> 8))
+#define sdt_drv_get_low_byte(_data)  ((oal_uint8)((_data) & 0xff))
+#define sdt_drv_get_high_byte(_data) ((oal_uint8)(((_data) & 0xff00) >> 8))
 #define SDT_DRV_PKT_TAIL_LEN         1
 
 #define SDT_DEV_NAME_INDEX           8

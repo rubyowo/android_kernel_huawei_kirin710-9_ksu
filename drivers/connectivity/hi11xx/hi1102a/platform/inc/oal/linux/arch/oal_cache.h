@@ -36,7 +36,7 @@
 #include <linux/cache.h>
 
 /* 宏定义 */
-#define oal_cacheline_aligned ____cacheline_aligned
+#define OAL_CACHELINE_ALIGNED ____cacheline_aligned
 
 /* 全局变量声明 */
 extern void __iomem *l2cache_base;
@@ -44,7 +44,7 @@ extern void __iomem *l2cache_base;
 /* OTHERS定义 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44) || defined(_PRE_PLAT_FEATURE_HI110X_PCIE))
 #else
-extern struct cpu_cache_fns cpu_cache;
+extern struct cpu_cache_fns g_cpu_cache;
 
 /*
  * 函 数 名  : oal_l1cache_flush
@@ -52,7 +52,7 @@ extern struct cpu_cache_fns cpu_cache;
  */
 OAL_STATIC OAL_INLINE oal_void oal_l1cache_flush(oal_void)
 {
-    cpu_cache.flush_kern_all();
+    g_cpu_cache.flush_kern_all();
 }
 
 /*

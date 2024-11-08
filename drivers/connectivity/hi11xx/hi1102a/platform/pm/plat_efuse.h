@@ -38,7 +38,7 @@
 #define STR_REG_NFC_EN_KEEP "0x60001044"
 
 /* º¯ÊıÉùÃ÷ */
-extern int32 number_type_cmd_send(uint8 *Key, uint8 *Value);
+extern int32 number_type_cmd_send(uint8 *Key, const char *Value);
 extern int32 read_msg(uint8 *data, int32 len);
 extern void store_efuse_info(void);
 extern uint8 get_ec_version(void);

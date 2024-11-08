@@ -15,7 +15,7 @@
 
 #define PCI_ANY_ID (~0)
 
-#define OAL_IRQ_INIT_MAC_DEV(_dev, _irq, _type, _name, _arg, _func) \
+#define oal_irq_init_mac_dev(_dev, _irq, _type, _name, _arg, _func) \
     do {                                                            \
         (_dev).ul_irq = (_irq);                                     \
         (_dev).l_irq_type = (_type);                                \
@@ -24,7 +24,7 @@
         (_dev).p_irq_intr_func = (_func);                           \
     } while (0)
 
-#define OAL_PCI_GET_DEV_ID(_dev) ((_dev)->device);
+#define oal_pci_get_dev_id(_dev) ((_dev)->device);
 
 #define MAX_NUM_CORES 2
 

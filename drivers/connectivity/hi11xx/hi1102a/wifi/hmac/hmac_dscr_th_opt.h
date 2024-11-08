@@ -3,26 +3,27 @@
 #ifndef __HMAC_DSCR_TH_OPT_H__
 #define __HMAC_DSCR_TH_OPT_H__
 
+/* 1 其他头文件包含 */
+#include "oal_ext_if.h"
+#include "hmac_device.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif
 #endif
 
-/* 1 其他头文件包含 */
-#include "oal_ext_if.h"
-#include "hmac_device.h"
-
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_DSCR_TH_OPT_H
 /* 2 宏定义 */
-#define HMAC_LARGE_DSCR_TH_LEVEL  6                            /* 大包描述符门限数组大小 */
-#define HMAC_SMALL_DSCR_TH_LEVEL  6                            /* 小包描述符门限数组大小 */
-#define HMAC_LARGE_DSCR_PPS_LEVEL HMAC_LARGE_DSCR_TH_LEVEL - 1 /* 大包trx PPS差值数组大小 */
-#define HMAC_SMALL_DSCR_PPS_LEVEL HMAC_SMALL_DSCR_TH_LEVEL - 1 /* 小包trx PPS差值数组大小 */
-#define HMAC_DSCR_TH_UPDATE_AMSDU_TH     200                   /* 接收amsdu tcp ack低于该值, 则重置大包描述符门限 */
-#define HMAC_LARGE_DSCR_TH_LIMIT_HIGH    42                    /* 大包接收描述符数组第0位上限 */
-
+#define HMAC_LARGE_DSCR_TH_LEVEL  6                              /* 大包描述符门限数组大小 */
+#define HMAC_SMALL_DSCR_TH_LEVEL  6                              /* 小包描述符门限数组大小 */
+#define HMAC_LARGE_DSCR_PPS_LEVEL (HMAC_LARGE_DSCR_TH_LEVEL - 1) /* 大包trx PPS差值数组大小 */
+#define HMAC_SMALL_DSCR_PPS_LEVEL (HMAC_SMALL_DSCR_TH_LEVEL - 1) /* 小包trx PPS差值数组大小 */
+#define HMAC_DSCR_TH_UPDATE_AMSDU_TH   200                       /* 接收amsdu tcp ack低于该值, 则重置大包描述符门限 */
+#define HMAC_LARGE_DSCR_TH_LIMIT_OTHER 42                        /* 非发送场景下大包接收描述符数组第0位上限 */
+#define HMAC_LARGE_DSCR_TH_LIMIT_TX    20                        /* 发送场景下大包接收描述符数组第0位上限 */
+#define HMAC_TX_PPS_RATIO              4                         /* tx pps与rx pps比例高于此数值即认为当前为发送场景 */
 /* 3 枚举定义 */
 /* 4 全局变量声明 */
 extern oal_uint32 g_ul_large_start_th;

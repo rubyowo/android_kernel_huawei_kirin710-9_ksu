@@ -11,7 +11,7 @@
 /* 全局变量定义 */
 #ifdef _PRE_PRODUCT_ID_HI110X_HOST
 /* 统计信息全局变量 */
-oam_stat_info_stru stat_info;
+oam_stat_info_stru g_stat_info;
 #endif
 
 
@@ -24,11 +24,11 @@ oal_void oam_stats_report_irq_info_to_sdt(oal_uint8 *puc_irq_info_addr,
 {
     oal_uint32 ul_tick;
     oal_uint16 us_skb_len; /* skb总长度 */
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_int32 ret;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return;
     }
 
@@ -52,7 +52,7 @@ oal_void oam_stats_report_irq_info_to_sdt(oal_uint8 *puc_irq_info_addr,
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息头结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -121,14 +121,14 @@ oal_uint32 oam_stats_report_mempool_info_to_sdt(oal_uint8 uc_pool_id,
                                                 oal_uint16 us_subpool_free_cnt)
 {
     oam_stats_mempool_stru st_device_mempool_info;
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint16 us_skb_len; /* skb总长度 */
     oal_uint32 ul_tick;
     oal_uint32 ul_ret;
     oal_uint16 us_stru_len;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -158,7 +158,7 @@ oal_uint32 oam_stats_report_mempool_info_to_sdt(oal_uint8 uc_pool_id,
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -203,13 +203,13 @@ oal_uint32 oam_stats_report_memblock_info_to_sdt(oal_uint8 *puc_origin_data,
 {
     oam_memblock_info_stru st_memblock_info;
     oal_uint16 us_memblock_info_len;
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint16 us_skb_len; /* skb总长度 */
     oal_uint32 ul_tick;
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -248,7 +248,7 @@ oal_uint32 oam_stats_report_memblock_info_to_sdt(oal_uint8 *puc_origin_data,
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -296,11 +296,11 @@ oal_uint32 oam_stats_report_event_queue_info_to_sdt(oal_uint8 *puc_event_queue_a
 {
     oal_uint32 ul_tick;
     oal_uint16 us_skb_len; /* skb总长度 */
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -324,7 +324,7 @@ oal_uint32 oam_stats_report_event_queue_info_to_sdt(oal_uint8 *puc_event_queue_a
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息头结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -357,12 +357,12 @@ oal_uint32 oam_report_vap_pkt_stat_to_sdt(oal_uint8 uc_vap_id)
 {
     oal_uint32 ul_tick;
     oal_uint16 us_skb_len; /* skb总长度 */
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint32 ul_ret;
     oal_uint16 us_stat_info_len;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -379,7 +379,7 @@ oal_uint32 oam_report_vap_pkt_stat_to_sdt(oal_uint8 uc_vap_id)
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息头结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -391,7 +391,7 @@ oal_uint32 oam_report_vap_pkt_stat_to_sdt(oal_uint8 uc_vap_id)
     /* 复制数据,填写ota数据 */
     ul_ret = memcpy_s((oal_void *)pst_ota_data->auc_ota_data,
                       (oal_uint32)pst_ota_data->st_ota_hdr.us_ota_data_len,
-                      (const oal_void *)&stat_info.ast_vap_stat_info[uc_vap_id],
+                      (const oal_void *)&g_stat_info.ast_vap_stat_info[uc_vap_id],
                       (oal_uint32)us_stat_info_len);
     if (ul_ret != EOK) {
         oal_mem_sdt_netbuf_free(pst_netbuf, OAL_TRUE);
@@ -412,12 +412,12 @@ oal_uint32 oam_stats_report_info_to_sdt(oam_ota_type_enum_uint8 en_ota_type)
 {
     oal_uint32 ul_tick;
     oal_uint16 us_skb_len; /* skb总长度 */
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint32 ul_ret = OAL_SUCC;
     oal_uint16 us_stat_info_len;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -458,7 +458,7 @@ oal_uint32 oam_stats_report_info_to_sdt(oam_ota_type_enum_uint8 en_ota_type)
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息头结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -470,12 +470,12 @@ oal_uint32 oam_stats_report_info_to_sdt(oam_ota_type_enum_uint8 en_ota_type)
     if (en_ota_type == OAM_OTA_TYPE_DEV_STAT_INFO) {
         ul_ret = memcpy_s((oal_void *)pst_ota_data->auc_ota_data,
                           (oal_uint32)pst_ota_data->st_ota_hdr.us_ota_data_len,
-                          (const oal_void *)stat_info.ast_dev_stat_info,
+                          (const oal_void *)g_stat_info.ast_dev_stat_info,
                           (oal_uint32)us_stat_info_len);
     } else {
         ul_ret = memcpy_s((oal_void *)pst_ota_data->auc_ota_data,
                           (oal_uint32)pst_ota_data->st_ota_hdr.us_ota_data_len,
-                          (const oal_void *)stat_info.ast_vap_stat_info,
+                          (const oal_void *)g_stat_info.ast_vap_stat_info,
                           (oal_uint32)us_stat_info_len);
     }
     if (ul_ret != EOK) {
@@ -498,12 +498,12 @@ oal_uint32 oam_stats_report_usr_info(oal_uint16 us_usr_id)
 {
     oal_uint32 ul_tick;
     oal_uint16 us_skb_len; /* skb总长度 */
-    oal_netbuf_stru *pst_netbuf;
-    oam_ota_stru *pst_ota_data;
+    oal_netbuf_stru *pst_netbuf = NULL;
+    oam_ota_stru *pst_ota_data = NULL;
     oal_uint32 ul_ret;
     oal_uint16 us_stat_info_len;
 
-    if (OAL_UNLIKELY(oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(g_oam_sdt_func_hook.p_sdt_report_data_func == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -528,7 +528,7 @@ oal_uint32 oam_stats_report_usr_info(oal_uint16 us_usr_id)
     pst_ota_data = (oam_ota_stru *)oal_netbuf_data(pst_netbuf);
 
     /* 获取系统TICK值 */
-    ul_tick = (oal_uint32)OAL_TIME_GET_STAMP_MS();
+    ul_tick = (oal_uint32)oal_time_get_stamp_ms();
 
     /* 填写ota消息头结构体 */
     pst_ota_data->st_ota_hdr.ul_tick = ul_tick;
@@ -538,7 +538,7 @@ oal_uint32 oam_stats_report_usr_info(oal_uint16 us_usr_id)
 
     ul_ret = memcpy_s((oal_void *)pst_ota_data->auc_ota_data,
                       (oal_uint32)pst_ota_data->st_ota_hdr.us_ota_data_len,
-                      (const oal_void *)&stat_info.ast_user_stat_info[us_usr_id],
+                      (const oal_void *)&g_stat_info.ast_user_stat_info[us_usr_id],
                       (oal_uint32)us_stat_info_len);
     if (ul_ret != EOK) {
         oal_mem_sdt_netbuf_free(pst_netbuf, OAL_TRUE);
@@ -558,7 +558,7 @@ oal_uint32 oam_stats_report_usr_info(oal_uint16 us_usr_id)
  */
 oal_void oam_stats_clear_stat_info(oal_void)
 {
-    memset_s(&stat_info, OAL_SIZEOF(oam_stat_info_stru), 0, OAL_SIZEOF(oam_stat_info_stru));
+    memset_s(&g_stat_info, OAL_SIZEOF(oam_stat_info_stru), 0, OAL_SIZEOF(oam_stat_info_stru));
 }
 
 /*
@@ -571,7 +571,7 @@ oal_uint32 oam_stats_clear_vap_stat_info(oal_uint8 uc_vap_id)
         return OAL_ERR_CODE_INVALID_CONFIG;
     }
 
-    memset_s(&stat_info.ast_vap_stat_info[uc_vap_id], OAL_SIZEOF(oam_vap_stat_info_stru),
+    memset_s(&g_stat_info.ast_vap_stat_info[uc_vap_id], OAL_SIZEOF(oam_vap_stat_info_stru),
              0, OAL_SIZEOF(oam_vap_stat_info_stru));
 
     return OAL_SUCC;
@@ -587,7 +587,7 @@ oal_uint32 oam_stats_clear_user_stat_info(oal_uint16 us_usr_id)
         return OAL_ERR_CODE_INVALID_CONFIG;
     }
 
-    memset_s(&stat_info.ast_user_stat_info[us_usr_id], OAL_SIZEOF(oam_user_stat_info_stru),
+    memset_s(&g_stat_info.ast_user_stat_info[us_usr_id], OAL_SIZEOF(oam_user_stat_info_stru),
              0, OAL_SIZEOF(oam_user_stat_info_stru));
 
     return OAL_SUCC;
@@ -601,7 +601,7 @@ oal_uint32 oam_statistics_init(oal_void)
     oal_mempool_info_to_sdt_register(oam_stats_report_mempool_info_to_sdt,
                                      oam_stats_report_memblock_info_to_sdt);
 #ifdef _PRE_PRODUCT_ID_HI110X_HOST
-    memset_s(&stat_info, OAL_SIZEOF(oam_stat_info_stru), 0, OAL_SIZEOF(oam_stat_info_stru));
+    memset_s(&g_stat_info, OAL_SIZEOF(oam_stat_info_stru), 0, OAL_SIZEOF(oam_stat_info_stru));
 #endif
 #endif
     return OAL_SUCC;
@@ -615,7 +615,7 @@ oal_module_symbol(oam_statistics_init);
 oal_module_symbol(oam_stats_report_memblock_info_to_sdt);
 oal_module_symbol(oam_stats_report_event_queue_info_to_sdt);
 #ifdef _PRE_PRODUCT_ID_HI110X_HOST
-oal_module_symbol(stat_info);
+oal_module_symbol(g_stat_info);
 oal_module_symbol(oam_stats_report_info_to_sdt);
 oal_module_symbol(oam_stats_clear_stat_info);
 oal_module_symbol(oam_stats_clear_user_stat_info);

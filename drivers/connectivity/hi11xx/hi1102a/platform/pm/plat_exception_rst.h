@@ -30,6 +30,8 @@
 #define DFR_TEST_ENABLE  0
 #define DFR_TEST_DISABLE 1
 
+#define PLAT_EXCEP_TIMEOUT  (20 * 1000)
+
 #if ((_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1103_HOST) && (_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1102A_HOST))
 #define BFGX_MEM_DUMP_BLOCK_COUNT 3 /* BFGX 上报的内存块个数 */
 #else
@@ -106,6 +108,7 @@ enum EXCEPTION_TYPE_ENUM {
     WIFI_DEVICE_PANIC = 9, /* wcpu arm exception */
     WIFI_TRANS_FAIL = 10,  /* sdio read or write failed */
     SDIO_DUMPBCPU_FAIL,
+    RF_CALI_FAIL,
 
     EXCEPTION_TYPE_BOTTOM,
 };
@@ -162,6 +165,7 @@ struct st_wifi_dump_mem_info {
 struct st_wifi_dfr_callback {
     void (*wifi_recovery_complete)(void);
     void (*notify_wifi_to_recovery)(void);
+    bool (*wifi_finish_recovery)(void);
 };
 
 struct st_bfgx_reset_cmd {
@@ -229,33 +233,32 @@ typedef struct excp_info_str_s {
 } excp_info_str_t;
 
 /* 全局变量定义 */
-extern struct sdio_dump_bcpu_buff st_bcpu_dump_buff;
+extern struct sdio_dump_bcpu_buff g_bcpu_dump_buff;
 
 /* EXTERN FUNCTION */
-extern int32 mod_beat_timer(uint8 on);
-extern int32 is_bfgx_exception(void);
-extern int32 get_exception_info_reference(struct st_exception_info **exception_data);
-extern int32 plat_exception_handler(uint32 subsys_type, uint32 thread_type, uint32 exception_type);
-extern int32 plat_bfgx_exception_rst_register(struct ps_plat_s *data);
-extern int32 plat_wifi_exception_rst_register(void *data);
-extern int32 wifi_exception_mem_dump(struct st_wifi_dump_mem_info *pst_mem_dump_info,
-                                     uint32 count, int32 excep_type);
-extern int32 wifi_open_bcpu_set(uint8 enable);
-extern int32 prepare_to_recv_bfgx_stack(uint32 len);
-extern int32 bfgx_recv_dev_mem(uint8 *buf_ptr, uint16 count);
-extern void store_wifi_mem_to_file(void);
-extern int32 uart_recv_wifi_mem(uint8 *buf_ptr, uint16 count);
-extern int32 uart_halt_wcpu(void);
-extern int32 uart_read_wifi_mem(uint32 which_mem);
-extern int32 debug_uart_read_wifi_mem(uint32 ul_lock);
-extern int32 plat_exception_reset_init(void);
-extern int32 plat_exception_reset_exit(void);
-extern int32 wifi_exception_work_submit(uint32 wifi_excp_type);
-extern int32 plat_power_fail_exception_info_set(uint32 subsys_type, uint32 thread_type, uint32 exception_type);
-extern void plat_power_fail_process_done(void);
-extern int32 bfgx_subsystem_reset(void);
-extern int32 bfgx_system_reset(void);
-extern int32 debug_sdio_read_bfgx_reg_and_mem(uint32 which_mem);
-extern int32 exception_bcpu_dump_recv(uint8 *str, oal_netbuf_stru *netbuf);
+int32 mod_beat_timer(uint8 on);
+int32 is_bfgx_exception(void);
+int32 get_exception_info_reference(struct st_exception_info **exception_data);
+int32 plat_exception_handler(uint32 subsys_type, uint32 thread_type, uint32 exception_type);
+int32 plat_bfgx_exception_rst_register(struct ps_plat_s *data);
+int32 plat_wifi_exception_rst_register(struct st_wifi_dfr_callback *data);
+int32 wifi_exception_mem_dump(struct st_wifi_dump_mem_info *pst_mem_dump_info,
+                              uint32 count, int32 excep_type);
+int32 wifi_open_bcpu_set(uint8 enable);
+int32 prepare_to_recv_bfgx_stack(uint32 len);
+int32 bfgx_recv_dev_mem(uint8 *buf_ptr, uint16 count);
+void store_wifi_mem_to_file(void);
+int32 uart_halt_wcpu(void);
+int32 uart_read_wifi_mem(uint32 which_mem);
+int32 debug_uart_read_wifi_mem(uint32 ul_lock);
+int32 plat_exception_reset_init(void);
+int32 plat_exception_reset_exit(void);
+int32 wifi_exception_work_submit(uint32 wifi_excp_type);
+int32 plat_power_fail_exception_info_set(uint32 subsys_type, uint32 thread_type, uint32 exception_type);
+void plat_power_fail_process_done(void);
+int32 bfgx_subsystem_reset(void);
+int32 bfgx_system_reset(void);
+int32 debug_sdio_read_bfgx_reg_and_mem(uint32 which_mem);
+int32 exception_bcpu_dump_recv(uint8 *str, oal_netbuf_stru *netbuf);
 #endif
 

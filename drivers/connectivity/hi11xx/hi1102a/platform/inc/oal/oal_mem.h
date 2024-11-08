@@ -2,6 +2,11 @@
 
 #ifndef __OAL_MEM_H__
 #define __OAL_MEM_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "platform_spec.h"
@@ -16,53 +21,45 @@
 #include <linux/kallsyms.h>
 #endif
 /* 宏定义 */
-#define OAL_MEM_NETBUF_ALLOC(_uc_out_subpool_id, _us_len, _uc_netbuf_priority) \
+#define oal_mem_netbuf_alloc(_uc_out_subpool_id, _us_len, _uc_netbuf_priority) \
     oal_netbuf_alloc(_us_len, 0, WLAN_MEM_NETBUF_ALIGN)
 
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-#define OAL_MEM_NETBUF_ALLOC_FROM_SKPOOL(_uc_out_subpool_id, _us_len, _uc_netbuf_priority) \
-    oal_netbuf_alloc_skpool(_us_len, 0, WLAN_MEM_NETBUF_ALIGN)
-#endif
+#define oal_mem_netbuf_trace(_pst_netbuf, _uc_lock)
 
-#ifdef _PRE_DEBUG_MODE
-#define OAL_MEM_NETBUF_TRACE(_pst_netbuf, _uc_lock)
-#else
-#define OAL_MEM_NETBUF_TRACE(_pst_netbuf, _uc_lock)
-#endif
 
 /* Local Mem 所有接口的 _uc_lock 参数不再生效 2016/8/18 */
 /* 除netbuf内存池外的其他内存池的对外提供接口 host和device共用接口 */
-#define OAL_MEM_ALLOC(_en_pool_id, _us_len, _uc_lock) \
+#define oal_mem_alloc_m(_en_pool_id, _us_len, _uc_lock) \
     oal_mem_alloc(THIS_FILE_ID, __LINE__, _en_pool_id, _us_len, _uc_lock)
-#define OAL_MEM_FREE(_p_data, _uc_lock) \
+#define oal_mem_free_m(_p_data, _uc_lock) \
     oal_mem_free(THIS_FILE_ID, __LINE__, _p_data, _uc_lock)
 
-#define OAL_GET_MEM_FLAG(_p_data, _puc_state)
+#define oal_get_mem_flag(_p_data, _puc_state)
 
-#define OAL_MEM_FREE_ARRAY(_p_data, _num) \
+#define oal_mem_free_array_m(_p_data, _num) \
     oal_mem_free_array(THIS_FILE_ID, __LINE__, _p_data, _num)
 
-#define OAL_MEM_INCR_USER(_pst_mem, _uc_lock) \
+#define oal_mem_incr_user_m(_pst_mem, _uc_lock) \
     oal_mem_incr_user(THIS_FILE_ID, __LINE__, _pst_mem, _uc_lock)
 
-#define OAL_MEM_ALLOC_ENHANCED(_en_pool_id, _us_len, _uc_lock) \
+#define oal_mem_alloc_enhanced_m(_en_pool_id, _us_len, _uc_lock) \
     oal_mem_alloc_enhanced(THIS_FILE_ID, __LINE__, _en_pool_id, _us_len, _uc_lock)
 
-#define OAL_MEM_FREE_ENHANCED(_pst_mem, _uc_lock) \
+#define oal_mem_free_enhanced_m(_pst_mem, _uc_lock) \
     oal_mem_free_enhanced(THIS_FILE_ID, __LINE__, _pst_mem, _uc_lock)
 
 /* host输出内存信息接口 */
-#define OAL_MEM_INFO_PRINT(_pool_id)
+#define oal_mem_info_print(_pool_id)
 
 #ifdef _PRE_DEBUG_MODE
-#define OAL_MEM_TRACE(_p_data, _uc_lock) \
+#define oal_mem_trace_m(_p_data, _uc_lock) \
     oal_mem_trace(THIS_FILE_ID, __LINE__, _p_data, _uc_lock)
 
-#define OAL_MEM_TRACE_ENHANCED(_pst_mem, _uc_lock) \
+#define oal_mem_trace_enhanced_m(_pst_mem, _uc_lock) \
     oal_mem_trace_enhanced(THIS_FILE_ID, __LINE__, _pst_mem, _uc_lock)
 #else
-#define OAL_MEM_TRACE(_p_data, _uc_lock)
-#define OAL_MEM_TRACE_ENHANCED(_pst_mem, _uc_lock)
+#define oal_mem_trace_m(_p_data, _uc_lock)
+#define oal_mem_trace_enhanced_m(_pst_mem, _uc_lock)
 #endif
 
 /* 对于enhanced类型的申请接口与释放接口，每一个内存块都包含一个4字节的头部，    */
@@ -110,7 +107,6 @@ typedef enum {
     OAL_MEM_POOL_ID_SHARED_DATA_PKT, /* 共享数据帧内存池 */
     OAL_MEM_POOL_ID_SHARED_MGMT_PKT, /* 共享管理帧内存池 */
     OAL_MEM_POOL_ID_LOCAL,           /* 本地变量内存池  */
-    OAL_MEM_POOL_ID_MIB,             /* MIB内存池 */
     OAL_MEM_POOL_ID_SHARED_DSCR,     /* 共享描述符内存池 */
 
     OAL_MEM_POOL_ID_SDT_NETBUF, /* SDT netbuf内存池 */
@@ -162,7 +158,6 @@ typedef struct {
                                        oal_uint16 us_len,
                                        oal_uint32 ul_alloc_file_id,
                                        oal_uint32 ul_alloc_line_num);
-
 } oal_mempool_info_to_sdt_stru;
 
 /*
@@ -206,7 +201,7 @@ struct oal_mem_stru_tag {
     oal_uint32 ul_trace_line_num;                           /* 内存在关键路径上的行号 */
     oal_uint32 ul_trace_time_stamp;                         /* 内存在关键路径上的时间戳 */
 #endif
-} oal_cacheline_aligned;
+} OAL_CACHELINE_ALIGNED;
 typedef struct oal_mem_stru_tag oal_mem_stru;
 
 /*
@@ -334,7 +329,7 @@ extern oal_uint32 oal_mem_trace(oal_uint32 ul_file_id,
                                 oal_void *p_data,
                                 oal_uint8 uc_lock);
 
-#ifdef _PRE_DEBUG_MODE
+#if defined(_PRE_DEBUG_MODE) && defined(_PRE_TX_DSCR_ADDR_DEBUG)
 extern oal_mempool_tx_dscr_addr *oal_mem_get_tx_dscr_addr(oal_void);
 extern oal_void oal_mem_stop_rcd_rls(oal_void);
 extern oal_uint16 oal_mem_get_stop_flag(oal_void);
@@ -358,5 +353,10 @@ extern oal_void oal_mem_print_funcname(oal_ulong func_addr);
 
 #define oal_netbuf_duplicate_normal(pst_src_netbuf, ul_add_head_room, ul_add_tail_room) \
     oal_netbuf_duplicate(pst_src_netbuf, OAL_NORMAL_NETBUF, ul_add_head_room, ul_add_tail_room)
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of oal_mm.h */

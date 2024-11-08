@@ -62,41 +62,6 @@ typedef irq_handler_t oal_irq_handler_t;
 #define OAL_TIMER_IRQ_TYPE_MAX_NUM    255
 #define OAL_TIMER_IRQ_SAVE_TIME_INDEX (OAL_TIMER_IRQ_TYPE_MAX_NUM - 1)
 #define OAL_TIMER_IRQ_SAVE_TYPE_INDEX (OAL_TIMER_IRQ_TYPE_MAX_NUM - 2)
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-
-#if (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_E5)
-#ifdef _PRE_E5_750_PLATFORM
-#define WL_WAKE_HOST  GPIO_0_0
-#define WL_SLEEP_GPIO GPIO_4_7
-#define WL_PCIE_RESET GPIO_4_6
-#define WL_SAW_SEL0   0xFFFF /* 串改并相关GPIO, 0xFFFF表示无效，不采用串改并方案 */
-#define WL_SAW_SEL1   0xFFFF /* 串改并相关GPIO, 0xFFFF表示无效，不采用串改并方案 */
-#else
-extern oal_uint wlan_wakehost_gpio;
-extern oal_uint wlan_sleep_gpio;
-extern oal_uint wlan_pciereset_gpio;
-extern oal_uint wlan_saw_sel0_gpio;
-extern oal_uint wlan_saw_sel1_gpio;
-
-#define WL_WAKE_HOST  wlan_wakehost_gpio
-#define WL_SLEEP_GPIO wlan_sleep_gpio
-#define WL_PCIE_RESET wlan_pciereset_gpio
-#define WL_SAW_SEL0   wlan_saw_sel0_gpio /* 2G SAW0通路 */
-#define WL_SAW_SEL1   wlan_saw_sel1_gpio /* 2G SAW1通路 */
-#endif
-
-#define OAL_IRQF_TRIGGER_NONE    IRQF_TRIGGER_NONE
-#define OAL_IRQF_NO_SUSPEND      IRQF_NO_SUSPEND
-#define OAL_IRQF_SHARED          IRQF_SHARED
-#define OAL_IRQF_TRIGGER_RISING  IRQF_TRIGGER_RISING
-#define OAL_IRQF_TRIGGER_FALLING IRQF_TRIGGER_FALLING
-
-#define OAL_IRQF_TRIGGER_HIGH IRQF_TRIGGER_HIGH
-#define OAL_IRQF_TRIGGER_LOW  IRQF_TRIGGER_LOW
-
-#define OAL_IRQ_HANDLED IRQ_HANDLED
-
-#else
 #define WL_WAKE_HOST  0
 #define WL_SLEEP_GPIO 0
 #define WL_PCIE_RESET 0
@@ -113,10 +78,6 @@ extern oal_uint wlan_saw_sel1_gpio;
 #define OAL_IRQF_TRIGGER_LOW  0
 
 #define OAL_IRQ_HANDLED 0
-#endif
-
-#endif
-
 typedef irqreturn_t oal_irqreturn_t;
 
 /* 枚举定义 */
@@ -133,8 +94,8 @@ typedef enum {
     OAL_5115IRQ_ADUDSH = 1,
     OAL_5115IRQ_ADRT = 2,
     OAL_5115IRQ_DCSWR = 3,
-    OAL_5115IRQ_DTSPl0 = 4,
-    OAL_5115IRQ_DTSPl1 = 5,
+    OAL_5115IRQ_DTSPL0 = 4,
+    OAL_5115IRQ_DTSPL1 = 5,
     OAL_5115IRQ_DDERTF = 6,
     OAL_5115IRQ_DMSC = 7,
     OAL_5115IRQ_DRMP = 8,
@@ -235,8 +196,8 @@ typedef enum {
 } oal_hi_timerx_index_enum;
 
 /* 全局变量声明 */
-extern oal_hi_timer_reg_stru *reg_timer;
-extern oal_uint32 irq_save_time[][OAL_TIMER_IRQ_TYPE_MAX_NUM];
+extern oal_hi_timer_reg_stru *g_reg_timer;
+extern oal_uint32 g_irq_save_time[][OAL_TIMER_IRQ_TYPE_MAX_NUM];
 
 /* 函数声明 */
 /*
@@ -246,8 +207,8 @@ extern oal_uint32 irq_save_time[][OAL_TIMER_IRQ_TYPE_MAX_NUM];
  */
 OAL_STATIC OAL_INLINE oal_void oal_irq_free(oal_irq_dev_stru *st_osdev)
 {
-    if (OAL_UNLIKELY(st_osdev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(st_osdev == NULL)) {
+        oal_warn_on(1);
         return;
     }
     free_irq(st_osdev->ul_irq, st_osdev);
@@ -298,8 +259,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_irq_setup(oal_irq_dev_stru *st_osdev)
 {
     oal_int32 l_err;
 
-    if (OAL_UNLIKELY(st_osdev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(st_osdev == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -420,13 +381,13 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_5115timer_get_10ns(oal_void)
 OAL_STATIC OAL_INLINE oal_uint32 oal_5115timer_get_10ns(oal_void)
 {
 #if (_PRE_TARGET_PRODUCT_TYPE_WS835DMB == _PRE_CONFIG_TARGET_PRODUCT)  // 产品采用了该中断的第二个定时器
-    return reg_timer->ast_timer[OAL_5115TIMER_ONE].ul_timerx_value;
+    return g_reg_timer->ast_timer[OAL_5115TIMER_ONE].ul_timerx_value;
 #elif (_PRE_TARGET_PRODUCT_TYPE_E5 == _PRE_CONFIG_TARGET_PRODUCT) || \
       (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_CPE)
     /* E5 产品暂无硬件定时器资源 */
     return 1;
 #else
-    return reg_timer->ast_timer[OAL_5115TIMER_SEC].ul_timerx_value;
+    return g_reg_timer->ast_timer[OAL_5115TIMER_SEC].ul_timerx_value;
 #endif
 }
 #endif
@@ -440,11 +401,11 @@ OAL_STATIC OAL_INLINE oal_void oal_irq_save(oal_uint *pui_flags, oal_uint32 ul_t
 #ifdef _PRE_DEBUG_MODE
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
 
-    oal_uint32 ul_core_id = OAL_GET_CORE_ID();
+    oal_uint32 ul_core_id = oal_get_core_id();
 #endif
 #endif
-    if (OAL_UNLIKELY(pui_flags == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pui_flags == NULL)) {
+        oal_warn_on(1);
         return;
     }
     local_irq_save(*pui_flags);
@@ -454,13 +415,13 @@ OAL_STATIC OAL_INLINE oal_void oal_irq_save(oal_uint *pui_flags, oal_uint32 ul_t
     /* 数组最后一个用来保存save时间 */
     /* 数组最后第二个用来保存save的类型，其他用来保存各类型的最大save - restore的时间 */
     /* 每次restore的时候需要清空save时间，用来判断有无重复save */
-    if (irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] == 0) {
-        irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] = oal_5115timer_get_10ns();
-        irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] = ul_type;
+    if (g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] == 0) {
+        g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] = oal_5115timer_get_10ns();
+        g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] = ul_type;
     } else {
         /* 重复save */
         OAL_IO_PRINT("\n core %d oal_irq_save[%d] failed, already saved by [%d] \n",
-                     ul_core_id, ul_type, irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX]);
+                     ul_core_id, ul_type, g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX]);
         oal_dump_stack();
     }
 #endif
@@ -477,31 +438,30 @@ OAL_STATIC OAL_INLINE oal_void oal_irq_restore(oal_uint *pui_flags, oal_uint32 u
 #ifdef _PRE_DEBUG_MODE
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
     oal_uint32 ul_restore_time;
-    oal_uint32 ul_core_id = OAL_GET_CORE_ID();
+    oal_uint32 ul_core_id = oal_get_core_id();
 
-    if (OAL_UNLIKELY(pui_flags == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pui_flags == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
-    if (irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] != 0) {
+    if (g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] != 0) {
         /* restore时，需要判断上次save的type是否相同，不相同为非法 */
-        if ((ul_type < 253) && (irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] == ul_type)) {
-            ul_restore_time = irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] -
+        if ((ul_type < 253) && (g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] == ul_type)) {
+            ul_restore_time = g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] -
                               oal_5115timer_get_10ns();
-
             /* 记录这个类型的save - restore 最大值 */
-            if (irq_save_time[ul_core_id][ul_type] < ul_restore_time) {
-                irq_save_time[ul_core_id][ul_type] = ul_restore_time;
+            if (g_irq_save_time[ul_core_id][ul_type] < ul_restore_time) {
+                g_irq_save_time[ul_core_id][ul_type] = ul_restore_time;
             }
         } else {
             /* restore出错 */
             OAL_IO_PRINT("\n core %d oal_irq_restore[%d] failed, should be [%d] \n",
-                         ul_core_id, ul_type, irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX]);
+                         ul_core_id, ul_type, g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX]);
             oal_dump_stack();
         }
-        irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] = 0;
-        irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] = -1;
+        g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TIME_INDEX] = 0;
+        g_irq_save_time[ul_core_id][OAL_TIMER_IRQ_SAVE_TYPE_INDEX] = -1;
     } else {
         /* 重复restore */
         printk("\n core %d oal_irq_restore[%d] failed, already restored \n", ul_core_id, ul_type);
@@ -528,73 +488,12 @@ OAL_STATIC OAL_INLINE oal_int32 oal_irq_set_affinity(oal_irq_num irq, oal_uint32
     cpumask_set_cpu(ul_cpu, &mask);
 
     l_ret = irq_set_affinity(irq, &mask);
-
     if (l_ret != 0) {
         return OAL_FAIL;
     }
 
     return OAL_SUCC;
 }
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-
-/*
- * 函 数 名  : oal_5115timer_init
- * 功能描述  : 初始化5115硬件定时器
- * 输入参数  : en_timer:要用的定时器
- */
-OAL_STATIC OAL_INLINE oal_void oal_5115timer_init(oal_void)
-{
-#if (_PRE_TARGET_PRODUCT_TYPE_E5 != _PRE_CONFIG_TARGET_PRODUCT) && \
-    (_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_CPE)
-    oal_hi_timer_control_union u_reg_control;
-
-    reg_timer = (oal_hi_timer_reg_stru *)ioremap(OAL_HI_TIMER_REG_BASE, sizeof(oal_hi_timer_reg_stru));
-
-    /* 读timer控制器 */
-#if (_PRE_TARGET_PRODUCT_TYPE_WS835DMB == _PRE_CONFIG_TARGET_PRODUCT)  // 产品采用了该中断的第二个定时器
-    u_reg_control.ul_value = reg_timer->ast_timer[OAL_5115TIMER_ONE].ul_timerx_control;
-#else
-    u_reg_control.ul_value = reg_timer->ast_timer[OAL_5115TIMER_SEC].ul_timerx_control;
-#endif
-    /* 计数模式为自由模式 */
-    u_reg_control.bits_stru.ul_timermode = OAL_HI_TIMER_FREE_MODE;
-
-    /* 不分频 */
-    u_reg_control.bits_stru.ul_timerpre = OAL_HI_TIMER_NO_DIV_FREQ;
-
-    /* 屏蔽中断 */
-    u_reg_control.bits_stru.ul_intenable = OAL_HI_TIMER_INT_CLEAR;
-
-    /* 配置为32bit计数操作模式 */
-    u_reg_control.bits_stru.ul_timersize = OAL_HI_TIMER_SIZE_32_BIT;
-
-    /* 配置为回卷计数 */
-    u_reg_control.bits_stru.ul_oneshot = OAL_HI_TIMER_WRAPPING;
-
-    /* 使能寄存器 */
-    u_reg_control.bits_stru.ul_timeren = OAL_TRUE; /* HI_TRUE_E */
-
-    /* 写回timer控制器 */
-#if (_PRE_TARGET_PRODUCT_TYPE_WS835DMB == _PRE_CONFIG_TARGET_PRODUCT)  // 产品采用了该中断的第二个定时器
-    reg_timer->ast_timer[OAL_5115TIMER_ONE].ul_timerx_control = u_reg_control.ul_value;
-#else
-    reg_timer->ast_timer[OAL_5115TIMER_SEC].ul_timerx_control = u_reg_control.ul_value;
-#endif
-#endif
-}
-
-/*
- * 函 数 名  : oal_5115timer_exit
- * 功能描述  : 释放硬件定时器虚拟内存
- */
-OAL_STATIC OAL_INLINE oal_void oal_5115timer_exit(oal_void)
-{
-#if (_PRE_TARGET_PRODUCT_TYPE_E5 != _PRE_CONFIG_TARGET_PRODUCT) && \
-    (_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_CPE)
-    iounmap(reg_timer);
-#endif
-}
-#else
 
 /*
  * 函 数 名  : oal_5115timer_init
@@ -612,8 +511,6 @@ OAL_STATIC OAL_INLINE oal_void oal_5115timer_init(oal_void)
 OAL_STATIC OAL_INLINE oal_void oal_5115timer_exit(oal_void)
 {
 }
-
-#endif
 
 /*
  * 函 数 名  : oal_mdrv_timer_start
@@ -641,10 +538,6 @@ OAL_STATIC OAL_INLINE oal_int32 oal_mdrv_timer_stop(oal_uint32 ul_id)
  */
 OAL_STATIC OAL_INLINE oal_void oal_hi_kernel_change_hw_rps_enable(oal_uint32 ul_action)
 {
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-    extern void hi_kernel_change_hw_rps_enable(oal_uint32 action);
-    hi_kernel_change_hw_rps_enable(ul_action);
-#endif
 }
 
 /* 创建一个新的被使用资源区 */
@@ -667,8 +560,8 @@ OAL_STATIC OAL_INLINE oal_void oal_hi_kernel_change_hw_rps_enable(oal_uint32 ul_
 OAL_STATIC OAL_INLINE oal_void oal_clearl_bits(oal_void *addr, oal_uint32 pos, oal_uint32 bits)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -680,8 +573,8 @@ OAL_STATIC OAL_INLINE oal_void oal_clearl_bits(oal_void *addr, oal_uint32 pos, o
 OAL_STATIC OAL_INLINE oal_void oal_setl_bits(oal_void *addr, oal_uint32 pos, oal_uint32 bits, oal_uint32 val)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -693,8 +586,8 @@ OAL_STATIC OAL_INLINE oal_void oal_setl_bits(oal_void *addr, oal_uint32 pos, oal
 OAL_STATIC OAL_INLINE oal_void oal_clearl_bit(oal_void *addr, oal_uint32 pos)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -705,8 +598,8 @@ OAL_STATIC OAL_INLINE oal_void oal_clearl_bit(oal_void *addr, oal_uint32 pos)
 OAL_STATIC OAL_INLINE oal_void oal_setl_bit(oal_void *addr, oal_uint32 pos)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -717,8 +610,8 @@ OAL_STATIC OAL_INLINE oal_void oal_setl_bit(oal_void *addr, oal_uint32 pos)
 OAL_STATIC OAL_INLINE oal_void oal_clearl_mask(oal_void *addr, oal_uint32 mask)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -729,8 +622,8 @@ OAL_STATIC OAL_INLINE oal_void oal_clearl_mask(oal_void *addr, oal_uint32 mask)
 OAL_STATIC OAL_INLINE oal_void oal_setl_mask(oal_void *addr, oal_uint32 mask)
 {
     oal_uint32 value;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     value = oal_readl(addr);
@@ -741,8 +634,8 @@ OAL_STATIC OAL_INLINE oal_void oal_setl_mask(oal_void *addr, oal_uint32 mask)
 OAL_STATIC OAL_INLINE oal_void oal_value_mask(oal_void *addr, oal_uint32 value, oal_uint32 mask)
 {
     oal_uint32 reg;
-    if (OAL_UNLIKELY(addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(addr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     reg = oal_readl(addr);

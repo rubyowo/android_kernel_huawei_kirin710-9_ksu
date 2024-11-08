@@ -35,11 +35,11 @@
 #if defined(PLATFORM_DEBUG_ENABLE) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #define oal_debug_module_param        module_param
 #define oal_debug_module_param_string module_param_string
-#define OAL_DEBUG_MODULE_PARM_DESC    MODULE_PARM_DESC
+#define oal_debug_module_parm_desc    MODULE_PARM_DESC
 #else
 #define oal_debug_module_param(_symbol, _type, _name)
 #define oal_debug_module_param_string(arg1, arg2, arg3, arg4)
-#define OAL_DEBUG_MODULE_PARM_DESC(arg1, arg2)
+#define oal_debug_module_parm_desc(arg1, arg2)
 #endif
 
 typedef enum {
@@ -62,8 +62,8 @@ typedef struct _oal_dft_trace_item_ {
     struct timeval last_timestamp;  /* last keyinfo timestamp */
 } oal_dft_trace_item;
 
-extern oal_spin_lock_stru dft_head_lock;
-extern oal_list_head_stru dft_head;
+extern oal_spin_lock_stru g_dft_head_lock;
+extern oal_list_head_stru g_dft_head;
 extern oal_int32 oal_dft_init(oal_void);
 extern oal_void oal_dft_exit(oal_void);
 extern oal_void oal_dft_print_error_key_info(oal_void);
@@ -74,33 +74,33 @@ OAL_STATIC OAL_INLINE oal_void oal_dft_trace_key_info_func(oal_dft_trace_item* p
                                                            oal_uint16 dtype)
 {
     oal_ulong flags__;
-    oal_spin_lock_irq_save(&dft_head_lock, &flags__);
+    oal_spin_lock_irq_save(&g_dft_head_lock, &flags__);
     if (!pst_dft_item->trace_flag) {
-        oal_list_add(&pst_dft_item->list, &dft_head);
+        oal_list_add(&pst_dft_item->list, &g_dft_head);
         pst_dft_item->name = dname;
         pst_dft_item->dft_type = dtype;
         pst_dft_item->trace_flag = 1;
     }
     pst_dft_item->trace_count++;
-    oal_spin_unlock_irq_restore(&dft_head_lock, &flags__);
+    oal_spin_unlock_irq_restore(&g_dft_head_lock, &flags__);
     if ((!pst_dft_item->first_timestamp.tv_sec) && (!pst_dft_item->first_timestamp.tv_usec)) {
         do_gettimeofday(&pst_dft_item->first_timestamp);
     } else {
         do_gettimeofday(&pst_dft_item->last_timestamp);
     }
-    if (OAL_UNLIKELY(dtype >= OAL_DFT_TRACE_FAIL)) {
+    if (oal_unlikely(dtype >= OAL_DFT_TRACE_FAIL)) {
         printk(KERN_ERR "[E]key_info:%s happened[%u]!\n", dname, pst_dft_item->trace_count);
     }
 }
 
 /* 关键流程发生时间点记录，有加锁动作，慎用 */
-#define DECLARE_DFT_TRACE_KEY_INFO(dname, dtype)                                               \
+#define declare_dft_trace_key_info(dname, dtype)                                               \
     do {                                                                                       \
         OAL_STATIC oal_dft_trace_item st_dft_item = {{0}, NULL, 0, 0, 0, {0}, {0}};    \
         oal_dft_trace_key_info_func(&st_dft_item, dname, dtype);                                      \
     } while (0)
 #else
-#define DECLARE_DFT_TRACE_KEY_INFO(dname, dtype)
+#define declare_dft_trace_key_info(dname, dtype)
 #endif
 
 #define PRINT_RATE_SECOND 1000
@@ -159,8 +159,8 @@ typedef struct _oal_wakelock_stru_ {
 } oal_wakelock_stru;
 
 /* 获取从_ul_start到_ul_end的时间差 */
-#define OAL_TIME_GET_RUNTIME(_ul_start, _ul_end) \
-    (((_ul_start) > (_ul_end)) ? (OAL_TIME_CALC_RUNTIME((_ul_start), (_ul_end))) : ((_ul_end) - (_ul_start)))
+#define oal_time_get_runtime(_ul_start, _ul_end) \
+    (((_ul_start) > (_ul_end)) ? (oal_time_calc_runtime((_ul_start), (_ul_end))) : ((_ul_end) - (_ul_start)))
 
 /* 全局变量声明 */
 extern oal_spin_lock_stru g_wakelock_lock;
@@ -219,8 +219,8 @@ OAL_STATIC OAL_INLINE void oal_wake_lock(oal_wakelock_stru *pst_wakelock)
 
     oal_ulong ul_flags;
 
-    if (OAL_UNLIKELY(pst_wakelock == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_wakelock == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -230,7 +230,7 @@ OAL_STATIC OAL_INLINE void oal_wake_lock(oal_wakelock_stru *pst_wakelock)
         pst_wakelock->locked_addr = (uintptr_t)_RET_IP_;
     }
     pst_wakelock->lock_count++;
-    if (OAL_UNLIKELY(pst_wakelock->debug)) {
+    if (oal_unlikely(pst_wakelock->debug)) {
         printk(KERN_INFO "wakelock[%s] lockcnt:%lu <==%pf\n",
                pst_wakelock->st_wakelock.name, pst_wakelock->lock_count, (oal_void *)_RET_IP_);
     }
@@ -244,8 +244,8 @@ OAL_STATIC OAL_INLINE void oal_wake_unlock(oal_wakelock_stru *pst_wakelock)
 
     oal_ulong ul_flags;
 
-    if (OAL_UNLIKELY(pst_wakelock == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_wakelock == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -257,7 +257,7 @@ OAL_STATIC OAL_INLINE void oal_wake_unlock(oal_wakelock_stru *pst_wakelock)
             pst_wakelock->locked_addr = (uintptr_t)0x0;
         }
 
-        if (OAL_UNLIKELY(pst_wakelock->debug)) {
+        if (oal_unlikely(pst_wakelock->debug)) {
             printk(KERN_INFO "wakeunlock[%s] lockcnt:%lu <==%pf\n",
                    pst_wakelock->st_wakelock.name, pst_wakelock->lock_count, (oal_void *)_RET_IP_);
         }
@@ -269,8 +269,8 @@ OAL_STATIC OAL_INLINE void oal_wake_unlock(oal_wakelock_stru *pst_wakelock)
 OAL_STATIC OAL_INLINE oal_int32 oal_wakelock_active(oal_wakelock_stru *pst_wakelock)
 {
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
-    if (OAL_UNLIKELY(pst_wakelock == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_wakelock == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
     return pst_wakelock->st_wakelock.active;

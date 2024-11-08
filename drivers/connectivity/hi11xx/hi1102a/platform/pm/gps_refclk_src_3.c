@@ -23,11 +23,12 @@
 #include <linux/stat.h>
 
 #include "oal_schedule.h"
+#include "plat_firmware.h"
 
 #define DTS_COMP_GPS_POWER_NAME "hisilicon,hisi_gps"
 #define HI_GPS_REF_CLK_FREQ     49152000
 
-typedef struct hi_gps_info {
+typedef struct {
     struct clk *refclk;
     struct clk *muxclk;
     struct clk *mdmclk0;
@@ -36,19 +37,19 @@ typedef struct hi_gps_info {
     struct pinctrl *pctrl;
     struct pinctrl_state *pins_normal;
     struct pinctrl_state *pins_idle;
-} HI_GPS_INFO;
+} hi_gps_info;
 
-static struct clk *gps_ref_clk = NULL;
-static struct clk *gps_mux_clk = NULL;
-static struct clk *mdm2gps_clk0 = NULL;
-static struct clk *mdm2gps_clk1 = NULL;
-static struct clk *mdm2gps_clk2 = NULL;
-static struct clk *abb_clk = NULL;
-static HI_GPS_INFO *hi_gps_info_t = NULL;
+OAL_STATIC struct clk *g_gps_ref_clk = NULL;
+OAL_STATIC struct clk *g_gps_mux_clk = NULL;
+OAL_STATIC struct clk *g_mdm2gps_clk0 = NULL;
+OAL_STATIC struct clk *g_mdm2gps_clk1 = NULL;
+OAL_STATIC struct clk *g_mdm2gps_clk2 = NULL;
+OAL_STATIC struct clk *g_abb_clk = NULL;
+OAL_STATIC hi_gps_info *g_hi_gps_info_t = NULL;
 
 void plat_gnss_clk_enable(void)
 {
-    struct clk *pst_gnss_clk = abb_clk;
+    struct clk *pst_gnss_clk = g_abb_clk;
     if (IS_ERR_OR_NULL(pst_gnss_clk)) {
         printk(KERN_WARNING "[GPS] pst_gnss_clk is NULL\n");
         return;
@@ -63,7 +64,7 @@ void plat_gnss_clk_enable(void)
 
 void plat_gnss_clk_disable(void)
 {
-    struct clk *pst_gnss_clk = abb_clk;
+    struct clk *pst_gnss_clk = g_abb_clk;
     if (IS_ERR_OR_NULL(pst_gnss_clk)) {
         printk(KERN_WARNING "[GPS] pst_gnss_clk is NULL\n");
         return;
@@ -78,8 +79,8 @@ static ssize_t gps_write_proc_nstandby(struct file *filp, const char __user *buf
     char gps_nstandby = '0';
     printk(KERN_INFO "[GPS] gps_write_proc_nstandby \n");
 
-    if ((len < 1) || (hi_gps_info_t == NULL)) {
-        printk(KERN_ERR "[GPS] gps_write_proc_nstandby hi_gps_info_t is NULL or read length = 0.\n");
+    if ((len < 1) || (g_hi_gps_info_t == NULL)) {
+        printk(KERN_ERR "[GPS] gps_write_proc_nstandby g_hi_gps_info_t is NULL or read length = 0.\n");
         return -EINVAL;
     }
 
@@ -113,14 +114,14 @@ static ssize_t gps_write_proc_nstandby(struct file *filp, const char __user *buf
     return len;
 }
 
-static const struct file_operations gps_proc_fops_nstandby = {
+static const struct file_operations g_gps_proc_fops_nstandby = {
     .owner = THIS_MODULE,
     .write = gps_write_proc_nstandby,
 };
 
 static int create_gps_proc_file(void)
 {
-    int ret = 0;
+    int ret = SUCC;
     struct proc_dir_entry *gps_dir = NULL;
     struct proc_dir_entry *gps_nstandby_file = NULL;
     gps_dir = proc_mkdir("hi1102_gps", NULL);
@@ -130,7 +131,8 @@ static int create_gps_proc_file(void)
         return ret;
     }
 
-    gps_nstandby_file = proc_create("ref_clk", S_IRUGO | S_IWUSR | S_IWGRP | S_IFREG, gps_dir, &gps_proc_fops_nstandby);
+    gps_nstandby_file = proc_create("ref_clk", S_IRUGO | S_IWUSR | S_IWGRP | S_IFREG, gps_dir,
+                                    &g_gps_proc_fops_nstandby);
     if (gps_nstandby_file == NULL) {
         printk(KERN_ERR "[GPS] proc nstandby file create failed\n");
         ret = -ENOMEM;
@@ -141,94 +143,150 @@ static int create_gps_proc_file(void)
     return ret;
 }
 
-static int hi_gps_probe(struct platform_device *pdev)
+static int32_t hi_gps_pinctrl_set(hi_gps_info *hi_gps, struct device *gps_power_dev)
 {
-    HI_GPS_INFO *hi_gps_info = NULL;
+    int32_t ret;
+
+    hi_gps->pctrl = devm_pinctrl_get(gps_power_dev);
+    if (OAL_IS_ERR_OR_NULL(hi_gps->pctrl)) {
+        printk(KERN_ERR "[GPS] pinctrl get error! %p\n", hi_gps->pctrl);
+        return -EFAIL;
+    }
+
+    hi_gps->pins_normal = pinctrl_lookup_state(hi_gps->pctrl, "default");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->pins_normal)) {
+        printk(KERN_ERR "[GPS] hi_gps->pins_normal lookup error! %p\n", hi_gps->pins_normal);
+        devm_pinctrl_put(hi_gps->pctrl);
+        return -EFAIL;
+    }
+
+    hi_gps->pins_idle = pinctrl_lookup_state(hi_gps->pctrl, "idle");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->pins_idle)) {
+        printk(KERN_ERR "[GPS] hi_gps->pins_idle lookup error! %p\n", hi_gps->pins_idle);
+        devm_pinctrl_put(hi_gps->pctrl);
+        return -EFAIL;
+    }
+
+    ret = pinctrl_select_state(hi_gps->pctrl, hi_gps->pins_normal);
+    if (ret) {
+        printk(KERN_ERR "[GPS] pinctrl_select_state error! %d\n", ret);
+        devm_pinctrl_put(hi_gps->pctrl);
+        return ret;
+    }
+    printk(KERN_INFO "[GPS] pinctrl is finish\n");
+
+    return ret;
+}
+
+static void hi_gps_pinctrl_deset(hi_gps_info *hi_gps)
+{
+    devm_pinctrl_put(hi_gps->pctrl);
+    hi_gps->pctrl =  NULL;
+    hi_gps->pins_normal = NULL;
+    hi_gps->pins_idle = NULL;
+}
+
+static int32_t hi_gps_clk_set(hi_gps_info *hi_gps, struct device *gps_power_dev)
+{
+    int32_t ret;
+
+    hi_gps->refclk = devm_clk_get(gps_power_dev, "ref_clk");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->refclk)) {
+        ret = PTR_ERR(hi_gps->refclk);
+        printk(KERN_ERR "[GPS] ref_clk get failed, ret = %d!\n", ret);
+        goto err_refclk_get;
+    }
+    g_gps_ref_clk = hi_gps->refclk;
+
+    hi_gps->muxclk = devm_clk_get(gps_power_dev, "mux_clk");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->muxclk)) {
+        ret = PTR_ERR(hi_gps->muxclk);
+        printk(KERN_ERR "[GPS] mux_clk get failed, ret = %d!\n", ret);
+        goto err_muxclk_get;
+    }
+    g_gps_mux_clk = hi_gps->muxclk;
+
+    hi_gps->mdmclk0 = devm_clk_get(gps_power_dev, "mdm_clk0");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->mdmclk0)) {
+        ret = PTR_ERR(hi_gps->mdmclk0);
+        printk(KERN_ERR "[GPS] mdm_clk0 get failed, ret = %d!\n", ret);
+        goto err_mdmclk0_get;
+    }
+    g_mdm2gps_clk0 = hi_gps->mdmclk0;
+
+    hi_gps->mdmclk1 = devm_clk_get(gps_power_dev, "mdm_clk1");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->mdmclk1)) {
+        ret = PTR_ERR(hi_gps->mdmclk1);
+        printk(KERN_ERR "[GPS] mdm_clk1 get failed, ret = %d!\n", ret);
+        goto err_mdmclk1_get;
+    }
+    g_mdm2gps_clk1 = hi_gps->mdmclk1;
+
+    hi_gps->mdmclk2 = devm_clk_get(gps_power_dev, "mdm_clk2");
+    if (OAL_IS_ERR_OR_NULL(hi_gps->mdmclk2)) {
+        ret = PTR_ERR(hi_gps->mdmclk2);
+        printk(KERN_ERR "[GPS] mdm_clk2 get failed, ret = %d!\n", ret);
+        goto err_mdmclk2_get;
+    }
+    g_mdm2gps_clk2 = hi_gps->mdmclk2;
+
+    printk(KERN_INFO "[GPS] ref clk is finished!\n");
+    return SUCC;
+
+err_mdmclk2_get:
+    devm_clk_put(gps_power_dev, hi_gps->mdmclk1);
+err_mdmclk1_get:
+    devm_clk_put(gps_power_dev, hi_gps->mdmclk0);
+err_mdmclk0_get:
+    devm_clk_put(gps_power_dev, hi_gps->muxclk);
+err_muxclk_get:
+    devm_clk_put(gps_power_dev, hi_gps->refclk);
+err_refclk_get:
+    return ret;
+}
+
+static void hi_gps_clk_deset(hi_gps_info *hi_gps, struct device *gps_power_dev)
+{
+    devm_clk_put(gps_power_dev, hi_gps->mdmclk2);
+    g_mdm2gps_clk2 = NULL;
+    devm_clk_put(gps_power_dev, hi_gps->mdmclk1);
+    g_mdm2gps_clk1 = NULL;
+    devm_clk_put(gps_power_dev, hi_gps->mdmclk0);
+    g_mdm2gps_clk0 = NULL;
+    devm_clk_put(gps_power_dev, hi_gps->muxclk);
+    g_gps_mux_clk = NULL;
+    devm_clk_put(gps_power_dev, hi_gps->refclk);
+    g_gps_ref_clk = NULL;
+}
+
+static int32_t hi_gps_probe(struct platform_device *pdev)
+{
+    hi_gps_info *hi_gps = NULL;
     struct device *gps_power_dev = &pdev->dev;
-    int ret;
+    int32_t ret;
 
     printk(KERN_INFO "[GPS] start find gps_power\n");
 
-    hi_gps_info = kzalloc(sizeof(HI_GPS_INFO), GFP_KERNEL);
-    if (hi_gps_info == NULL) {
+    hi_gps = kzalloc(sizeof(hi_gps_info), GFP_KERNEL);
+    if (hi_gps == NULL) {
         printk(KERN_ERR "[GPS] Alloc memory failed\n");
         return -ENOMEM;
     }
 
-    hi_gps_info->pctrl = devm_pinctrl_get(gps_power_dev);
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->pctrl)) {
-        printk(KERN_ERR "[GPS] pinctrl get error! %p\n", hi_gps_info->pctrl);
-        ret = -1;
-        goto err_pinctrl_get;
+    ret = hi_gps_pinctrl_set(hi_gps, gps_power_dev);
+    if (ret != SUCC) {
+        goto err_pinctrl_set;
     }
 
-    hi_gps_info->pins_normal = pinctrl_lookup_state(hi_gps_info->pctrl, "default");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->pins_normal)) {
-        printk(KERN_ERR "[GPS] hi_gps_info->pins_normal lookup error! %p\n", hi_gps_info->pins_normal);
-        ret = -1;
-        goto err_pins_normal;
+    ret = hi_gps_clk_set(hi_gps, gps_power_dev);
+    if (ret != SUCC) {
+        goto err_clk_set;
     }
 
-    hi_gps_info->pins_idle = pinctrl_lookup_state(hi_gps_info->pctrl, "idle");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->pins_idle)) {
-        printk(KERN_ERR "[GPS] hi_gps_info->pins_idle lookup error! %p\n", hi_gps_info->pins_idle);
-        ret = -1;
-        goto err_pins_idle;
-    }
-
-    ret = pinctrl_select_state(hi_gps_info->pctrl, hi_gps_info->pins_normal);
-    if (ret) {
-        printk(KERN_ERR "[GPS] pinctrl_select_state error! %d\n", ret);
-        goto err_select_state;
-    }
-    printk(KERN_INFO "[GPS] pinctrl is finish\n");
-
-    hi_gps_info->refclk = devm_clk_get(gps_power_dev, "ref_clk");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->refclk)) {
-        printk(KERN_ERR "[GPS] ref_clk get failed!\n");
-        ret = PTR_ERR(hi_gps_info->refclk);
-        goto err_refclk_get;
-    }
-    gps_ref_clk = hi_gps_info->refclk;
-
-    hi_gps_info->muxclk = devm_clk_get(gps_power_dev, "mux_clk");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->muxclk)) {
-        printk(KERN_ERR "[GPS] mux_clk get failed!\n");
-        ret = PTR_ERR(hi_gps_info->muxclk);
-        goto err_muxclk_get;
-    }
-    gps_mux_clk = hi_gps_info->muxclk;
-
-    hi_gps_info->mdmclk0 = devm_clk_get(gps_power_dev, "mdm_clk0");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->mdmclk0)) {
-        printk(KERN_ERR "[GPS] mdm_clk0 get failed!\n");
-        ret = PTR_ERR(hi_gps_info->mdmclk0);
-        goto err_mdmclk0_get;
-    }
-    mdm2gps_clk0 = hi_gps_info->mdmclk0;
-
-    hi_gps_info->mdmclk1 = devm_clk_get(gps_power_dev, "mdm_clk1");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->mdmclk1)) {
-        printk(KERN_ERR "[GPS] mdm_clk1 get failed!\n");
-        ret = PTR_ERR(hi_gps_info->mdmclk1);
-        goto err_mdmclk1_get;
-    }
-    mdm2gps_clk1 = hi_gps_info->mdmclk1;
-
-    hi_gps_info->mdmclk2 = devm_clk_get(gps_power_dev, "mdm_clk2");
-    if (OAL_IS_ERR_OR_NULL(hi_gps_info->mdmclk2)) {
-        printk(KERN_ERR "[GPS] mdm_clk2 get failed!\n");
-        ret = PTR_ERR(hi_gps_info->mdmclk2);
-        goto err_mdmclk2_get;
-    }
-    mdm2gps_clk2 = hi_gps_info->mdmclk2;
-
-    printk(KERN_INFO "[GPS] ref clk is finished!\n");
-
-    abb_clk = devm_clk_get(gps_power_dev, "clk_gnss_abb");
-    if (IS_ERR_OR_NULL(abb_clk)) {
+    g_abb_clk = devm_clk_get(gps_power_dev, "clk_gnss_abb");
+    if (IS_ERR_OR_NULL(g_abb_clk)) {
         printk(KERN_WARNING "[GPS] abb_clk get failed!\n");
-        abb_clk = NULL;
+        g_abb_clk = NULL;
     }
 
     ret = create_gps_proc_file();
@@ -237,8 +295,8 @@ static int hi_gps_probe(struct platform_device *pdev)
         goto err_create_proc_file;
     }
 
-    platform_set_drvdata(pdev, hi_gps_info);
-    hi_gps_info_t = hi_gps_info;
+    platform_set_drvdata(pdev, hi_gps);
+    g_hi_gps_info_t = hi_gps;
 
 #ifdef CONFIG_HI110X_GPS_REFCLK_INTERFACE
     /* lint -save -e611 */ /* 屏蔽可疑强转告警 */
@@ -246,37 +304,26 @@ static int hi_gps_probe(struct platform_device *pdev)
     /* lint -restore */
     printk(KERN_INFO "[GPS] gps register func pointer succ.\n");
 #endif
-    return 0;
+    return SUCC;
 
 err_create_proc_file:
-    devm_clk_put(gps_power_dev, hi_gps_info->mdmclk2);
-err_mdmclk2_get:
-    devm_clk_put(gps_power_dev, hi_gps_info->mdmclk1);
-err_mdmclk1_get:
-    devm_clk_put(gps_power_dev, hi_gps_info->mdmclk0);
-err_mdmclk0_get:
-    devm_clk_put(gps_power_dev, hi_gps_info->muxclk);
-err_muxclk_get:
-    devm_clk_put(gps_power_dev, hi_gps_info->refclk);
-err_refclk_get:
-err_select_state:
-err_pins_idle:
-err_pins_normal:
-    devm_pinctrl_put(hi_gps_info->pctrl);
-err_pinctrl_get:
-    kfree(hi_gps_info);
-    hi_gps_info = NULL;
-    hi_gps_info_t = NULL;
+    hi_gps_clk_deset(hi_gps, gps_power_dev);
+err_clk_set:
+    hi_gps_pinctrl_deset(hi_gps);
+err_pinctrl_set:
+    kfree(hi_gps);
+    hi_gps = NULL;
+    g_hi_gps_info_t = NULL;
     return ret;
 }
 
 static void hi_gps_shutdown(struct platform_device *pdev)
 {
-    HI_GPS_INFO *hi_gps_info = platform_get_drvdata(pdev);
+    hi_gps_info *hi_gps = platform_get_drvdata(pdev);
     printk(KERN_INFO "[GPS] hi_gps_shutdown!\n");
 
-    if (hi_gps_info == NULL) {
-        printk(KERN_ERR "[GPS] hi_gps_info is NULL,just return.\n");
+    if (hi_gps == NULL) {
+        printk(KERN_ERR "[GPS] hi_gps is NULL,just return.\n");
         return;
     }
 
@@ -285,13 +332,13 @@ static void hi_gps_shutdown(struct platform_device *pdev)
 #endif
 
     platform_set_drvdata(pdev, NULL);
-    kfree(hi_gps_info);
-    hi_gps_info = NULL;
-    hi_gps_info_t = NULL;
+    kfree(hi_gps);
+    hi_gps = NULL;
+    g_hi_gps_info_t = NULL;
     return;
 }
 
-static const struct of_device_id gps_power_match_table[] = {
+static const struct of_device_id g_gps_power_match_table[] = {
     {
         .compatible = DTS_COMP_GPS_POWER_NAME,  // compatible must match with which defined in dts
         .data = NULL,
@@ -299,9 +346,9 @@ static const struct of_device_id gps_power_match_table[] = {
     {},
 };
 
-MODULE_DEVICE_TABLE(of, gps_power_match_table);
+MODULE_DEVICE_TABLE(of, g_gps_power_match_table);
 
-static struct platform_driver hi_gps_plat_driver = {
+static struct platform_driver g_hi_gps_plat_driver = {
     .probe = hi_gps_probe,
     .suspend = NULL,
     .remove = NULL,
@@ -309,16 +356,16 @@ static struct platform_driver hi_gps_plat_driver = {
     .driver = {
         .name = "hisi_gps",
         .owner = THIS_MODULE,
-        .of_match_table = of_match_ptr(gps_power_match_table),  // dts required code
+        .of_match_table = of_match_ptr(g_gps_power_match_table),  // dts required code
     },
 };
 
 int hi_gps_plat_init(void)
 {
-    int ret = -1;
+    int ret = -EFAIL;
 
     if (isMyConnectivityChip(CHIP_TYPE_HI110X)) {
-        ret = platform_driver_register(&hi_gps_plat_driver);
+        ret = platform_driver_register(&g_hi_gps_plat_driver);
         if (ret) {
             printk(KERN_ERR "[GPS] ERROR: unable to register hisi gps plat driver! \n");
         } else {
@@ -333,7 +380,7 @@ int hi_gps_plat_init(void)
 
 void hi_gps_plat_exit(void)
 {
-    platform_driver_unregister(&hi_gps_plat_driver);
+    platform_driver_unregister(&g_hi_gps_plat_driver);
 }
 
 int set_gps_ref_clk_enable_hi110x(bool enable, gps_modem_id_enum modem_id, gps_rat_mode_enum rat_mode)
@@ -342,46 +389,46 @@ int set_gps_ref_clk_enable_hi110x(bool enable, gps_modem_id_enum modem_id, gps_r
     struct clk *parent = NULL;
 
     printk(KERN_INFO "[GPS] set_gps_ref_clk_enable(%d,%d,%d) \n", enable, modem_id, rat_mode);
-    if (OAL_IS_ERR_OR_NULL(gps_ref_clk) || OAL_IS_ERR_OR_NULL(gps_mux_clk) ||
-        OAL_IS_ERR_OR_NULL(mdm2gps_clk0) || OAL_IS_ERR_OR_NULL(mdm2gps_clk1) ||
-        OAL_IS_ERR_OR_NULL(mdm2gps_clk2)) {
+    if (OAL_IS_ERR_OR_NULL(g_gps_ref_clk) || OAL_IS_ERR_OR_NULL(g_gps_mux_clk) ||
+        OAL_IS_ERR_OR_NULL(g_mdm2gps_clk0) || OAL_IS_ERR_OR_NULL(g_mdm2gps_clk1) ||
+        OAL_IS_ERR_OR_NULL(g_mdm2gps_clk2)) {
         printk(KERN_ERR "[GPS] ERROR: refclk is invalid! \n");
-        return -1;
+        return -EFAIL;
     }
 
     if (enable) {
         if (gps_rat_mode_cdma == rat_mode) {
             /* SCPLL1 */
-            parent = mdm2gps_clk1;
+            parent = g_mdm2gps_clk1;
             printk(KERN_INFO "[GPS] select CLK1 \n");
         } else if (gps_modem_id_0 == modem_id) {
             /* SCPLL0 */
-            parent = mdm2gps_clk0;
+            parent = g_mdm2gps_clk0;
             printk(KERN_INFO "[GPS] select CLK0 \n");
         } else {
             /* SCPLL2 */
-            parent = mdm2gps_clk2;
+            parent = g_mdm2gps_clk2;
             printk(KERN_INFO "[GPS] select CLK2 \n");
         }
 
-        ret = clk_set_parent(gps_mux_clk, parent);
+        ret = clk_set_parent(g_gps_mux_clk, parent);
         if (ret < 0) {
             printk(KERN_ERR "[GPS] ERROR: muxclk set parent failed! \n");
             return ret;
         }
 
-        ret = clk_prepare_enable(gps_ref_clk);
+        ret = clk_prepare_enable(g_gps_ref_clk);
         if (ret < 0) {
             printk(KERN_ERR "[GPS] ERROR: refclk enable failed! \n");
-            return -1;
+            return -EFAIL;
         }
         printk(KERN_INFO "[GPS] set_gps_ref_clk enable finish \n");
     } else {
-        clk_disable_unprepare(gps_ref_clk);
+        clk_disable_unprepare(g_gps_ref_clk);
         printk(KERN_INFO "[GPS] set_gps_ref_clk disable finish \n");
     }
 
-    return 0;
+    return SUCC;
 }
 
 MODULE_AUTHOR("DRIVER_AUTHOR");

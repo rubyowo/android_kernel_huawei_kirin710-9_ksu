@@ -24,9 +24,9 @@
 #define OAM_REG_RPT_DATA  1
 #define OAM_REG_RPT_END   2
 
-#define OAM_PHY_REG_NUM OAL_ARRAY_SIZE(phy_reg)
-#define OAM_SOC_REG_NUM OAL_ARRAY_SIZE(soc_reg)
-#define OAM_MAC_REG_NUM OAL_ARRAY_SIZE(mac_reg)
+#define OAM_PHY_REG_NUM oal_array_size(g_phy_reg)
+#define OAM_SOC_REG_NUM oal_array_size(g_soc_reg)
+#define OAM_MAC_REG_NUM oal_array_size(g_mac_reg)
 
 typedef enum {
     OAM_REG_PHY = 0,
@@ -149,7 +149,7 @@ typedef struct {
 #define OAM_REG_MAX_PKT_ONE_BUFF ((OAM_REG_MAX_SEND_BUF_SIZE - sizeof(oam_reg_send_head_stru)) / (sizeof(oam_reg_rpt)))
 
 /* 全局变量声明 */
-extern oam_reg_manage_stru oam_reg_mng;
+extern oam_reg_manage_stru g_oam_reg_mng;
 
 /* 函数声明 */
 oal_void oam_reg_init(oal_void);

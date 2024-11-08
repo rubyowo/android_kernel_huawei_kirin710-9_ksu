@@ -681,18 +681,6 @@ extern oal_uint32 oal_cfg80211_new_sta(oal_net_device_stru *pst_net_device,
                                        const oal_uint8 *puc_mac_addr,
                                        oal_station_info_stru *pst_station_info,
                                        oal_gfp_enum_uint8 en_gfp);
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-extern oal_void oal_cfg80211_send_rx_auth(oal_net_device_stru *pst_dev,
-                                          const oal_uint8 *puc_buf,
-                                          oal_uint32 ul_len);
-
-#endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-extern oal_uint32 oal_cfg80211_fbt_notify_find_sta(oal_net_device_stru *pst_net_device,
-                                                   const oal_uint8 *puc_mac_addr,
-                                                   oal_station_info_stru *pst_station_info,
-                                                   oal_gfp_enum_uint8 en_gfp);
-#endif
 extern oal_void oal_cfg80211_mic_failure(oal_net_device_stru *pst_net_device,
                                          const oal_uint8 *puc_mac_addr,
                                          enum nl80211_key_type key_type,
@@ -750,6 +738,8 @@ extern oal_void oal_cfg80211_m2s_status_report(oal_net_device_stru *pst_netdev,
 extern oal_int oal_cfg80211_external_auth_request(oal_net_device_stru *pst_netdev,
                                                   oal_cfg80211_external_auth_stru *pst_params,
                                                   oal_gfp_enum_uint8 en_gfp);
+extern oal_void oal_cfg80211_tas_rssi_access_report(oal_net_device_stru *pst_netdev, oal_gfp_enum_uint8 en_gfp,
+                                                    oal_uint8 *puc_buf, oal_uint32 ul_len);
 
 extern oal_uint32 oal_cfg80211_init(oal_void);
 extern oal_void oal_cfg80211_exit(oal_void);

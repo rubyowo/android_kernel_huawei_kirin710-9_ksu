@@ -64,9 +64,9 @@ typedef oal_uint8 frw_ipc_msg_type_enum_uint8;
 #define FRW_IPC_MAX_SEQ_NUMBER 0xFFFF
 
 /* 获取消息队列 */
-#define FRW_IPC_GET_MSG_QUEUE(_queue, _type)              \
+#define frw_ipc_get_msg_queue(_queue, _type)              \
     ((_queue) = ((_type) == FRW_IPC_CORE_TYPE_MASTER) ?   \
-    &queue_master_to_slave : &queue_slave_to_master)
+    &g_queue_master_to_slave : &g_queue_slave_to_master)
 
 /* IPC内部消息结构体 */
 typedef struct {
@@ -101,7 +101,7 @@ typedef struct {
  */
 OAL_STATIC OAL_INLINE frw_ipc_core_type_enum frw_ipc_get_core_type(oal_void)
 {
-    if (FRW_IPC_CORE_ID_MASTER == OAL_GET_CORE_ID()) {
+    if (FRW_IPC_CORE_ID_MASTER == oal_get_core_id()) {
         return FRW_IPC_CORE_TYPE_MASTER;
     }
 

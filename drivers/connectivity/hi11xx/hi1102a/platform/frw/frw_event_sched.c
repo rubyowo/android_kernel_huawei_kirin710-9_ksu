@@ -2,8 +2,6 @@
 
 /* 头文件包含 */
 #include "frw_event_sched.h"
-
-#include "platform_spec.h"
 #include "oam_ext_if.h"
 #include "frw_main.h"
 #include "frw_event_main.h"
@@ -32,7 +30,7 @@ oal_uint32 frw_event_sched_deactivate_queue_no_lock(frw_event_sched_queue_stru *
     pst_event_queue->uc_weight_cnt = 0;
 
     /* mayuan debug */
-    if ((uintptr_t)&pst_event_queue->st_list == (uintptr_t)&pst_sched_queue->st_head) {
+    if (((uintptr_t)&pst_event_queue->st_list) == ((uintptr_t)&pst_sched_queue->st_head)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "frw_event_sched_deactivate_queue, delete header itself.");
         return OAL_FAIL;
     }
@@ -85,14 +83,14 @@ oal_uint32 frw_event_sched_activate_queue_no_lock(frw_event_sched_queue_stru *ps
  */
 oal_void *frw_event_sched_pick_next_event_queue_wrr(frw_event_sched_queue_stru *pst_sched_queue)
 {
-    oal_dlist_head_stru *pst_list;
+    oal_dlist_head_stru *pst_list = NULL;
     frw_event_queue_stru *pst_event_queue = OAL_PTR_NULL;
     oal_void *p_event = OAL_PTR_NULL;
     oal_uint ul_flag = 0;
     oal_dlist_head_stru *pst_header = NULL;
 
-    if (OAL_UNLIKELY(pst_sched_queue == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_sched_queue == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -100,10 +98,9 @@ oal_void *frw_event_sched_pick_next_event_queue_wrr(frw_event_sched_queue_stru *
 
     pst_header = &pst_sched_queue->st_head;
     /* 遍历整个调度链表 */
-    OAL_DLIST_SEARCH_FOR_EACH(pst_list, pst_header)
+    oal_dlist_search_for_each(pst_list, pst_header)
     {
-        pst_event_queue = OAL_DLIST_GET_ENTRY(pst_list, frw_event_queue_stru, st_list);
-
+        pst_event_queue = oal_dlist_get_entry(pst_list, frw_event_queue_stru, st_list);
         /* 如果事件队列的vap_state为暂停，则跳过，继续挑选下一个事件队列 */
         if (pst_event_queue->en_vap_state == FRW_VAP_STATE_PAUSE) {
             continue;
@@ -145,7 +142,7 @@ oal_void *frw_event_sched_pick_next_event_queue_wrr(frw_event_sched_queue_stru *
  */
 oal_uint32 frw_event_sched_init(frw_event_sched_queue_stru *pst_sched_queue)
 {
-    if (OAL_UNLIKELY(pst_sched_queue == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_sched_queue == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_event_sched_init:: pointer is NULL!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -200,7 +197,7 @@ oal_uint32 frw_event_queue_init(frw_event_queue_stru *pst_event_queue,
 {
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY(pst_event_queue == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_event_queue == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_event_queue_init:: pointer is NULL!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -209,7 +206,7 @@ oal_uint32 frw_event_queue_init(frw_event_queue_stru *pst_event_queue,
     oal_spin_lock_init(&pst_event_queue->st_lock);
 
     ul_ret = oal_queue_init(&pst_event_queue->st_queue, uc_max_events);
-    if (OAL_UNLIKELY(ul_ret != OAL_SUCC)) {
+    if (oal_unlikely(ul_ret != OAL_SUCC)) {
         OAM_WARNING_LOG1(0, OAM_SF_FRW, "{frw_event_queue_init:: OAL_QUEUE_INIT return != OAL_SUCC! %d}", ul_ret);
         frw_event_queue_set(pst_event_queue, 0, FRW_SCHED_POLICY_BUTT, FRW_EVENT_QUEUE_STATE_INACTIVE);
 
@@ -228,7 +225,7 @@ oal_uint32 frw_event_queue_init(frw_event_queue_stru *pst_event_queue,
  */
 oal_void frw_event_queue_destroy(frw_event_queue_stru *pst_event_queue)
 {
-    if (OAL_UNLIKELY(pst_event_queue == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_event_queue == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_event_queue_destroy:: pointer is NULL!}");
         return;
     }
@@ -251,8 +248,8 @@ oal_uint32 frw_event_sched_deactivate_queue(frw_event_sched_queue_stru *pst_sche
     oal_uint ul_flag = 0;
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -280,8 +277,8 @@ oal_uint32 frw_event_sched_activate_queue(frw_event_sched_queue_stru *pst_sched_
     oal_uint ul_flag = 0;
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -305,8 +302,8 @@ oal_void frw_event_sched_pause_queue(frw_event_sched_queue_stru *pst_sched_queue
 {
     oal_uint ul_flag = 0;
 
-    if (OAL_UNLIKELY((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -334,8 +331,8 @@ oal_void frw_event_sched_resume_queue(frw_event_sched_queue_stru *pst_sched_queu
 {
     oal_uint ul_flag = 0;
 
-    if (OAL_UNLIKELY((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_sched_queue == NULL) || (pst_event_queue == NULL))) {
+        oal_warn_on(1);
         return;
     }
 

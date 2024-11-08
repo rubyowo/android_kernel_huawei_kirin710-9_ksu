@@ -15,17 +15,17 @@
  * this varible.  Error 527 has to do with unreachable code.
  * -restore restores checking to the -save state
  */
-#define UNREF_PARAM(P)          \
+#define unref_param(P)          \
     /*lint -save -e527 -e530 */ \
     {                           \
         (P) = (P);              \
     }                           \
     /*lint -restore */
 #else
-#define UNREF_PARAM(P)
+#define unref_param(P)
 #endif
 
-#define PRINT_LINE PS_PRINT_ERR("%s:%d!\n", __FUNCTION__, __LINE__);
+#define PRINT_LINE ps_print_err("%s:%d!\n", __FUNCTION__, __LINE__);
 
 /* typedef */
 typedef unsigned char uint8;

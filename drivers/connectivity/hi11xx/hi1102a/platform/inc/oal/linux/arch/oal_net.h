@@ -80,7 +80,7 @@
 /* 2.10 IP宏定义 */
 #define IPV6_ADDR_MULTICAST         0x0002U
 #define IPV6_ADDR_UNICAST           0x0001U
-#define IPV6_ADDR_SCOPE_TYPE(scope) ((scope) << 16)
+#define ipv6_addr_scope_type(scope) ((scope) << 16)
 #define IPV6_ADDR_SCOPE_NODELOCAL   0x01
 #define IPV6_ADDR_SCOPE_LINKLOCAL   0x02
 #define IPV6_ADDR_SCOPE_SITELOCAL   0x05
@@ -91,7 +91,7 @@
 #define IPV6_ADDR_SITELOCAL         0x0040U
 #define IPV6_ADDR_RESERVED          0x2000U /* reserved address space */
 
-#define IPV6_ADDR_MC_SCOPE(a) \
+#define ipv6_addr_mc_scope(a) \
     ((a)->s6_addr[1] & 0x0f) /* nonstandard */
 
 /* 2.13 ETHER宏定义 */
@@ -117,79 +117,73 @@
 
 typedef iw_handler oal_iw_handler;
 #define oal_netif_running(_pst_net_dev)                              netif_running(_pst_net_dev)
-#define OAL_SMP_MB()                                                 smp_mb()
-#define OAL_CONTAINER_OF(_member_ptr, _stru_type, _stru_member_name) \
+#define oal_smp_mb()                                                 smp_mb()
+#define oal_container_of(_member_ptr, _stru_type, _stru_member_name) \
         container_of(_member_ptr, _stru_type, _stru_member_name)
 
-#define OAL_NETBUF_LIST_NUM(_pst_head)      ((_pst_head)->qlen)
-#define OAL_NET_DEV_PRIV(_pst_dev)          ((_pst_dev)->ml_priv)
-#define OAL_NET_DEV_WIRELESS_PRIV(_pst_dev) (netdev_priv(_pst_dev))
-#define OAL_NET_DEV_WIRELESS_DEV(_pst_dev)  ((_pst_dev)->ieee80211_ptr)
-#define OAL_NETBUF_NEXT(_pst_buf)           ((_pst_buf)->next)
-#define OAL_NETBUF_PREV(_pst_buf)           ((_pst_buf)->prev)
-#define OAL_NETBUF_HEAD_NEXT(_pst_buf_head) ((_pst_buf_head)->next)
-#define OAL_NETBUF_HEAD_PREV(_pst_buf_head) ((_pst_buf_head)->prev)
-
-#define OAL_NETBUF_PROTOCOL(_pst_buf) ((_pst_buf)->protocol)
-#define OAL_NETBUF_LAST_RX(_pst_buf)  ((_pst_buf)->last_rx)
-#define OAL_NETBUF_DATA(_pst_buf)     ((_pst_buf)->data)
-#define OAL_NETBUF_HEADER(_pst_buf)   ((_pst_buf)->data)
-#define OAL_NETBUF_PAYLOAD(_pst_buf)  ((_pst_buf)->data)
-#define OAL_NETBUF_DEV(_pst_buf)      ((_pst_buf)->dev)
-
-#define OAL_NETBUF_CB(_pst_buf)    ((_pst_buf)->cb)
-#define OAL_NETBUF_CB_SIZE()       (OAL_SIZEOF(((oal_netbuf_stru *)0)->cb))
-#define OAL_NETBUF_LEN(_pst_buf)   ((_pst_buf)->len)
-#define OAL_NETBUF_TAIL            skb_tail_pointer
-
-#define OAL_NETDEVICE_OPS(_pst_dev)                     ((_pst_dev)->netdev_ops)
-#define OAL_NETDEVICE_OPS_OPEN(_pst_netdev_ops)         ((_pst_netdev_ops)->ndo_open)
-#define OAL_NETDEVICE_OPS_STOP(_pst_netdev_ops)         ((_pst_netdev_ops)->ndo_stop)
-#define OAL_NETDEVICE_OPS_START_XMIT(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_start_xmit)
-#define OAL_NETDEVICE_OPS_SET_MAC_ADDR(_pst_netdev_ops) ((_pst_netdev_ops)->ndo_set_mac_address)
-#define OAL_NETDEVICE_OPS_TX_TIMEOUT(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_tx_timeout)
-#define OAL_NETDEVICE_OPS_SET_MC_LIST(_pst_netdev_ops)  ((_pst_netdev_ops)->ndo_set_multicast_list)
-#define OAL_NETDEVICE_OPS_GET_STATS(_pst_netdev_ops)    ((_pst_netdev_ops)->ndo_get_stats)
-#define OAL_NETDEVICE_OPS_DO_IOCTL(_pst_netdev_ops)     ((_pst_netdev_ops)->ndo_do_ioctl)
-#define OAL_NETDEVICE_OPS_CHANGE_MTU(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_change_mtu)
+#define oal_netbuf_list_num(_pst_head)                  ((_pst_head)->qlen)
+#define oal_net_dev_priv(_pst_dev)                      ((_pst_dev)->ml_priv)
+#define oal_net_dev_wireless_priv(_pst_dev)             (netdev_priv(_pst_dev))
+#define oal_net_dev_wireless_dev(_pst_dev)              ((_pst_dev)->ieee80211_ptr)
+#define oal_netbuf_next(_pst_buf)                       ((_pst_buf)->next)
+#define oal_netbuf_prev(_pst_buf)                       ((_pst_buf)->prev)
+#define oal_netbuf_head_next(_pst_buf_head)             ((_pst_buf_head)->next)
+#define oal_netbuf_head_prev(_pst_buf_head)             ((_pst_buf_head)->prev)
+#define oal_netbuf_protocol(_pst_buf)                   ((_pst_buf)->protocol)
+#define oal_netbuf_last_rx(_pst_buf)                    ((_pst_buf)->last_rx)
+#define get_netbuf_payload(_pst_buf)                    ((_pst_buf)->data)
+#define oal_netbuf_dev(_pst_buf)                        ((_pst_buf)->dev)
+#define oal_netbuf_cb_size()                            (OAL_SIZEOF(((oal_netbuf_stru *)0)->cb))
+#define oal_netbuf_len(_pst_buf)                        ((_pst_buf)->len)
+#define OAL_NETBUF_TAIL                                 skb_tail_pointer
+#define oal_netdevice_ops(_pst_dev)                     ((_pst_dev)->netdev_ops)
+#define oal_netdevice_ops_open(_pst_netdev_ops)         ((_pst_netdev_ops)->ndo_open)
+#define oal_netdevice_ops_stop(_pst_netdev_ops)         ((_pst_netdev_ops)->ndo_stop)
+#define oal_netdevice_ops_start_xmit(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_start_xmit)
+#define oal_netdevice_ops_set_mac_addr(_pst_netdev_ops) ((_pst_netdev_ops)->ndo_set_mac_address)
+#define oal_netdevice_ops_tx_timeout(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_tx_timeout)
+#define oal_netdevice_ops_set_mc_list(_pst_netdev_ops)  ((_pst_netdev_ops)->ndo_set_multicast_list)
+#define oal_netdevice_ops_get_stats(_pst_netdev_ops)    ((_pst_netdev_ops)->ndo_get_stats)
+#define oal_netdevice_ops_do_ioctl(_pst_netdev_ops)     ((_pst_netdev_ops)->ndo_do_ioctl)
+#define oal_netdevice_ops_change_mtu(_pst_netdev_ops)   ((_pst_netdev_ops)->ndo_change_mtu)
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0))
-#define OAL_NETDEVICE_LAST_RX(_pst_dev) ((_pst_dev)->last_rx)
+#define oal_netdevice_last_rx(_pst_dev) ((_pst_dev)->last_rx)
 #endif
 #ifdef CONFIG_WIRELESS_EXT
-#define OAL_NETDEVICE_WIRELESS_HANDLERS(_pst_dev) ((_pst_dev)->wireless_handlers)
+#define oal_netdevice_wireless_handlers(_pst_dev)       ((_pst_dev)->wireless_handlers)
 #endif
-#define OAL_NETDEVICE_RTNL_LINK_OPS(_pst_dev)    ((_pst_dev)->rtnl_link_ops)
-#define OAL_NETDEVICE_RTNL_LINK_STATE(_pst_dev)  ((_pst_dev)->rtnl_link_state)
-#define OAL_NETDEVICE_MAC_ADDR(_pst_dev)         ((_pst_dev)->dev_addr)
-#define OAL_NETDEVICE_TX_QUEUE_LEN(_pst_dev)     ((_pst_dev)->tx_queue_len)
-#define OAL_NETDEVICE_TX_QUEUE_NUM(_pst_dev)     ((_pst_dev)->num_tx_queues)
-#define OAL_NETDEVICE_TX_QUEUE(_pst_dev, _index) ((_pst_dev)->_tx[_index])
+#define oal_netdevice_rtnl_link_ops(_pst_dev)           ((_pst_dev)->rtnl_link_ops)
+#define oal_netdevice_rtnl_link_state(_pst_dev)         ((_pst_dev)->rtnl_link_state)
+#define oal_netdevice_mac_addr(_pst_dev)                ((_pst_dev)->dev_addr)
+#define oal_netdevice_tx_queue_len(_pst_dev)            ((_pst_dev)->tx_queue_len)
+#define oal_netdevice_tx_queue_num(_pst_dev)            ((_pst_dev)->num_tx_queues)
+#define oal_netdevice_tx_queue(_pst_dev, _index)        ((_pst_dev)->_tx[_index])
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-#define OAL_NETDEVICE_DESTRUCTOR(_pst_dev) ((_pst_dev)->priv_destructor)
+#define oal_netdevice_destructor(_pst_dev)              ((_pst_dev)->priv_destructor)
 #else
-#define OAL_NETDEVICE_DESTRUCTOR(_pst_dev) ((_pst_dev)->destructor)
+#define oal_netdevice_destructor(_pst_dev)              ((_pst_dev)->destructor)
 #endif
-#define OAL_NETDEVICE_TYPE(_pst_dev)   ((_pst_dev)->type)
-#define OAL_NETDEVICE_NAME(_pst_dev)   ((_pst_dev)->name)
-#define OAL_NETDEVICE_MASTER(_pst_dev) ((_pst_dev)->master)
+#define oal_netdevice_type(_pst_dev)                    ((_pst_dev)->type)
+#define oal_netdevice_name(_pst_dev)                    ((_pst_dev)->name)
+#define oal_netdevice_master(_pst_dev)                  ((_pst_dev)->master)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)
-#define OAL_NETDEVICE_QDISC(_pst_dev, pst_val) ((_pst_dev)->qdisc = pst_val)
+#define oal_netdevice_qdisc(_pst_dev, pst_val) ((_pst_dev)->qdisc = pst_val)
 #else
-#define OAL_NETDEVICE_QDISC(_pst_dev, pst_val)
+#define oal_netdevice_qdisc(_pst_dev, pst_val)
 #endif
-#define OAL_NETDEVICE_IFALIAS(_pst_dev)         ((_pst_dev)->ifalias)
-#define OAL_NETDEVICE_WDEV(_pst_dev)            ((_pst_dev)->ieee80211_ptr)
-#define OAL_NETDEVICE_HEADROOM(_pst_dev)        ((_pst_dev)->needed_headroom)
-#define OAL_NETDEVICE_TAILROOM(_pst_dev)        ((_pst_dev)->needed_tailroom)
-#define OAL_NETDEVICE_FLAGS(_pst_dev)           ((_pst_dev)->flags)
-#define OAL_NETDEVICE_ADDR_LEN(_pst_dev)        ((_pst_dev)->addr_len)
-#define OAL_NETDEVICE_WATCHDOG_TIMEO(_pst_dev)  ((_pst_dev)->watchdog_timeo)
-#define OAL_NETDEVICE_HARD_HEADER_LEN(_pst_dev) ((_pst_dev)->hard_header_len)
+#define oal_netdevice_ifalias(_pst_dev)                 ((_pst_dev)->ifalias)
+#define oal_netdevice_wdev(_pst_dev)                    ((_pst_dev)->ieee80211_ptr)
+#define oal_netdevice_headroom(_pst_dev)                ((_pst_dev)->needed_headroom)
+#define oal_netdevice_tailroom(_pst_dev)                ((_pst_dev)->needed_tailroom)
+#define oal_netdevice_flags(_pst_dev)                   ((_pst_dev)->flags)
+#define oal_netdevice_addr_len(_pst_dev)                ((_pst_dev)->addr_len)
+#define oal_netdevice_watchdog_timeo(_pst_dev)          ((_pst_dev)->watchdog_timeo)
+#define oal_netdevice_hard_header_len(_pst_dev)         ((_pst_dev)->hard_header_len)
 
-#define OAL_WIRELESS_DEV_NET_DEV(_pst_wireless_dev) ((_pst_wireless_dev)->netdev)
-#define OAL_WIRELESS_DEV_WIPHY(_pst_wireless_dev)   ((_pst_wireless_dev)->wiphy)
-#define OAL_WIRELESS_DEV_IF_TYPE(_pst_wireless_dev) ((_pst_wireless_dev)->iftype)
+#define oal_wireless_dev_net_dev(_pst_wireless_dev)     ((_pst_wireless_dev)->netdev)
+#define oal_wireless_dev_wiphy(_pst_wireless_dev)       ((_pst_wireless_dev)->wiphy)
+#define oal_wireless_dev_if_type(_pst_wireless_dev)     ((_pst_wireless_dev)->iftype)
 
 #define OAL_IFF_RUNNING     IFF_RUNNING
 #define OAL_SIOCIWFIRSTPRIV SIOCIWFIRSTPRIV
@@ -251,8 +245,8 @@ typedef iw_handler oal_iw_handler;
 #define OAL_ARPOP_REPLY     ARPOP_REPLY     /* ARP reply            */
 #define OAL_ARPOP_RREQUEST  ARPOP_RREQUEST  /* RARP request         */
 #define OAL_ARPOP_RREPLY    ARPOP_RREPLY    /* RARP reply           */
-#define OAL_ARPOP_InREQUEST ARPOP_InREQUEST /* InARP request        */
-#define OAL_ARPOP_InREPLY   ARPOP_InREPLY   /* InARP reply          */
+#define OAL_ARPOP_INREQUEST ARPOP_InREQUEST /* InARP request        */
+#define OAL_ARPOP_INREPLY   ARPOP_InREPLY   /* InARP reply          */
 #define OAL_ARPOP_NAK       ARPOP_NAK       /* (ATM)ARP NAK         */
 
 #define OAL_IPPROTO_UDP    IPPROTO_UDP    /* User Datagram Protocot */
@@ -275,11 +269,11 @@ typedef iw_handler oal_iw_handler;
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))
-#define OAL_WDEV_MATCH(_netif, _req) (_netif->ieee80211_ptr == _req->wdev)
+#define oal_wdev_match(_netif, _req) (_netif->ieee80211_ptr == _req->wdev)
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
-#define OAL_WDEV_MATCH(_netif, _req) (_netif == _req->dev)
+#define oal_wdev_match(_netif, _req) (_netif == _req->dev)
 #else
-#define OAL_WDEV_MATCH(_netif, _req) ((_netif)->ifindex == (_req)->ifidx)
+#define oal_wdev_match(_netif, _req) ((_netif)->ifindex == (_req)->ifidx)
 #endif
 /* 枚举定义 */
 typedef gfp_t oal_gfp_enum_uint8;
@@ -491,24 +485,24 @@ typedef struct netlink_skb_parms oal_netlink_skb_parms;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))
 /* linux 3.10.44 kernel not defined */
-#define LL_ALLOCATED_SPACE(dev) \
+#define ll_allocated_space(dev) \
     ((((dev)->hard_header_len + (dev)->needed_headroom + (dev)->needed_tailroom) & ~(15)) + 16)
 #endif
 
-#define OAL_LL_ALLOCATED_SPACE LL_ALLOCATED_SPACE
+#define OAL_LL_ALLOCATED_SPACE ll_allocated_space
 
 /* netlink相关 */
 #define OAL_NLMSG_ALIGNTO             NLMSG_ALIGNTO
-#define OAL_NLMSG_ALIGN(_len)         NLMSG_ALIGN(_len)
+#define oal_nlmsg_align(_len)         NLMSG_ALIGN(_len)
 #define OAL_NLMSG_HDRLEN              NLMSG_HDRLEN
-#define OAL_NLMSG_LENGTH(_len)        NLMSG_LENGTH(_len)
-#define OAL_NLMSG_SPACE(_len)         NLMSG_SPACE(_len)
-#define OAL_NLMSG_DATA(_nlh)          NLMSG_DATA(_nlh)
-#define OAL_NLMSG_PAYLOAD(_nlh, _len) NLMSG_PAYLOAD(_nlh, _len)
-#define OAL_NLMSG_OK(_nlh, _len)      NLMSG_OK(_nlh, _len)
-#define OAL_NETLINK_CB(_skb)          NETLINK_CB(_skb)
+#define oal_nlmsg_length(_len)        NLMSG_LENGTH(_len)
+#define oal_nlmsg_space(_len)         NLMSG_SPACE(_len)
+#define oal_nlmsg_data(_nlh)          NLMSG_DATA(_nlh)
+#define oal_nlmsg_payload(_nlh, _len) NLMSG_PAYLOAD(_nlh, _len)
+#define oal_nlmsg_ok(_nlh, _len)      NLMSG_OK(_nlh, _len)
+#define oal_netlink_cb(_skb)          NETLINK_CB(_skb)
 
-#define OAL_NLA_FOR_EACH_ATTR(pos, head, len, rem) nla_for_each_attr(pos, head, len, rem)
+#define oal_nla_for_each_attr(pos, head, len, rem) nla_for_each_attr(pos, head, len, rem)
 
 #define OAL_AF_BRIDGE AF_BRIDGE /* Multiprotocol bridge     */
 #define OAL_PF_BRIDGE OAL_AF_BRIDGE
@@ -565,42 +559,6 @@ typedef struct {
     oal_uint32 ul_datalen;         /* 802.11数据帧数据Buff长度 */
 } hw_ker_wifi_sniffer_packet_s;
 #endif
-
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-#define HW_KER_WIFI_EVENT_CLIENT_LINK_STATUS 13
-#define HW_RET_SUCCESS                       0 /* 成功 */
-#define WLAN_UPMODE_UP                       6
-#define WLAN_UPMODE_DOWN                     0
-
-/* ONT产品钩子函数,用于上送SKB报文 */
-typedef int (*pf_wifi_rx_handler)(struct sk_buff *);
-extern pf_wifi_rx_handler gpf_wifi_inner_cpu_rx_handler;
-extern oal_uint32 (*g_pf_wifi_report)(oal_uint32, oal_uint32, void *, oal_uint32);
-
-typedef struct {
-    oal_uint8 auc_sta_mac[ETHER_ADDR_LEN];
-    oal_uint8 auc_reserve[2];
-    oal_uint8 auc_if_name[OAL_IF_NAME_SIZE];
-    oal_uint8 *puc_ie_buf;
-    oal_uint32 ul_ie_buf_len;
-} hmac_huawei_ie_stru;
-
-/* ONT产品钩子函数,用于上送huawei私有IE */
-typedef unsigned int (*pf_ie_report)(hmac_huawei_ie_stru *);
-extern pf_ie_report g_pf_ie_report;
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-/* ONT产品钩子函数,用于上送未关联sta信息 */
-typedef unsigned int (*pf_unconnect_sta_report)(void *);
-extern pf_unconnect_sta_report g_pf_unconnect_sta_report;
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_PACKET_CAPTURE
-extern oal_uint32 (*g_wifi_80211_mirror_pkt)(hw_ker_wifi_sniffer_packet_s *pst_packet);
-#endif
-
-#endif
-
 /* NAPI 参数 */
 #define NAPI_POLL_WEIGHT_MAX           32
 #define NAPI_POLL_WEIGHT_LEV1          1
@@ -670,8 +628,8 @@ OAL_STATIC OAL_INLINE oal_uint8 *oal_netbuf_push(oal_netbuf_stru *pst_netbuf, oa
  */
 OAL_STATIC OAL_INLINE oal_uint8 *oal_netbuf_pull(oal_netbuf_stru *pst_netbuf, oal_uint32 ul_len)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -806,8 +764,8 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_netbuf_get_bitfield(oal_void)
 
 OAL_STATIC OAL_INLINE oal_void oal_set_netbuf_prev(oal_netbuf_stru *pst_buf, oal_netbuf_stru *pst_prev)
 {
-    if (OAL_UNLIKELY(pst_buf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_buf == NULL)) {
+        oal_warn_on(1);
         return;
     }
     pst_buf->prev = pst_prev;
@@ -823,8 +781,8 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_get_netbuf_prev(oal_netbuf_stru *pst_
 /* tail指针操作请使用skb_put，避免使用该函数 */
 OAL_STATIC OAL_INLINE oal_void oal_set_netbuf_tail(oal_netbuf_stru *pst_buf, oal_uint8 *tail)
 {
-    if (OAL_UNLIKELY(pst_buf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_buf == NULL)) {
+        oal_warn_on(1);
         return;
     }
     pst_buf->tail = tail;
@@ -850,8 +808,8 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_get_netbuf_next(oal_netbuf_stru *pst_
 /* tail指针操作请使用skb_put，避免使用该函数 */
 OAL_STATIC OAL_INLINE oal_void oal_set_single_netbuf_tail(oal_netbuf_stru *pst_netbuf, oal_uint8 *puc_tail)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return;
     }
     pst_netbuf->tail = puc_tail;
@@ -1102,11 +1060,11 @@ OAL_STATIC OAL_INLINE oal_int32 oal_net_register_netdev(oal_net_device_stru *p_n
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 #ifdef _PRE_WLAN_FEATURE_MULTI_NETBUF_AMSDU
     /* 扩展ETHER HEAD并且4bytes对齐 */
-    OAL_NETDEVICE_HEADROOM(p_net_device) = 75;
+    oal_netdevice_headroom(p_net_device) = 75;
 #else
-    OAL_NETDEVICE_HEADROOM(p_net_device) = 64;
+    oal_netdevice_headroom(p_net_device) = 64;
 #endif
-    OAL_NETDEVICE_TAILROOM(p_net_device) = 32;
+    oal_netdevice_tailroom(p_net_device) = 32;
 #endif
 
     return register_netdev(p_net_device);
@@ -1149,8 +1107,8 @@ OAL_STATIC OAL_INLINE oal_void *oal_net_device_priv(oal_net_device_stru *pst_net
  */
 OAL_STATIC OAL_INLINE oal_int32 oal_net_device_open(oal_net_device_stru *pst_dev)
 {
-    if (OAL_UNLIKELY(pst_dev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_dev == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -1167,8 +1125,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_net_device_open(oal_net_device_stru *pst_dev
  */
 OAL_STATIC OAL_INLINE oal_int32 oal_net_device_close(oal_net_device_stru *pst_dev)
 {
-    if (OAL_UNLIKELY(pst_dev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_dev == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -1190,8 +1148,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_net_device_set_macaddr(oal_net_device_stru *
     const oal_uint32 ul_protocol_addr_len = 6;
     const oal_uint32 ul_net_device_mac_addr_len = 6;
 
-    if (OAL_UNLIKELY((pst_dev == NULL) || (pst_addr == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_dev == NULL) || (pst_addr == NULL))) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -1223,8 +1181,8 @@ OAL_STATIC OAL_INLINE oal_net_device_stats_stru *oal_net_device_get_stats(oal_ne
 {
     oal_net_device_stats_stru *pst_stats = NULL;
 
-    if (OAL_UNLIKELY(pst_dev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_dev == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -1272,8 +1230,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_net_device_multicast_list(oal_net_device_str
  */
 OAL_STATIC OAL_INLINE oal_int32 oal_net_device_change_mtu(oal_net_device_stru *pst_dev, oal_int32 l_mtu)
 {
-    if (OAL_UNLIKELY(pst_dev == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_dev == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
     pst_dev->mtu = (oal_uint32)l_mtu;
@@ -1286,7 +1244,6 @@ OAL_STATIC OAL_INLINE oal_int32 oal_net_device_change_mtu(oal_net_device_stru *p
  *  输入参数  : net device指针
  * 返 回 值  : 统计结果指针
  */
-
 OAL_STATIC OAL_INLINE oal_int32 oal_net_device_hardstart(oal_netbuf_stru *pst_skb, oal_net_device_stru *pst_dev)
 {
     return OAL_SUCC;
@@ -1304,8 +1261,8 @@ extern void dev_kfree_skb_any(struct sk_buff *skb);
  */
 OAL_STATIC OAL_INLINE oal_void oal_netbuf_reserve(oal_netbuf_stru *pst_netbuf, oal_int32 l_len)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return;
     }
     skb_reserve(pst_netbuf, l_len);
@@ -1331,8 +1288,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *_oal_netbuf_alloc(oal_uint32 ul_size, oal
 
     // do not use dev_alloc_skb which designed for RX
     pst_netbuf = dev_alloc_skb(ul_size);
-
-    if (OAL_UNLIKELY(pst_netbuf == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_netbuf == OAL_PTR_NULL)) {
         return OAL_PTR_NULL;
     }
 
@@ -1341,7 +1297,6 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *_oal_netbuf_alloc(oal_uint32 ul_size, oal
     if (l_align) {
         /* 计算为了能使4字节对齐的偏移量 */
         ul_offset = (oal_int32)(((uintptr_t)pst_netbuf->data) % l_align);
-
         if (ul_offset) {
             skb_reserve (pst_netbuf, (int)(l_align - ul_offset));
         }
@@ -1349,52 +1304,6 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *_oal_netbuf_alloc(oal_uint32 ul_size, oal
 
     return pst_netbuf;
 }
-
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-typedef struct sk_buff *(*wifi_fast_pkt_get)(unsigned int type, unsigned int len);
-extern wifi_fast_pkt_get wifipktget;
-
-OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_alloc_skpool(oal_uint32 ul_size, oal_int32 l_reserve,
-                                                               oal_int32 l_align)
-{
-    oal_netbuf_stru *pst_netbuf = OAL_PTR_NULL;
-    oal_uint32 ul_offset;
-
-    if (l_align) {
-        ul_size += (l_align - 1);
-    }
-
-    if (ul_size >= WLAN_MEM_NETBUF_SIZE2) {
-        if (OAL_LIKELY(wifipktget)) {
-            pst_netbuf = wifipktget(1, ul_size);
-            if (pst_netbuf == NULL) {
-                pst_netbuf = dev_alloc_skb(ul_size);
-            }
-        } else {
-            pst_netbuf = dev_alloc_skb(ul_size);
-        }
-    } else {
-        pst_netbuf = dev_alloc_skb(ul_size);
-    }
-
-    if (OAL_UNLIKELY(pst_netbuf == OAL_PTR_NULL)) {
-        return OAL_PTR_NULL;
-    }
-    if (l_reserve) {
-        skb_reserve(pst_netbuf, l_reserve);
-    }
-
-    if (l_align) {
-        ul_offset = (oal_int32)(((oal_uint)pst_netbuf->data) % (oal_uint)l_align);
-
-        if (ul_offset) {
-            skb_reserve(pst_netbuf, l_align - ul_offset);
-        }
-    }
-
-    return pst_netbuf;
-}
-#endif
 
 #ifdef _PRE_SKB_TRACE
 #define oal_netbuf_alloc(size, l_reserve, l_align)                     \
@@ -1421,8 +1330,8 @@ OAL_STATIC OAL_INLINE oal_void oal_netbuf_spe_free(oal_netbuf_stru *pst_netbuf)
 {
     dma_addr_t ul_dma_addr;
 
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -1451,8 +1360,8 @@ OAL_STATIC OAL_INLINE oal_void oal_netbuf_spe_free(oal_netbuf_stru *pst_netbuf)
  */
 OAL_STATIC OAL_INLINE oal_uint32 _oal_netbuf_free(oal_netbuf_stru *pst_netbuf)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -1486,8 +1395,8 @@ OAL_STATIC OAL_INLINE oal_uint32 _oal_netbuf_free(oal_netbuf_stru *pst_netbuf)
  */
 OAL_STATIC OAL_INLINE oal_void _oal_netbuf_free_any(oal_netbuf_stru *pst_netbuf)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return;
     }
     /* E5 SPE module relation */
@@ -1519,8 +1428,8 @@ OAL_STATIC OAL_INLINE oal_void _oal_netbuf_free_any(oal_netbuf_stru *pst_netbuf)
  */
 OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_unshare(oal_netbuf_stru *pst_netbuf, oal_gfp_enum_uint8 en_pri)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
     return skb_unshare(pst_netbuf, en_pri);
@@ -1534,8 +1443,8 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_unshare(oal_netbuf_stru *pst_n
  */
 OAL_STATIC OAL_INLINE oal_netbuf_stru *_oal_netbuf_copy(oal_netbuf_stru *pst_netbuf, oal_gfp_enum_uint8 en_priority)
 {
-    if (OAL_UNLIKELY(pst_netbuf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
     return skb_copy(pst_netbuf, en_priority);
@@ -1647,7 +1556,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_realloc_headroom(oal_netbuf_st
 #define oal_netbuf_realloc_tailroom(pst_netbuf, ul_tailroom)                         \
     ({                                                                               \
         oal_netbuf_stru *__no_tmp_skb = OAL_PTR_NULL;                                \
-        if (OAL_LIKELY(!pskb_expand_head(pst_netbuf, 0, ul_tailroom, GFP_ATOMIC))) { \
+        if (oal_likely(!pskb_expand_head(pst_netbuf, 0, ul_tailroom, GFP_ATOMIC))) { \
             __no_tmp_skb = pst_netbuf;                                               \
         } else {                                                                     \
             oal_netbuf_free_any(pst_netbuf);                                         \
@@ -1658,7 +1567,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_realloc_headroom(oal_netbuf_st
 #else
 OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_realloc_tailroom(oal_netbuf_stru *pst_netbuf, oal_uint32 ul_tailroom)
 {
-    if (OAL_LIKELY(!pskb_expand_head(pst_netbuf, 0, ul_tailroom, GFP_ATOMIC))) {
+    if (oal_likely(!pskb_expand_head(pst_netbuf, 0, ul_tailroom, GFP_ATOMIC))) {
         return pst_netbuf;
     }
 
@@ -1723,7 +1632,8 @@ OAL_STATIC OAL_INLINE oal_void oal_netbuf_delete(oal_netbuf_stru *pst_buf, oal_n
 
 OAL_STATIC OAL_INLINE oal_void __netbuf_unlink(struct sk_buff *skb, struct sk_buff_head *list)
 {
-    struct sk_buff *next, *prev;
+    struct sk_buff *next = NULL;
+    struct sk_buff *prev = NULL;
 
     list->qlen--;
     next = skb->next;
@@ -1859,7 +1769,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_delist_tail(oal_netbuf_head_st
  */
 OAL_STATIC OAL_INLINE oal_void oal_netbuf_splice_sync(oal_netbuf_head_stru *list, oal_netbuf_head_stru *head)
 {
-    oal_netbuf_stru *netbuf;
+    oal_netbuf_stru *netbuf = NULL;
     for (;;) {
         netbuf = oal_netbuf_delist_tail(head);
         if (netbuf == NULL) {
@@ -1931,7 +1841,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_get_appointed_netbuf(oal_netbuf_stru
 {
     oal_uint8 uc_buf_num;
 
-    if (OAL_UNLIKELY((pst_netbuf == OAL_PTR_NULL) || (pst_expect_netbuf == OAL_PTR_NULL))) {
+    if (oal_unlikely((pst_netbuf == OAL_PTR_NULL) || (pst_expect_netbuf == OAL_PTR_NULL))) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1973,7 +1883,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *oal_netbuf_clone(oal_netbuf_stru *pst_buf
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_decrease_user(oal_netbuf_stru *pst_buf)
 {
-    if (OAL_UNLIKELY(pst_buf == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_buf == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1993,7 +1903,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_decrease_user(oal_netbuf_stru *pst_b
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_increase_user(oal_netbuf_stru *pst_buf)
 {
-    if (OAL_UNLIKELY(pst_buf == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_buf == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -2013,7 +1923,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_increase_user(oal_netbuf_stru *pst_b
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_read_user(oal_netbuf_stru *pst_buf)
 {
-    if (OAL_UNLIKELY(pst_buf == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_buf == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -2031,7 +1941,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_netbuf_read_user(oal_netbuf_stru *pst_buf)
  */
 OAL_STATIC OAL_INLINE oal_void oal_netbuf_set_user(oal_netbuf_stru *pst_buf, oal_uint32 refcount)
 {
-    if (OAL_UNLIKELY(pst_buf == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_buf == OAL_PTR_NULL)) {
         return;
     }
 
@@ -2134,7 +2044,13 @@ OAL_STATIC OAL_INLINE oal_int32 oal_netif_rx_ni(oal_netbuf_stru *pst_netbuf)
 OAL_STATIC OAL_INLINE oal_void oal_napi_schedule(struct napi_struct *napi)
 {
     napi_schedule(napi);
+#ifndef CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT
+    if (local_softirq_pending()) {
+        do_softirq();
+    }
+#endif
 }
+
 OAL_STATIC OAL_INLINE oal_void oal_napi_gro_receive(struct napi_struct *napi, oal_netbuf_stru *pst_netbuf)
 {
     napi_gro_receive(napi, pst_netbuf);
@@ -2214,9 +2130,9 @@ OAL_STATIC OAL_INLINE oal_void oal_netlink_kernel_release(oal_sock_stru *pst_soc
     netlink_kernel_release(pst_sock);
 }
 
-OAL_STATIC OAL_INLINE oal_nlmsghdr_stru *oal_nlmsg_hdr(OAL_CONST oal_netbuf_stru *pst_netbuf)
+OAL_STATIC OAL_INLINE oal_nlmsghdr_stru *oal_nlmsg_hdr(oal_netbuf_stru *pst_netbuf)
 {
-    return (oal_nlmsghdr_stru *)OAL_NETBUF_HEADER(pst_netbuf);
+    return (oal_nlmsghdr_stru *)oal_netbuf_header(pst_netbuf);
 }
 
 OAL_STATIC OAL_INLINE oal_nlmsghdr_stru *oal_nlmsg_put(oal_netbuf_stru *pst_netbuf, oal_uint32 ul_pid,
@@ -2333,7 +2249,6 @@ OAL_STATIC OAL_INLINE oal_int32 oal_nla_nest_end(oal_netbuf_stru *pst_skb, oal_n
  * 函 数 名  : oal_genlmsg_end
  * 功能描述  : netlink消息结束
  */
-
 OAL_STATIC OAL_INLINE oal_int32 oal_genlmsg_end(oal_netbuf_stru *pst_skb, oal_void *pst_hdr)
 {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0))
@@ -2641,12 +2556,6 @@ OAL_STATIC OAL_INLINE oal_void oal_skb_set_queue_mapping(oal_netbuf_stru *pst_sk
  */
 OAL_STATIC OAL_INLINE oal_void oal_notice_netif_rx(oal_netbuf_stru *pst_netbuf)
 {
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-    if (OAL_LIKELY(gpf_wifi_inner_cpu_rx_handler)) {
-        (void)gpf_wifi_inner_cpu_rx_handler(pst_netbuf);
-    }
-#endif
-
     return;
 }
 
@@ -2657,17 +2566,6 @@ OAL_STATIC OAL_INLINE oal_void oal_notice_netif_rx(oal_netbuf_stru *pst_netbuf)
 OAL_STATIC OAL_INLINE oal_uint32 oal_notice_sta_join_result(oal_uint8 uc_chip_id, oal_bool_enum_uint8 en_succ)
 {
     oal_uint32 ul_ret = OAL_SUCC;
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-    oal_uint32 ifIndex;
-    oal_int32 link_status;
-
-    ifIndex = uc_chip_id;
-    link_status = (en_succ == OAL_TRUE) ? WLAN_UPMODE_UP : WLAN_UPMODE_DOWN;
-    if (g_pf_wifi_report(ifIndex, HW_KER_WIFI_EVENT_CLIENT_LINK_STATUS, &link_status, sizeof(int)) != HW_RET_SUCCESS) {
-        ul_ret = OAL_FAIL;
-    }
-#endif
-
     return ul_ret;
 }
 
@@ -2678,37 +2576,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_notice_sta_join_result(oal_uint8 uc_chip_id
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_wifi_mirror_pkt(hw_ker_wifi_sniffer_packet_s *pst_packet)
 {
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-    if (g_wifi_80211_mirror_pkt == OAL_PTR_NULL) {
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-    g_wifi_80211_mirror_pkt(pst_packet);
-#endif
     return OAL_SUCC;
 }
 #endif
-
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-/*
- * 函 数 名  : oal_net_huawei_ie_report
- * 功能描述  : 将华为私有IE上报到上层
- * 输入参数  : pst_ie_buf: ie指针
- */
-OAL_STATIC OAL_INLINE oal_int32 oal_net_huawei_ie_report(hmac_huawei_ie_stru *pst_ie_buf)
-{
-    return OAL_SUCC;
-}
-#ifdef _PRE_WLAN_FEATURE_HILINK
-/*
- * 函 数 名  : oal_unconnect_sta_report
- * 功能描述  : 将未关联sta信息上报到上层
- * 输入参数  : pst_ie_buf: ie指针
- */
-OAL_STATIC OAL_INLINE oal_int32 oal_unconnect_sta_report(void *p_sta_inf)
-{
-    return OAL_SUCC;
-}
-#endif
-#endif
-
 #endif /* end of oal_net.h */

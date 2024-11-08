@@ -9,10 +9,9 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include "plat_type.h"
-#include "board_hi1102.h"
-#include "board_hi1103.h"
 #include "board_hi1102a.h"
 #include "hisi_ini.h"
+#include "oal_util.h"
 #ifdef CONFIG_HUAWEI_DSM
 #include <dsm/dsm_pub.h>
 
@@ -34,6 +33,9 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 #define VERSION_FPGA 0
 #define VERSION_ASIC 1
 
+#define WIFI_TAS_DISABLE 0
+#define WIFI_TAS_ENABLE  1
+
 #define GPIO_LOWLEVEL  0
 #define GPIO_HIGHLEVEL 1
 
@@ -42,7 +44,6 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 
 #define PINMUX_SET_INIT 0
 #define PINMUX_SET_SUCC 1
-
 /* 主要用于识别timesync初始化时获取dts属性成功与否的标志位 */
 #define TIMESYNC_RUN_SUCC 1
 #define TIMESYNC_RUN_FAIL 0
@@ -81,9 +82,9 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 #define PROC_NAME_GPIO_BFGX_WAKEUP_HOST "bfgx_wake_host"
 #define DTS_PROP_GPIO_BFGX_IR_CTRL      "hi110x,gpio_bfgx_ir_ctrl"
 #define PROC_NAME_GPIO_BFGX_IR_CTRL     "bfgx_ir_ctrl"
-#define DTS_PROP_HI110x_IR_LDO_TYPE     "hi110x,irled_power_type"
-#define DTS_PROP_HI110x_IRLED_LDO_POWER "hi110x,irled_power"
-#define DTS_PROP_HI110x_IRLED_VOLTAGE   "hi110x,irled_voltage"
+#define DTS_PROP_HI110X_IR_LDO_TYPE     "hi110x,irled_power_type"
+#define DTS_PROP_HI110X_IRLED_LDO_POWER "hi110x,irled_power"
+#define DTS_PROP_HI110X_IRLED_VOLTAGE   "hi110x,irled_voltage"
 
 #define DTS_PROP_HI110X_GPIO_TIMESYNC  "hi110x,gpio_timesync"
 #define PROC_NAME_HI110X_GPIO_TIMESYNC "hi110x_timesync"
@@ -97,6 +98,7 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 
 /* hisi_wifi */
 #define DTS_NODE_HI110X_WIFI                  "hisilicon,hisi_wifi"
+
 #define PROC_NAME_GPIO_WLAN_WAKEUP_HOST       "wlan_wake_host"
 #define DTS_PROP_HI110X_GPIO_WLAN_WAKEUP_HOST "hi110x,gpio_wlan_wakeup_host"
 
@@ -105,6 +107,12 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 
 #define DTS_PROP_GPIO_WLAN_FLOWCTRL "hi110x,gpio_wlan_flow_ctrl"
 
+#define DTS_PROP_WIFI_TAS_EN            "hi110x,wifi_tas_enable"
+#define PROC_NAME_GPIO_WIFI_TAS         "wifi_tas"
+#define DTS_PROP_GPIO_WIFI_TAS          "hi110x,gpio_wifi_tas"
+#define DTS_PROP_HI110X_WIFI_TAS_STATE  "hi110x,gpio_wifi_tas_state"
+
+
 /* hisi_cust_cfg */
 #define COST_HI110X_COMP_NODE   "hi110x,customize"
 #define PROC_NAME_INI_FILE_NAME "ini_file_name"
@@ -112,12 +120,12 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 #define DTS_NODE_HISI_CCIBYPASS "hisi,ccibypass"
 
 /* ini cfg */
-#define INI_WLAN_DOWNLOAD_CHANNEL "board_info.wlan_download_channel"
-#define INI_BFGX_DOWNLOAD_CHANNEL "board_info.bfgx_download_channel"
+#define INI_WLAN_DOWNLOAD_CHANNEL "g_board_info.wlan_download_channel"
+#define INI_BFGX_DOWNLOAD_CHANNEL "g_board_info.bfgx_download_channel"
 
-#define DOWNlOAD_MODE_SDIO "sdio"
-#define DOWNlOAD_MODE_PCIE "pcie"
-#define DOWNlOAD_MODE_UART "uart"
+#define DOWNLOAD_MODE_SDIO "sdio"
+#define DOWNLOAD_MODE_PCIE "pcie"
+#define DOWNLOAD_MODE_UART "uart"
 
 #define BOARD_VERSION_LEN    128
 #define DOWNLOAD_CHANNEL_LEN 64
@@ -127,8 +135,10 @@ extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
 
 #define CHECK_DEVICE_RDY_ADDR 0X50000000
 
+#define VOLATAGE_V_TO_MV 1000
+
 #ifdef _PRE_CONFIG_GPIO_TO_SSI_DEBUG
-#define SSI_DELAY(x) ndelay(x)
+#define ssi_delay(x) ndelay(x)
 #endif
 
 /* STRUCT DEFINE */
@@ -141,6 +151,8 @@ typedef struct bd_init_s {
     int32 (*board_flowctrl_gpio_init)(void);
     int32 (*board_timesync_gpio_init)(void);
     void (*free_board_wakeup_gpio)(void);
+    int32 (*board_wifi_tas_gpio_init)(void);
+    void (*free_board_wifi_tas_gpio)(void);
     int32 (*bfgx_dev_power_on)(void);
     int32 (*bfgx_dev_power_off)(void);
     int32 (*hitalk_power_off)(void);
@@ -161,7 +173,7 @@ typedef struct bd_init_s {
 } bd_init_t;
 
 typedef struct _gpio_ssi_ops_ {
-    int32 (*clk_switch)(int32 ssi_clk);
+    int32 (*clk_switch)(int32 g_ssi_clk);
     int32 (*aon_reset)(void);
 } gpio_ssi_ops;
 
@@ -185,6 +197,11 @@ typedef struct {
 
     /* flowctrl gpio */
     int32 flowctrl_gpio;
+
+    /* tas */
+    int32 rf_wifi_tas;
+    int32 wifi_tas_enable;
+    int32 wifi_tas_gpio_init;
 
     /* use which lan gpio */
     int32 fm_lan_gpio;
@@ -240,17 +257,17 @@ typedef struct {
     struct pinctrl *pctrl;
     struct pinctrl_state *pins_normal;
     struct pinctrl_state *pins_idle;
-} BOARD_INFO;
+} board_info;
 
 typedef struct _device_vesion_board {
     uint32 index;
     const char name[BOARD_VERSION_LEN + 1];
-} DEVICE_BOARD_VERSION;
+} device_board_version;
 
 typedef struct _download_mode {
     uint32 index;
     uint8 name[DOWNLOAD_CHANNEL_LEN + 1];
-} DOWNLOAD_MODE;
+} download_mode_stru;
 
 #define SSI_RW_WORD_MOD  0x0 /* 2 bytes */
 #define SSI_RW_BYTE_MOD  0x1
@@ -318,26 +335,27 @@ enum board_fm_lan_type {
 
 
 /* EXTERN VARIABLE */
-extern DOWNLOAD_MODE device_download_mode_list[MODE_DOWNLOAD_BUTT];
-extern BOARD_INFO board_info;
-extern uint32 ssi_dump_en;
+extern download_mode_stru g_device_download_mode_list[MODE_DOWNLOAD_BUTT];
+extern board_info g_board_info;
+extern uint32 g_ssi_dump_en;
 #ifdef _PRE_CONFIG_GPIO_TO_SSI_DEBUG
-extern ssi_trans_test_st ssi_test_st;
+extern ssi_trans_test_st g_ssi_test_st;
 #endif
 
 /* EXTERN FUNCTION */
-extern BOARD_INFO *get_hi110x_board_info(void);
-extern int isAsic(void);
-extern int32 get_hi110x_subchip_type(void);
-extern int32 get_uart_pclk_source(void);
-extern int32 hi110x_board_init(void);
-extern void hi110x_board_exit(void);
-extern int32 gnss_timesync_event_init(void);
-extern void gnss_timesync_event_exit(void);
-extern int32 board_fm_lan_support(void);
-extern int fm_lan_notifier_call_chain(unsigned long val);
+board_info *get_hi110x_board_info(void);
+int is_asic(void);
+int is_hi110x_debug_type(void);
+int32 get_hi110x_subchip_type(void);
+int32 get_uart_pclk_source(void);
+int32 hi110x_board_init(void);
+void hi110x_board_exit(void);
+int32 gnss_timesync_event_init(void);
+void gnss_timesync_event_exit(void);
+int32 board_fm_lan_support(void);
+int fm_lan_notifier_call_chain(unsigned long val);
 #if defined(_PRE_CONFIG_GPIO_TO_SSI_DEBUG)
-extern int ssi_read_reg_info_test(uint32 base_addr, uint32 len, uint32 is_logfile, uint32 rw_mode);
+int ssi_read_reg_info_test(uint32 base_addr, uint32 len, uint32 is_logfile, uint32 rw_mode);
 #else
 static inline int ssi_read_reg_info_test(uint32 base_addr, uint32 len, uint32 is_logfile, uint32 rw_mode)
 {
@@ -369,36 +387,39 @@ static inline int ssi_force_reset_aon(void)
     return 0;
 }
 #endif
-extern void gnss_timesync_gpio_intr_enable(uint32 ul_en);
-extern int32 board_host_wakeup_dev_set(int value);
-extern int32 board_get_host_wakeup_dev_stat(void);
-extern int32 board_power_on(uint32 subsystem);
-extern int32 board_power_off(uint32 subsystem);
-extern int32 board_power_reset(uint32 ul_subsystem);
-extern int32 board_wlan_gpio_power_on(void *data);
-extern int32 board_wlan_gpio_power_off(void *data);
-extern int board_get_bwkup_gpio_val(void);
-extern int board_get_wlan_wkup_gpio_val(void);
-extern int32 check_device_board_name(void);
-extern int32 get_board_gpio(const char *gpio_node, const char *gpio_prop, int32 *physical_gpio);
-extern int32 board_flowctrl_gpio_init(void);
-extern void board_flowctrl_irq_init(void);
-extern void free_board_flowctrl_gpio(void);
-extern void power_state_change(int32 gpio, int32 flag);
-extern int32 hisi_wifi_platform_register_drv(void);
-extern void hisi_wifi_platform_unregister_drv(void);
-extern int32 get_board_custmize(const char *cust_node, const char *cust_prop, const char **cust_prop_val);
-extern int32 get_board_dts_node(struct device_node **np, const char *node_prop);
-extern int32 board_chiptype_init(void);
-extern uint8 get_timesync_run_state(void);
+void gnss_timesync_gpio_intr_enable(uint32 ul_en);
+int32 board_host_wakeup_dev_set(int value);
+int32 board_get_host_wakeup_dev_stat(void);
+int32 board_power_on(uint32 subsystem);
+int32 board_power_off(uint32 subsystem);
+int32 board_power_reset(uint32 ul_subsystem);
+int32 board_wlan_gpio_power_on(void *data);
+int32 board_wlan_gpio_power_off(void *data);
+int board_get_bwkup_gpio_val(void);
+int board_get_wlan_wkup_gpio_val(void);
+int32 check_device_board_name(void);
+int32 get_board_gpio(const char *gpio_node, const char *gpio_prop, int32 *physical_gpio);
+int32 board_flowctrl_gpio_init(void);
+void board_flowctrl_irq_init(void);
+void free_board_flowctrl_gpio(void);
+void power_state_change(int32 gpio, int32 flag);
+int32 hisi_wifi_platform_register_drv(void);
+void hisi_wifi_platform_unregister_drv(void);
+int32 get_board_custmize(const char *cust_node, const char *cust_prop, const char **cust_prop_val);
+int32 get_board_dts_node(struct device_node **np, const char *node_prop);
+int32 board_chiptype_init(void);
+uint8 get_timesync_run_state(void);
 #ifdef _PRE_CONFIG_GPIO_TO_SSI_DEBUG
-extern int32 ssi_write32(uint32 addr, uint16 value);
-extern int32 ssi_read32(uint32 addr);
-extern int32 ssi_single_write(int32 addr, int16 data);
-extern int32 ssi_single_read(int32 addr);
-extern int32 ssi_tcxo_mux(uint32 flag);
-extern int32 wait_for_ssi_idle_timeout(int32 mstimeout);
-extern int32 ssi_download_test(ssi_trans_test_st *pst_ssi_test);
-extern int32 test_hd_ssi_write(void);
+int32 ssi_write32(uint32 addr, uint16 value);
+int32 ssi_read32(uint32 addr);
+int32 ssi_single_write(int32 addr, int16 data);
+int32 ssi_single_read(int32 addr);
+int32 ssi_tcxo_mux(uint32 flag);
+int32 wait_for_ssi_idle_timeout(int32 mstimeout);
+int32 test_hd_ssi_write(void);
 #endif
+int32 board_wifi_tas_set(int value);
+int32 board_get_wifi_tas_gpio_state(void);
+int32 board_get_wifi_support_tas(void);
+int32 board_get_wifi_tas_gpio_init_sts(int32 *gpio_sts);
 #endif

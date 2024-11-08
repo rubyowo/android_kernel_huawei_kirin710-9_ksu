@@ -15,27 +15,27 @@
 #define FRW_IPC_SLAVE_TO_MASTER_QUEUE_MAX_NUM (1 << 8) /* 接受消息队列大小 必须为2的整数次方 */
 
 /* 判断队列是否满 */
-#define FRW_IPC_RING_FULL(_head, _tail, _length) (((_tail) + 1) % (_length) == (_head))
+#define frw_ipc_ring_full(_head, _tail, _length) (((_tail) + 1) % (_length) == (_head))
 
 /* 判断队列是否为空 */
-#define FRW_IPC_RING_EMPTY(_head, _tail) ((_head) == (_tail))
+#define frw_ipc_ring_empty(_head, _tail) ((_head) == (_tail))
 
 /* 可翻转的队列头尾+1操作 */
-#define FRW_IPC_RING_INCR(_val, _lim) ((_val) = (((_val) + 1) & ((_lim) - 1)))
+#define frw_ipc_ring_incr(_val, _lim) ((_val) = (((_val) + 1) & ((_lim) - 1)))
 
 /* 发送消息队列入队尾+1操作 */
-#define FRW_IPC_RING_TX_INCR(_val) (FRW_IPC_RING_INCR((_val), (FRW_IPC_MASTER_TO_SLAVE_QUEUE_MAX_NUM)))
+#define frw_ipc_ring_tx_incr(_val) (frw_ipc_ring_incr((_val), (FRW_IPC_MASTER_TO_SLAVE_QUEUE_MAX_NUM)))
 
 /* 接受消息队列入队头+1操作 */
-#define FRW_IPC_RING_RX_INCR(_val) (FRW_IPC_RING_INCR((_val), (FRW_IPC_SLAVE_TO_MASTER_QUEUE_MAX_NUM)))
+#define frw_ipc_ring_rx_incr(_val) (frw_ipc_ring_incr((_val), (FRW_IPC_SLAVE_TO_MASTER_QUEUE_MAX_NUM)))
 
 /* 核间通信丢包告警打印 */
-#define FRW_IPC_LOST_WARNING_LOG1(_uc_vap_id, _puc_string, _l_para1)
-#define FRW_IPC_LOST_WARNING_LOG2(_uc_vap_id, _puc_string, _l_para1, _l_para2)
+#define frw_ipc_lost_warning_log1(_uc_vap_id, _puc_string, _l_para1)
+#define frw_ipc_lost_warning_log2(_uc_vap_id, _puc_string, _l_para1, _l_para2)
 
 /* 核间通信日志维测信息打印 */
-#define FRW_IPC_LOG_INFO_PRINT1(_uc_vap_id, _puc_string, _l_para1)
-#define FRW_IPC_LOG_INFO_PRINT4(_uc_vap_id, _puc_string, _l_para1, _l_para2, _l_para3, _l_para4)
+#define frw_ipc_log_info_print1(_uc_vap_id, _puc_string, _l_para1)
+#define frw_ipc_log_info_print4(_uc_vap_id, _puc_string, _l_para1, _l_para2, _l_para3, _l_para4)
 #define MAX_LOG_RECORD 100 /* 日志记录最大条数 */
 
 /* 枚举定义 */

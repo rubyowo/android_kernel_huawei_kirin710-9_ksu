@@ -6257,14 +6257,14 @@ oal_uint32  hmac_config_adjust_ppm(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
 #endif //#ifdef _PRE_DEBUG_MODE
 
 
-oal_uint32  hmac_config_pcie_pm_level(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+oal_uint32  hmac_config_rx_filter_frag(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
     oal_uint32          ul_ret;
 
     /***************************************************************************
         抛事件到DMAC层, 同步DMAC数据
     ***************************************************************************/
-    ul_ret = hmac_config_send_event(pst_mac_vap, WLAN_CFGID_PCIE_PM_LEVEL, us_len, puc_param);
+    ul_ret = hmac_config_send_event(pst_mac_vap, WLAN_CFGID_RX_FILTER_FRAG, us_len, puc_param);
 
     if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
     {
@@ -14004,7 +14004,6 @@ oal_module_symbol(hmac_config_set_freq_skew);
 #ifdef _PRE_DEBUG_MODE
 oal_module_symbol(hmac_config_adjust_ppm);
 #endif //#ifdef _PRE_DEBUG_MODE
-oal_module_symbol(hmac_config_pcie_pm_level);
 oal_module_symbol(hmac_config_delba_req);
 oal_module_symbol(hmac_config_ampdu_end);
 oal_module_symbol(hmac_config_ampdu_start);

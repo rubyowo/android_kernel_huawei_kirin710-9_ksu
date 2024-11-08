@@ -29,7 +29,7 @@ typedef oal_int32 (*hisdio_rx)(oal_void *data);
 #define HISDIO_EXTEND_BASE_ADDR 0x30
 #define HISDIO_EXTEND_REG_COUNT 64
 
-#define HISDIO_ALIGN_4_OR_BLK(len)     ((len) < HISDIO_BLOCK_SIZE ? ALIGN((len), 4) : ALIGN((len), HISDIO_BLOCK_SIZE))
+#define hisdio_align_4_or_blk(len)     ((len) < HISDIO_BLOCK_SIZE ? ALIGN((len), 4) : ALIGN((len), HISDIO_BLOCK_SIZE))
 
 #define HISDIO_WAKEUP_DEV_REG   0xf0
 #define ALLOW_TO_SLEEP_VALUE    1
@@ -93,6 +93,9 @@ struct oal_sdio {
     /* used to sg list sdio block align */
     oal_uint8 *sdio_align_buff;
 
+    /* sdio source buffer for send */
+    oal_uint8 *sdio_send_buff;
+
     oal_uint64 sdio_int_count;
 
     oal_uint32 ul_sdio_suspend;
@@ -121,11 +124,11 @@ struct oal_sdio {
 OAL_STATIC OAL_INLINE oal_void oal_sdio_claim_host(struct oal_sdio *hi_sdio)
 {
 #ifdef CONFIG_MMC
-    if (OAL_WARN_ON(hi_sdio == NULL)) {
+    if (oal_warn_on(hi_sdio == NULL)) {
         return;
     }
 
-    if (OAL_WARN_ON(hi_sdio->func == NULL)) {
+    if (oal_warn_on(hi_sdio->func == NULL)) {
         return;
     }
     sdio_claim_host(hi_sdio->func);
@@ -135,11 +138,11 @@ OAL_STATIC OAL_INLINE oal_void oal_sdio_claim_host(struct oal_sdio *hi_sdio)
 OAL_STATIC OAL_INLINE oal_void oal_sdio_release_host(struct oal_sdio *hi_sdio)
 {
 #ifdef CONFIG_MMC
-    if (OAL_WARN_ON(hi_sdio == NULL)) {
+    if (oal_warn_on(hi_sdio == NULL)) {
         return;
     }
 
-    if (OAL_WARN_ON(hi_sdio->func == NULL)) {
+    if (oal_warn_on(hi_sdio->func == NULL)) {
         return;
     }
     sdio_release_host(hi_sdio->func);
@@ -183,17 +186,17 @@ extern oal_int32 oal_sdio_110x_working_check(oal_void);
 extern oal_void oal_sdio_func_remove(struct oal_sdio *hi_sdio);
 extern oal_void oal_sdio_exit_module(struct oal_sdio *hi_sdio);
 
-extern struct oal_sdio *_hi_sdio_;
+extern struct oal_sdio *g_hi_sdio_;
 OAL_STATIC OAL_INLINE struct oal_sdio *oal_get_sdio_default_handler(oal_void)
 {
-    return _hi_sdio_;
+    return g_hi_sdio_;
 }
 
 #else
-extern struct oal_sdio hi_sdio_ut;
+extern struct oal_sdio g_hi_sdio_ut;
 OAL_STATIC OAL_INLINE struct oal_sdio *oal_get_sdio_default_handler(oal_void)
 {
-    return &hi_sdio_ut;
+    return &g_hi_sdio_ut;
 }
 
 OAL_STATIC OAL_INLINE oal_uint32 oal_sdio_func_max_req_size(struct oal_sdio *pst_hi_sdio)
@@ -285,7 +288,7 @@ OAL_STATIC OAL_INLINE oal_int32 oal_sdio_memcpy_fromio(struct sdio_func *func, o
 #endif
     ret = sdio_memcpy_fromio(func, dst, addr, count);
 #ifdef CONFIG_HISI_SDIO_TIME_DEBUG
-    if (OAL_UNLIKELY(ret)) {
+    if (oal_unlikely(ret)) {
         /* If sdio transfer failed, dump the sdio info */
         oal_uint64 trans_us;
         ktime_t time_stop = ktime_get();
@@ -317,7 +320,7 @@ OAL_STATIC OAL_INLINE oal_int32 oal_sdio_readsb(struct sdio_func *func, oal_void
 #endif
     ret = sdio_readsb(func, dst, addr, count);
 #ifdef CONFIG_HISI_SDIO_TIME_DEBUG
-    if (OAL_UNLIKELY(ret)) {
+    if (oal_unlikely(ret)) {
         /* If sdio transfer failed, dump the sdio info */
         oal_uint64 trans_us;
         ktime_t time_stop = ktime_get();
@@ -349,7 +352,7 @@ OAL_STATIC OAL_INLINE oal_int32 oal_sdio_writesb(struct sdio_func *func, oal_uin
 #endif
     ret = sdio_writesb(func, addr, src, count);
 #ifdef CONFIG_HISI_SDIO_TIME_DEBUG
-    if (OAL_UNLIKELY(ret)) {
+    if (oal_unlikely(ret)) {
         /* If sdio transfer failed, dump the sdio info */
         oal_uint64 trans_us;
         ktime_t time_stop = ktime_get();
@@ -428,37 +431,37 @@ OAL_STATIC OAL_INLINE oal_void oal_sdio_writel(struct sdio_func *func, oal_uint3
 OAL_STATIC OAL_INLINE oal_int32 oal_sdio_memcpy_fromio(struct sdio_func *func, oal_void *dst,
                                                        oal_uint32 addr, oal_int32 count)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(dst);
-    OAL_REFERENCE(addr);
-    OAL_REFERENCE(count);
+    oal_reference(func);
+    oal_reference(dst);
+    oal_reference(addr);
+    oal_reference(count);
     return -OAL_EBUSY;
 }
 
 OAL_STATIC OAL_INLINE oal_int32 oal_sdio_readsb(struct sdio_func *func, oal_void *dst, oal_uint32 addr,
                                                 oal_int32 count)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(dst);
-    OAL_REFERENCE(addr);
-    OAL_REFERENCE(count);
+    oal_reference(func);
+    oal_reference(dst);
+    oal_reference(addr);
+    oal_reference(count);
     return -OAL_EBUSY;
 }
 
 OAL_STATIC OAL_INLINE oal_int32 oal_sdio_writesb(struct sdio_func *func, oal_uint32 addr, oal_void *src,
                                                  int count)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(src);
-    OAL_REFERENCE(addr);
-    OAL_REFERENCE(count);
+    oal_reference(func);
+    oal_reference(src);
+    oal_reference(addr);
+    oal_reference(count);
     return -OAL_EBUSY;
 }
 
 OAL_STATIC OAL_INLINE oal_uint8 oal_sdio_readb(struct sdio_func *func, oal_uint32 addr, oal_int32 *err_ret)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(addr);
+    oal_reference(func);
+    oal_reference(addr);
     *err_ret = -OAL_EBUSY;
     ;
     return 0;
@@ -466,16 +469,16 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_sdio_readb(struct sdio_func *func, oal_uint3
 
 OAL_STATIC OAL_INLINE void oal_sdio_writeb(struct sdio_func *func, oal_uint8 b, oal_uint32 addr, oal_int32 *err_ret)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(addr);
-    OAL_REFERENCE(b);
+    oal_reference(func);
+    oal_reference(addr);
+    oal_reference(b);
     *err_ret = -OAL_EBUSY;
 }
 
 OAL_STATIC OAL_INLINE oal_uint32 oal_sdio_readl(struct sdio_func *func, oal_uint32 addr, oal_int32 *err_ret)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(addr);
+    oal_reference(func);
+    oal_reference(addr);
     *err_ret = -OAL_EBUSY;
     ;
     return 0;
@@ -484,9 +487,9 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_sdio_readl(struct sdio_func *func, oal_uint
 OAL_STATIC OAL_INLINE oal_void oal_sdio_writel(struct sdio_func *func, oal_uint32 b,
                                                oal_uint32 addr, oal_int32 *err_ret)
 {
-    OAL_REFERENCE(func);
-    OAL_REFERENCE(addr);
-    OAL_REFERENCE(b);
+    oal_reference(func);
+    oal_reference(addr);
+    oal_reference(b);
     *err_ret = -OAL_EBUSY;
 }
 #endif

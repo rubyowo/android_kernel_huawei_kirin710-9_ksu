@@ -1,4 +1,11 @@
 
+#ifndef __HMAC_11I_H__
+#define __HMAC_11I_H__
+
+/* 1 头文件包含 */
+#include "mac_resource.h"
+#include "hmac_vap.h"
+#include "hmac_user.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -6,13 +13,8 @@ extern "C" {
 #endif
 #endif
 
-/* 1 头文件包含 */
-#include "mac_resource.h"
-#include "hmac_vap.h"
-#include "hmac_user.h"
-
 #undef THIS_FILE_ID
-#define THIS_FILE_ID OAM_FILE_ID_HMAC_11i_H
+#define THIS_FILE_ID OAM_FILE_ID_HMAC_11I_H
 
 /* 2 宏定义 */
 /* 3 枚举定义 */
@@ -57,5 +59,6 @@ oal_uint32 hmac_11i_ether_type_filter(hmac_vap_stru *pst_vap, mac_user_stru *pst
 #endif
 #endif
 
+#endif
 
 

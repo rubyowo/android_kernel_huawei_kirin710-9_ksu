@@ -11,18 +11,18 @@
 #endif
 /* 宏定义 */
 /* string */
-#define OS_MEM_CMP(dst, src, size)  memcmp(dst, src, size)
-#define OS_STR_CMP(dst, src)        strcmp(dst, src)
-#define OS_STR_LEN(s)               strlen(s)
-#define OS_STR_CHR(str, chr)        strchr(str, chr)
-#define OS_STR_STR(dst, src)        strstr(dst, src)
+#define os_mem_cmp(dst, src, size)  memcmp(dst, src, size)
+#define os_str_cmp(dst, src)        strcmp(dst, src)
+#define os_str_len(s)               strlen(s)
+#define os_str_chr(str, chr)        strchr(str, chr)
+#define os_str_str(dst, src)        strstr(dst, src)
 
 /* memory */
-#define OS_MEM_KFREE(p)      kfree(p)
-#define OS_KMALLOC_GFP(size) kmalloc(size, (GFP_KERNEL | __GFP_NOWARN))
-#define OS_KZALLOC_GFP(size) kzalloc(size, (GFP_KERNEL | __GFP_NOWARN))
-#define OS_VMALLOC_GFP(size) vmalloc(size)
-#define OS_MEM_VFREE(p)      vfree(p)
+#define os_mem_kfree(p)      kfree(p)
+#define os_kmalloc_gfp(size) kmalloc(size, (GFP_KERNEL | __GFP_NOWARN))
+#define os_kzalloc_gfp(size) kzalloc(size, (GFP_KERNEL | __GFP_NOWARN))
+#define os_vmalloc_gfp(size) vmalloc(size)
+#define os_mem_vfree(p)      vfree(p)
 
 #define READ_MEG_TIMEOUT      2000  /* 200ms */
 #define READ_MEG_JUMP_TIMEOUT 15000 /* 15s */
@@ -173,34 +173,34 @@ enum FIRMWARE_SUBSYS_ENUM {
 };
 
 /* 全局变量定义 */
-extern uint8 **cfg_path;
-extern uint8 *pilot_cfg_patch_in_vendor[CFG_FILE_TOTAL];
+extern uint8 **g_cfg_path;
+extern uint8 *g_pilot_cfg_patch_in_vendor[CFG_FILE_TOTAL];
 
 /* STRUCT定义 */
 typedef struct cmd_type_st {
     int32 cmd_type;
     uint8 cmd_name[DOWNLOAD_CMD_LEN];
     uint8 cmd_para[DOWNLOAD_CMD_PARA_LEN];
-} CMD_TYPE_STRUCT;
+} cmd_type_struct;
 
 typedef struct firmware_globals_st {
-    int32 al_count[CFG_FILE_TOTAL];            /* 存储每个cfg文件解析后有效的命令个数 */
-    CMD_TYPE_STRUCT *apst_cmd[CFG_FILE_TOTAL]; /* 存储每个cfg文件的有效命令 */
-    uint8 auc_CfgVersion[VERSION_LEN];         /* 存储cfg文件中配置的版本号信息 */
-    uint8 auc_DevVersion[VERSION_LEN];         /* 存储加载时device侧上报的版本号信息 */
-} FIRMWARE_GLOBALS_STRUCT;
+    int32 count[CFG_FILE_TOTAL];            /* 存储每个cfg文件解析后有效的命令个数 */
+    cmd_type_struct *apst_cmd[CFG_FILE_TOTAL]; /* 存储每个cfg文件的有效命令 */
+    uint8 cfg_version[VERSION_LEN];         /* 存储cfg文件中配置的版本号信息 */
+    uint8 dev_version[VERSION_LEN];         /* 存储加载时device侧上报的版本号信息 */
+} firmware_globals_struct;
 
 /* OTHERS定义 */
-typedef struct file OS_KERNEL_FILE_STRU;
-extern FIRMWARE_GLOBALS_STRUCT cfg_info;
+typedef struct file os_kernel_file_stru;
+extern firmware_globals_struct g_cfg_info;
 
 /* 函数声明 */
 extern void set_hi1103_asic_type(uint32 ul_asic_type);
 extern uint32 get_hi1103_asic_type(void);
 extern int32 firmware_download(uint32 ul_index);
 extern int32 firmware_cfg_init(void);
-extern int32 firmware_get_cfg(uint8 *puc_CfgPatch, uint32 ul_index);
-extern int32 firmware_cfg_clear(void);
+extern int32 firmware_get_cfg(uint8 *cfg_patch, uint32 ul_index);
+extern void firmware_cfg_clear(void);
 extern int32 wifi_device_mem_dump(struct st_wifi_dump_mem_info *pst_mem_dump_info, uint32 count);
 extern int32 read_device_reg16(uint32 address, uint16 *value);
 extern int32 write_device_reg16(uint32 address, uint16 value);

@@ -15,20 +15,18 @@
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_FRW_MAIN_C
 /* 全局变量定义 */
-frw_init_enum_uint16 en_wlan_driver_init_state = FRW_INIT_STATE_BUTT;
-OAL_STATIC frw_event_sub_table_item_stru frw_timeout_event_sub_table[FRW_TIMEOUT_SUB_TYPE_BUTT];
+OAL_STATIC frw_init_enum_uint16 g_en_wlan_driver_init_state = FRW_INIT_STATE_BUTT;
+OAL_STATIC frw_event_sub_table_item_stru g_frw_timeout_event_sub_table[FRW_TIMEOUT_SUB_TYPE_BUTT];
 
 /* 函数实现 */
 /*
  * 函 数 名  : frw_event_fsm_register
  * 功能描述  : frw 事件注册
  */
-oal_uint32 frw_event_fsm_register(oal_void)
+oal_void frw_event_fsm_register(oal_void)
 {
-    frw_timeout_event_sub_table[FRW_TIMEOUT_TIMER_EVENT].p_func = frw_timer_timeout_proc;
-    frw_event_table_register(FRW_EVENT_TYPE_TIMEOUT, FRW_EVENT_PIPELINE_STAGE_0, frw_timeout_event_sub_table);
-
-    return OAL_SUCC;
+    g_frw_timeout_event_sub_table[FRW_TIMEOUT_TIMER_EVENT].p_func = frw_timer_timeout_proc;
+    frw_event_table_register(FRW_EVENT_TYPE_TIMEOUT, FRW_EVENT_PIPELINE_STAGE_0, g_frw_timeout_event_sub_table);
 }
 
 /*
@@ -43,7 +41,7 @@ oal_int32 frw_main_init(oal_void)
 
     /* 事件管理模块初始化 */
     ul_ret = frw_event_init();
-    if (OAL_UNLIKELY(ul_ret != OAL_SUCC)) {
+    if (oal_unlikely(ul_ret != OAL_SUCC)) {
         OAM_WARNING_LOG1(0, OAM_SF_FRW, "{frw_main_init:: frw_event_init return err code: %d}", ul_ret);
         return -OAL_EFAIL;
     }
@@ -53,7 +51,7 @@ oal_int32 frw_main_init(oal_void)
 #if (_PRE_MULTI_CORE_MODE_PIPELINE_AMP == _PRE_MULTI_CORE_MODE)
     /* 事件核间部署模块初始化 */
     ul_ret = frw_event_deploy_init();
-    if (OAL_UNLIKELY(ul_ret != OAL_SUCC)) {
+    if (oal_unlikely(ul_ret != OAL_SUCC)) {
         OAM_WARNING_LOG1(0, OAM_SF_FRW, "{frw_main_init:: frw_event_deploy_init return err code: %d}", ul_ret);
         return -OAL_EFAIL;
     }
@@ -91,8 +89,6 @@ oal_void frw_main_exit(oal_void)
     /* 卸载成功后在置状态位 */
     frw_set_init_state(FRW_INIT_STATE_START);
 
-    /* 卸载成功后，输出打印 */
-
     return;
 }
 
@@ -108,7 +104,7 @@ oal_void frw_set_init_state(frw_init_enum_uint16 en_init_state)
         return;
     }
 
-    en_wlan_driver_init_state = en_init_state;
+    g_en_wlan_driver_init_state = en_init_state;
 
     return;
 }
@@ -119,7 +115,7 @@ oal_void frw_set_init_state(frw_init_enum_uint16 en_init_state)
  */
 frw_init_enum_uint16 frw_get_init_state(oal_void)
 {
-    return en_wlan_driver_init_state;
+    return g_en_wlan_driver_init_state;
 }
 
 /*lint -e578*/ /*lint -e19*/

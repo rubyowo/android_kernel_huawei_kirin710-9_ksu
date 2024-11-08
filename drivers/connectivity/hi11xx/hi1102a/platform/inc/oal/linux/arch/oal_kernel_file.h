@@ -65,8 +65,8 @@ OAL_STATIC OAL_INLINE int oal_debug_sysfs_create_group(struct kobject *kobj,
 #ifdef PLATFORM_DEBUG_ENABLE
     return sysfs_create_group(kobj, grp);
 #else
-    OAL_REFERENCE(kobj);
-    OAL_REFERENCE(grp);
+    oal_reference(kobj);
+    oal_reference(grp);
     return 0;
 #endif
 }
@@ -77,8 +77,8 @@ OAL_STATIC OAL_INLINE oal_void oal_debug_sysfs_remove_group(struct kobject *kobj
 #ifdef PLATFORM_DEBUG_ENABLE
     sysfs_remove_group(kobj, grp);
 #else
-    OAL_REFERENCE(kobj);
-    OAL_REFERENCE(grp);
+    oal_reference(kobj);
+    oal_reference(grp);
 #endif
 }
 #ifdef _PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT

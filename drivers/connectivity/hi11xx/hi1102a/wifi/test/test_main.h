@@ -1,15 +1,9 @@
 
-
 #ifndef __TEST_MAIN_H__
 #define __TEST_MAIN_H__
-
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 其他头文件包含 */
+#include "oam_wdk.h"
+
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_TEST_MAIN_H
 /* 2 宏定义 */
@@ -23,10 +17,4 @@ extern "C" {
 /* 8 UNION定义 */
 /* 9 OTHERS定义 */
 /* 10 函数声明 */
-#ifdef __cplusplus
-#if __cplusplus
-}
-#endif
-#endif
-
 #endif /* end of test_main.h */

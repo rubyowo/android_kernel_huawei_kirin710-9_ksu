@@ -42,13 +42,13 @@ include $(WIFI_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE)
 
 $(warning defconfig: $(WIFI_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE))
 
-hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_m2u.o hmac_smps.o hmac_data_acq.o hmac_rx_filter.o hmac_proxy_arp.o hmac_hcc_adapt.o hmac_reset.o hmac_scan.o hmac_p2p.o hmac_device.o hmac_resource.o  hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o hmac_cali_mgmt.o hmac_cali_dpd.o
-hmac-objs += hmac_custom_security.o hmac_scan.o hmac_blockack.o hmac_dfs.o hmac_psm_ap.o hmac_dfx.o hmac_edca_opt.o hmac_arp_offload.o hmac_verify/hmac_test_main.o  hmac_tcp_opt.o hmac_roam_alg.o hmac_roam_connect.o hmac_roam_main.o
-hmac-objs += hmac_traffic_classify.o hmac_proxysta.o hmac_wmmac.o hmac_statistic_data_flow.o hmac_dscr_th_opt.o hmac_tcp_ack_filter.o hmac_auto_ddr_freq.o hmac_tx_opt.o
+hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_rx_filter.o hmac_hcc_adapt.o hmac_reset.o hmac_scan.o hmac_p2p.o hmac_device.o hmac_resource.o  hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o hmac_cali_mgmt.o hmac_204080_coexist.o hmac_wpa_wpa2.o hmac_support_pmf.o hmac_location_ram.o hmac_sae.o hmac_ftm.o hmac_mgmt_join.o
+hmac-objs += hmac_custom_security.o hmac_scan.o hmac_blockack.o hmac_psm_ap.o hmac_dfx.o hmac_edca_opt.o hmac_arp_offload.o hmac_verify/hmac_test_main.o  hmac_tcp_opt.o hmac_roam_alg.o hmac_roam_connect.o hmac_roam_main.o
+hmac-objs += hmac_traffic_classify.o hmac_wmmac.o hmac_statistic_data_flow.o hmac_dscr_th_opt.o hmac_tcp_ack_filter.o hmac_auto_ddr_freq.o hmac_tx_opt.o
 hmac-objs += hmac_btcoex.o hmac_11v.o
 hmac-objs := $(addprefix hmac/,$(hmac-objs))
 
-mac-objs := mac_device.o mac_frame.o mac_user.o mac_vap.o mac_regdomain.o mac_ie.o mac_resource.o mac_board.o mac_pm.o mac_data.o
+mac-objs := mac_device.o mac_frame.o mac_user.o mac_vap.o mac_regdomain.o mac_ie.o mac_resource.o mac_board.o mac_data.o mac_11kvr.o
 mac-objs := $(addprefix mac_ec/,$(mac-objs))
 mac-ram-objs := mac_board_ram.o mac_data_ram.o mac_device_ram.o mac_frame_ram.o mac_ie_ram.o mac_pm_ram.o mac_regdomain_ram.o mac_resource_ram.o mac_user_ram.o mac_vap_ram.o
 mac-ram-objs := $(addprefix mac_ram/,$(mac-ram-objs))
@@ -56,9 +56,12 @@ mac-ram-objs := $(addprefix mac_ram/,$(mac-ram-objs))
 hmac-objs += $(mac-objs)
 hmac-objs += $(mac-ram-objs)
 
-wal-objs := wal_config.o wal_config_debug.o wal_linux_bridge.o  wal_main.o wal_linux_scan.o wal_linux_rx_rsp.o wal_linux_event.o wal_regdb.o wal_config_acs.o wal_linux_flowctl.o  wal_linux_ioctl.o wal_linux_ioctl_debug.o wal_linux_atcmdsrv.o
+wal-objs := wal_config.o wal_config_debug.o wal_linux_bridge.o  wal_main.o wal_linux_scan.o wal_linux_rx_rsp.o wal_linux_event.o wal_regdb.o wal_linux_flowctl.o  wal_linux_ioctl.o wal_linux_ioctl_debug.o wal_linux_atcmdsrv.o
 wal-objs += wal_linux_cfg80211.o wal_dfx.o wal_linux_cfgvendor.o
 wal-objs := $(addprefix wal/,$(wal-objs))
+
+wifi_customize-objs := hisi_customize_wifi.o
+wifi_customize-objs := $(addprefix customize/,$(wifi_customize-objs))
 
 main-objs := main.o
 main-objs := $(addprefix main/,$(main-objs))
@@ -69,6 +72,8 @@ wifi-objs := $(wal-objs)
 wifi-objs += $(main-objs)
 
 wifi-objs += $(hmac-objs)
+
+wifi-objs += $(wifi_customize-objs)
 
 wifi_$(_PRE_PRODUCT_VERSION)-objs = $(wifi-objs)
 
@@ -142,6 +147,8 @@ HI1102_INCLUDES += -I$(WIFI_DRIVER_PATH)/dmac/dmac_verify/
 HI1102_INCLUDES += -I$(WIFI_DRIVER_PATH)/alg/alg_verify
 HI1102_INCLUDES += -I$(WIFI_DRIVER_PATH)/mac_ec
 HI1102_INCLUDES += -I$(WIFI_DRIVER_PATH)/alg
+
+HI1102_INCLUDES += -I$(WIFI_DRIVER_PATH)/customize
 
 #$(warning INCLUDE: $(HI1102_INCLUDES))
 

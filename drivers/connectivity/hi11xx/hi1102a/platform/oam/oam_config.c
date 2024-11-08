@@ -5,12 +5,12 @@
 #include "oal_aes.h"
 
 /* 全局变量定义 */
-oam_customize_stru oam_customize;
+oam_customize_stru g_oam_customize;
 
 
 oal_void oam_register_init_hook(oam_msg_moduleid_enum_uint8 en_moduleid, p_oam_customize_init_func p_func)
 {
-    oam_customize.customize_init[en_moduleid] = p_func;
+    g_oam_customize.customize_init[en_moduleid] = p_func;
 }
 
 /*
@@ -26,14 +26,14 @@ oal_int32 oam_cfg_get_one_item(oal_int8 *pc_cfg_data_buf,
                                oal_int8 *pc_key,
                                oal_int32 *pl_val)
 {
-    /*                            配置文件内容格式                            */
-    /*                              [section]                                 */
-    /*                              key=val                                   */
-    oal_int8 *pc_section_addr;
-    oal_int8 *pc_key_addr;
-    oal_int8 *pc_val_addr;
-    oal_int8 *pc_equal_sign_addr; /* 等号的地址 */
-    oal_int8 *pc_tmp;
+    /*                            配置文件内容格式                                  */
+    /*                              [section]                                       */
+    /*                              key equal val                                   */
+    oal_int8 *pc_section_addr = NULL;
+    oal_int8 *pc_key_addr = NULL;
+    oal_int8 *pc_val_addr = NULL;
+    oal_int8 *pc_equal_sign_addr = NULL; /* 等号的地址 */
+    oal_int8 *pc_tmp = NULL;
     oal_uint8 uc_key_len;
     oal_int8 ac_val[OAM_CFG_VAL_MAX_LEN] = {0}; /* 暂存配置项的值 */
     oal_uint8 uc_index = 0;
@@ -129,8 +129,8 @@ oal_uint32 oam_cfg_decrypt_all_item(oal_aes_key_stru *pst_aes_key,
 {
     oal_uint32 ul_loop = 0;
     oal_uint32 ul_round;
-    oal_uint8 *puc_cipher_tmp;
-    oal_uint8 *puc_plain_tmp;
+    oal_uint8 *puc_cipher_tmp = NULL;
+    oal_uint8 *puc_plain_tmp = NULL;
 
     /* AES加密块的大小是16字节，如果密文长度不是16的倍数，则不能正确解密 */
     if ((ul_cipher_len % OAL_AES_BLOCK_SIZE) != 0) {

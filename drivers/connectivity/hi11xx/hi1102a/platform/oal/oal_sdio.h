@@ -40,7 +40,5 @@
 
 #define HISDIO_FUNC1_INT_MASK (HISDIO_FUNC1_INT_DREADY | HISDIO_FUNC1_INT_RERROR | HISDIO_FUNC1_INT_MFARM)
 
-/* Device to Host Msg */
-
 #endif /* end of oal_sdio.h */
 

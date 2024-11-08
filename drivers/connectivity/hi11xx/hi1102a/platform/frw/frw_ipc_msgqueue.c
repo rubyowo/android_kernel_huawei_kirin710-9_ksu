@@ -7,7 +7,7 @@
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_FRW_IPC_MSGQUEUE_C
 /* 全局变量定义 */
-OAL_STATIC frw_ipc_msg_callback_stru gst_ipc_msg_callback;
+OAL_STATIC frw_ipc_msg_callback_stru g_gst_ipc_msg_callback;
 
 /* 函数实现 */
 /*
@@ -21,16 +21,16 @@ oal_uint32 frw_ipc_msg_queue_init(frw_ipc_msg_queue_stru *pst_msg_queue, oal_uin
 {
     oal_uint16 us_queue_size;
 
-    if (OAL_UNLIKELY(pst_msg_queue == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_msg_queue == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_init:: pst_msg_queue is null ptr!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 为发送消息队列分配内存 */
     us_queue_size = (oal_uint16)(OAL_SIZEOF(frw_ipc_msg_dscr_stru) * ul_queue_len);
-    pst_msg_queue->pst_dscr = (frw_ipc_msg_dscr_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, us_queue_size, OAL_TRUE);
-    if (OAL_UNLIKELY(pst_msg_queue->pst_dscr == OAL_PTR_NULL)) {
-        OAM_WARNING_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_init:: pst_msg_queue->pst_dscr is null ptr!}");
+    pst_msg_queue->pst_dscr = (frw_ipc_msg_dscr_stru *)oal_mem_alloc_m(OAL_MEM_POOL_ID_LOCAL, us_queue_size, OAL_TRUE);
+    if (oal_unlikely(pst_msg_queue->pst_dscr == OAL_PTR_NULL)) {
+        oam_warning_log0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_init:: pst_msg_queue->pst_dscr is null ptr!}");
         return OAL_ERR_CODE_ALLOC_MEM_FAIL;
     }
 
@@ -51,11 +51,11 @@ oal_uint32 frw_ipc_msg_queue_init(frw_ipc_msg_queue_stru *pst_msg_queue, oal_uin
 oal_uint32 frw_ipc_msg_queue_destroy(frw_ipc_msg_queue_stru *pst_msg_queue)
 {
     if (pst_msg_queue->pst_dscr == OAL_PTR_NULL) {
-        OAM_WARNING_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_destroy:: pst_msg_queue->pst_dscr is null ptr}");
+        oam_warning_log0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_destroy:: pst_msg_queue->pst_dscr is null ptr}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEM_FREE(pst_msg_queue->pst_dscr, OAL_TRUE);
+    oal_mem_free_m(pst_msg_queue->pst_dscr, OAL_TRUE);
 
     pst_msg_queue->pst_dscr = OAL_PTR_NULL;
 
@@ -71,30 +71,29 @@ oal_uint32 frw_ipc_msg_queue_destroy(frw_ipc_msg_queue_stru *pst_msg_queue)
  */
 oal_uint32 frw_ipc_msg_queue_recv(oal_void *p_arg)
 {
-    frw_ipc_msg_queue_stru *pst_ipc_rx_msg_queue;
+    frw_ipc_msg_queue_stru *pst_ipc_rx_msg_queue = NULL;
     oal_uint32 ul_head = 0;
 
-    if (OAL_UNLIKELY(p_arg == OAL_PTR_NULL)) {
+    if (oal_unlikely(p_arg == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_recv:: p_arg is null ptr!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     pst_ipc_rx_msg_queue = (frw_ipc_msg_queue_stru *)(((oal_irq_dev_stru *)p_arg)->p_drv_arg);
-    if (OAL_UNLIKELY(gst_ipc_msg_callback.p_rx_complete_func == OAL_PTR_NULL)) {
-        OAM_WARNING_LOG0(0, OAM_SF_FRW,
-                         "{frw_ipc_msg_queue_recv:: gst_ipc_msg_callback.p_rx_complete_func is null ptr!}");
+    if (oal_unlikely(g_gst_ipc_msg_callback.p_rx_complete_func == OAL_PTR_NULL)) {
+        oam_warning_log0(0, OAM_SF_FRW,
+                         "{frw_ipc_msg_queue_recv:: g_gst_ipc_msg_callback.p_rx_complete_func is null ptr!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 队列操作 */
     do {
         ul_head = (pst_ipc_rx_msg_queue->ul_head);
-        FRW_IPC_RING_RX_INCR(pst_ipc_rx_msg_queue->ul_head);
+        frw_ipc_ring_rx_incr(pst_ipc_rx_msg_queue->ul_head);
 
         /* 回调ipc_recv() */
-        gst_ipc_msg_callback.p_rx_complete_func(pst_ipc_rx_msg_queue->pst_dscr[ul_head].pst_msg_mem);
-
-    } while (!FRW_IPC_RING_EMPTY(pst_ipc_rx_msg_queue->ul_head, pst_ipc_rx_msg_queue->ul_tail));
+        g_gst_ipc_msg_callback.p_rx_complete_func(pst_ipc_rx_msg_queue->pst_dscr[ul_head].pst_msg_mem);
+    } while (!frw_ipc_ring_empty(pst_ipc_rx_msg_queue->ul_head, pst_ipc_rx_msg_queue->ul_tail));
 
     return OAL_SUCC;
 }
@@ -115,23 +114,23 @@ oal_uint32 frw_ipc_msg_queue_send(frw_ipc_msg_queue_stru *pst_ipc_tx_msg_queue,
 {
     oal_uint32 ul_tail;
 
-    if (OAL_UNLIKELY((pst_ipc_tx_msg_queue == OAL_PTR_NULL) || pst_msg_input == OAL_PTR_NULL)) {
-        OAM_ERROR_LOG2(0, OAM_SF_FRW,
+    if (oal_unlikely((pst_ipc_tx_msg_queue == OAL_PTR_NULL) || pst_msg_input == OAL_PTR_NULL)) {
+        oam_error_log2(0, OAM_SF_FRW,
                        "{frw_ipc_msg_queue_send: pst_ipc_tx_msg_queue/pst_msg_input is null ptr: %d %d}",
                        (uintptr_t)pst_ipc_tx_msg_queue, (uintptr_t)pst_msg_input);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 判断队列是否满 */
-    if (OAL_UNLIKELY(FRW_IPC_RING_FULL(pst_ipc_tx_msg_queue->ul_head,
+    if (oal_unlikely(frw_ipc_ring_full(pst_ipc_tx_msg_queue->ul_head,
                                        pst_ipc_tx_msg_queue->ul_tail,
                                        pst_ipc_tx_msg_queue->ul_max_num))) {
-        OAM_WARNING_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_send:: FRW_IPC_RING_FULL OAL_ERR_CODE_IPC_QUEUE_FULL.}");
+        oam_warning_log0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_send:: frw_ipc_ring_full OAL_ERR_CODE_IPC_QUEUE_FULL.}");
         return OAL_ERR_CODE_IPC_QUEUE_FULL;
     }
 
     ul_tail = pst_ipc_tx_msg_queue->ul_tail;
-    FRW_IPC_RING_TX_INCR(pst_ipc_tx_msg_queue->ul_tail);
+    frw_ipc_ring_tx_incr(pst_ipc_tx_msg_queue->ul_tail);
 
     pst_ipc_tx_msg_queue->pst_dscr[ul_tail].pst_msg_mem = pst_msg_input;
 
@@ -151,13 +150,13 @@ oal_uint32 frw_ipc_msg_queue_send(frw_ipc_msg_queue_stru *pst_ipc_tx_msg_queue,
  */
 oal_uint32 frw_ipc_msg_queue_register_callback(frw_ipc_msg_callback_stru *p_ipc_msg_handler)
 {
-    if (OAL_UNLIKELY(p_ipc_msg_handler == OAL_PTR_NULL)) {
+    if (oal_unlikely(p_ipc_msg_handler == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_ipc_msg_queue_register_callback:: p_ipc_msg_handler is null ptr.}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    gst_ipc_msg_callback.p_rx_complete_func = p_ipc_msg_handler->p_rx_complete_func;
-    gst_ipc_msg_callback.p_tx_complete_func = p_ipc_msg_handler->p_tx_complete_func;
+    g_gst_ipc_msg_callback.p_rx_complete_func = p_ipc_msg_handler->p_rx_complete_func;
+    g_gst_ipc_msg_callback.p_tx_complete_func = p_ipc_msg_handler->p_tx_complete_func;
 
     return OAL_SUCC;
 }
@@ -220,8 +219,8 @@ oal_uint32 frw_ipc_log_recv_alarm(frw_ipc_log_stru *pst_log, oal_uint32 ul_lost)
     l_lost = (oal_int32)pst_log->ul_stats_recv_lost;
     l_assert = (oal_int32)pst_log->ul_stats_assert;
 
-    FRW_IPC_LOST_WARNING_LOG2(0, "The number of rx lost package respectively are ", l_lost, l_assert);
-    OAM_WARNING_LOG2(0, OAM_SF_FRW,
+    frw_ipc_lost_warning_log2(0, "The number of rx lost package respectively are ", l_lost, l_assert);
+    oam_warning_log2(0, OAM_SF_FRW,
                      "{frw_ipc_log_recv_alarm::The number of rx lost package respectively are  %d %d}",
                      l_lost, l_assert);
 
@@ -248,7 +247,7 @@ oal_uint32 frw_ipc_log_send_alarm(frw_ipc_log_stru *pst_log)
 
     l_lost = (oal_int32)pst_log->ul_stats_send_lost;
 
-    FRW_IPC_LOST_WARNING_LOG1(0, "The number of tx lost package respectively are ", l_lost);
+    frw_ipc_lost_warning_log1(0, "The number of tx lost package respectively are ", l_lost);
     OAM_WARNING_LOG1(0, OAM_SF_FRW, "{frw_ipc_log_send_alarm::the number of tx lost packets are %d. }\r\n", l_lost);
     return OAL_SUCC;
 }
@@ -272,7 +271,7 @@ oal_uint32 frw_ipc_log_send(frw_ipc_log_stru *pst_log, oal_uint16 us_seq_num,
         pst_log->st_tx_stats_record[pst_log->ul_tx_index].us_seq_num = us_seq_num;
         pst_log->st_tx_stats_record[pst_log->ul_tx_index].uc_target_cpuid = uc_target_cpuid;
         pst_log->st_tx_stats_record[pst_log->ul_tx_index].uc_msg_type = uc_msg_type;
-        pst_log->st_tx_stats_record[pst_log->ul_tx_index].l_time_stamp = OAL_TIME_GET_STAMP_MS();
+        pst_log->st_tx_stats_record[pst_log->ul_tx_index].l_time_stamp = oal_time_get_stamp_ms();
         pst_log->ul_tx_index++;
     }
 
@@ -298,7 +297,7 @@ oal_uint32 frw_ipc_log_recv(frw_ipc_log_stru *pst_log, oal_uint16 us_seq_num,
         pst_log->st_rx_stats_record[pst_log->ul_rx_index].us_seq_num = us_seq_num;
         pst_log->st_rx_stats_record[pst_log->ul_rx_index].uc_target_cpuid = uc_target_cpuid;
         pst_log->st_rx_stats_record[pst_log->ul_rx_index].uc_msg_type = uc_msg_type;
-        pst_log->st_rx_stats_record[pst_log->ul_rx_index].l_time_stamp = OAL_TIME_GET_STAMP_MS();
+        pst_log->st_rx_stats_record[pst_log->ul_rx_index].l_time_stamp = oal_time_get_stamp_ms();
         pst_log->ul_rx_index++;
     }
 
@@ -321,7 +320,7 @@ oal_uint32 frw_ipc_log_tx_print(frw_ipc_log_stru *pst_log)
     }
 
     for (us_log_index = 0; us_log_index < pst_log->ul_tx_index; us_log_index++) {
-        FRW_IPC_LOG_INFO_PRINT4(0, "SEND SEQUENCE NUMBER:  TARGET CPUID:  MESSAGE TYPE: TIME STAMP: ",
+        frw_ipc_log_info_print4(0, "SEND SEQUENCE NUMBER:  TARGET CPUID:  MESSAGE TYPE: TIME STAMP: ",
                                 (oal_int32)pst_log->st_tx_stats_record[us_log_index].us_seq_num,
                                 (oal_int32)pst_log->st_tx_stats_record[us_log_index].uc_target_cpuid,
                                 (oal_int32)pst_log->st_tx_stats_record[us_log_index].uc_msg_type,
@@ -346,10 +345,10 @@ oal_uint32 frw_ipc_log_rx_print(frw_ipc_log_stru *pst_log)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    FRW_IPC_LOG_INFO_PRINT1(0, "times of recieve:", (oal_int32)pst_log->ul_stats_recv);
+    frw_ipc_log_info_print1(0, "times of recieve:", (oal_int32)pst_log->ul_stats_recv);
 
     for (us_log_index = 0; us_log_index < pst_log->ul_rx_index; us_log_index++) {
-        FRW_IPC_LOG_INFO_PRINT4(0, "RECEIVE SEQUENCE NUMBER: TARGET CPUID: MESSAGE TYPE:  TIME STAMP:",
+        frw_ipc_log_info_print4(0, "RECEIVE SEQUENCE NUMBER: TARGET CPUID: MESSAGE TYPE:  TIME STAMP:",
                                 (oal_int32)pst_log->st_rx_stats_record[us_log_index].us_seq_num,
                                 (oal_int32)pst_log->st_rx_stats_record[us_log_index].uc_target_cpuid,
                                 (oal_int32)pst_log->st_rx_stats_record[us_log_index].uc_msg_type,

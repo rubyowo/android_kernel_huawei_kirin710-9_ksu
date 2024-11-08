@@ -49,7 +49,7 @@ typedef enum _HISDIO_D2H_MSG_TYPE_ {
     D2H_MSG_RESERV_15 = 15,
 
     D2H_MSG_COUNT = 16 /* max support msg count */
-} HISDIO_D2H_MSG_TYPE;
+} hisdio_d2h_msg_type;
 
 /* Host to device sdio message type */
 typedef enum _HISDIO_H2D_MSG_TYPE_ {
@@ -74,33 +74,34 @@ typedef enum _HISDIO_H2D_MSG_TYPE_ {
     H2D_MSG_RESERV_15 = 15,
 
     H2D_MSG_COUNT = 16 /* max support msg count */
-} HISDIO_H2D_MSG_TYPE;
+} hisdio_h2d_msg_type;
 
 /* sdio flow control info, free cnt */
-#define HISDIO_SHORT_PKT_SET(reg, num)                 \
+#define hisdio_short_pkt_set(reg, num)                 \
     do {                                               \
         (reg) = (((reg)&0xFFFFFF00) | (((num)&0xFF))); \
     } while (0)
-#define HISDIO_LARGE_PKT_SET(reg, num)                      \
+#define hisdio_large_pkt_set(reg, num)                      \
     do {                                                    \
         (reg) = (((reg)&0xFFFF00FF) | (((num)&0xFF) << 8)); \
     } while (0)
-#define HISDIO_RESERVE_PKT_SET(reg, num)                     \
+#define hisdio_reserve_pkt_set(reg, num)                     \
     do {                                                     \
         (reg) = (((reg)&0xFF00FFFF) | (((num)&0xFF) << 16)); \
     } while (0)
-#define HISDIO_COMM_REG_SEQ_SET(reg, num)                    \
+#define hisdio_comm_reg_seq_set(reg, num)                    \
     do {                                                     \
         (reg) = (((reg)&0x00FFFFFF) | (((num)&0xFF) << 24)); \
     } while (0)
 
-#define HISDIO_SHORT_PKT_GET(reg)    ((reg)&0xFF)
-#define HISDIO_LARGE_PKT_GET(reg)    (((reg) >> 8) & 0xFF)
-#define HISDIO_RESERVE_PKT_GET(reg)  (((reg) >> 16) & 0xFF)
-#define HISDIO_COMM_REG_SEQ_GET(reg) (((reg) >> 24) & 0xFF)
+#define hisdio_short_pkt_get(reg)    ((reg)&0xFF)
+#define hisdio_large_pkt_get(reg)    (((reg) >> 8) & 0xFF)
+#define hisdio_reserve_pkt_get(reg)  (((reg) >> 16) & 0xFF)
+#define hisdio_comm_reg_seq_get(reg) (((reg) >> 24) & 0xFF)
 
 #define HISDIO_BLOCK_SIZE 512 /* one size of data transfer block size,
                                                          * 64, 128, 256, 512, 1024 */
+#define HISDIO_SEND_SIZE 4096
 /* The max scatter buffers when host to device */
 #define HISDIO_HOST2DEV_SCATT_MAX  64
 #define HISDIO_HOST2DEV_SCATT_SIZE 64

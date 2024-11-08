@@ -24,9 +24,9 @@ typedef struct work_struct oal_work_stru;
 typedef struct delayed_work oal_delayed_work;
 
 /* 宏定义 */
-#define OAL_INIT_WORK(_p_work, _p_func)          INIT_WORK(_p_work, _p_func)
-#define OAL_INIT_DELAYED_WORK(_work, _func)      INIT_DELAYED_WORK(_work, _func)
-#define OAL_CREATE_SINGLETHREAD_WORKQUEUE(_name) create_singlethread_workqueue(_name)
+#define oal_init_work(_p_work, _p_func)          INIT_WORK(_p_work, _p_func)
+#define oal_init_delayed_work(_work, _func)      INIT_DELAYED_WORK(_work, _func)
+#define oal_create_singlethread_workqueue_m(_name) create_singlethread_workqueue(_name)
 #define oal_create_workqueue(name)               create_workqueue(name)
 
 /* 函数声明 */
@@ -99,7 +99,7 @@ OAL_STATIC OAL_INLINE oal_int32 oal_queue_delayed_system_work(oal_delayed_work *
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))
     return queue_delayed_work(system_wq, pst_work, delay);
 #else
-    OAL_WARN_ON(1);
+    oal_warn_on(1);
     return 1;
 #endif
 }

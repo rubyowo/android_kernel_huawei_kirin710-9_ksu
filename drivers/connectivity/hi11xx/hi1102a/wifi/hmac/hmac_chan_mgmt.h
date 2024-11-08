@@ -3,14 +3,14 @@
 #ifndef __HMAC_CHAN_MGMT_H__
 #define __HMAC_CHAN_MGMT_H__
 
+/* 1 其他头文件包含 */
+#include "hmac_vap.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif
 #endif
-
-/* 1 其他头文件包含 */
-#include "hmac_vap.h"
 
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_CHAN_MGMT_H
@@ -68,7 +68,6 @@ typedef struct {
     oal_uint32                   ul_channels;
     mac_freq_channel_map_stru    ast_channels[HMAC_MAX_20M_SUB_CH];
 } hmac_channel_list_stru;
-/* 频率信道索引映射关系 */
 
 /* 4 全局变量声明 */
 extern OAL_CONST mac_freq_channel_map_stru g_ast_freq_map_5g[MAC_CHANNEL_FREQ_5_BUTT];
@@ -95,7 +94,7 @@ extern oal_uint32 hmac_chan_select_channel_for_operation(mac_vap_stru *pst_mac_v
 extern oal_void hmac_chan_get_ext_chan_info(oal_uint8 uc_pri20_channel_idx,
                                             wlan_channel_bandwidth_enum_uint8 en_bandwidth,
                                             hmac_channel_list_stru *pst_chan_info);
-extern oal_uint32 hmac_chan_restart_network_after_switch(mac_vap_stru *pst_mac_vap);
+extern oal_void hmac_chan_restart_network_after_switch(mac_vap_stru *pst_mac_vap);
 extern oal_void hmac_chan_multi_switch_to_new_channel(mac_vap_stru *pst_mac_vap,
                                                       oal_uint8 uc_channel,
                                                       wlan_channel_bandwidth_enum_uint8 en_bandwidth);
@@ -106,26 +105,17 @@ extern oal_void hmac_chan_sync(mac_vap_stru *pst_mac_vap,
                                oal_uint8 uc_channel, wlan_channel_bandwidth_enum_uint8 en_bandwidth,
                                oal_bool_enum_uint8 en_switch_immediately);
 extern oal_uint32 hmac_dbac_status_notify(frw_event_mem_stru *pst_event_mem);
-#ifdef _PRE_WLAN_FEATURE_20_40_80_COEXIST
-extern oal_void hmac_chan_start_40M_recovery_timer(mac_vap_stru *pst_mac_vap);
-extern oal_uint32 hmac_chan_update_40M_intol_user(mac_vap_stru *pst_mac_vap,
-                                                  mac_user_stru *pst_mac_user,
-                                                  oal_bool_enum_uint8 en_40M_intol_bit);
-#endif
-
 extern oal_uint32 hmac_chan_start_bss(hmac_vap_stru *pst_hmac_vap,
                                       mac_channel_stru *pst_channel,
                                       wlan_protocol_enum_uint8 en_protocol);
-extern oal_uint32 hmac_chan_prepare_for_40M_recovery(hmac_vap_stru *pst_hmac_vap,
-                                                     wlan_channel_bandwidth_enum_uint8 en_bandwidth);
-extern oal_uint32 hmac_send_ht_notify_chan_width(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data);
+extern oal_void hmac_send_ht_notify_chan_width(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data);
 extern oal_void hmac_chan_initiate_switch_to_new_channel(mac_vap_stru *pst_mac_vap,
                                                          oal_uint8 uc_channel,
                                                          wlan_channel_bandwidth_enum_uint8 en_bandwidth);
 
 /* 11 inline函数定义 */
 
-OAL_STATIC OAL_INLINE oal_void hmac_chan_initiate_switch_to_20MHz_ap(mac_vap_stru *pst_mac_vap)
+OAL_STATIC OAL_INLINE oal_void hmac_chan_initiate_switch_to_20mhz_ap(mac_vap_stru *pst_mac_vap)
 {
     /* 设置VAP带宽模式为20MHz */
     pst_mac_vap->st_channel.en_bandwidth = WLAN_BAND_WIDTH_20M;
@@ -138,24 +128,12 @@ OAL_STATIC OAL_INLINE oal_void hmac_chan_initiate_switch_to_20MHz_ap(mac_vap_str
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_chan_scan_availability(mac_device_stru *pst_mac_device,
                                                                       mac_ap_ch_info_stru *pst_channel_info)
 {
-#ifdef _PRE_WLAN_FEATURE_DFS
-    if (OAL_FALSE == mac_dfs_get_dfs_enable(pst_mac_device)) {
-        return OAL_TRUE;
-    }
-
-    if ((MAC_CHAN_NOT_SUPPORT != pst_channel_info->en_ch_status) &&
-        (MAC_CHAN_BLOCK_DUE_TO_RADAR != pst_channel_info->en_ch_status)) {
-        return OAL_TRUE;
-    } else {
-        return OAL_FALSE;
-    }
-#else
     return OAL_TRUE;
-#endif
 }
 
 
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_chan_is_ch_op_allowed(hmac_eval_scan_report_stru *pst_chan_scan_report, oal_uint8 uc_chan_idx)
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_chan_is_ch_op_allowed(
+    hmac_eval_scan_report_stru *pst_chan_scan_report, oal_uint8 uc_chan_idx)
 {
     if (pst_chan_scan_report[uc_chan_idx].en_chan_op & HMAC_OP_ALLOWED) {
         return OAL_TRUE;

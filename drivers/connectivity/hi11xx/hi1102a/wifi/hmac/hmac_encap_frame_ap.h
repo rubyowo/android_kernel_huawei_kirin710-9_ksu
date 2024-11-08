@@ -3,12 +3,6 @@
 #ifndef __HMAC_ENCAP_FRAME_AP_H__
 #define __HMAC_ENCAP_FRAME_AP_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 其他头文件包含 */
 #include "oal_ext_if.h"
 #include "mac_vap.h"
@@ -48,7 +42,7 @@ typedef struct tag_hmac_auth_rsp_param_stru {
     oal_bool_enum_uint8                     en_is_wep_allowed;
     /* 记录认证的类型 */
     oal_uint16                              us_auth_type;
-    /* 记录函数处理前，user的关联状态*/
+    /* 记录函数处理前，user的关联状态 */
     mac_user_asoc_state_enum_uint8          en_user_asoc_state;
     oal_uint8                               uc_pad[3];
 } hmac_auth_rsp_param_stru;
@@ -62,6 +56,7 @@ typedef struct tag_hmac_auth_rsp_handle_stru {
     hmac_auth_rsp_param_stru st_auth_rsp_param;
     hmac_auth_rsp_fun st_auth_rsp_fun;
 } hmac_auth_rsp_handle_stru;
+#define WLAN_MGMT_CHALLENGE_TEXT 8
 /* 8 UNION定义 */
 /* 9 OTHERS定义 */
 
@@ -70,6 +65,8 @@ OAL_STATIC OAL_INLINE oal_void hmac_mgmt_encap_chtxt(oal_uint8 *puc_frame,
                                                      oal_uint16 *pus_auth_rsp_len,
                                                      hmac_user_stru *pst_hmac_user_sta)
 {
+    oal_int32 l_ret;
+
     /* Challenge Text Element                  */
     /* --------------------------------------- */
     /* |Element ID | Length | Challenge Text | */
@@ -80,39 +77,40 @@ OAL_STATIC OAL_INLINE oal_void hmac_mgmt_encap_chtxt(oal_uint8 *puc_frame,
     puc_frame[7] = WLAN_CHTXT_SIZE;
 
     /* 将challenge text拷贝到帧体中去 */
-    oal_memcopy(&puc_frame[8], puc_chtxt, WLAN_CHTXT_SIZE);
+    l_ret = memcpy_s(&puc_frame[WLAN_MGMT_CHALLENGE_TEXT],
+        (WLAN_MEM_NETBUF_SIZE2 - ((*pus_auth_rsp_len) + MAC_IE_HDR_LEN)), puc_chtxt, WLAN_CHTXT_SIZE);
 
     /* 认证帧长度增加Challenge Text Element的长度 */
     *pus_auth_rsp_len += (WLAN_CHTXT_SIZE + MAC_IE_HDR_LEN);
 
     /* 保存明文的challenge text */
-    oal_memcopy(pst_hmac_user_sta->auc_ch_text, &puc_frame[8], WLAN_CHTXT_SIZE);
+    l_ret += memcpy_s(pst_hmac_user_sta->auc_ch_text, WLAN_CHTXT_SIZE,
+        &puc_frame[WLAN_MGMT_CHALLENGE_TEXT], WLAN_CHTXT_SIZE);
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_mgmt_encap_chtxt::memcpy fail!");
+    }
 }
 
 /* 10 函数声明 */
-extern oal_uint16 hmac_encap_auth_rsp(mac_vap_stru *pst_mac_vap,
-                                      oal_netbuf_stru *pst_auth_rsp,
-                                      oal_netbuf_stru *pst_auth_req,
-                                      oal_uint8 *puc_chtxt);
+extern oal_uint16 hmac_encap_auth_rsp(
+    mac_vap_stru *pst_mac_vap,
+    oal_netbuf_stru *pst_auth_rsp,
+    oal_netbuf_stru *pst_auth_req,
+    oal_uint8 *puc_chtxt);
 #ifdef _PRE_WLAN_FEATURE_SAE
-extern oal_err_code_enum  hmac_encap_auth_rsp_get_user_idx(mac_vap_stru *pst_mac_vap,
-                                                oal_uint8   *puc_mac_addr,
-                                                oal_uint8    uc_mac_len,
-                                                oal_uint8    uc_is_seq1,
-                                                oal_uint8   *puc_auth_resend,
-                                                oal_uint16  *pus_user_index);
+extern oal_err_code_enum  hmac_encap_auth_rsp_get_user_idx(
+    mac_vap_stru *pst_mac_vap,
+    oal_uint8   *puc_mac_addr,
+    oal_uint8    uc_mac_len,
+    oal_uint8    uc_is_seq1,
+    oal_uint8   *puc_auth_resend,
+    oal_uint16  *pus_user_index);
 #endif
-extern oal_uint32 hmac_mgmt_encap_asoc_rsp_ap(mac_vap_stru *pst_mac_ap,
-                                              oal_uint8 *puc_sta_addr,
-                                              oal_uint16 us_assoc_id,
-                                              mac_status_code_enum_uint16 en_status_code,
-                                              oal_uint8 *puc_asoc_rsp,
-                                              oal_uint16 us_type);
-
-#ifdef __cplusplus
-#if __cplusplus
-}
-#endif
-#endif
-
+extern oal_uint32 hmac_mgmt_encap_asoc_rsp_ap(
+    mac_vap_stru *pst_mac_ap,
+    oal_uint8 *puc_sta_addr,
+    oal_uint16 us_assoc_id,
+    mac_status_code_enum_uint16 en_status_code,
+    oal_uint8 *puc_asoc_rsp,
+    oal_uint16 us_type);
 #endif /* end of hmac_encap_frame_ap.h */

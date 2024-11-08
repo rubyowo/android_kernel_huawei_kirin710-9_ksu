@@ -4,7 +4,7 @@
 #include "oal_types.h"
 #include "plat_debug.h"
 
-const oal_uint16 crc_16_table[256] = {
+const oal_uint16 g_crc_16_table[256] = {
     0,     4129,  8258,  12387, 16516, 20645, 24774, 28903, 33032, 37161,
     41290, 45419, 49548, 53677, 57806, 61935, 4657,  528,   12915, 8786,
     21173, 17044, 29431, 25302, 37689, 33560, 45947, 41818, 54205, 50076,
@@ -39,16 +39,16 @@ oal_uint16 cal_crc_16(const oal_uint8 *data, const oal_uint16 data_bit_num)
     oal_uint8 byte;
     oal_uint16 remainder = 0xFFFF;
 
-    /* 入参无效，返回一个无效值*/
+    /* 入参无效，返回一个无效值 */
     if ((data == NULL) || (data_bit_num == 0)) {
-        PS_PRINT_ERR("input parameter error\n");
+        ps_print_err("input parameter error\n");
         return 0;
     }
 
     /* Divide the message by the polynomial, a byte at a time. */
     for (offset = 0; offset < data_bit_num; offset++) {
         byte = (remainder >> (16 - 8)) ^ data[offset];
-        remainder  = crc_16_table[byte] ^ (remainder << 8);
+        remainder  = g_crc_16_table[byte] ^ (remainder << 8);
     }
     /* The final remainder is the CRC result. */
     return (remainder ^ 0x0000);

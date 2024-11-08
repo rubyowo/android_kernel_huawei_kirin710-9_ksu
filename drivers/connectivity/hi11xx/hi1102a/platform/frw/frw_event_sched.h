@@ -2,6 +2,11 @@
 
 #ifndef __FRW_EVENT_SCHED_H__
 #define __FRW_EVENT_SCHED_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "oal_ext_if.h"
@@ -12,7 +17,7 @@
 
 /* 宏定义 */
 /* 获取事件队列中已经缓存的事件个数 */
-#define FRW_EVENT_QUEUE_GET_PENDING_EVENTS_NUM(_pst_event_queue) oal_queue_get_length(&(_pst_event_queue)->st_queue)
+#define frw_event_queue_get_pending_events_num(_pst_event_queue) oal_queue_get_length(&(_pst_event_queue)->st_queue)
 
 /* 枚举定义 */
 /*
@@ -108,20 +113,19 @@ extern oal_void frw_event_sched_resume_queue(frw_event_sched_queue_stru *pst_sch
  */
 OAL_STATIC OAL_INLINE oal_void frw_event_sched_reset_weight(frw_event_sched_queue_stru *pst_sched_queue)
 {
-    oal_dlist_head_stru *pst_list;
-    frw_event_queue_stru *pst_event_queue;
+    oal_dlist_head_stru *pst_list = NULL;
+    frw_event_queue_stru *pst_event_queue = NULL;
 
-    if (OAL_UNLIKELY(pst_sched_queue == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_sched_queue == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
     /* 遍历整个调度链表 */
-    OAL_DLIST_SEARCH_FOR_EACH(pst_list, &pst_sched_queue->st_head)
+    oal_dlist_search_for_each(pst_list, &pst_sched_queue->st_head)
     {
         /* 获取调度链表中的一个事件队列 */
-        pst_event_queue = OAL_DLIST_GET_ENTRY(pst_list, frw_event_queue_stru, st_list);
-
+        pst_event_queue = oal_dlist_get_entry(pst_list, frw_event_queue_stru, st_list);
         /* 只是重置恢复状态VAP的权重值 */
         if (pst_event_queue->en_vap_state == FRW_VAP_STATE_RESUME) {
             /* 重置事件队列的权重计数器 */
@@ -141,11 +145,11 @@ OAL_STATIC OAL_INLINE oal_void frw_event_sched_reset_weight(frw_event_sched_queu
  */
 OAL_STATIC OAL_INLINE oal_void *frw_event_schedule(frw_event_sched_queue_stru *pst_sched_queue)
 {
-    oal_void *p_event;
+    oal_void *p_event = NULL;
     frw_event_sched_queue_stru *pst_queue = NULL;
 
-    if (OAL_UNLIKELY(pst_sched_queue == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_sched_queue == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -156,8 +160,7 @@ OAL_STATIC OAL_INLINE oal_void *frw_event_schedule(frw_event_sched_queue_stru *p
     if (!oal_dlist_is_empty(&pst_queue->st_head)) {
         /* 从调度类中挑选下一个待处理的事件 */
         p_event = frw_event_sched_pick_next_event_queue_wrr(pst_queue);
-
-        if (p_event) {
+        if (p_event != NULL) {
             return p_event;
         }
     }
@@ -168,13 +171,17 @@ OAL_STATIC OAL_INLINE oal_void *frw_event_schedule(frw_event_sched_queue_stru *p
     if (!oal_dlist_is_empty(&pst_queue->st_head)) {
         /* 从调度类中挑选下一个待处理的事件 */
         p_event = frw_event_sched_pick_next_event_queue_wrr(pst_queue);
-
-        if (p_event) {
+        if (p_event != NULL) {
             return p_event;
         }
     }
 
     return OAL_PTR_NULL;
 }
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of frw_event_sched.h */

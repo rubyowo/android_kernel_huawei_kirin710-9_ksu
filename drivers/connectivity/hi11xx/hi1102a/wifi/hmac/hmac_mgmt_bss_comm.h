@@ -3,12 +3,6 @@
 #ifndef __HMAC_MGMT_BSS_COMM_H__
 #define __HMAC_MGMT_BSS_COMM_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 其他头文件包含 */
 #include "mac_frame.h"
 #include "dmac_ext_if.h"
@@ -16,6 +10,12 @@ extern "C" {
 
 #ifdef _PRE_WLAN_1102A_CHR
 #include "hmac_dfx.h"
+#endif
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
 #endif
 
 #undef THIS_FILE_ID
@@ -30,9 +30,9 @@ extern "C" {
 #define HMAC_CSI_SEND_BUF_LEN 3000
 #endif
 
-#define HMAC_BA_SIZE_1   1  // BA聚合个数为1
-#define HMAC_BA_SIZE_2   2  // BA聚合个数为2
-#define HMAC_BA_SIZE_64  64 // BA聚合个数为64
+#define HMAC_BA_SIZE_1  1  // BA聚合个数为1
+#define HMAC_BA_SIZE_2  2  // BA聚合个数为2
+#define HMAC_BA_SIZE_64 64 // BA聚合个数为64
 /* 3 枚举定义 */
 /* 4 全局变量声明 */
 extern oal_uint8 g_auc_avail_protocol_mode[WLAN_PROTOCOL_BUTT][WLAN_PROTOCOL_BUTT];
@@ -64,13 +64,16 @@ extern oal_uint16 hmac_mgmt_encap_delba(hmac_vap_stru *pst_vap,
                                         oal_uint8 reason);
 extern oal_uint32 hmac_mgmt_rx_addba_req(hmac_vap_stru *pst_hmac_vap,
                                          hmac_user_stru *pst_hmac_user,
-                                         oal_uint8 *puc_payload);
+                                         oal_uint8 *puc_payload,
+                                         oal_uint32 frame_body_len);
 extern oal_uint32 hmac_mgmt_rx_addba_rsp(hmac_vap_stru *pst_hmac_vap,
                                          hmac_user_stru *pst_hmac_user,
-                                         oal_uint8 *puc_payload);
+                                         oal_uint8 *puc_payload,
+                                         oal_uint32 frame_body_len);
 extern oal_uint32 hmac_mgmt_rx_delba(hmac_vap_stru *pst_hmac_vap,
                                      hmac_user_stru *pst_hmac_user,
-                                     oal_uint8 *puc_payload);
+                                     oal_uint8 *puc_payload,
+                                     oal_uint32 frame_body_len);
 extern oal_uint32 hmac_mgmt_tx_addba_req(hmac_vap_stru *pst_hmac_vap,
                                          hmac_user_stru *pst_hmac_user,
                                          mac_action_mgmt_args_stru *pst_action_args);
@@ -79,9 +82,8 @@ extern oal_uint32 hmac_mgmt_tx_addba_rsp(hmac_vap_stru *pst_hmac_vap,
                                          hmac_ba_rx_stru *pst_ba_rx_info,
                                          oal_uint8 uc_tid,
                                          oal_uint8 uc_status);
-extern oal_uint32 hmac_mgmt_tx_delba(hmac_vap_stru *pst_hmac_vap,
-                                     hmac_user_stru *pst_hmac_user,
-                                     mac_action_mgmt_args_stru *pst_action_args);
+extern oal_void hmac_mgmt_tx_delba(
+    hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, mac_action_mgmt_args_stru *pst_action_args);
 extern oal_uint32 hmac_mgmt_tx_addba_timeout(oal_void *p_arg);
 extern oal_uint32 hmac_mgmt_tx_ampdu_start(hmac_vap_stru *pst_hmac_vap,
                                            hmac_user_stru *pst_hmac_user,
@@ -89,20 +91,6 @@ extern oal_uint32 hmac_mgmt_tx_ampdu_start(hmac_vap_stru *pst_hmac_vap,
 extern oal_uint32 hmac_mgmt_tx_ampdu_end(hmac_vap_stru *pst_hmac_vap,
                                          hmac_user_stru *pst_hmac_user,
                                          mac_priv_req_args_stru *pst_priv_req);
-
-#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
-extern oal_uint32 hmac_sa_query_interval_timeout(oal_void *p_arg);
-extern oal_void hmac_send_sa_query_rsp(mac_vap_stru *pst_mac_vap,
-                                       oal_uint8 *pst_hdr,
-                                       oal_bool_enum_uint8 en_is_protected);
-extern oal_uint32 hmac_start_sa_query(mac_vap_stru *pst_mac_vap,
-                                      hmac_user_stru *pst_hmac_user,
-                                      oal_bool_enum_uint8 en_is_protected);
-extern oal_uint32 hmac_pmf_check_err_code(mac_user_stru *pst_user_base_info,
-                                          oal_bool_enum_uint8 en_is_protected,
-                                          oal_uint8 *puc_mac_hdr);
-
-#endif
 extern oal_uint32 hmac_tx_mgmt_send_event(mac_vap_stru *pst_vap,
                                           oal_netbuf_stru *pst_mgmt_frame,
                                           oal_uint16 us_frame_len);
@@ -121,34 +109,17 @@ extern oal_void hmac_set_user_protocol_mode(mac_vap_stru *pst_mac_vap, hmac_user
 extern oal_uint32 hmac_mgmt_reset_psm(mac_vap_stru *pst_vap, oal_uint16 us_user_id);
 extern oal_uint32 hmac_keepalive_set_interval(mac_vap_stru *pst_mac_vap, oal_uint16 us_keepalive_interval);
 extern oal_uint32 hmac_keepalive_set_limit(mac_vap_stru *pst_mac_vap, oal_uint32 us_keepalive_limit);
-
-#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
-extern oal_void hmac_rx_sa_query_req(hmac_vap_stru *pst_hmac_vap,
-                                     oal_netbuf_stru *pst_netbuf,
-                                     oal_bool_enum_uint8 en_is_protected);
-extern oal_void hmac_rx_sa_query_rsp(hmac_vap_stru *pst_hmac_vap,
-                                     oal_netbuf_stru *pst_netbuf,
-                                     oal_bool_enum_uint8 en_is_protected);
-#endif
 #ifdef _PRE_WLAN_FEATURE_OPMODE_NOTIFY
 extern oal_uint32 hmac_mgmt_rx_opmode_notify_frame(hmac_vap_stru *pst_hmac_vap,
                                                    oal_netbuf_stru *pst_netbuf);
 #endif
-
-#ifdef _PRE_WLAN_FEATURE_20_40_80_COEXIST
-extern oal_void hmac_rx_notify_channel_width(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_netbuf);
-#endif
-
 extern oal_void hmac_send_mgmt_to_host(hmac_vap_stru *pst_hmac_vap,
                                        oal_netbuf_stru *puc_buf,
                                        oal_uint16 us_len,
                                        oal_int l_freq);
 
-#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P) || defined(_PRE_WLAN_FEATURE_HILINK)
+#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P)
 extern oal_void hmac_rx_mgmt_send_to_host(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_netbuf);
-#endif
-#ifdef _PRE_WLAN_FEATURE_HS20
-extern oal_uint32 hmac_interworking_check(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_param);
 #endif
 extern oal_uint32 hmac_mgmt_tx_event_status(mac_vap_stru *pst_mac_vap,
                                             oal_uint8 uc_len,
@@ -172,9 +143,6 @@ extern oal_uint32 hmac_proc_vht_cap_ie(mac_vap_stru *pst_mac_vap,
                                        hmac_user_stru *pst_hmac_user,
                                        oal_uint8 *puc_vht_cap_ie);
 #ifdef _PRE_WLAN_FEATURE_LOCATION_RAM
-oal_uint32 hmac_huawei_action_process(hmac_vap_stru *pst_hmac_vap,
-                                      oal_netbuf_stru *pst_netbuf,
-                                      oal_uint8 uc_type);
 extern oal_uint32 drv_netlink_location_send(void *buff, oal_uint32 ul_len);
 #endif
 

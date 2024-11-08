@@ -5,12 +5,11 @@
 #include "oal_net.h"
 
 #include "oal_schedule.h"
-#include "oal_workqueue.h"
 
 #include "oal_kernel_file.h"
 #include "securec.h"
 
-char *hi11xx_loglevel_format[] = {
+char *g_hi11xx_loglevel_format[] = {
     KERN_ERR "[HI11XX]"
     "[E]",
     KERN_WARNING "[HI11XX]"
@@ -23,21 +22,21 @@ char *hi11xx_loglevel_format[] = {
     "[V]"
 };
 
-oal_int32 hi11xx_loglevel = HI11XX_LOG_INFO;
-oal_debug_module_param(hi11xx_loglevel, int, S_IRUGO | S_IWUSR);
+oal_int32 g_hi11xx_loglevel = HI11XX_LOG_INFO;
+oal_debug_module_param(g_hi11xx_loglevel, int, S_IRUGO | S_IWUSR);
 
 #ifdef _PRE_OAL_FEATURE_KEY_PROCESS_TRACE
-OAL_DEFINE_SPINLOCK(dft_head_lock);
-OAL_LIST_CREATE_HEAD(dft_head);
-oal_module_symbol(dft_head_lock);
-oal_module_symbol(dft_head);
+oal_define_spinlock(g_dft_head_lock);
+oal_list_create_head(g_dft_head);
+oal_module_symbol(g_dft_head_lock);
+oal_module_symbol(g_dft_head);
 
 #ifdef _PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT
 #define KERN_PRINT BIT0
 #define BUFF_PRINT BIT1
 
-OAL_STATIC oal_uint32 dft_print_mask = (KERN_PRINT | BUFF_PRINT);
-oal_debug_module_param(dft_print_mask, uint, S_IRUGO | S_IWUSR);
+OAL_STATIC oal_uint32 g_dft_print_mask = (KERN_PRINT | BUFF_PRINT);
+oal_debug_module_param(g_dft_print_mask, uint, S_IRUGO | S_IWUSR);
 OAL_STATIC oal_int32 oal_dft_dump_key_info(char *buf, oal_int32 key_type, oal_uint32 print_tag)
 {
     oal_int32 ret;
@@ -51,30 +50,29 @@ OAL_STATIC oal_int32 oal_dft_dump_key_info(char *buf, oal_int32 key_type, oal_ui
     struct rtc_time first_tm;
     struct rtc_time last_tm;
 
-    oal_list_entry_stru *pst_pos;
-    oal_dft_trace_item *pst_dft_item;
+    oal_list_entry_stru *pst_pos = NULL;
+    oal_dft_trace_item *pst_dft_item = NULL;
 
-    oal_spin_lock_irq_save(&dft_head_lock, &flags);
-    OAL_LIST_SEARCH_FOR_EACH(pst_pos, &dft_head)
+    oal_spin_lock_irq_save(&g_dft_head_lock, &flags);
+    oal_list_search_for_each(pst_pos, &g_dft_head)
     {
-        oal_spin_unlock_irq_restore(&dft_head_lock, &flags);
+        oal_spin_unlock_irq_restore(&g_dft_head_lock, &flags);
         last_time_flag = 0;
-        pst_dft_item = OAL_LIST_GET_ENTRY(pst_pos, oal_dft_trace_item, list);
-
+        pst_dft_item = oal_list_get_entry(pst_pos, oal_dft_trace_item, list);
         if (key_type != pst_dft_item->dft_type) {
-            oal_spin_lock_irq_save(&dft_head_lock, &flags);
+            oal_spin_lock_irq_save(&g_dft_head_lock, &flags);
             continue;
         }
 
         memset_s(&first_tm, OAL_SIZEOF(struct rtc_time), 0, OAL_SIZEOF(struct rtc_time));
         memcpy_s(&first_tv, OAL_SIZEOF(struct timeval), &pst_dft_item->first_timestamp, OAL_SIZEOF(struct timeval));
-        first_tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+        first_tv.tv_sec -= sys_tz.tz_minuteswest * OAL_SEC_PER_MIN;
         rtc_time_to_tm(first_tv.tv_sec, &first_tm);
 
         memset_s(&last_tm, OAL_SIZEOF(struct rtc_time), 0, OAL_SIZEOF(struct rtc_time));
         memcpy_s(&last_tv, OAL_SIZEOF(struct timeval), &pst_dft_item->last_timestamp, OAL_SIZEOF(struct timeval));
         if (last_tv.tv_sec) {
-            last_tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+            last_tv.tv_sec -= sys_tz.tz_minuteswest * OAL_SEC_PER_MIN;
             rtc_time_to_tm(last_tv.tv_sec, &last_tm);
             last_time_flag = 1;
         }
@@ -96,7 +94,6 @@ OAL_STATIC oal_int32 oal_dft_dump_key_info(char *buf, oal_int32 key_type, oal_ui
                                      first_tm.tm_mday,
                                      first_tm.tm_hour, first_tm.tm_min, first_tm.tm_sec,
                                      pst_dft_item->trace_count);
-
                     if (ret < 0) {
                         OAL_IO_PRINT("log str format err line[%d]\n", __LINE__);
                         return -OAL_EFAIL;
@@ -136,9 +133,9 @@ OAL_STATIC oal_int32 oal_dft_dump_key_info(char *buf, oal_int32 key_type, oal_ui
             }
         }
 
-        oal_spin_lock_irq_save(&dft_head_lock, &flags);
+        oal_spin_lock_irq_save(&g_dft_head_lock, &flags);
     }
-    oal_spin_unlock_irq_restore(&dft_head_lock, &flags);
+    oal_spin_unlock_irq_restore(&g_dft_head_lock, &flags);
 
     return count;
 }
@@ -184,10 +181,10 @@ OAL_STATIC ssize_t oal_dft_get_key_info(struct kobject *dev, struct kobj_attribu
         return 0;
     }
 
-    dft_mask = dft_print_mask & (KERN_PRINT | BUFF_PRINT);
-    dft_print_mask = dft_mask;
+    dft_mask = g_dft_print_mask & (KERN_PRINT | BUFF_PRINT);
+    g_dft_print_mask = dft_mask;
 
-    if (oal_list_is_empty(&dft_head)) {
+    if (oal_list_is_empty(&g_dft_head)) {
         printk(KERN_INFO "key info empty\n");
         ret = snprintf_s(buf, PAGE_SIZE, PAGE_SIZE - 1, "key info empty\n");
         if (ret < 0) {
@@ -211,7 +208,7 @@ OAL_STATIC ssize_t oal_dft_get_key_info(struct kobject *dev, struct kobj_attribu
 
     return count;
 }
-OAL_STATIC struct kobj_attribute dev_attr_key_info =
+OAL_STATIC struct kobj_attribute g_dev_attr_key_info =
     __ATTR(key_info, S_IRUGO, oal_dft_get_key_info, NULL);
 
 #ifdef HI110X_DRV_VERSION
@@ -248,21 +245,21 @@ OAL_STATIC ssize_t oal_dft_get_version_info(struct kobject *dev, struct kobj_att
 
     return ret;
 }
-OAL_STATIC struct kobj_attribute dev_attr_version =
+OAL_STATIC struct kobj_attribute g_dev_attr_version =
     __ATTR(version, S_IRUGO, oal_dft_get_version_info, NULL);
 #endif
 
-OAL_STATIC struct attribute *dft_sysfs_entries[] = {
-    &dev_attr_key_info.attr,
+OAL_STATIC struct attribute *g_dft_sysfs_entries[] = {
+    &g_dev_attr_key_info.attr,
 #ifdef HI110X_DRV_VERSION
-    &dev_attr_version.attr,
+    &g_dev_attr_version.attr,
 #endif
     NULL
 };
 
-OAL_STATIC struct attribute_group dft_attribute_group = {
+OAL_STATIC struct attribute_group g_dft_attribute_group = {
     .name = "dft",
-    .attrs = dft_sysfs_entries,
+    .attrs = g_dft_sysfs_entries,
 };
 
 OAL_STATIC oal_int32 dft_sysfs_entry_init(oal_void)
@@ -275,7 +272,7 @@ OAL_STATIC oal_int32 dft_sysfs_entry_init(oal_void)
         return -OAL_EFAIL;
     }
 
-    ret = sysfs_create_group(pst_root_object, &dft_attribute_group);
+    ret = sysfs_create_group(pst_root_object, &g_dft_attribute_group);
     if (ret) {
         OAL_IO_PRINT("{frw_sysfs_entry_init::sysfs create group failed!}\n");
         return ret;
@@ -283,15 +280,13 @@ OAL_STATIC oal_int32 dft_sysfs_entry_init(oal_void)
     return OAL_SUCC;
 }
 
-OAL_STATIC oal_int32 dft_sysfs_entry_exit(oal_void)
+OAL_STATIC oal_void dft_sysfs_entry_exit(oal_void)
 {
     oal_kobject *pst_root_object = NULL;
     pst_root_object = oal_get_sysfs_root_object();
     if (pst_root_object != NULL) {
-        sysfs_remove_group(pst_root_object, &dft_attribute_group);
+        sysfs_remove_group(pst_root_object, &g_dft_attribute_group);
     }
-
-    return OAL_SUCC;
 }
 #endif
 

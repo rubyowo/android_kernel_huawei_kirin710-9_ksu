@@ -25,7 +25,7 @@ typedef signed long oal_long;    /* 数据前缀:i */
 #define NULL OAL_PTR_NULL
 #endif
 
-#define OAL_REFERENCE(data) ((void)(uintptr_t)(data))
+#define oal_reference(data) ((void)(uintptr_t)(data))
 
 /* linux错误码 */
 #define OAL_EFAIL     1   /* 内核通用错误返回值 -1 */
@@ -110,11 +110,18 @@ typedef oal_uint32 err_code_enum_uint32;
 typedef enum {
     OAL_SUCC = 0, /* 成功，没有异常 */
 
+    OAL_SUCC_GO_ON = 1, /* 成功, 继续执行 */
     /* plat pm exception */
     OAL_ERR_CODE_PM_BASE = 10,
     OAL_ERR_CODE_ALREADY_OPEN = (OAL_ERR_CODE_PM_BASE + 0),       /* 已经打开 */
     OAL_ERR_CODE_ALREADY_CLOSE = (OAL_ERR_CODE_PM_BASE + 1),      /* 已经关闭 */
     OAL_ERR_CODE_FOBID_CLOSE_DEVICE = (OAL_ERR_CODE_PM_BASE + 2), /* APUT不允许关闭device */
+    OAL_ERR_CODE_WAKEUP_PROCESSING = (OAL_ERR_CODE_PM_BASE + 3),   /* 正在唤醒过程中 */
+    OAL_ERR_CODE_SEMA_TIMEOUT = (OAL_ERR_CODE_PM_BASE + 4),       /* 信号量获取失败 */
+    OAL_ERR_CODE_WAKEUP_FAIL_PROC = (OAL_ERR_CODE_PM_BASE + 5),   /* 做唤醒失败处理 */
+    OAL_ERR_CODE_WAKEUP_RETRY = (OAL_ERR_CODE_PM_BASE + 6),       /* 做唤醒重试处理 */
+    OAL_ERR_CODE_SLEEP_FAIL = (OAL_ERR_CODE_PM_BASE + 7),         /* 睡眠失败 */
+    OAL_ERR_CODE_SLEEP_FORBID = (OAL_ERR_CODE_PM_BASE + 8),       /* 不允许睡眠 */
 
     /* system exception */
     OAL_ERR_CODE_SYS_BASE = 100,

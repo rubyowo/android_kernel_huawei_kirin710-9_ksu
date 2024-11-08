@@ -1,11 +1,4 @@
 
-
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /*****************************************************************************
   1 头文件包含
 *****************************************************************************/
@@ -24,9 +17,7 @@ extern "C" {
 #include "oal_kernel_file.h"
 
 #elif (defined(_PRE_PRODUCT_ID_HI110X_DEV))
-/*TBD 以上头文件待回收*/
 #include "oam_log.h"
-#include "oal_sdio.h"
 #include "oal_main.h"
 #include "uart.h"
 #include "oam_msgsendrecv.h"
@@ -34,7 +25,6 @@ extern "C" {
 #include "uart.h"
 
 #include "oal_hcc_slave_if.h"
-#include "pm_extern.h"
 
 #include "hal_ext_if.h"
 
@@ -80,48 +70,35 @@ extern "C" {
 *****************************************************************************/
 oal_void platform_module_exit(oal_uint16 us_bitmap);
 oal_void builder_module_exit(oal_uint16 us_bitmap);
-
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
 
-
 oal_void builder_module_exit(oal_uint16 us_bitmap)
 {
 #if ((!defined(_PRE_PRODUCT_ID_HI110X_DEV)) || (_PRE_OS_VERSION_WIN32_RAW == _PRE_OS_VERSION))
-    #if (!defined(_PRE_PRODUCT_ID_HI110X_DEV))
-        if (BIT8 & us_bitmap)
-        {
+#if (!defined(_PRE_PRODUCT_ID_HI110X_DEV))
+        if (BIT8 & us_bitmap) {
             wal_main_exit();
         }
-        if (BIT7 & us_bitmap)
-        {
+        if (BIT7 & us_bitmap) {
             hmac_main_exit();
         }
-
-    #elif (!defined(_PRE_PRODUCT_ID_HI110X_HOST))
-
-        #ifdef _PRE_WLAN_ALG_ENABLE
-            if (BIT6 & us_bitmap)
-            {
+#elif (!defined(_PRE_PRODUCT_ID_HI110X_HOST))
+#ifdef _PRE_WLAN_ALG_ENABLE
+            if (BIT6 & us_bitmap) {
                 alg_main_exit();
             }
-        #endif
-
-        if (BIT5 & us_bitmap)
-        {
+#endif
+        if (BIT5 & us_bitmap) {
             dmac_main_exit();
         }
-        if (BIT4 & us_bitmap)
-        {
+        if (BIT4 & us_bitmap) {
             hal_main_exit();
         }
-
         platform_module_exit(us_bitmap);
-    #endif
-
 #endif
-
+#endif
     return;
 }
 
@@ -137,21 +114,16 @@ oal_uint32 host_test_get_chip_msg(oal_void)
     oal_netbuf_stru       *pst_netbuf;
     dmac_tx_event_stru    *pst_ctx_event;
     oal_uint8             *pst_mac_rates_11g;
-    /** 待补充 ***/
-
-
-    pst_event_mem = FRW_EVENT_ALLOC(OAL_SIZEOF(dmac_tx_event_stru));
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
-    {
-        OAL_IO_PRINT("host_test_get_chip_msg: hmac_init_event_process FRW_EVENT_ALLOC result = OAL_PTR_NULL.\n");
+    pst_event_mem = frw_event_alloc_m(OAL_SIZEOF(dmac_tx_event_stru));
+    if (oal_unlikely(pst_event_mem == OAL_PTR_NULL)) {
+        OAL_IO_PRINT("host_test_get_chip_msg: hmac_init_event_process frw_event_alloc result = OAL_PTR_NULL.\n");
         return OAL_FAIL;
     }
 
     /* 申请netbuf内存 */
-    pst_netbuf = OAL_MEM_NETBUF_ALLOC(OAL_NORMAL_NETBUF, WLAN_MEM_NETBUF_SIZE2, OAL_NETBUF_PRIORITY_MID);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_netbuf))
-    {
-        OAL_IO_PRINT("host_test_get_chip_msg: hmac_init_event_process OAL_MEM_NETBUF_ALLOC result = OAL_PTR_NULL.\n");
+    pst_netbuf = oal_mem_netbuf_alloc(OAL_NORMAL_NETBUF, WLAN_MEM_NETBUF_SIZE2, OAL_NETBUF_PRIORITY_MID);
+    if (oal_unlikely(pst_netbuf == OAL_PTR_NULL)) {
+        OAL_IO_PRINT("host_test_get_chip_msg: hmac_init_event_process oal_mem_netbuf_alloc result = OAL_PTR_NULL.\n");
         return OAL_FAIL;
     }
 
@@ -163,10 +135,9 @@ oal_uint32 host_test_get_chip_msg(oal_void)
 
     ul_dev_id = (oal_uint32) oal_queue_dequeue(&(g_st_mac_res.st_dev_res.st_queue));
     /* 0为无效值 */
-    if (0 == ul_dev_id)
-    {
+    if (ul_dev_id == 0) {
         OAL_IO_PRINT("host_test_get_chip_msg:oal_queue_dequeue return 0!");
-        FRW_EVENT_FREE(pst_event_mem);
+        frw_event_free_m(pst_event_mem);
         return OAL_FAIL;
     }
     pst_chip->auc_device_id[0] = (oal_uint8)(ul_dev_id - 1);
@@ -178,21 +149,15 @@ oal_uint32 host_test_get_chip_msg(oal_void)
 
     /* 由hal_chip_get_version函数得到,1102 02需要SOC提供寄存器后实现 */
     pst_chip->ul_chip_ver = WLAN_CHIP_VERSION;
-
     pst_chip->pst_chip_stru = OAL_PTR_NULL;
-
-
     ul_return = hmac_init_event_process(pst_event_mem);
-    if(OAL_UNLIKELY(ul_return != OAL_SUCC))
-    {
+    if (oal_unlikely(ul_return != OAL_SUCC)) {
         OAL_IO_PRINT("host_test_get_chip_msg: hmac_init_event_process  ul_return != OAL_SUCC\n");
-        FRW_EVENT_FREE(pst_event_mem);
+        frw_event_free_m(pst_event_mem);
         oal_netbuf_free(pst_netbuf);
         return OAL_FAIL;
     }
-
     return OAL_SUCC;
-
 }
 #endif
 #if  (defined(HI110x_EDA))
@@ -203,18 +168,16 @@ oal_uint32 device_test_create_cfg_vap(oal_void)
     frw_event_mem_stru *pst_event_mem;
     frw_event_stru     *pst_event;
 
-    pst_event_mem = FRW_EVENT_ALLOC(0);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
-    {
-        OAL_IO_PRINT("device_test_create_cfg_vap: hmac_init_event_process FRW_EVENT_ALLOC result = OAL_PTR_NULL.\n");
+    pst_event_mem = frw_event_alloc_m(0);
+    if (oal_unlikely(pst_event_mem == OAL_PTR_NULL)) {
+        OAL_IO_PRINT("device_test_create_cfg_vap: hmac_init_event_process frw_event_alloc_m result = OAL_PTR_NULL.\n");
         return OAL_FAIL;
     }
 
     ul_return = dmac_init_event_process(pst_event_mem);
-    if (OAL_SUCC != ul_return)
-    {
+    if (ul_return != OAL_SUCC) {
         OAL_IO_PRINT("device_test_create_cfg_vap: dmac_init_event_process result = fale.\n");
-        FRW_EVENT_FREE(pst_event_mem);
+        frw_event_free_m(pst_event_mem);
         return OAL_FAIL;
     }
 
@@ -222,102 +185,70 @@ oal_uint32 device_test_create_cfg_vap(oal_void)
     pst_event->st_event_hdr.uc_device_id = 0;
 
     ul_return = dmac_cfg_vap_init_event(pst_event_mem);
-    if (OAL_SUCC != ul_return)
-    {
-        FRW_EVENT_FREE(pst_event_mem);
+    if (ul_return != OAL_SUCC) {
+        frw_event_free_m(pst_event_mem);
         return ul_return;
     }
 
-    FRW_EVENT_FREE(pst_event_mem);
-
+    frw_event_free_m(pst_event_mem);
     return OAL_SUCC;
 }
 #endif
 
 #if ((defined(_PRE_PRODUCT_ID_HI110X_DEV))||(_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID))
 
-
 oal_void platform_module_exit(oal_uint16 us_bitmap)
 {
-    if (BIT3 & us_bitmap)
-    {
+    if (BIT3 & us_bitmap) {
         frw_main_exit();
     }
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-        /* 02目前不需要SDT初始化 TBD */
-        if (BIT2 & us_bitmap)
-        {
-            sdt_drv_main_exit();
-        }
-    #endif
 #endif
-    if (BIT1 & us_bitmap)
-    {
+    if (BIT1 & us_bitmap) {
         oam_main_exit();
     }
-    if (BIT0 & us_bitmap)
-    {
+    if (BIT0 & us_bitmap) {
         oal_main_exit();
     }
     return;
 }
 
 
-
-
 oal_int32 platform_module_init(oal_void)
 {
-    oal_int32  l_return   = OAL_FAIL;
+    oal_int32  l_return;
     oal_uint16  us_bitmap  = 0;
 
     // 这里考虑共存dfr恢复场景，需要清除上一次异常时候的状态标志
-    if (dcxo_support() == TRUE) {
+    if (dcxo_support()) {
         dcxo_flg_clean(SUB_WIFI);
     }
-
     l_return = oal_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("platform_module_init: oal_main_init return error code: %d\r\n", l_return);
         return l_return;
     }
 #if (!defined(HI110x_EDA))
     l_return = oam_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("platform_module_init: oam_main_init return error code: %d\r\n", l_return);
         us_bitmap = BIT0;
         builder_module_exit(us_bitmap);/*lint !e522*/
         return l_return;
     }
-
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    /* 02目前不需要SDT初始化 TBD */
-        l_return = sdt_drv_main_init();
-        if (OAL_SUCC != l_return)
-        {
-            OAL_IO_PRINT("platform_module_init: sdt_drv_main_init return error code: %d\r\n", l_return);
-            us_bitmap = BIT0|BIT1;
-            builder_module_exit(us_bitmap);
-            return l_return;
-        }
-    #endif
 #endif
 #endif
-
     l_return = frw_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("platform_module_init: frw_main_init return error code: %d\r\n", l_return);
         us_bitmap = BIT0 | BIT1 | BIT2;
         builder_module_exit(us_bitmap);/*lint !e522*/
         return l_return;
     }
 
-    /*启动完成后，输出打印*/
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("platform_module_init:: platform_main_init finish!\r\n");
 
     return OAL_SUCC;
@@ -326,31 +257,24 @@ oal_int32 platform_module_init(oal_void)
 
 oal_int32  device_module_init(oal_void)
 {
-    oal_int32  l_return  = OAL_FAIL;
+    oal_int32  l_return;
     oal_uint16 us_bitmap = 0;
-
-
     l_return = hal_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("device_module_init: hal_main_init return error code: %d", l_return);
         return l_return;
     }
-
-
     l_return = dmac_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("device_module_init: dmac_main_init return error code: %d", l_return);
         us_bitmap = BIT4;
         builder_module_exit(us_bitmap);/*lint !e522*/
         return l_return;
     }
 #if (!defined(HI110x_EDA))
-#if defined(_PRE_WLAN_ALG_ENABLE) || defined(_PRE_WLAN_CHIP_TEST_ALG)
+#if defined(_PRE_WLAN_ALG_ENABLE) 
     l_return = alg_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("device_module_init: alg_main_init return error code : %d", l_return);
         us_bitmap = BIT4 | BIT5;
         builder_module_exit(us_bitmap);/*lint !e522*/
@@ -358,33 +282,24 @@ oal_int32  device_module_init(oal_void)
     }
 #endif
 #endif
-
-
-    /*启动完成后，输出打印*/
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("device_module_init:: device_module_init finish!\r\n");
-
     return OAL_SUCC;
 }
 #endif
 #if ((defined(_PRE_PRODUCT_ID_HI110X_HOST))||(_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID))
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
 
-extern oal_uint32 band_5g_enabled;
-oal_uint32 hwifi_config_host_global_dts_param(oal_void)
+oal_void hwifi_config_host_global_dts_param(oal_void)
 {
-    /**************************** 获取5g开关 ******************************/
-    band_5g_enabled = !!hwifi_get_init_value(CUS_TAG_DTS, WLAN_CFG_DTS_BAND_5G_ENABLE);
-
-    return OAL_SUCC;
+    /* 获取5g开关 */
+    mac_set_band_5g_enabled(!!hwifi_get_init_value(CUS_TAG_DTS, WLAN_CFG_DTS_BAND_5G_ENABLE));
 }
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
-extern oal_int32  wlan_pm_open(oal_void);
-extern oal_uint32 wlan_pm_close(oal_void);
-
 oal_int32  host_module_init(oal_void)
 {
-    oal_int32  l_return = OAL_FAIL;
+    oal_int32  l_return;
     oal_uint16 us_bitmap = 0;
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
@@ -394,33 +309,23 @@ oal_int32  host_module_init(oal_void)
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
     l_return = hmac_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("host_module_init: hmac_main_init return error code: %d", l_return);
         return l_return;
     }
-
     l_return = wal_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("host_module_init: wal_main_init return error code: %d", l_return);
         us_bitmap = BIT7;
         builder_module_exit(us_bitmap);
         return l_return;
     }
-
-
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    custom_cali_done = OAL_FALSE;
-
+    wlan_pm_set_custom_cali_done(OAL_FALSE);
     wlan_pm_open();
 #endif
-
-
-
-    /*启动完成后，输出打印*/
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("host_module_init:: host_main_init finish!");
-
     return OAL_SUCC;
 }
 #endif
@@ -429,14 +334,10 @@ oal_int32  host_module_init(oal_void)
 
 oal_int32  hi1102_device_main_init(oal_void)
 {
-    oal_int32  l_return  = OAL_FAIL;
+    oal_int32  l_return;
     oal_uint16  us_bitmap;
-
-
-
     l_return = platform_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("host_bottom_main_init: platform_module_init return error code: %d\r\n", l_return);
         return l_return;
     }
@@ -448,103 +349,83 @@ oal_int32  hi1102_device_main_init(oal_void)
     申请内存0x60010000~0x6003FFFF(IQ的H矩阵0x60010000~0x6001FFFF,
     pktmem单音数据的产生占用0x60020000~0x6002FFFF,
     pktmem发送单音的数据占用0x6003000~0x6003FFFF) */
-    g_puc_matrix_data = (oal_uint8 *)OAL_MEM_SAMPLE_NETBUF_ALLOC(3, 1);
-    if (OAL_PTR_NULL == g_puc_matrix_data)
-    {
+    g_puc_matrix_data = (oal_uint8 *)OAL_MEM_SAMPLE_NETBUF_ALLOC(3, 1); /* 3/4 32k  ----对应片选3 */
+    if (g_puc_matrix_data == OAL_PTR_NULL) {
         OAM_ERROR_LOG0(0, 0, "{hi110x_device_main_init:matrix data room alloc failed.}\r\n");
     }
 #endif
-
-
     l_return = device_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("host_bottom_main_init: device_module_init return error code: %d\r\n", l_return);
         us_bitmap = BIT0 | BIT1 | BIT2 | BIT3;
         builder_module_exit(us_bitmap);/*lint !e522*/
         return l_return;
     }
-
-    #if (!defined(HI110x_EDA))
-    /*device_ready:调用HCC接口通知Hmac,Dmac已经完成初始化 TBD*/
-
+#if (!defined(HI110x_EDA))
+    /* device_ready:调用HCC接口通知Hmac,Dmac已经完成初始化 */
     pfn_SDIO_SendMsgSync(D2H_MSG_WLAN_READY);
-    #endif
-    /*启动完成后，输出打印*/
+#endif
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("Hi1102_device_main_init:: Hi1102_device_main_init finish!\r\n");
 
     return OAL_SUCC;
-
 }
 
 
 oal_void device_main_init(oal_void)
 {
     /* init */
-    extern volatile oal_uint32     g_ulGpioIntCount;
 #ifndef _PRE_EDA
-    oal_int32 l_return = OAL_FAIL;
+    oal_int32 l_return;
     l_return = hi1102_device_main_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("device_main_function: Hi1102_device_main_init return error code: %d", l_return);
         /* 初始化失败不退出主程序，等待重启 */
-        for (;;)
+        for (;;) {
             ;
+        }
     }
 #endif
     OAL_IO_PRINT("device_main_function: hi1102_device_main_init succ!!\r\n");
 #if (SUB_SYSTEM == SUB_SYS_WIFI)
-    PM_WLAN_IsrRegister();
+    pm_wlan_isr_register();
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_DEV)
-    PM_WLAN_FuncRegister(device_psm_main_function,dmac_psm_check_hw_txq_state,dmac_psm_check_txrx_state,dmac_psm_clean_state,dmac_psm_save_start_dma,dmac_psm_save_ps_state,
-                          dmac_psm_recover_no_powerdown, dmac_psm_recover_start_dma,dmac_psm_recover_powerdown,
-                          dmac_psm_cbb_stopwork, dmac_psm_rf_sleep,
-                          dmac_psm_sync_tsf_to_sta,dmac_psm_sync_tsf_to_ap,dmac_psm_is_fake_queues_empty);
+    pm_wlan_func_register(device_psm_main_function, dmac_psm_check_hw_txq_state, dmac_psm_check_txrx_state,
+                          dmac_psm_clean_state, dmac_psm_save_start_dma, dmac_psm_save_ps_state,
+                          dmac_psm_recover_no_powerdown, dmac_psm_recover_start_dma, dmac_psm_recover_powerdown,
+                          dmac_psm_cbb_stopwork, dmac_psm_rf_sleep, dmac_psm_sync_tsf_to_sta, dmac_psm_sync_tsf_to_ap,
+                          dmac_psm_is_fake_queues_empty);
 #elif (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV)
-    PM_WLAN_FuncRegister(device_psm_main_function,dmac_psm_check_hw_txq_state,dmac_psm_check_txrx_state,dmac_psm_clean_state,dmac_psm_save_start_dma,dmac_psm_save_ps_state,
-                          dmac_psm_recover_no_powerdown, dmac_psm_recover_start_dma,dmac_psm_recover_powerdown,
-                          dmac_psm_cbb_stopwork, dmac_psm_rf_sleep, hal_rf_temperature_trig_online_rxdc_cali);
-
+    pm_wlan_func_register(device_psm_main_function, dmac_psm_check_hw_txq_state, dmac_psm_check_txrx_state,
+                          dmac_psm_clean_state, dmac_psm_save_start_dma, dmac_psm_save_ps_state,
+                          dmac_psm_recover_no_powerdown, dmac_psm_recover_start_dma, dmac_psm_recover_powerdown,
+                          dmac_psm_cbb_stopwork, dmac_psm_rf_sleep, hal_rf_temperature_trig_online_rxdc_cali,
+                          dmac_psm_deep_sleep_notify, dmac_psm_deep_sleep_wakeup_notify);
 #endif
 #endif
-    g_ulGpioIntCount = 0;
+    g_gpio_int_count = 0;
 }
-
-
-
-
 
 
 oal_uint8 device_psm_main_function(oal_void)
 {
-#if defined(_PRE_WLAN_FEATURE_BTCOEX) || defined(_PRE_WLAN_FEATURE_SMARTANT)
+#if defined(_PRE_WLAN_FEATURE_BTCOEX) 
     mac_device_stru         *pst_mac_device;
     hal_to_dmac_device_stru *pst_hal_device;
 #endif
-#ifdef _PRE_WLAN_FEATURE_SMARTANT
-    oal_uint32 ul_result;
-#endif
 
-#if defined(_PRE_WLAN_FEATURE_BTCOEX) || defined(_PRE_WLAN_FEATURE_SMARTANT)
+#if defined(_PRE_WLAN_FEATURE_BTCOEX) 
     pst_mac_device = mac_res_get_dev(0);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_device))
-    {
+    if (oal_unlikely(pst_mac_device == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{device_psm_main_function::pst_device[id:0] is NULL!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
     pst_hal_device = pst_mac_device->pst_device_stru;
 #endif
-#ifdef _PRE_WLAN_FEATURE_SMARTANT
-    hal_dual_antenna_switch(pst_hal_device->ul_dual_antenna_status, 1, &ul_result);
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_BTCOEX
     hal_btcoex_process_bt_status(pst_hal_device, OAL_TRUE);
 #endif
-
     device_main_function();
-
     return OAL_SUCC;
 }
 
@@ -555,20 +436,14 @@ oal_uint8 device_psm_main_function(oal_void)
 
 oal_int32  hi1102_host_main_init(oal_void)
 {
-    //oal_uint32 ul_return = OAL_FAIL;
-    oal_int32  l_return = OAL_FAIL;
+    oal_int32  l_return;
     OAL_IO_PRINT("hi1102_host_main_init:: Hi1102_host_main_init enter!\n");
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
     hcc_flowctl_get_device_mode_register(hmac_flowctl_check_device_is_sta_mode);
     hcc_flowctl_operate_subq_register(hmac_vap_net_start_subqueue, hmac_vap_net_stop_subqueue);
-#else
-    hcc_tx_flow_ctrl_cb_register(hmac_vap_net_stopall, hmac_vap_net_startall);
-#endif
 
     l_return = host_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("Hi1102_host_main_init: host_module_init return error code: %d", l_return);
         return l_return;
     }
@@ -578,7 +453,7 @@ oal_int32  hi1102_host_main_init(oal_void)
     wal_hipriv_register_inet6addr_notifier();
 #endif
 
-    /*启动完成后，输出打印*/
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("hi1102_host_main_init:: Hi1102_host_main_init finish!\n");
 
     return OAL_SUCC;
@@ -586,7 +461,7 @@ oal_int32  hi1102_host_main_init(oal_void)
 
 oal_void  hi1102_host_main_exit(oal_void)
 {
-    oal_uint16 us_bitmap = 0;
+    oal_uint16 us_bitmap;
 
     OAL_IO_PRINT("hi1102_host_main_exit:: Hi1102_host_main_exit enter!\n");
 
@@ -594,23 +469,16 @@ oal_void  hi1102_host_main_exit(oal_void)
     wal_hipriv_unregister_inetaddr_notifier();
     wal_hipriv_unregister_inet6addr_notifier();
 #endif
-
-
     OAL_IO_PRINT("hi1102_host_main_exit:: begin remove wifi module!\n");
     us_bitmap =  BIT6 | BIT7 | BIT8;
     builder_module_exit(us_bitmap);
     OAL_IO_PRINT("hi1102_host_main_exit:: wifi module removed!\n");
 
     /* 流控函数去初始化 */
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
     hcc_flowctl_get_device_mode_register(OAL_PTR_NULL);
     hcc_flowctl_operate_subq_register(OAL_PTR_NULL, OAL_PTR_NULL);
-#else
-    hcc_tx_flow_ctrl_cb_register(OAL_PTR_NULL, OAL_PTR_NULL);
-#endif
 
     OAL_IO_PRINT("hi1102_host_main_exit:: Hi1102_host_main_exit finish!\n");
-
     return ;
 }
 #elif (_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID)
@@ -618,52 +486,42 @@ oal_void  hi1102_host_main_exit(oal_void)
 
 oal_int32 hi1151_main_init(oal_void)
 {
-    oal_int32  l_return   = OAL_FAIL;
+    oal_int32  l_return;
     oal_uint16  us_bitmap  = 0;
 
     l_return = platform_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("Hi1151_main_init: platform_module_init return error code: %d/r/n", l_return);
         return l_return;
     }
-
     l_return = device_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("Hi1151_main_init: device_module_init return error code: %d/r/n", l_return);
         us_bitmap = BIT0 | BIT1 | BIT2 | BIT3;
         builder_module_exit(us_bitmap);
         return l_return;
     }
-
     l_return = host_module_init();
-    if (OAL_SUCC != l_return)
-    {
+    if (l_return != OAL_SUCC) {
         OAL_IO_PRINT("Hi1151_main_init: host_module_init return error code: %d/r/n", l_return);
         us_bitmap = BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5 | BIT6;
         builder_module_exit(us_bitmap);
         return l_return;
     }
-    /*启动完成后，输出打印*/
+    /* 启动完成后，输出打印 */
     OAL_IO_PRINT("Hi1151_main_init:: Hi1151_main_init finish!/r/n");
-
     return OAL_SUCC;
 }
 
 oal_void  hi1151_main_exit(oal_void)
 {
-    oal_uint16 us_bitmap = 0;
+    oal_uint16 us_bitmap;
 
     us_bitmap = BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5 | BIT6 | BIT7 | BIT8;
     builder_module_exit(us_bitmap);
-
     return ;
 }
 #endif
-
-
-
 
 /*lint -e578*//*lint -e19*/
 #if (defined(_PRE_PRODUCT_ID_HI110X_HOST))
@@ -675,127 +533,100 @@ oal_void  hi1151_main_exit(oal_void)
 
 oal_int32 g_wifi_init_flag = 0;
 oal_int32 g_wifi_init_ret;
-/*built-in*/
+/* built-in */
 OAL_STATIC ssize_t  wifi_sysfs_set_init(struct kobject *dev, struct kobj_attribute *attr, const char *buf, size_t count)
 {
-    char            mode[128] = {0};
-    if (NULL == buf)
-    {
-        OAL_IO_PRINT("buf is null r failed!%s\n",__FUNCTION__);
+    char mode[128] = {0};
+    if (buf == NULL) {
+        OAL_IO_PRINT("buf is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
 
-    if (NULL == attr)
-    {
-        OAL_IO_PRINT("attr is null r failed!%s\n",__FUNCTION__);
+    if (attr == NULL) {
+        OAL_IO_PRINT("attr is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
 
-    if (NULL == dev)
-    {
-        OAL_IO_PRINT("dev is null r failed!%s\n",__FUNCTION__);
+    if (dev == NULL) {
+        OAL_IO_PRINT("dev is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
-
-
-    if ((sscanf(buf, "%20s", mode) != 1))
-    {
+    if ((sscanf_s(buf, "%20s", mode, sizeof(mode)) != 1)) {
         OAL_IO_PRINT("set value one param!\n");
         return -OAL_EINVAL;
     }
-
-    if(sysfs_streq("init", mode))
-    {
-        /*init*/
-        if(0 == g_wifi_init_flag)
-        {
+    if (sysfs_streq("init", mode)) {
+        /* init */
+        if (g_wifi_init_flag == 0) {
             g_wifi_init_ret = hi1102_host_main_init();
             g_wifi_init_flag = 1;
-        }
-        else
-        {
+        } else {
             OAL_IO_PRINT("double init!\n");
         }
-    }
-    else
-    {
-        OAL_IO_PRINT("invalid input:%s\n",mode);
+    } else {
+        OAL_IO_PRINT("invalid input:%s\n", mode);
     }
 
     return count;
 }
 
-OAL_STATIC ssize_t  wifi_sysfs_get_init(struct kobject *dev, struct kobj_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wifi_sysfs_get_init(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     int ret = 0;
-    if (NULL == buf)
-    {
-        OAL_IO_PRINT("buf is null r failed!%s\n",__FUNCTION__);
+    if (buf == NULL) {
+        OAL_IO_PRINT("buf is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
 
-    if (NULL == attr)
-    {
-        OAL_IO_PRINT("attr is null r failed!%s\n",__FUNCTION__);
+    if (attr == NULL) {
+        OAL_IO_PRINT("attr is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
 
-    if (NULL == dev)
-    {
-        OAL_IO_PRINT("dev is null r failed!%s\n",__FUNCTION__);
+    if (dev == NULL) {
+        OAL_IO_PRINT("dev is null r failed!%s\n", __FUNCTION__);
         return 0;
     }
-
-
-    if(1 == g_wifi_init_flag)
-    {
-        if(OAL_SUCC == g_wifi_init_ret)
-        {
-            ret +=  OAL_SPRINTF(buf + ret , PAGE_SIZE-ret, "running\n");
+    if (g_wifi_init_flag == 1) {
+        if (g_wifi_init_ret == OAL_SUCC) {
+            ret += snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "running\n");
+        } else {
+            ret += snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "boot failed ret=%d", g_wifi_init_ret);
         }
-        else
-        {
-            ret +=  OAL_SPRINTF(buf + ret , PAGE_SIZE-ret, "boot failed ret=%d\n", g_wifi_init_ret);
-        }
-    }
-    else
-    {
-        ret +=  OAL_SPRINTF(buf + ret , PAGE_SIZE-ret, "uninit\n");
+    } else {
+        ret += snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "uninit\n");
     }
 
     return ret;
 }
-STATIC struct kobj_attribute dev_attr_wifi =
+STATIC struct kobj_attribute g_dev_attr_wifi =
     __ATTR(wifi, S_IRUGO | S_IWUSR, wifi_sysfs_get_init, wifi_sysfs_set_init);
-OAL_STATIC struct attribute *wifi_init_sysfs_entries[] = {
-        &dev_attr_wifi.attr,
-        NULL
+OAL_STATIC struct attribute *g_wifi_init_sysfs_entries[] = {
+    &g_dev_attr_wifi.attr,
+    NULL
 };
 
-OAL_STATIC struct attribute_group wifi_init_attribute_group = {
-        .attrs = wifi_init_sysfs_entries,
+OAL_STATIC struct attribute_group g_wifi_init_attribute_group = {
+    .attrs = g_wifi_init_sysfs_entries,
 };
 
 oal_int32  wifi_sysfs_init(oal_void)
 {
-    oal_int32 ret = 0;
+    oal_int32 ret;
     oal_kobject*     pst_root_boot_object = NULL;
-    if(false == is_hisi_chiptype(BOARD_VERSION_HI1102A))
-    {
+    if (!is_hisi_chiptype(BOARD_VERSION_HI1102A)) {
         return OAL_SUCC;
     }
 
     pst_root_boot_object = oal_get_sysfs_root_boot_object();
-    if(NULL == pst_root_boot_object)
-    {
+    if (pst_root_boot_object == NULL) {
         OAL_IO_PRINT("[E]get root boot sysfs object failed!\n");
         return -OAL_EBUSY;
     }
 
-    ret = sysfs_create_group(pst_root_boot_object,&wifi_init_attribute_group);
-    if (ret)
-    {
-        OAL_IO_PRINT("sysfs create plat boot group fail.ret=%d\n",ret);
+    ret = sysfs_create_group(pst_root_boot_object, &g_wifi_init_attribute_group);
+    if (ret) {
+        OAL_IO_PRINT("sysfs create plat boot group fail.ret=%d\n", ret);
         ret = -OAL_ENOMEM;
         return ret;
     }
@@ -803,9 +634,9 @@ oal_int32  wifi_sysfs_init(oal_void)
     return ret;
 }
 
-oal_void  wifi_sysfs_exit(oal_void)
+oal_void  wifi_sysfs_exit(oal_void) 
 {
-    /*need't exit,built-in*/
+    /* need't exit,built-in */
     return;
 }
 oal_module_init(wifi_sysfs_init);
@@ -820,15 +651,6 @@ oal_module_init(hi1151_main_init);
 oal_module_exit(hi1151_main_exit);
 #endif
 oal_module_license("GPL");
-/*lint +e578*//*lint +e19*/
+/*lint +e578*/ /*lint +e19*/
 
-
-
-
-
-#ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
-#endif
 

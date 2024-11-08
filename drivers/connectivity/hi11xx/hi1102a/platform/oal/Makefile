@@ -14,12 +14,12 @@ include $(1151_ROOT_PATH)/build/1151_host_wifi/env.config
 
 # set the default make target
 # NOTICE: make sure that the target name here is same with the module
-# build target defined at the bottom 
+# build target defined at the bottom
 .PHONY:module_build
 
 # set the module objects files
-obj-m :=oal.o 
-oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_profiling.o oal_workqueue.o oal_fsm.o
+obj-m :=oal.o
+oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_workqueue.o oal_fsm.o
 
 # set the module name
 MODULE_NAME=$(subst .o,.ko,$(obj-m))

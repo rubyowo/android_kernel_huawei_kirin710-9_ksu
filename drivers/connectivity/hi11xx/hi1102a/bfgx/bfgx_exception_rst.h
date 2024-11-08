@@ -11,7 +11,6 @@
 #define PLAT_CFG_IOC_MAGIC                   'z'
 #define PLAT_DFR_CFG_CMD                     _IOW(PLAT_CFG_IOC_MAGIC, PLAT_DFR_CFG, int)
 #define PLAT_BEATTIMER_TIMEOUT_RESET_CFG_CMD _IOW(PLAT_CFG_IOC_MAGIC, PLAT_BEATTIMER_TIMEOUT_RESET_CFG, int)
-#define PLAT_BFGX_CALI_CMD                   _IOW(PLAT_CFG_IOC_MAGIC, PLAT_BFGX_CALI, int)
 #ifndef HI110X_HAL_MEMDUMP_ENABLE
 #define PLAT_DUMP_FILE_READ_CMD     _IOW(PLAT_CFG_IOC_MAGIC, PLAT_DUMP_FILE_READ, int)
 #define PLAT_DUMP_ROTATE_FINISH_CMD _IOW(PLAT_CFG_IOC_MAGIC, PLAT_DUMP_ROTATE_FINISH, int)
@@ -70,10 +69,10 @@ typedef enum PLAT_BFGX_EXCP_CMD_e {
 typedef enum PLAT_WIFI_EXCP_CMD_e {
     DFR_HAL_WIFI = 0,
     PLAT_WIFI_DUMP_FILE_READ = 1,
-} plat_WIFI_excp_cmd_m;
+} plat_wifi_excp_cmd_m;
 #endif
 /* STRUCT DEFINE */
-typedef struct DUMP_MEM_RES {
+typedef struct dump_mem_res {
     uint8 *file_name;
     uint32 start_addr;
     uint32 align_type;
@@ -95,8 +94,8 @@ typedef struct memdump_driver_s {
 
 /* EXTERN VARIABLE */
 #ifdef HI110X_HAL_MEMDUMP_ENABLE
-extern memdump_info_t bcpu_memdump_cfg;
-extern memdump_info_t wcpu_memdump_cfg;
+extern memdump_info_t g_bcpu_memdump_cfg;
+extern memdump_info_t g_wcpu_memdump_cfg;
 #endif
 
 /* 全局变量定义 */
@@ -106,8 +105,7 @@ enum PLAT_CFG {
     PLAT_CFG_BUFF,
 
     PLAT_DUMP_FILE_READ = 100,
-    PLAT_DUMP_ROTATE_FINISH = 101,
-    PLAT_BFGX_CALI = 102,
+    PLAT_DUMP_ROTATE_FINISH = 101
 };
 
 enum BFGX_DUMP_TYPE {
@@ -115,13 +113,13 @@ enum BFGX_DUMP_TYPE {
     BFGX_PRIV_REG = 1,
     BFGX_MEM = 2,
 
-    SDIO_BFGX_MEM_DUMP_BOTTOM,
+    SDIO_BFGX_MEM_DUMP_BOTTOM
 };
 
 /* EXTERN FUNCTION */
 extern void plat_dfr_cfg_set(uint64 arg);
-extern void plat_beatTimer_timeOut_reset_cfg_set(uint64 arg);
-extern int32 bfgx_store_stack_mem_to_file(void);
+extern void plat_beattimer_timeout_reset_cfg_set(uint64 arg);
+extern void bfgx_store_stack_mem_to_file(void);
 extern int32 plat_get_excp_total_cnt(void);
 extern int32 plat_get_dfr_sinfo(char *buf, int32 index);
 extern int32 is_dfr_test_en(enum excp_test_cfg_em excp_cfg);

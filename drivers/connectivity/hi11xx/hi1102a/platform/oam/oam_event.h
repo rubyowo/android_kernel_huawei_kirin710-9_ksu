@@ -10,7 +10,7 @@
 /* 宏定义 */
 #define OAM_OTA_DATA_TO_STD_MAX_LEN  300
 #define OAM_OTA_FRAME_TO_SDT_MAX_LEN 1200
-#define OAM_SKB_CB_LEN               OAL_NETBUF_CB_SIZE()
+#define OAM_SKB_CB_LEN               oal_netbuf_cb_size()
 
 /* 函数声明 */
 extern oal_uint32 oam_event_init(oal_void);

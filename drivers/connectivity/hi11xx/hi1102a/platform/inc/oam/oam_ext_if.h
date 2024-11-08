@@ -3,6 +3,12 @@
 #ifndef __OAM_EXT_IF_H__
 #define __OAM_EXT_IF_H__
 
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
 /* 其他头文件包含 */
 #include "platform_spec.h"
 #include "oal_types.h"
@@ -22,352 +28,263 @@
 
 /* 日志宏定义 */
 /* 该接口需要严格控制调用，主要用于中断上半部和OAM OAL等模块频繁触发的异常分支 */
-#define OAM_WIFI_LOG_PARA_PRESS(vap_id, feature_id, fileid, lev) \
+#define oam_wifi_log_para_press(vap_id, feature_id, fileid, lev) \
         (((fileid) & 0xFFFF) | (((feature_id) & 0xFF) << 16) | (((vap_id) & 0xF) << 24) | (((lev) & 0xF) << 28))
 
 #ifdef _PRE_WLAN_DFT_LOG
-#define OAM_EXCP_RECORD(_uc_vap_id, _excp_id) \
+#define oam_excp_record(_uc_vap_id, _excp_id) \
     oam_exception_record(_uc_vap_id, _excp_id)
 
-#define OAM_IO_PRINTK(fmt, ...) \
+#define oam_io_printk(fmt, ...) \
     oam_log_console_printk(THIS_FILE_ID, (oal_uint16)__LINE__, OAL_FUNC_NAME, fmt, ##__VA_ARGS__)
 
-#define OAM_INFO_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log0(_uc_vap_id, _en_feature_id, fmt) \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, fmt)
-#define OAM_INFO_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log1(_uc_vap_id, _en_feature_id, fmt, p1) \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1))
-#define OAM_INFO_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_INFO_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_INFO_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
-#define OAM_WARNING_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log0(_uc_vap_id, _en_feature_id, fmt) \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, fmt)
 #define OAM_WARNING_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1))
-#define OAM_WARNING_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_WARNING_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_WARNING_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
 #define OAM_ERROR_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, fmt)
 #define OAM_ERROR_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1))
-#define OAM_ERROR_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_ERROR_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_ERROR_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, fmt, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
 #else
-#define OAM_EXCP_RECORD(_uc_vap_id, _excp_id)
-#define OAM_IO_PRINTK(fmt, ...)
+#define oam_excp_record(_uc_vap_id, _excp_id)
+#define oam_io_printk(fmt, ...)
 #if (defined(_PRE_PRODUCT_ID_HI110X_DEV))
-#define OAM_INFO_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log0(_uc_vap_id, _en_feature_id, fmt) \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, NULL)
-#define OAM_INFO_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log1(_uc_vap_id, _en_feature_id, fmt, p1) \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1))
-#define OAM_INFO_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_INFO_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_INFO_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
+#define oam_info_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_INFO), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
-#define OAM_WARNING_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log0(_uc_vap_id, _en_feature_id, fmt) \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, NULL)
 #define OAM_WARNING_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1))
-#define OAM_WARNING_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_WARNING_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_WARNING_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
+#define oam_warning_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_WARNING), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
 #define OAM_ERROR_LOG0(_uc_vap_id, _en_feature_id, fmt) \
-    oam_log_print0(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+    oam_log_print0(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, NULL)
 #define OAM_ERROR_LOG1(_uc_vap_id, _en_feature_id, fmt, p1) \
-    oam_log_print1(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+    oam_log_print1(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1))
-#define OAM_ERROR_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
-    oam_log_print2(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2) \
+    oam_log_print2(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2))
-#define OAM_ERROR_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
-    oam_log_print3(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3) \
+    oam_log_print3(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3))
-#define OAM_ERROR_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
-    oam_log_print4(OAM_WIFI_LOG_PARA_PRESS(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
+#define oam_error_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4) \
+    oam_log_print4(oam_wifi_log_para_press(_uc_vap_id, _en_feature_id, THIS_FILE_ID, OAM_LOG_LEVEL_ERROR), \
                    (oal_uint16)__LINE__, NULL, (oal_uint)(p1), (oal_uint)(p2), (oal_uint)(p3), (oal_uint)(p4))
 
 #else
-#define OAM_INFO_LOG0(_uc_vap_id, _en_feature_id, fmt)
-#define OAM_INFO_LOG1(_uc_vap_id, _en_feature_id, fmt, p1)
-#define OAM_INFO_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
-#define OAM_INFO_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
-#define OAM_INFO_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
-#define OAM_WARNING_LOG0(_uc_vap_id, _en_feature_id, fmt)
+#define oam_info_log0(_uc_vap_id, _en_feature_id, fmt)
+#define oam_info_log1(_uc_vap_id, _en_feature_id, fmt, p1)
+#define oam_info_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
+#define oam_info_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
+#define oam_info_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
+#define oam_warning_log0(_uc_vap_id, _en_feature_id, fmt)
 #define OAM_WARNING_LOG1(_uc_vap_id, _en_feature_id, fmt, p1)
-#define OAM_WARNING_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
-#define OAM_WARNING_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
-#define OAM_WARNING_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
+#define oam_warning_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
+#define oam_warning_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
+#define oam_warning_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
 #define OAM_ERROR_LOG0(_uc_vap_id, _en_feature_id, fmt)
 #define OAM_ERROR_LOG1(_uc_vap_id, _en_feature_id, fmt, p1)
-#define OAM_ERROR_LOG2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
-#define OAM_ERROR_LOG3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
-#define OAM_ERROR_LOG4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
+#define oam_error_log2(_uc_vap_id, _en_feature_id, fmt, p1, p2)
+#define oam_error_log3(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3)
+#define oam_error_log4(_uc_vap_id, _en_feature_id, fmt, p1, p2, p3, p4)
 #endif
 #endif
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#define OAM_DIFF_LOG0 OAM_INFO_LOG0
-#define OAM_DIFF_LOG1 OAM_INFO_LOG1
-#define OAM_DIFF_LOG2 OAM_INFO_LOG2
-#define OAM_DIFF_LOG3 OAM_INFO_LOG3
-#define OAM_DIFF_LOG4 OAM_INFO_LOG4
-#else
-#define OAM_DIFF_LOG0 OAM_WARNING_LOG0
+#define OAM_DIFF_LOG0 oam_warning_log0
 #define OAM_DIFF_LOG1 OAM_WARNING_LOG1
-#define OAM_DIFF_LOG2 OAM_WARNING_LOG2
-#define OAM_DIFF_LOG3 OAM_WARNING_LOG3
-#define OAM_DIFF_LOG4 OAM_WARNING_LOG4
-#endif
+#define OAM_DIFF_LOG2 oam_warning_log2
+#define OAM_DIFF_LOG3 oam_warning_log3
+#define OAM_DIFF_LOG4 oam_warning_log4
 
 /* 2.1 TRACE相关宏定义 */
 /* 计算profiling宏定义 */
 #ifdef _PRE_PROFILING_MODE
-#define OAM_PROFILING_RX_STATISTIC(_uc_func_idx)               oam_profiling_rx_save_data(_uc_func_idx)
-#define OAM_PROFILING_TX_STATISTIC(_pst_pointer, _uc_func_idx) oam_profiling_tx_save_data(_pst_pointer, _uc_func_idx)
-#define OAM_PROFILING_ALG_STATISTIC(_uc_func_idx)              oam_profiling_alg_save_data(_uc_func_idx)
+#define oam_profiling_rx_statistic(_uc_func_idx)               oam_profiling_rx_save_data(_uc_func_idx)
+#define oam_profiling_tx_statistic(_pst_pointer, _uc_func_idx) oam_profiling_tx_save_data(_pst_pointer, _uc_func_idx)
+#define oam_profiling_alg_statistic(_uc_func_idx)              oam_profiling_alg_save_data(_uc_func_idx)
 #define OAM_PROFILING_STARTTIME_STATISTIC(_uc_func_idx)        oam_profiling_starttime_save_timestamp(_uc_func_idx)
-#define OAM_PROFILING_CHSWITCH_STATISTIC(_uc_func_idx)         oam_profiling_chswitch_save_timestamp(_uc_func_idx)
+#define oam_profiling_chswitch_statistic(_uc_func_idx)         oam_profiling_chswitch_save_timestamp(_uc_func_idx)
 #else
-#define OAM_PROFILING_RX_STATISTIC(_uc_func_idx)
-#define OAM_PROFILING_TX_STATISTIC(_pst_pointer, _uc_func_idx)
-#define OAM_PROFILING_ALG_STATISTIC(_uc_func_idx)
+#define oam_profiling_rx_statistic(_uc_func_idx)
+#define oam_profiling_tx_statistic(_pst_pointer, _uc_func_idx)
+#define oam_profiling_alg_statistic(_uc_func_idx)
 #define OAM_PROFILING_STARTTIME_STATISTIC(_uc_func_idx)
-#define OAM_PROFILING_CHSWITCH_STATISTIC(_uc_func_idx)
+#define oam_profiling_chswitch_statistic(_uc_func_idx)
 #endif
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#ifdef _PRE_DEBUG_MODE
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 /* 统计信息宏定义 */ /*lint -e506*/ /*lint -e774*/
-#define OAM_STAT_DEV_INCR(_uc_dev_id, _member, _num)                             \
-    do {                                                                         \
-        if (_uc_dev_id < WLAN_DEVICE_MAX_NUM_PER_CHIP) {                         \
-            stat_info.ast_dev_stat_info[_uc_dev_id].ul_##_member += (_num); \
-        }                                                                        \
-    } while (0)
+#define oam_stat_dev_incr(_uc_dev_id, _member, _num)
 
 /* 为了对数组下标进行保护，必须要传入数组长度(第4个参数) */
-#define OAM_STAT_DEV_ARRAY_INCR(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)                \
-    do {                                                                                                 \
-        if ((_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) && (_uc_array_index < _uc_array_max_size)) { \
-            stat_info.ast_dev_stat_info[_uc_dev_id].aul_##_member[_uc_array_index]++;               \
-        }                                                                                                \
-    } while (0)
+#define oam_stat_dev_array_incr(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)
 
-#define OAM_STAT_DEV_UPDATE(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)                            \
-    do {                                                                                                  \
-        if ((_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) \
-                && (_uc_q_id < OAM_RX_DSCR_QUEUE_CNT) && (_uc_index < OAM_IRQ_FREQ_STAT_MEMORY)) { \
-            stat_info.ast_dev_stat_info[_uc_dev_id].aul_##_member[_uc_q_id][_uc_index] = (_ul_val);  \
-        }                                                                                                 \
-    } while (0)
+#define oam_stat_dev_update(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)
 
-#define OAM_STAT_DEV_GET_VAL(_uc_dev_id, _member, _pul_val)                          \
-    do {                                                                             \
-        if (_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) {                         \
-            *(_pul_val) = stat_info.ast_dev_stat_info[_uc_dev_id].ul_##_member; \
-        }                                                                            \
-    } while (0)
+#define oam_stat_dev_get_val(_uc_dev_id, _member, _pul_val)
 
-#define OAM_STAT_DEV_SET_VAL(_uc_dev_id, _member, _uc_val)                         \
-    do {                                                                           \
-        if (_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) {                       \
-            stat_info.ast_dev_stat_info[_uc_dev_id].ul_##_member = (_uc_val); \
-        }                                                                          \
-    } while (0)
+#define oam_stat_dev_set_val(_uc_dev_id, _member, _uc_val)
 
-#define OAM_STAT_VAP_INCR(_uc_vap_id, _member, _num)                             \
+#define oam_stat_vap_incr(_uc_vap_id, _member, _num)                             \
     do {                                                                         \
         if (_uc_vap_id < WLAN_VAP_SUPPORT_MAX_NUM_LIMIT) {                       \
-            stat_info.ast_vap_stat_info[_uc_vap_id].ul_##_member += (_num); \
+            g_stat_info.ast_vap_stat_info[_uc_vap_id].ul_##_member += (_num); \
         }                                                                        \
     } while (0)
 
-#define OAM_STAT_MGMT_INCR(_uc_vap_id, _uc_mgmt_id, _member)                                           \
-    do {                                                                                               \
-        if ((_uc_vap_id < WLAN_VAP_SUPPORT_MAX_NUM_LIMIT) && (_uc_mgmt_id < WLAN_MGMT_SUBTYPE_BUTT)) { \
-            stat_info.ast_vap_stat_info[_uc_vap_id].aul_##_member[_uc_mgmt_id]++;                 \
-        }                                                                                              \
-    } while (0)
+#define oam_stat_mgmt_incr(_uc_vap_id, _uc_mgmt_id, _member)
 
-#define OAM_STAT_USER_INCR(_us_user_id, _member, _num)                             \
-    do {                                                                           \
-        if (_us_user_id < WLAN_USER_MAX_USER_LIMIT) {                              \
-            stat_info.ast_user_stat_info[_us_user_id].ul_##_member += (_num); \
-        }                                                                          \
-    } while (0)
+#define oam_stat_user_incr(_uc_user_id, _member, _num)
 
-#define OAM_STAT_TID_INCR(_us_user_id, _uc_tid_num, _member, _num)                               \
-    do {                                                                                         \
-        if ((_us_user_id < WLAN_USER_MAX_USER_LIMIT) && (_uc_tid_num < WLAN_TIDNO_BUTT)) {       \
-            stat_info.ast_user_stat_info[_us_user_id].aul_##_member[_uc_tid_num] += (_num); \
-        }                                                                                        \
-    } while (0)
+#define oam_stat_tid_incr(_uc_user_id, _uc_tid_num, _member, _num)
 
-#define OAM_STAT_GET_STAT_ALL() (&stat_info)
-#else
-#define OAM_STAT_DEV_INCR(_uc_dev_id, _member, _num)
-#define OAM_STAT_DEV_ARRAY_INCR(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)
-#define OAM_STAT_DEV_UPDATE(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)
-#define OAM_STAT_DEV_GET_VAL(_uc_dev_id, _member, _pul_val)
-#define OAM_STAT_DEV_SET_VAL(_uc_dev_id, _member, _uc_val)
-#define OAM_STAT_VAP_INCR(_uc_vap_id, _member, _num)
-#define OAM_STAT_MGMT_INCR(_uc_vap_id, _uc_mgmt_id, _member)
-#define OAM_STAT_USER_INCR(_uc_user_id, _member, _num)
-#define OAM_STAT_TID_INCR(_uc_user_id, _uc_tid_num, _member, _num)
-#define OAM_STAT_GET_STAT_ALL() (&stat_info)
-#endif
-#elif defined(_PRE_PRODUCT_ID_HI110X_HOST)
-/* 统计信息宏定义 */ /*lint -e506*/ /*lint -e774*/
-#define OAM_STAT_DEV_INCR(_uc_dev_id, _member, _num)
-
-/* 为了对数组下标进行保护，必须要传入数组长度(第4个参数) */
-#define OAM_STAT_DEV_ARRAY_INCR(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)
-
-#define OAM_STAT_DEV_UPDATE(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)
-
-#define OAM_STAT_DEV_GET_VAL(_uc_dev_id, _member, _pul_val)
-
-#define OAM_STAT_DEV_SET_VAL(_uc_dev_id, _member, _uc_val)
-
-#define OAM_STAT_VAP_INCR(_uc_vap_id, _member, _num)                             \
-    do {                                                                         \
-        if (_uc_vap_id < WLAN_VAP_SUPPORT_MAX_NUM_LIMIT) {                       \
-            stat_info.ast_vap_stat_info[_uc_vap_id].ul_##_member += (_num); \
-        }                                                                        \
-    } while (0)
-
-#define OAM_STAT_MGMT_INCR(_uc_vap_id, _uc_mgmt_id, _member)
-
-#define OAM_STAT_USER_INCR(_uc_user_id, _member, _num)
-
-#define OAM_STAT_TID_INCR(_uc_user_id, _uc_tid_num, _member, _num)
-
-#define OAM_STAT_GET_STAT_ALL() (&stat_info)
+#define oam_stat_get_stat_all() (&g_stat_info)
 #else
 #ifdef _PRE_DEBUG_MODE
 /* 统计信息宏定义 */ /*lint -e506*/ /*lint -e774*/
-#define OAM_STAT_DEV_INCR(_uc_dev_id, _member, _num)     \
+#define oam_stat_dev_incr(_uc_dev_id, _member, _num)     \
     do {                                                 \
         if (_uc_dev_id < WLAN_DEVICE_MAX_NUM_PER_CHIP) { \
         }                                                \
     } while (0)
 
 /* 为了对数组下标进行保护，必须要传入数组长度(第4个参数) */
-#define OAM_STAT_DEV_ARRAY_INCR(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)                \
+#define oam_stat_dev_array_incr(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)                \
     do {                                                                                                 \
         if ((_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) && (_uc_array_index < _uc_array_max_size)) { \
         }                                                                                                \
     } while (0)
 
-#define OAM_STAT_DEV_UPDATE(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)                            \
+#define oam_stat_dev_update(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)                            \
     do {                                                                                                  \
         if ((_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) \
                 && (_uc_q_id < OAM_RX_DSCR_QUEUE_CNT) && (_uc_index < OAM_IRQ_FREQ_STAT_MEMORY)) { \
         }                                                                                                 \
     } while (0)
 
-#define OAM_STAT_DEV_GET_VAL(_uc_dev_id, _member, _pul_val)  \
+#define oam_stat_dev_get_val(_uc_dev_id, _member, _pul_val)  \
     do {                                                     \
         if (_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) { \
         }                                                    \
     } while (0)
 
-#define OAM_STAT_DEV_SET_VAL(_uc_dev_id, _member, _uc_val)   \
+#define oam_stat_dev_set_val(_uc_dev_id, _member, _uc_val)   \
     do {                                                     \
         if (_uc_dev_id < WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC) { \
         }                                                    \
     } while (0)
 
-#define OAM_STAT_VAP_INCR(_uc_vap_id, _member, _num)       \
+#define oam_stat_vap_incr(_uc_vap_id, _member, _num)       \
     do {                                                   \
         if (_uc_vap_id < WLAN_VAP_SUPPORT_MAX_NUM_LIMIT) { \
         }                                                  \
     } while (0)
 
-#define OAM_STAT_MGMT_INCR(_uc_vap_id, _uc_mgmt_id, _member)                                           \
+#define oam_stat_mgmt_incr(_uc_vap_id, _uc_mgmt_id, _member)                                           \
     do {                                                                                               \
         if ((_uc_vap_id < WLAN_VAP_SUPPORT_MAX_NUM_LIMIT) && (_uc_mgmt_id < WLAN_MGMT_SUBTYPE_BUTT)) { \
         }                                                                                              \
     } while (0)
 
-#define OAM_STAT_USER_INCR(_us_user_id, _member, _num) \
+#define oam_stat_user_incr(_us_user_id, _member, _num) \
     do {                                               \
         if (_us_user_id < WLAN_USER_MAX_USER_LIMIT) {  \
         }                                              \
     } while (0)
 
-#define OAM_STAT_TID_INCR(_us_user_id, _uc_tid_num, _member, _num)                         \
+#define oam_stat_tid_incr(_us_user_id, _uc_tid_num, _member, _num)                         \
     do {                                                                                   \
         if ((_us_user_id < WLAN_USER_MAX_USER_LIMIT) && (_uc_tid_num < WLAN_TIDNO_BUTT)) { \
         }                                                                                  \
     } while (0)
 
-#define OAM_STAT_GET_STAT_ALL()
+#define oam_stat_get_stat_all()
 #else
-#define OAM_STAT_DEV_INCR(_uc_dev_id, _member, _num)
-#define OAM_STAT_DEV_ARRAY_INCR(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)
-#define OAM_STAT_DEV_UPDATE(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)
-#define OAM_STAT_DEV_GET_VAL(_uc_dev_id, _member, _pul_val)
-#define OAM_STAT_DEV_SET_VAL(_uc_dev_id, _member, _uc_val)
-#define OAM_STAT_VAP_INCR(_uc_vap_id, _member, _num)
-#define OAM_STAT_MGMT_INCR(_uc_vap_id, _uc_mgmt_id, _member)
-#define OAM_STAT_USER_INCR(_uc_user_id, _member, _num)
-#define OAM_STAT_TID_INCR(_uc_user_id, _uc_tid_num, _member, _num)
-#define OAM_STAT_GET_STAT_ALL()
+#define oam_stat_dev_incr(_uc_dev_id, _member, _num)
+#define oam_stat_dev_array_incr(_uc_dev_id, _member, _uc_array_index, _uc_array_max_size)
+#define oam_stat_dev_update(_uc_dev_id, _member, _uc_q_id, _uc_index, _ul_val)
+#define oam_stat_dev_get_val(_uc_dev_id, _member, _pul_val)
+#define oam_stat_dev_set_val(_uc_dev_id, _member, _uc_val)
+#define oam_stat_vap_incr(_uc_vap_id, _member, _num)
+#define oam_stat_mgmt_incr(_uc_vap_id, _uc_mgmt_id, _member)
+#define oam_stat_user_incr(_uc_user_id, _member, _num)
+#define oam_stat_tid_incr(_uc_user_id, _uc_tid_num, _member, _num)
+#define oam_stat_get_stat_all()
 
 #endif
 
 #endif
 
 #ifdef _PRE_DEBUG_MODE
-#define OAM_TID_AMPDU_STATS_INCR(_member, _cnt) ((_member) += (_cnt))
+#define oam_tid_ampdu_stats_incr(_member, _cnt) ((_member) += (_cnt))
 #else
-#define OAM_TID_AMPDU_STATS_INCR(_member, _cnt)
+#define oam_tid_ampdu_stats_incr(_member, _cnt)
 #endif
 
 #ifdef _PRE_WIFI_DMT
@@ -661,10 +578,10 @@ typedef enum {
     OAM_OTA_TYPE_SOC_RF_W_C1_CTL_INFO, /* SOC寄存器 RF_W_C1_CTL 信息 */
     OAM_OTA_TYPE_SOC_W_CTL_INFO,       /* SOC寄存器 W_CTL 信息 */
     OAM_OTA_TYPE_SOC_COEX_CTL_INFO,    /* SOC寄存器 COEX_CTL 信息 */
-    OAM_OTA_TYPE_SOC_Reserve1_INFO,    /* SOC寄存器 Reserve1 信息 */
-    OAM_OTA_TYPE_SOC_Reserve2_INFO,    /* SOC寄存器 Reserve2 信息 */
-    OAM_OTA_TYPE_SOC_Reserve3_INFO,    /* SOC寄存器 Reserve3 信息 */
-    OAM_OTA_TYPE_SOC_Reserve4_INFO,    /* SOC寄存器 Reserve4 信息 */
+    OAM_OTA_TYPE_SOC_RESERVE1_INFO,    /* SOC寄存器 Reserve1 信息 */
+    OAM_OTA_TYPE_SOC_RESERVE2_INFO,    /* SOC寄存器 Reserve2 信息 */
+    OAM_OTA_TYPE_SOC_RESERVE3_INFO,    /* SOC寄存器 RESERVE3 信息 */
+    OAM_OTA_TYPE_SOC_RESERVE4_INFO,    /* SOC寄存器 Reserve4 信息 */
 
     /* 03PILOT寄存器 */
     OAM_OTA_TYPE_PHY_BANK1_PILOT_INFO, /* PHY寄存器 BANK1 信息 */
@@ -747,9 +664,7 @@ typedef enum {
     OAM_USER_INFO_CHANGE_TYPE_ASSOC_STATE = 0, /* 用户关联状态 */
     OAM_USER_INFO_CHANGE_TYPE_TX_PROTOCOL,     /* 发送数据帧使用的协议模式 */
     OAM_USER_INFO_CHANGE_TYPE_RX_PROTOCOL,     /* 接收数据帧使用的协议模式 */
-
     /* ... */
-
     OAM_USER_INFO_CHANGE_TYPE_BUTT
 } oam_user_info_change_type_enum;
 typedef oal_uint8 oam_user_info_change_type_enum_uint8;
@@ -758,9 +673,7 @@ typedef oal_uint8 oam_user_info_change_type_enum_uint8;
 typedef enum {
     OAM_USER_TXRX_PARAM_TYPE_RSSI = 0,
     OAM_USER_TXRX_PARAM_TYPE_RATE,
-
     /* ... */
-
     OAM_USER_TXRX_PARAM_TYPE_BUTT
 } oam_user_txrx_param_type_enum;
 typedef oal_uint8 oam_user_txrx_param_type_enum_uint8;
@@ -1146,7 +1059,7 @@ typedef enum {
 
     OAM_SF_QOS,
     OAM_SF_EXTLNA,
-    OAM_SF_RESERVE5,
+    OAM_SF_INI,
     OAM_SF_RESERVE6,
     OAM_SF_RESERVE7,
     OAM_SF_RESERVE8,
@@ -1248,7 +1161,6 @@ typedef oal_uint8 oam_excp_status_enum_uint8;
 /* 全局变量声明 */
 /* 维测，下发调试类型值，代码可临时根据调测值实现相应功能 */
 #ifdef _PRE_DEBUG_MODE
-extern oal_uint32 debug_feature_switch[];
 
 #define MAX_DEBUG_TYPE_NUM OAM_DEBUG_TYPE_BUTT
 typedef enum {
@@ -1283,8 +1195,8 @@ typedef enum {
 typedef oal_uint8 oam_stats_phy_node_idx_enum_uint8;
 #endif
 
-extern oal_uint8 bcast_addr[WLAN_MAC_ADDR_LEN];
-#define BROADCAST_MACADDR bcast_addr
+extern oal_uint8 g_bcast_addr[WLAN_MAC_ADDR_LEN];
+#define BROADCAST_MACADDR g_bcast_addr
 
 /* STRUCT定义 */
 /* SDT上传接口的注册函数类型 */
@@ -1302,7 +1214,7 @@ typedef struct {
 } oam_sdt_func_hook_stru;
 
 /* 外部函数声明 */
-extern oam_sdt_func_hook_stru oam_sdt_func_hook;
+extern oam_sdt_func_hook_stru g_oam_sdt_func_hook;
 
 /* 其他模块调用WAL钩子函数 用结构体 */
 typedef struct {
@@ -1318,7 +1230,7 @@ typedef struct {
 #endif
 } oam_wal_func_hook_stru;
 
-extern oam_wal_func_hook_stru oam_wal_func_hook;
+extern oam_wal_func_hook_stru g_oam_wal_func_hook;
 
 /*lint -e958*/ /*lint -e959*/
 /* 读取和设置全局变量的结构体 */
@@ -1508,7 +1420,7 @@ typedef struct {
     oal_uint32 ul_rx_mpdu_in_ampdu; /* 统计周期内接收到属于ampdu的mpdu个数 */
 } oam_user_track_rx_ampdu_stat;
 #endif
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) || defined(_PRE_PRODUCT_ID_HI110X_HOST)
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
 /* 设备级别统计信息结构体 */
 typedef struct {
@@ -1670,9 +1582,9 @@ typedef struct {
 #endif
 
 /*lint -e717*/
-#define OAM_SDT_STAT_INCR(_cnt)    \
+#define oam_sdt_stat_incr(_cnt)    \
     do {                           \
-        sdt_stat_info._cnt++; \
+        g_sdt_stat_info._cnt++; \
     } while (0)
 
 enum oam_filter_type_enum {
@@ -1689,10 +1601,10 @@ typedef struct {
     oal_bool_enum en_filter_switch; /* 过滤开关状态 */
     oal_uint8 uc_recv[3];
 } oam_sdt_stat_info_stru;
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) || defined(_PRE_PRODUCT_ID_HI110X_HOST)
-extern oam_stat_info_stru stat_info;
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
+extern oam_stat_info_stru g_stat_info;
 #endif
-extern oam_sdt_stat_info_stru sdt_stat_info;
+extern oam_sdt_stat_info_stru g_sdt_stat_info;
 
 /* 保存配置文件相关信息结构 */
 typedef struct {
@@ -1725,7 +1637,7 @@ typedef struct {
 /* oam异常统计 */
 typedef struct {
     oal_uint32 en_status; /* VAP级别异常统计是否有刷新 */
-    oam_excp_record_stru ast_excp_record_tbl[OAM_EXCP_TYPE_BUTT];
+    oam_excp_record_stru excp_record_tbl[OAM_EXCP_TYPE_BUTT];
 } oam_exception_ctx_stru;
 
 /* VAP日志开关与特性日志级别 */
@@ -1813,10 +1725,10 @@ typedef struct {
     /* 某一种OTA消息的控制结构 */
     oam_ota_ctx_stru ast_ota_ctx[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT];
 
-    oam_exception_ctx_stru st_exception_ctx[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT];
+    oam_exception_ctx_stru exception_ctx[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT];
 
     /* 单用户跟踪管理上下文 */
-    oam_user_track_ctx_stru st_user_track_ctx;
+    oam_user_track_ctx_stru user_track_ctx;
 } oam_mng_ctx_stru;
 
 /* 统计与性能维测相关的结构定义 */
@@ -1832,9 +1744,9 @@ typedef struct {
     oal_uint16 us_mac_ch_tx_time_us;      /* 统计周期内发送占用的时间，us */
 
     oal_uint8 uc_phy_ch_estimate_time_ms; /* phy测量信道空闲时功率的周期，ms */
-    oal_int8 c_phy_pri20_idle_power_dBm;  /* 统计周期内主20M信道空闲时的功率，一直不空闲就不统计 */
-    oal_int8 c_phy_pri40_idle_power_dBm;  /* 统计周期内主40M信道空闲时的功率，一直不空闲就不统计 */
-    oal_int8 c_phy_pri80_idle_power_dBm;  /* 统计周期内主80M信道空闲时的功率，一直不空闲就不统计 */
+    oal_int8 c_phy_pri20_idle_power_dbm;  /* 统计周期内主20M信道空闲时的功率，一直不空闲就不统计 */
+    oal_int8 c_phy_pri40_idle_power_dbm;  /* 统计周期内主40M信道空闲时的功率，一直不空闲就不统计 */
+    oal_int8 c_phy_pri80_idle_power_dbm;  /* 统计周期内主80M信道空闲时的功率，一直不空闲就不统计 */
 
     oal_uint32 aul_beacon_miss_max_num[WLAN_SERVICE_AP_MAX_NUM_PER_DEVICE]; /* mac记录的每个AP BEACON MISS历史最大值 */
     oal_uint32 ul_non_directed_frame_num;
@@ -1938,12 +1850,11 @@ typedef struct {
     oal_uint32 ul_ba_recipient_greater_baw_count;
     oal_uint32 ul_ba_recipient_sync_loss_count;
     oal_uint32 ul_ba_recipient_update_hw_baw_count;
-
 } oam_stats_ampdu_stat_stru;
 #endif
 
 /* 函数声明    OAM模块对外提供的接口 */
-extern oam_mng_ctx_stru oam_mng_ctx;
+extern oam_mng_ctx_stru g_oam_mng_ctx;
 
 extern oal_uint32 oam_send_device_data2sdt(oal_uint8 *pc_string, oal_uint16 len);
 extern oal_int32 oam_main_init(oal_void);
@@ -1954,7 +1865,7 @@ extern oal_uint32 oam_set_output_type(oam_output_type_enum_uint8 en_output_type)
 extern oal_uint32 oam_get_output_type(oam_output_type_enum_uint8 *pen_output_type);
 
 /* LOG模块对外接口 */
-extern oal_void oam_exception_stat_handler(oam_msg_moduleid_enum_uint8 en_moduleid, oal_uint8 uc_vap_idx);
+extern oal_void oam_exception_stat_handler(oam_msg_moduleid_enum_uint8 en_moduleid, oal_uint8 vap_idx);
 
 extern oal_uint32 oam_log_set_global_switch(oal_switch_enum_uint8 en_log_switch);
 extern oal_uint32 oam_log_set_vap_switch(oal_uint8 uc_vap_id,
@@ -2131,7 +2042,7 @@ extern oal_uint32 oam_stats_report_timer_info_to_sdt(oal_uint8 *puc_timer_addr,
                                                      oal_uint8 uc_timer_len);
 extern oal_uint32 oam_stats_report_event_queue_info_to_sdt(oal_uint8 *puc_event_queue_addr,
                                                            oal_uint16 us_event_queue_info_len);
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) || defined(_PRE_PRODUCT_ID_HI110X_HOST)
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
 extern oal_uint32 oam_stats_report_info_to_sdt(oam_ota_type_enum_uint8 en_ota_type);
 extern oal_uint32 oam_report_vap_pkt_stat_to_sdt(oal_uint8 uc_vap_id);
@@ -2166,7 +2077,7 @@ extern oal_void oam_profiling_switch_test_process(oal_uint8 uc_config_type, oal_
 extern oal_uint32 oam_profiling_compute_time_offset(oal_time_us_stru st_time_first,
                                                     oal_time_us_stru st_time_second,
                                                     oal_time_us_stru *pst_time_offset);
-extern oal_uint32 oam_profiling_init(oal_void);
+extern oal_void oam_profiling_init(oal_void);
 extern oal_uint32 oam_profiling_set_switch(oam_profiling_enum_uint8 en_profiling_type,
                                            oam_profiling_swith_enum_uint8 en_profiling_switch);
 extern oal_void oam_profiling_packet_add(oam_profiling_enum_uint8 en_profiling_type);
@@ -2188,9 +2099,6 @@ extern oal_void oam_profiling_chswitch_show_offset(oal_void);
 extern oal_void oam_print_record_time(oal_void);
 extern oal_void oam_record_time(oal_uint32 ul_idx);
 
-#ifdef _PRE_DEBUG_MODE
-extern oam_tx_complete_stat_stru g_ast_tx_complete_stat[WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC];
-#endif
 extern oal_void oam_netlink_ops_register (oam_nl_cmd_enum_uint8 en_type,
     oal_uint32(*p_func)(oal_uint8 *puc_data, oal_uint32 ul_len));
 extern oal_void oam_netlink_ops_unregister(oam_nl_cmd_enum_uint8 en_type);
@@ -2206,18 +2114,22 @@ OAL_STATIC OAL_INLINE oal_switch_enum_uint8 oam_get_log_switch(oal_uint32 ul_par
     oam_log_level_enum_uint8 en_log_level = (ul_para >> 28) & 0xf;
 
     /* 从执行性能角度考虑，提前判断特性开关，大部分info日志可以在第一层命令就直接退出 */
-    if (oam_mng_ctx.st_log_ctx.en_global_log_switch == OAL_SWITCH_OFF) {
+    if (g_oam_mng_ctx.st_log_ctx.en_global_log_switch == OAL_SWITCH_OFF) {
         return OAL_SWITCH_OFF;
-    } else if (oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_vap_log_switch[uc_vap_id] == OAL_SWITCH_OFF) {
+    } else if (g_oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_vap_log_switch[uc_vap_id] == OAL_SWITCH_OFF) {
         return OAL_SWITCH_OFF;
-    } else if (en_log_level > oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_vap_log_level[uc_vap_id]) {
+    } else if (en_log_level > g_oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_vap_log_level[uc_vap_id]) {
         return OAL_SWITCH_OFF;
-
-    } else if (en_log_level > oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_feature_log_level[uc_vap_id][en_feature_id]) {
+    } else if (en_log_level > g_oam_mng_ctx.st_log_ctx.st_vap_log_info.aen_feature_log_level[uc_vap_id][en_feature_id]) {
         return OAL_SWITCH_OFF;
     }
 
     return OAL_SWITCH_ON;
 }
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of oam_ext_if.h */

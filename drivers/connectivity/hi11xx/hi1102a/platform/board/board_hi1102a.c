@@ -23,6 +23,7 @@
 #include "oal_hcc_host_if.h"
 #include "plat_uart.h"
 #include "plat_firmware.h"
+#include "hisi_ini.h"
 
 #undef GPIO_BASE_ADDR
 #define GPIO_BASE_ADDR     0X50005000
@@ -44,6 +45,7 @@
 #define DTS_PROP_GPIO_TCXO_1P95V     "hi110x,gpio_tcxo_1p95v"
 #define PROC_NAME_GPIO_TCXO_1P95V    "hi110x_tcxo_1p95v"
 #define PROC_NAME_GPIO_WLAN_FLOWCTRL "hi110x_wlan_flowctrl"
+
 /* just for p10+ end */
 // function hi110x_power_tcxo() just for p10+
 OAL_STATIC void hi110x_power_tcxo(void)
@@ -55,7 +57,7 @@ OAL_STATIC void hi110x_power_tcxo(void)
 
     ret = get_board_dts_node(&np, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
         return;
     }
 
@@ -63,30 +65,109 @@ OAL_STATIC void hi110x_power_tcxo(void)
     if (ret) {
         ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_TCXO_1P95V, &physical_gpio);
         if (ret != BOARD_SUCC) {
-            PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_TCXO_1P95V);
+            ps_print_err("get dts prop %s failed\n", DTS_PROP_GPIO_TCXO_1P95V);
             return;
         }
-        board_info.tcxo_1p95_enable = physical_gpio;
+        g_board_info.tcxo_1p95_enable = physical_gpio;
 #ifdef GPIOF_OUT_INIT_LOW
-        ret = gpio_request_one(board_info.tcxo_1p95_enable, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_TCXO_1P95V);
+        ret = gpio_request_one(g_board_info.tcxo_1p95_enable, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_TCXO_1P95V);
         if (ret) {
-            PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_TCXO_1P95V);
+            ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_TCXO_1P95V);
             return;
         }
 #else
-        ret = gpio_request(board_info.tcxo_1p95_enable, PROC_NAME_GPIO_TCXO_1P95V);
+        ret = gpio_request(g_board_info.tcxo_1p95_enable, PROC_NAME_GPIO_TCXO_1P95V);
         if (ret) {
-            PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_TCXO_1P95V);
+            ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_TCXO_1P95V);
             return;
         }
 #endif
 
-        gpio_direction_output(board_info.tcxo_1p95_enable, GPIO_LOWLEVEL);
-        PS_PRINT_INFO("hi110X tcxo 1p95v enable gpio:%d\n", board_info.tcxo_1p95_enable);
+        gpio_direction_output(g_board_info.tcxo_1p95_enable, GPIO_LOWLEVEL);
+        ps_print_info("hi110X tcxo 1p95v enable gpio:%d\n", g_board_info.tcxo_1p95_enable);
     }
 #endif
 
     return;
+}
+
+STATIC int32_t hi1102a_config_output_gpio_by_dts(int32_t *gpio_enable,
+                                                 const char *dts_prop_gpio,
+                                                 const char *proc_name_gpio,
+                                                 const char *dts_node)
+{
+    int32_t ret;
+    int32_t physical_gpio = 0;
+
+    if (gpio_enable == NULL || dts_prop_gpio == NULL || proc_name_gpio == NULL || dts_node == NULL) {
+        ps_print_err("func has NULL input param!!!\n");
+        return BOARD_FAIL;
+    }
+
+    ret = get_board_gpio(dts_node, dts_prop_gpio, &physical_gpio);
+    if (ret != BOARD_SUCC) {
+        ps_print_err("get dts prop %s failed\n", dts_prop_gpio);
+        return BOARD_FAIL;
+    }
+
+#ifdef GPIOF_OUT_INIT_LOW
+    ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, proc_name_gpio);
+    if (ret) {
+        ps_print_err("%s gpio_request failed, gpio_nr = %d\n", proc_name_gpio, physical_gpio);
+        return BOARD_FAIL;
+    }
+#else
+    ret = gpio_request(physical_gpio, proc_name_gpio);
+    if (ret) {
+        ps_print_err("%s gpio_request failed, gpio_nr = %d\n", proc_name_gpio, physical_gpio);
+        return BOARD_FAIL;
+    }
+
+    gpio_direction_output(physical_gpio, GPIO_LOWLEVEL);
+#endif
+
+    *gpio_enable = physical_gpio;
+
+    return BOARD_SUCC;
+}
+
+STATIC int32_t hi1102a_config_input_gpio_by_dts(int32_t *gpio_enable,
+                                                const char *dts_prop_gpio,
+                                                const char *proc_name_gpio,
+                                                const char *dts_node)
+{
+    int32_t ret;
+    int32_t physical_gpio = 0;
+
+    if (gpio_enable == NULL || dts_prop_gpio == NULL || proc_name_gpio == NULL || dts_node == NULL) {
+        ps_print_err("func has NULL input param!!!\n");
+        return BOARD_FAIL;
+    }
+
+    ret = get_board_gpio(dts_node, dts_prop_gpio, &physical_gpio);
+    if (ret != BOARD_SUCC) {
+        ps_print_err("get dts prop %s failed\n", dts_prop_gpio);
+        return BOARD_FAIL;
+    }
+
+#ifdef GPIOF_IN
+    ret = gpio_request_one(physical_gpio, GPIOF_IN, proc_name_gpio);
+    if (ret) {
+        ps_print_err("%s gpio_request failed, gpio_nr = %d\n", proc_name_gpio, physical_gpio);
+        return BOARD_FAIL;
+    }
+#else
+    ret = gpio_request(physical_gpio, proc_name_gpio);
+    if (ret) {
+        ps_print_err("%s gpio_request failed, gpio_nr = %d\n", proc_name_gpio, physical_gpio);
+        return BOARD_FAIL;
+    }
+    gpio_direction_input(physical_gpio);
+#endif
+
+    *gpio_enable = physical_gpio;
+
+    return BOARD_SUCC;
 }
 
 int32 hi1102a_get_board_power_gpio(void)
@@ -99,96 +180,50 @@ int32 hi1102a_get_board_power_gpio(void)
     /* just for p10+ end */
     ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_HI110X_GPIO_SSI_CLK, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_INFO("get dts prop %s failed, gpio-ssi don't support\n", DTS_PROP_GPIO_HI110X_GPIO_SSI_CLK);
+        ps_print_info("get dts prop %s failed, gpio-ssi don't support\n", DTS_PROP_GPIO_HI110X_GPIO_SSI_CLK);
     } else {
-        board_info.ssi_gpio_clk = physical_gpio;
+        g_board_info.ssi_gpio_clk = physical_gpio;
         ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_HI110X_GPIO_SSI_DATA, &physical_gpio);
         if (ret != BOARD_SUCC) {
-            PS_PRINT_INFO("get dts prop %s failed, gpio-ssi don't support\n", DTS_PROP_GPIO_HI110X_GPIO_SSI_DATA);
-            board_info.ssi_gpio_clk = 0;
+            ps_print_info("get dts prop %s failed, gpio-ssi don't support\n", DTS_PROP_GPIO_HI110X_GPIO_SSI_DATA);
+            g_board_info.ssi_gpio_clk = 0;
         } else {
-            board_info.ssi_gpio_data = physical_gpio;
-            PS_PRINT_INFO("gpio-ssi support, ssi clk gpio:%d, ssi data gpio:%d\n",
-                          board_info.ssi_gpio_clk, board_info.ssi_gpio_data);
+            g_board_info.ssi_gpio_data = physical_gpio;
+            ps_print_info("gpio-ssi support, ssi clk gpio:%d, ssi data gpio:%d\n",
+                          g_board_info.ssi_gpio_clk, g_board_info.ssi_gpio_data);
         }
     }
 
-    ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_HI110X_POWEN_ON, &physical_gpio);
+    /* power enable */
+    ret = hi1102a_config_output_gpio_by_dts(&g_board_info.power_on_enable, DTS_PROP_GPIO_HI110X_POWEN_ON,
+                                            PROC_NAME_GPIO_POWEN_ON, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_HI110X_POWEN_ON);
-        return BOARD_FAIL;
+        goto err_get_power_gpio;
     }
-    board_info.power_on_enable = physical_gpio;
-#ifdef GPIOF_OUT_INIT_LOW
-    ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_POWEN_ON);
-        return BOARD_FAIL;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_POWEN_ON);
-        return BOARD_FAIL;
-    }
-    gpio_direction_output(physical_gpio, 0);
-#endif
 
     /* bfgn enable */
-    ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_BFGX_POWEN_ON_ENABLE, &physical_gpio);
+    ret = hi1102a_config_output_gpio_by_dts(&g_board_info.bfgn_power_on_enable, DTS_PROP_GPIO_BFGX_POWEN_ON_ENABLE,
+                                            PROC_NAME_GPIO_BFGX_POWEN_ON, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_BFGX_POWEN_ON_ENABLE);
         goto err_get_bfgx_power_gpio;
     }
 
-    board_info.bfgn_power_on_enable = physical_gpio;
-#ifdef GPIOF_OUT_INIT_LOW
-    ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_BFGX_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_POWEN_ON);
-        goto err_get_bfgx_power_gpio;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_BFGX_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_POWEN_ON);
-        goto err_get_bfgx_power_gpio;
-    }
-    gpio_direction_output(physical_gpio, 0);
-#endif
-
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
     /* wlan enable */
-    ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_GPIO_WLAN_POWEN_ON_ENABLE, &physical_gpio);
+    ret = hi1102a_config_output_gpio_by_dts(&g_board_info.wlan_power_on_enable, DTS_PROP_GPIO_WLAN_POWEN_ON_ENABLE,
+                                            PROC_NAME_GPIO_WLAN_POWEN_ON, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_WLAN_POWEN_ON_ENABLE);
         goto err_get_wlan_power_gpio;
     }
-    board_info.wlan_power_on_enable = physical_gpio;
-#ifdef GPIOF_OUT_INIT_LOW
-    ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_WLAN_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_POWEN_ON);
-        goto err_get_wlan_power_gpio;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_WLAN_POWEN_ON);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_POWEN_ON);
-        goto err_get_wlan_power_gpio;
-    }
-    gpio_direction_output(physical_gpio, 0);
-#endif
-#endif
-    return BOARD_SUCC;
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
-err_get_wlan_power_gpio:
-    gpio_free(board_info.bfgn_power_on_enable);
-#endif
-err_get_bfgx_power_gpio:
-    gpio_free(board_info.power_on_enable);
 
-    CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+    return BOARD_SUCC;
+
+err_get_wlan_power_gpio:
+    gpio_free(g_board_info.bfgn_power_on_enable);
+err_get_bfgx_power_gpio:
+    gpio_free(g_board_info.power_on_enable);
+
+err_get_power_gpio:
+    chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                          CHR_PLT_DRV_EVENT_GPIO, CHR_PLAT_DRV_ERROR_POWER_GPIO);
 
     return BOARD_FAIL;
@@ -196,102 +231,48 @@ err_get_bfgx_power_gpio:
 
 void hi1102a_free_board_power_gpio(void)
 {
-    gpio_free(board_info.power_on_enable);
-    gpio_free(board_info.bfgn_power_on_enable);
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
-    gpio_free(board_info.wlan_power_on_enable);
-#endif
+    gpio_free(g_board_info.power_on_enable);
+    gpio_free(g_board_info.bfgn_power_on_enable);
+    gpio_free(g_board_info.wlan_power_on_enable);
 }
 
 int32 hi1102a_board_wakeup_gpio_init(void)
 {
     int32 ret;
-    int32 physical_gpio = 0;
 
     /* bfgx wake host gpio request */
-    ret = get_board_gpio(DTS_NODE_HI110X_BFGX, DTS_PROP_HI110X_GPIO_BFGX_WAKEUP_HOST, &physical_gpio);
+    ret = hi1102a_config_input_gpio_by_dts(&g_board_info.bfgn_wakeup_host, DTS_PROP_HI110X_GPIO_BFGX_WAKEUP_HOST,
+                                           PROC_NAME_GPIO_BFGX_WAKEUP_HOST, DTS_NODE_HI110X_BFGX);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_BFGX_WAKEUP_HOST);
         goto err_get_bfgx_wkup_host_gpio;
     }
+    ps_print_info("hi110x bfgx wkup host gpio is %d\n", g_board_info.bfgn_wakeup_host);
 
-    board_info.bfgn_wakeup_host = physical_gpio;
-    PS_PRINT_INFO("hi110x bfgx wkup host gpio is %d\n", board_info.bfgn_wakeup_host);
-#ifdef GPIOF_IN
-    ret = gpio_request_one(physical_gpio, GPIOF_IN, PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
-        goto err_get_bfgx_wkup_host_gpio;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
-        goto err_get_bfgx_wkup_host_gpio;
-    }
-    gpio_direction_input(physical_gpio);
-#endif
-
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
     /* wifi wake host gpio request */
-    ret = get_board_gpio(DTS_NODE_HI110X_WIFI, DTS_PROP_HI110X_GPIO_WLAN_WAKEUP_HOST, &physical_gpio);
+    ret = hi1102a_config_input_gpio_by_dts(&g_board_info.wlan_wakeup_host, DTS_PROP_HI110X_GPIO_WLAN_WAKEUP_HOST,
+                                           PROC_NAME_GPIO_WLAN_WAKEUP_HOST, DTS_NODE_HI110X_WIFI);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_WLAN_WAKEUP_HOST);
         goto err_get_wlan_wkup_host_gpio;
     }
-
-    board_info.wlan_wakeup_host = physical_gpio;
-    PS_PRINT_INFO("hi110x wifi wkup host gpio is %d\n", board_info.wlan_wakeup_host);
-#ifdef GPIOF_IN
-    ret = gpio_request_one(physical_gpio, GPIOF_IN, PROC_NAME_GPIO_WLAN_WAKEUP_HOST);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_WAKEUP_HOST);
-        goto err_get_wlan_wkup_host_gpio;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_WLAN_WAKEUP_HOST);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_WAKEUP_HOST);
-        goto err_get_wlan_wkup_host_gpio;
-    }
-    gpio_direction_input(physical_gpio);
-#endif
+    ps_print_info("hi110x wifi wkup host gpio is %d\n", g_board_info.wlan_wakeup_host);
 
     /* host wake wlan gpio request */
-    ret = get_board_gpio(DTS_NODE_HI110X_WIFI, DTS_PROP_GPIO_HOST_WAKEUP_WLAN, &physical_gpio);
+    ret  = hi1102a_config_output_gpio_by_dts(&g_board_info.host_wakeup_wlan, DTS_PROP_GPIO_HOST_WAKEUP_WLAN,
+                                             PROC_NAME_GPIO_HOST_WAKEUP_WLAN, DTS_NODE_HI110X_WIFI);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_HOST_WAKEUP_WLAN);
         goto err_get_host_wake_up_wlan_fail;
     }
+    ps_print_info("hi110x host wkup wifi gpio is %d\n", g_board_info.host_wakeup_wlan);
 
-    board_info.host_wakeup_wlan = physical_gpio;
-    PS_PRINT_INFO("hi110x host wkup wifi gpio is %d\n", board_info.host_wakeup_wlan);
-#ifdef GPIOF_OUT_INIT_LOW
-    ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_HOST_WAKEUP_WLAN);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_HOST_WAKEUP_WLAN);
-        goto err_get_host_wake_up_wlan_fail;
-    }
-#else
-    ret = gpio_request(physical_gpio, PROC_NAME_GPIO_HOST_WAKEUP_WLAN);
-    if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_HOST_WAKEUP_WLAN);
-        goto err_get_host_wake_up_wlan_fail;
-    } else {
-        gpio_direction_input(physical_gpio);
-    }
-#endif
-#endif
     return BOARD_SUCC;
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
+
 err_get_host_wake_up_wlan_fail:
-    gpio_free(board_info.wlan_wakeup_host);
+    gpio_free(g_board_info.wlan_wakeup_host);
 err_get_wlan_wkup_host_gpio:
-    gpio_free(board_info.bfgn_wakeup_host);
-#endif
+    gpio_free(g_board_info.bfgn_wakeup_host);
 err_get_bfgx_wkup_host_gpio:
 
-    CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+    chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                          CHR_PLT_DRV_EVENT_GPIO, CHR_PLAT_DRV_ERROR_WAKEUP_GPIO);
 
     return BOARD_FAIL;
@@ -299,12 +280,74 @@ err_get_bfgx_wkup_host_gpio:
 
 void hi1102a_free_board_wakeup_gpio(void)
 {
-    gpio_free(board_info.bfgn_wakeup_host);
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
-    gpio_free(board_info.wlan_wakeup_host);
-    gpio_free(board_info.host_wakeup_wlan);
+    gpio_free(g_board_info.bfgn_wakeup_host);
+    gpio_free(g_board_info.wlan_wakeup_host);
+    gpio_free(g_board_info.host_wakeup_wlan);
+}
+
+int32 hi1102a_board_wifi_tas_gpio_init(void)
+{
+#ifdef _PRE_CONFIG_USE_DTS
+    int32 ret;
+    int32 physical_gpio = 0;
+    int32 wifi_tas_state = 0;
+    struct device_node *np = NULL;
+
+    if (get_board_dts_node(&np, DTS_NODE_HI110X_WIFI) != BOARD_SUCC) {
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HI110X_WIFI);
+        return BOARD_FAIL;
+    }
+
+    if (of_property_read_bool(np, DTS_PROP_WIFI_TAS_EN)) {
+        ps_print_info("Hi110x wifi tas enable\n");
+        g_board_info.wifi_tas_enable = WIFI_TAS_ENABLE;
+    } else {
+        ps_print_info("Hi110x wifi tas not enable\n");
+        g_board_info.wifi_tas_enable = WIFI_TAS_DISABLE;
+        return BOARD_SUCC;
+    }
+
+    /* wifi tas control gpio request */
+    if (get_board_gpio(DTS_NODE_HI110X_WIFI, DTS_PROP_GPIO_WIFI_TAS, &physical_gpio) != BOARD_SUCC) {
+        ps_print_err("get dts prop %s failed\n", DTS_PROP_GPIO_WIFI_TAS);
+        return BOARD_FAIL;
+    }
+
+    g_board_info.rf_wifi_tas = physical_gpio;
+    ps_print_info("hi110x wifi tas gpio is %d\n", g_board_info.rf_wifi_tas);
+
+#ifdef GPIOF_OUT_INIT_LOW
+    ret = of_property_read_u32(np, DTS_PROP_HI110X_WIFI_TAS_STATE, &wifi_tas_state);
+    if (ret) {
+        ps_print_err("read prop [%s] fail, ret=%d\n", DTS_PROP_HI110X_WIFI_TAS_STATE, ret);
+    }
+
+    g_board_info.wifi_tas_gpio_init = (wifi_tas_state == 0) ? GPIOF_INIT_LOW : GPIOF_INIT_HIGH;
+    wifi_tas_state = (wifi_tas_state == 0) ?  GPIOF_OUT_INIT_LOW : GPIOF_OUT_INIT_HIGH;
+    if (gpio_request_one(physical_gpio, wifi_tas_state, PROC_NAME_GPIO_WIFI_TAS)) {
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_WIFI_TAS);
+        return BOARD_FAIL;
+    }
+#else
+    if (gpio_request(physical_gpio, PROC_NAME_GPIO_WIFI_TAS)) {
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_WIFI_TAS);
+        return BOARD_FAIL;
+    } else {
+        gpio_direction_input(physical_gpio);
+    }
+#endif
+
+    return BOARD_SUCC;
+#else
+    return BOARD_SUCC;
 #endif
 }
+
+void hi1102a_free_board_wifi_tas_gpio(void)
+{
+    gpio_free(g_board_info.rf_wifi_tas);
+}
+
 
 int32 hi1102a_board_timesync_gpio_init(void)
 {
@@ -314,26 +357,26 @@ int32 hi1102a_board_timesync_gpio_init(void)
     /* 根据设备树DTS文件获取gnss_timesync GPIO在host侧对应的管脚，保存在physical_gpio中 */
     ret = get_board_gpio(DTS_NODE_HI110X_BFGX, DTS_PROP_HI110X_GPIO_TIMESYNC, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_TIMESYNC);
+        ps_print_err("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_TIMESYNC);
         return BOARD_FAIL;
     }
 
-    board_info.timesync_gpio = physical_gpio;
+    g_board_info.timesync_gpio = physical_gpio;
 
     /* 向内核申请使用该管脚 */
 #ifdef GPIOF_IN
     ret = gpio_request_one(physical_gpio, GPIOF_IN, PROC_NAME_HI110X_GPIO_TIMESYNC);
     if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
         return BOARD_FAIL;
     }
 #else
     ret = gpio_request(physical_gpio, PROC_NAME_HI110X_GPIO_TIMESYNC);
     if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
         return BOARD_FAIL;
     } else {
-        PS_PRINT_INFO("%s gpio_request succ\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
+        ps_print_info("%s gpio_request succ\n", PROC_NAME_HI110X_GPIO_TIMESYNC);
         gpio_direction_input(physical_gpio);
     }
 #endif
@@ -343,7 +386,7 @@ int32 hi1102a_board_timesync_gpio_init(void)
 
 void hi1102a_free_board_timesync_gpio(void)
 {
-    gpio_free(board_info.timesync_gpio);
+    gpio_free(g_board_info.timesync_gpio);
 }
 
 /*
@@ -358,26 +401,26 @@ int32 hi1102a_board_flowctrl_gpio_init(void)
     /* 根据设备树DTS文件获取流控GPIO在host侧对应的管脚，保存在physical_gpio中 */
     ret = get_board_gpio(DTS_NODE_HI110X_WIFI, DTS_PROP_GPIO_WLAN_FLOWCTRL, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_WLAN_FLOWCTRL);
+        ps_print_err("get dts prop %s failed\n", DTS_PROP_GPIO_WLAN_FLOWCTRL);
         return BOARD_FAIL;
     }
 
-    board_info.flowctrl_gpio = physical_gpio;
+    g_board_info.flowctrl_gpio = physical_gpio;
 
     /* 向内核申请使用该管脚 */
 #ifdef GPIOF_IN
     ret = gpio_request_one(physical_gpio, GPIOF_IN, PROC_NAME_GPIO_WLAN_FLOWCTRL);
     if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
         return BOARD_FAIL;
     }
 #else
     ret = gpio_request(physical_gpio, PROC_NAME_GPIO_WLAN_FLOWCTRL);
     if (ret) {
-        PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
+        ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
         return BOARD_FAIL;
     } else {
-        PS_PRINT_ERR("%s gpio_request succ\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
+        ps_print_err("%s gpio_request succ\n", PROC_NAME_GPIO_WLAN_FLOWCTRL);
         gpio_direction_input(physical_gpio);
     }
 #endif
@@ -387,14 +430,14 @@ int32 hi1102a_board_flowctrl_gpio_init(void)
 
 void hi1102a_free_board_flowctrl_gpio(void)
 {
-    gpio_free(board_info.flowctrl_gpio);
+    gpio_free(g_board_info.flowctrl_gpio);
 }
 
 void hi1102a_tcxo_enable(void)
 {
-    if (board_info.tcxo_1p95_enable != 0) {
-        PS_PRINT_INFO("hi110x enable tcxo\n");
-        power_state_change(board_info.tcxo_1p95_enable, BOARD_POWER_ON);
+    if (g_board_info.tcxo_1p95_enable != 0) {
+        ps_print_info("hi110x enable tcxo\n");
+        power_state_change(g_board_info.tcxo_1p95_enable, BOARD_POWER_ON);
     } else {
         return;
     }
@@ -402,9 +445,9 @@ void hi1102a_tcxo_enable(void)
 
 void hi1102a_tcxo_disable(void)
 {
-    if (board_info.tcxo_1p95_enable != 0) {
-        PS_PRINT_INFO("hi110x disable tcxo\n");
-        power_state_change(board_info.tcxo_1p95_enable, BOARD_POWER_OFF);
+    if (g_board_info.tcxo_1p95_enable != 0) {
+        ps_print_info("hi110x disable tcxo\n");
+        power_state_change(g_board_info.tcxo_1p95_enable, BOARD_POWER_OFF);
     } else {
         return;
     }
@@ -414,7 +457,7 @@ void hi1102a_chip_power_on(void)
 {
     hi1102a_tcxo_enable();
     board_host_wakeup_dev_set(0);
-    power_state_change(board_info.power_on_enable, BOARD_POWER_ON);
+    power_state_change(g_board_info.power_on_enable, BOARD_POWER_ON);
 #if defined(_PRE_CONFIG_GPIO_TO_SSI_DEBUG)
 #if defined(PLATFORM_DEBUG_ENABLE)
 #endif
@@ -425,7 +468,7 @@ void hi1102a_chip_power_off(void)
 {
 #if defined(_PRE_CONFIG_GPIO_TO_SSI_DEBUG)
 #endif
-    power_state_change(board_info.power_on_enable, BOARD_POWER_OFF);
+    power_state_change(g_board_info.power_on_enable, BOARD_POWER_OFF);
     hi1102a_tcxo_disable();
     board_host_wakeup_dev_set(0);
 }
@@ -433,13 +476,13 @@ void hi1102a_chip_power_off(void)
 int32 hi1102a_wifi_enable(void)
 {
     int32 ret;
-    uintptr_t gpio = board_info.wlan_power_on_enable;
+    uintptr_t gpio = g_board_info.wlan_power_on_enable;
 
     /* 第一次枚举时BUS 还未初始化 */
     ret = hcc_bus_power_ctrl_register(hcc_get_current_110x_bus(), HCC_BUS_CTRL_POWER_UP,
                                       board_wlan_gpio_power_on, (void *)gpio);
     if (ret) {
-        PS_PRINT_INFO("power ctrl down reg failed, ret=%d", ret);
+        ps_print_info("power ctrl down reg failed, ret=%d", ret);
     }
     ret = hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_UP);
     return ret;
@@ -448,12 +491,12 @@ int32 hi1102a_wifi_enable(void)
 int32 hi1102a_wifi_disable(void)
 {
     int32 ret;
-    uintptr_t gpio = board_info.wlan_power_on_enable;
+    uintptr_t gpio = g_board_info.wlan_power_on_enable;
 
     ret = hcc_bus_power_ctrl_register(hcc_get_current_110x_bus(), HCC_BUS_CTRL_POWER_DOWN,
                                       board_wlan_gpio_power_off, (void *)gpio);
     if (ret) {
-        PS_PRINT_INFO("power ctrl down reg failed, ret=%d", ret);
+        ps_print_info("power ctrl down reg failed, ret=%d", ret);
     }
     ret = hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_DOWN);
     return ret;
@@ -461,12 +504,12 @@ int32 hi1102a_wifi_disable(void)
 
 void hi1102a_bfgx_enable(void)
 {
-    power_state_change(board_info.bfgn_power_on_enable, BOARD_POWER_ON);
+    power_state_change(g_board_info.bfgn_power_on_enable, BOARD_POWER_ON);
 }
 
 void hi1102a_bfgx_disable(void)
 {
-    power_state_change(board_info.bfgn_power_on_enable, BOARD_POWER_OFF);
+    power_state_change(g_board_info.bfgn_power_on_enable, BOARD_POWER_OFF);
 }
 
 int32 hi1102a_board_power_on(uint32 ul_subsystem)
@@ -474,24 +517,20 @@ int32 hi1102a_board_power_on(uint32 ul_subsystem)
     int32 ret = SUCC;
     if (ul_subsystem == WLAN_POWER) {
         if (bfgx_is_shutdown()) {
-            PS_PRINT_INFO("wifi pull up power_on_enable gpio!\n");
+            ps_print_info("wifi pull up power_on_enable gpio!\n");
             hi1102a_chip_power_on();
             hi1102a_bfgx_enable();
         }
         ret = hi1102a_wifi_enable();
     } else if (ul_subsystem == BFGX_POWER) {
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
         if (wlan_is_shutdown()) {
-            PS_PRINT_INFO("bfgx pull up power_on_enable gpio!\n");
+            ps_print_info("bfgx pull up power_on_enable gpio!\n");
             hi1102a_chip_power_on();
             ret = hi1102a_wifi_enable();
         }
-#else
-        hi1102a_chip_power_on();
-#endif
         hi1102a_bfgx_enable();
     } else {
-        PS_PRINT_ERR("power input system:%d error\n", ul_subsystem);
+        ps_print_err("power input system:%d error\n", ul_subsystem);
     }
 
     return ret;
@@ -502,23 +541,19 @@ int32 hi1102a_board_power_off(uint32 ul_subsystem)
     if (ul_subsystem == WLAN_POWER) {
         hi1102a_wifi_disable();
         if (bfgx_is_shutdown()) {
-            PS_PRINT_INFO("wifi pull down power_on_enable!\n");
+            ps_print_info("wifi pull down power_on_enable!\n");
             hi1102a_bfgx_disable();
             hi1102a_chip_power_off();
         }
     } else if (ul_subsystem == BFGX_POWER) {
         hi1102a_bfgx_disable();
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
         if (wlan_is_shutdown()) {
-            PS_PRINT_INFO("bfgx pull down power_on_enable!\n");
+            ps_print_info("bfgx pull down power_on_enable!\n");
             hi1102a_wifi_disable();
             hi1102a_chip_power_off();
         }
-#else
-        hi1102a_chip_power_off();
-#endif
     } else {
-        PS_PRINT_ERR("power input system:%d error\n", ul_subsystem);
+        ps_print_err("power input system:%d error\n", ul_subsystem);
         return -EFAIL;
     }
 
@@ -529,14 +564,10 @@ int32 hi1102a_board_power_reset(uint32 ul_subsystem)
 {
     int32 ret = 0;
     hi1102a_bfgx_disable();
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
     hi1102a_wifi_disable();
-#endif
     hi1102a_chip_power_off();
     hi1102a_chip_power_on();
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
     ret = hi1102a_wifi_enable();
-#endif
     hi1102a_bfgx_enable();
     return ret;
 }
@@ -565,24 +596,24 @@ int32 hi1102a_bfgx_dev_power_on(void)
     struct pm_drv_data *pm_data = pm_get_drvdata();
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return BFGX_POWER_FAILED;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
+        ps_print_err("ps_core_d is err\n");
         return BFGX_POWER_FAILED;
     }
 
     ret = hi1102a_board_power_on(BFGX_POWER);
     if (ret) {
-        PS_PRINT_ERR("hi1103_board_power_on bfg failed, ret=%d\n", ret);
+        ps_print_err("hi1103_board_power_on bfg failed, ret=%d\n", ret);
         return BFGX_POWER_FAILED;
     }
 
     if (open_tty_drv(ps_core_d->pm_data) != BFGX_POWER_SUCCESS) {
-        PS_PRINT_ERR("open tty fail!\n");
+        ps_print_err("open tty fail!\n");
         error = BFGX_POWER_TTY_OPEN_FAIL;
         goto bfgx_power_on_fail;
     }
@@ -590,26 +621,19 @@ int32 hi1102a_bfgx_dev_power_on(void)
     if (wlan_is_shutdown()) {
         if (firmware_download_function(BFGX_CFG) != BFGX_POWER_SUCCESS) {
             hcc_bus_disable_state(pm_data->pst_wlan_pm_info->pst_bus, OAL_BUS_STATE_ALL);
-            PS_PRINT_ERR("bfgx download firmware fail!\n");
+            ps_print_err("bfgx download firmware fail!\n");
             error = BFGX_POWER_DOWNLOAD_FIRMWARE_FAIL;
             goto bfgx_power_on_fail;
         }
         hcc_bus_disable_state(pm_data->pst_wlan_pm_info->pst_bus, OAL_BUS_STATE_ALL);
-
-        /* eng support monitor */
-#ifdef PLATFORM_DEBUG_ENABLE
-        if (!device_monitor_enable)
-#endif
-        {
-            hi1102a_wifi_disable();
-        }
+        hi1102a_wifi_disable();
     } else {
         /* 此时BFGX 需要解复位BCPU */
-        PS_PRINT_ERR("wifi dereset bcpu\n");
+        ps_print_err("wifi dereset bcpu\n");
         if (wlan_pm_open_bcpu() != BFGX_POWER_SUCCESS) {
-            PS_PRINT_ERR("wifi dereset bcpu fail!\n");
+            ps_print_err("wifi dereset bcpu fail!\n");
             error = BFGX_POWER_WIFI_DERESET_BCPU_FAIL;
-            CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+            chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                                  CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_BFGX_PWRON_BY_WIFI);
 
             goto bfgx_power_on_fail;
@@ -629,45 +653,45 @@ int32 hi1102a_bfgx_dev_power_off(void)
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return BFGX_POWER_FAILED;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
+        ps_print_err("ps_core_d is err\n");
         return BFGX_POWER_FAILED;
     }
 
     if (uart_bfgx_close_cmd() != SUCCESS) {
         /* bfgx self close fail 了，后面也要通过wifi shutdown bcpu */
-        PS_PRINT_ERR("bfgx self close fail\n");
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("bfgx self close fail\n");
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_CLOSE, CHR_PLAT_DRV_ERROR_CLOSE_BCPU);
     }
 
     if (release_tty_drv(ps_core_d->pm_data) != SUCCESS) {
         /* 代码执行到此处，说明六合一所有业务都已经关闭，无论tty是否关闭成功，device都要下电 */
-        PS_PRINT_ERR("wifi off, close tty is err!");
+        ps_print_err("wifi off, close tty is err!");
     }
 
     if (!wlan_is_shutdown()) {
-        PS_PRINT_ERR("wifi shutdown bcpu\n");
+        ps_print_err("wifi shutdown bcpu\n");
         if (wlan_pm_shutdown_bcpu_cmd() != SUCCESS) {
-            PS_PRINT_ERR("wifi shutdown bcpu fail\n");
-            CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+            ps_print_err("wifi shutdown bcpu fail\n");
+            chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                                  CHR_PLT_DRV_EVENT_CLOSE, CHR_PLAT_DRV_ERROR_WIFI_CLOSE_BCPU);
             error = BFGX_POWER_FAILED;
         }
     }
 
-    PS_PRINT_INFO("%s,set BFGX_SLEEP\n", __func__);
+    ps_print_info("%s,set BFGX_SLEEP\n", __func__);
     pm_data->bfgx_dev_state = BFGX_SLEEP;
     pm_data->uart_state = UART_NOT_READY;
-    pm_data->uart_baud_switch_to = default_baud_rate;
+    pm_data->uart_baud_switch_to = g_default_baud_rate;
 
     hi1102a_board_power_off(BFGX_POWER);
 
@@ -678,7 +702,7 @@ int32 hi1102a_hitalk_power_off(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
@@ -688,10 +712,9 @@ int32 hi1102a_hitalk_power_off(void)
     /* wakeup dev,send poweroff cmd to wifi */
     if (wlan_pm_poweroff_cmd() != OAL_SUCC) {
         /* wifi self close 失败了也继续往下执行，uart关闭WCPU，异常恢复推迟到wifi下次open的时候执行 */
-        DECLARE_DFT_TRACE_KEY_INFO("hitalk_poweroff_by_sdio_fail", OAL_DFT_TRACE_FAIL);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        declare_dft_trace_key_info("hitalk_poweroff_by_sdio_fail", OAL_DFT_TRACE_FAIL);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_CLOSE, CHR_PLAT_DRV_ERROR_HITALK_CLOSE_WCPU);
-
     }
 
     hcc_bus_disable_state(hcc_get_current_110x_bus(), OAL_BUS_STATE_ALL);
@@ -709,13 +732,13 @@ int32 hi1102a_hitalk_power_on(void)
     int32 error = WIFI_POWER_SUCCESS;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
     ret = hi1102a_board_power_on(WLAN_POWER);
     if (ret) {
-        PS_PRINT_ERR("hi1102a_board_power_on wlan failed ret=%d\n", ret);
+        ps_print_err("hi1102a_board_power_on wlan failed ret=%d\n", ret);
         return -FAILURE;
     }
 
@@ -729,7 +752,7 @@ int32 hi1102a_hitalk_power_on(void)
     }
 
     if (error != WIFI_POWER_SUCCESS) {
-        PS_PRINT_ERR("firmware download fail\n");
+        ps_print_err("firmware download fail\n");
         error = WIFI_POWER_BFGX_OFF_FIRMWARE_DOWNLOAD_FAIL;
         goto hitalk_power_fail;
     } else {
@@ -738,10 +761,10 @@ int32 hi1102a_hitalk_power_on(void)
 
     ret = hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_PATCH_LAUCH);
     if (ret != 0) {
-        DECLARE_DFT_TRACE_KEY_INFO("hitalk_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio_fail", OAL_DFT_TRACE_FAIL);
-        PS_PRINT_ERR("hitalk_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio fail ret=%d", ret);
+        declare_dft_trace_key_info("hitalk_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio_fail", OAL_DFT_TRACE_FAIL);
+        ps_print_err("hitalk_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio fail ret=%d", ret);
         error = WIFI_POWER_BFGX_OFF_BOOT_UP_FAIL;
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_HITALK_WCPU_BOOTUP);
         goto hitalk_power_fail;
     }
@@ -758,7 +781,7 @@ int32 hi1102a_wlan_power_off(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
@@ -768,10 +791,9 @@ int32 hi1102a_wlan_power_off(void)
     /* wakeup dev,send poweroff cmd to wifi */
     if (wlan_pm_poweroff_cmd() != OAL_SUCC) {
         /* wifi self close 失败了也继续往下执行，uart关闭WCPU，异常恢复推迟到wifi下次open的时候执行 */
-        DECLARE_DFT_TRACE_KEY_INFO("wlan_poweroff_by_sdio_fail", OAL_DFT_TRACE_FAIL);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        declare_dft_trace_key_info("wlan_poweroff_by_sdio_fail", OAL_DFT_TRACE_FAIL);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_CLOSE, CHR_PLAT_DRV_ERROR_CLOSE_WCPU);
-
     }
 
     hcc_bus_disable_state(hcc_get_current_110x_bus(), OAL_BUS_STATE_ALL);
@@ -789,13 +811,13 @@ int32 hi1102a_wlan_power_on(void)
     int32 error = WIFI_POWER_SUCCESS;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
     ret = hi1102a_board_power_on(WLAN_POWER);
     if (ret) {
-        PS_PRINT_ERR("hi1102a_board_power_on wlan failed ret=%d\n", ret);
+        ps_print_err("hi1102a_board_power_on wlan failed ret=%d\n", ret);
         return -FAILURE;
     }
 
@@ -809,7 +831,7 @@ int32 hi1102a_wlan_power_on(void)
     }
 
     if (error != WIFI_POWER_SUCCESS) {
-        PS_PRINT_ERR("firmware download fail\n");
+        ps_print_err("firmware download fail\n");
         error = WIFI_POWER_BFGX_OFF_FIRMWARE_DOWNLOAD_FAIL;
         goto wifi_power_fail;
     } else {
@@ -818,10 +840,10 @@ int32 hi1102a_wlan_power_on(void)
 
     ret = hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_PATCH_LAUCH);
     if (ret != 0) {
-        DECLARE_DFT_TRACE_KEY_INFO("wlan_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio_fail", OAL_DFT_TRACE_FAIL);
-        PS_PRINT_ERR("wlan_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio fail ret=%d", ret);
+        declare_dft_trace_key_info("wlan_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio_fail", OAL_DFT_TRACE_FAIL);
+        ps_print_err("wlan_poweron HCC_BUS_POWER_PATCH_LAUCH by gpio fail ret=%d", ret);
         error = WIFI_POWER_BFGX_OFF_BOOT_UP_FAIL;
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_WCPU_BOOTUP);
         goto wifi_power_fail;
     }
@@ -843,9 +865,9 @@ int32 hi1102a_get_board_pmu_clk32k(void)
     if (ret != BOARD_SUCC) {
         return BOARD_FAIL;
     }
-    board_info.clk_32k_name = clk_name;
+    g_board_info.clk_32k_name = clk_name;
 
-    PS_PRINT_INFO("hi110x 32k clk name is %s\n", board_info.clk_32k_name);
+    ps_print_info("hi110x 32k clk name is %s\n", g_board_info.clk_32k_name);
 
     return BOARD_SUCC;
 }
@@ -859,25 +881,25 @@ int32 hi1102a_get_board_uart_port(void)
 
     ret = get_board_dts_node(&np, DTS_NODE_HI110X_BFGX);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
         return BOARD_FAIL;
     }
 
     /* 使用uart4，需要在dts里新增DTS_PROP_UART_PCLK项，指明uart4不依赖sensorhub */
     ret = of_property_read_bool(np, DTS_PROP_HI110X_UART_PCLK);
     if (ret) {
-        PS_PRINT_INFO("uart pclk normal\n");
-        board_info.uart_pclk = UART_PCLK_NORMAL;
+        ps_print_info("uart pclk normal\n");
+        g_board_info.uart_pclk = UART_PCLK_NORMAL;
     } else {
-        PS_PRINT_INFO("uart pclk from sensorhub\n");
-        board_info.uart_pclk = UART_PCLK_FROM_SENSORHUB;
+        ps_print_info("uart pclk from sensorhub\n");
+        g_board_info.uart_pclk = UART_PCLK_FROM_SENSORHUB;
     }
 
     ret = get_board_custmize(DTS_NODE_HI110X_BFGX, DTS_PROP_HI110X_UART_POART, &uart_port);
     if (ret != BOARD_SUCC) {
         return BOARD_FAIL;
     }
-    board_info.uart_port = uart_port;
+    g_board_info.uart_port = uart_port;
 
     return BOARD_SUCC;
 #else
@@ -893,20 +915,20 @@ int32 hi1102a_board_ir_ctrl_gpio_init(void)
 
     ret = get_board_gpio(DTS_NODE_HI110X_BFGX, DTS_PROP_GPIO_BFGX_IR_CTRL, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_INFO("dts prop %s not exist\n", DTS_PROP_GPIO_BFGX_IR_CTRL);
-        board_info.bfgx_ir_ctrl_gpio = -1;
+        ps_print_info("dts prop %s not exist\n", DTS_PROP_GPIO_BFGX_IR_CTRL);
+        g_board_info.bfgx_ir_ctrl_gpio = -1;
     } else {
-        board_info.bfgx_ir_ctrl_gpio = physical_gpio;
+        g_board_info.bfgx_ir_ctrl_gpio = physical_gpio;
 
 #ifdef GPIOF_OUT_INIT_LOW
         ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_GPIO_BFGX_IR_CTRL);
         if (ret) {
-            PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_IR_CTRL);
+            ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_IR_CTRL);
         }
 #else
         ret = gpio_request(physical_gpio, PROC_NAME_GPIO_BFGX_IR_CTRL);
         if (ret) {
-            PS_PRINT_ERR("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_IR_CTRL);
+            ps_print_err("%s gpio_request failed\n", PROC_NAME_GPIO_BFGX_IR_CTRL);
         } else {
             gpio_direction_output(physical_gpio, 0);
         }
@@ -923,41 +945,41 @@ int32 hi1102a_board_ir_ctrl_pmic_init(struct platform_device *pdev)
     struct device_node *np = NULL;
     int32 irled_voltage = 0;
     if (pdev == NULL) {
-        PS_PRINT_ERR("board pmu pdev is NULL!\n");
+        ps_print_err("board pmu pdev is NULL!\n");
         return ret;
     }
 
     ret = get_board_dts_node(&np, DTS_NODE_HI110X_BFGX);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
         return ret;
     }
 
-    board_info.bfgn_ir_ctrl_ldo = regulator_get(&pdev->dev, DTS_PROP_HI110x_IRLED_LDO_POWER);
+    g_board_info.bfgn_ir_ctrl_ldo = regulator_get(&pdev->dev, DTS_PROP_HI110X_IRLED_LDO_POWER);
 
-    if (IS_ERR(board_info.bfgn_ir_ctrl_ldo)) {
-        PS_PRINT_ERR("board_ir_ctrl_pmic_init get ird ldo failed\n");
+    if (IS_ERR(g_board_info.bfgn_ir_ctrl_ldo)) {
+        ps_print_err("board_ir_ctrl_pmic_init get ird ldo failed\n");
         return ret;
     }
 
-    ret = of_property_read_u32(np, DTS_PROP_HI110x_IRLED_VOLTAGE, &irled_voltage);
+    ret = of_property_read_u32(np, DTS_PROP_HI110X_IRLED_VOLTAGE, &irled_voltage);
     if (ret == BOARD_SUCC) {
-        PS_PRINT_INFO("set irled voltage %d mv\n", irled_voltage / 1000); /* V->mV */
-        ret = regulator_set_voltage(board_info.bfgn_ir_ctrl_ldo, (int)irled_voltage, (int)irled_voltage);
+        ps_print_info("set irled voltage %d mv\n", irled_voltage / VOLATAGE_V_TO_MV); /* V->mV */
+        ret = regulator_set_voltage(g_board_info.bfgn_ir_ctrl_ldo, (int)irled_voltage, (int)irled_voltage);
         if (ret) {
-            PS_PRINT_ERR("board_ir_ctrl_pmic_init set voltage ldo failed\n");
+            ps_print_err("board_ir_ctrl_pmic_init set voltage ldo failed\n");
             return ret;
         }
     } else {
-        PS_PRINT_ERR("get irled voltage failed ,use default\n");
+        ps_print_err("get irled voltage failed ,use default\n");
     }
 
-    ret = regulator_set_mode(board_info.bfgn_ir_ctrl_ldo, REGULATOR_MODE_NORMAL);
+    ret = regulator_set_mode(g_board_info.bfgn_ir_ctrl_ldo, REGULATOR_MODE_NORMAL);
     if (ret) {
-        PS_PRINT_ERR("board_ir_ctrl_pmic_init set ldo mode failed\n");
+        ps_print_err("board_ir_ctrl_pmic_init set ldo mode failed\n");
         return ret;
     }
-    PS_PRINT_INFO("board_ir_ctrl_pmic_init success\n");
+    ps_print_info("board_ir_ctrl_pmic_init success\n");
     return BOARD_SUCC;
 #else
     return BOARD_SUCC;
@@ -973,34 +995,34 @@ int32 hi1102a_board_ir_ctrl_init(struct platform_device *pdev)
 
     ret = get_board_dts_node(&np, DTS_NODE_HI110X_BFGX);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HI110X_BFGX);
         goto err_get_ir_ctrl_gpio;
     }
-    board_info.have_ir = of_property_read_bool(np, "have_ir");
-    if (!board_info.have_ir) {
-        PS_PRINT_ERR("board has no Ir");
+    g_board_info.have_ir = of_property_read_bool(np, "have_ir");
+    if (!g_board_info.have_ir) {
+        ps_print_err("board has no Ir");
     } else {
-        ret = of_property_read_u32(np, DTS_PROP_HI110x_IR_LDO_TYPE, &board_info.irled_power_type);
-        PS_PRINT_INFO("read property ret is %d, irled_power_type is %d\n", ret, board_info.irled_power_type);
+        ret = of_property_read_u32(np, DTS_PROP_HI110X_IR_LDO_TYPE, &g_board_info.irled_power_type);
+        ps_print_info("read property ret is %d, irled_power_type is %d\n", ret, g_board_info.irled_power_type);
         if (ret != BOARD_SUCC) {
-            PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_HI110x_IR_LDO_TYPE);
+            ps_print_err("get dts prop %s failed\n", DTS_PROP_HI110X_IR_LDO_TYPE);
             goto err_get_ir_ctrl_gpio;
         }
 
-        if (board_info.irled_power_type == IR_GPIO_CTRL) {
+        if (g_board_info.irled_power_type == IR_GPIO_CTRL) {
             ret = hi1102a_board_ir_ctrl_gpio_init();
             if (ret != BOARD_SUCC) {
-                PS_PRINT_ERR("ir_ctrl_gpio init failed\n");
+                ps_print_err("ir_ctrl_gpio init failed\n");
                 goto err_get_ir_ctrl_gpio;
             }
-        } else if (board_info.irled_power_type == IR_LDO_CTRL) {
+        } else if (g_board_info.irled_power_type == IR_LDO_CTRL) {
             ret = hi1102a_board_ir_ctrl_pmic_init(pdev);
             if (ret != BOARD_SUCC) {
-                PS_PRINT_ERR("ir_ctrl_pmic init failed\n");
+                ps_print_err("ir_ctrl_pmic init failed\n");
                 goto err_get_ir_ctrl_gpio;
             }
         } else {
-            PS_PRINT_ERR("get ir_ldo_type failed!err num is %d\n", board_info.irled_power_type);
+            ps_print_err("get ir_ldo_type failed!err num is %d\n", g_board_info.irled_power_type);
             goto err_get_ir_ctrl_gpio;
         }
     }
@@ -1021,24 +1043,24 @@ int32 hi1102a_board_fm_lan_gpio_init(void)
     /* 根据设备树DTS文件获fm_lan在host侧对应的管脚，保存在physical_gpio中 */
     ret = get_board_gpio(DTS_NODE_HI110X_BFGX, DTS_PROP_HI110X_GPIO_FM_LAN, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("[fm_lan]get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_FM_LAN);
+        ps_print_err("[fm_lan]get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_FM_LAN);
         return BOARD_FAIL;
     }
 
-    PS_PRINT_INFO("[fm_lan] get gpio %d", physical_gpio);
+    ps_print_info("[fm_lan] get gpio %d", physical_gpio);
 
-    board_info.fm_lan_gpio = physical_gpio;
+    g_board_info.fm_lan_gpio = physical_gpio;
 
 #ifdef GPIOF_OUT_INIT_LOW
     ret = gpio_request_one(physical_gpio, GPIOF_OUT_INIT_LOW, PROC_NAME_HI110X_GPIO_FM_LAN);
     if (ret) {
-        PS_PRINT_ERR("[fm_lan]%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_FM_LAN);
+        ps_print_err("[fm_lan]%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_FM_LAN);
         return BOARD_FAIL;
     }
 #else
     ret = gpio_request(physical_gpio, PROC_NAME_HI110X_GPIO_FM_LAN);
     if (ret) {
-        PS_PRINT_ERR("[fm_lan]%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_FM_LAN);
+        ps_print_err("[fm_lan]%s gpio_request failed\n", PROC_NAME_HI110X_GPIO_FM_LAN);
         return BOARD_FAIL;
     } else {
         gpio_direction_output(physical_gpio, 0);
@@ -1050,7 +1072,7 @@ int32 hi1102a_board_fm_lan_gpio_init(void)
 
 void hi1102a_board_free_fm_lan_gpio(void)
 {
-    gpio_free(board_info.fm_lan_gpio);
+    gpio_free(g_board_info.fm_lan_gpio);
 }
 
 int32 hi1102a_check_evb_or_fpga(void)
@@ -1061,17 +1083,17 @@ int32 hi1102a_check_evb_or_fpga(void)
 
     ret = get_board_dts_node(&np, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
         return BOARD_FAIL;
     }
 
     ret = of_property_read_bool(np, DTS_PROP_HI110X_VERSION);
     if (ret) {
-        PS_PRINT_INFO("HI1102a ASIC VERSION\n");
-        board_info.is_asic = VERSION_ASIC;
+        ps_print_info("chip_type %d ASIC VERSION\n", BOARD_VERSION_HI1102A);
+        g_board_info.is_asic = VERSION_ASIC;
     } else {
-        PS_PRINT_INFO("HI1102a FPGA VERSION\n");
-        board_info.is_asic = VERSION_FPGA;
+        ps_print_info("chip_type %d FPGA VERSION\n", BOARD_VERSION_HI1102A);
+        g_board_info.is_asic = VERSION_FPGA;
     }
 
     return BOARD_SUCC;
@@ -1094,73 +1116,72 @@ int32 hi1102a_board_get_power_pinctrl(struct platform_device *pdev)
     /* JTAG SELECT 拉低，XLDO MODE选择2.8v */
     ret = get_board_dts_node(&np, DTS_NODE_HISI_HI110X);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
+        ps_print_err("DTS read node %s fail!!!\n", DTS_NODE_HISI_HI110X);
         goto err_read_dts_node;
     }
 
     ret = of_property_read_bool(np, DTS_PROP_HI110X_POWER_PREPARE);
     if (ret) {
-        PS_PRINT_INFO("need prepare before board power on\n");
-        board_info.need_power_prepare = NEED_POWER_PREPARE;
+        ps_print_info("need prepare before board power on\n");
+        g_board_info.need_power_prepare = NEED_POWER_PREPARE;
     } else {
-        PS_PRINT_INFO("no need prepare before board power on\n");
-        board_info.need_power_prepare = NO_NEED_POWER_PREPARE;
+        ps_print_info("no need prepare before board power on\n");
+        g_board_info.need_power_prepare = NO_NEED_POWER_PREPARE;
     }
 
-    if (board_info.need_power_prepare == NO_NEED_POWER_PREPARE) {
+    if (g_board_info.need_power_prepare == NO_NEED_POWER_PREPARE) {
         return BOARD_SUCC;
     }
 
     pinctrl = devm_pinctrl_get(&pdev->dev);
     if (OAL_IS_ERR_OR_NULL(pinctrl)) {
-        PS_PRINT_ERR("iomux_lookup_block failed, and the value of pinctrl is %p\n", pinctrl);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("iomux_lookup_block failed, and the value of pinctrl is %p\n", pinctrl);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_DTS, CHR_PLAT_DRV_ERROR_PWR_PINCTRL);
         goto err_pinctrl_get;
     }
-    board_info.pctrl = pinctrl;
+    g_board_info.pctrl = pinctrl;
 
     pinctrl_def = pinctrl_lookup_state(pinctrl, "default");
     if (OAL_IS_ERR_OR_NULL(pinctrl_def)) {
-        PS_PRINT_ERR("pinctrl_lookup_state default failed, and the value of pinctrl_def is %p\n", pinctrl_def);
+        ps_print_err("pinctrl_lookup_state default failed, and the value of pinctrl_def is %p\n", pinctrl_def);
         goto err_lookup_default;
     }
-    board_info.pins_normal = pinctrl_def;
+    g_board_info.pins_normal = pinctrl_def;
 
     pinctrl_idle = pinctrl_lookup_state(pinctrl, "idle");
     if (OAL_IS_ERR_OR_NULL(pinctrl_idle)) {
-        PS_PRINT_ERR("pinctrl_lookup_state idel failed, and the value of pinctrl_idle is %p\n", pinctrl_idle);
+        ps_print_err("pinctrl_lookup_state idel failed, and the value of pinctrl_idle is %p\n", pinctrl_idle);
         goto err_lookup_idle;
     }
-    board_info.pins_idle = pinctrl_idle;
+    g_board_info.pins_idle = pinctrl_idle;
 
-    ret = pinctrl_select_state(board_info.pctrl, board_info.pins_normal);
+    ret = pinctrl_select_state(g_board_info.pctrl, g_board_info.pins_normal);
     if (ret < 0) {
-        PS_PRINT_ERR("pinctrl_select_state default failed.\n");
+        ps_print_err("pinctrl_select_state default failed.\n");
         goto err_select_state;
     }
 
     /* LTE_TX_ACTIVT GPIO */
     ret = get_board_gpio(DTS_NODE_HISI_HI110X, DTS_PROP_HI110X_GPIO_XLDO_PINMUX, &physical_gpio);
-
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_XLDO_PINMUX);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("get dts prop %s failed\n", DTS_PROP_HI110X_GPIO_XLDO_PINMUX);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_DTS, CHR_PLAT_DRV_ERROR_XLDO_GPIO_PINMUX);
         goto err_get_xldo_pinmux;
     }
 
-    board_info.xldo_pinmux = physical_gpio;
+    g_board_info.xldo_pinmux = physical_gpio;
 
     ret = of_property_read_u32(np, DTS_PROP_GPIO_XLDO_LEVEL, &physical_gpio);
     if (ret != BOARD_SUCC) {
-        PS_PRINT_ERR("get dts prop %s failed\n", DTS_PROP_GPIO_XLDO_LEVEL);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("get dts prop %s failed\n", DTS_PROP_GPIO_XLDO_LEVEL);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_DTS, CHR_PLAT_DRV_ERROR_XLDO_GPIO_LEVEL);
         goto err_read_xldo_level;
     }
 
-    board_info.gpio_xldo_level = physical_gpio;
+    g_board_info.gpio_xldo_level = physical_gpio;
 
     return BOARD_SUCC;
 
@@ -1169,7 +1190,7 @@ err_get_xldo_pinmux:
 err_select_state:
 err_lookup_idle:
 err_lookup_default:
-    devm_pinctrl_put(board_info.pctrl);
+    devm_pinctrl_put(g_board_info.pctrl);
 err_pinctrl_get:
 err_read_dts_node:
 
@@ -1188,33 +1209,32 @@ int32 hi1102a_get_ini_file_name_from_dts(int8 *dts_prop, int8 *prop_value, uint3
     int8 out_str[HISI_CUST_NVRAM_LEN] = {0};
 
     np = of_find_compatible_node(NULL, NULL, COST_HI110X_COMP_NODE);
-
     if (np == NULL) {
-        INI_ERROR("dts node %s not found", COST_HI110X_COMP_NODE);
+        ini_error("dts node %s not found", COST_HI110X_COMP_NODE);
         return INI_FAILED;
     }
 
     len = of_property_count_u8_elems(np, dts_prop);
     if (len < 0) {
-        INI_ERROR("can't get len of dts prop(%s)", dts_prop);
+        ini_error("can't get len of dts prop(%s)", dts_prop);
         return INI_FAILED;
     }
 
-    len = INI_MIN(len, (int32)sizeof(out_str));
-    INI_DEBUG("read len of dts prop %s is:%d", dts_prop, len);
+    len = ini_min(len, (int32)sizeof(out_str));
+    ini_debug("read len of dts prop %s is:%d", dts_prop, len);
     ret = of_property_read_u8_array(np, dts_prop, out_str, len);
     if (ret < 0) {
-        INI_ERROR("read dts prop (%s) fail", dts_prop);
+        ini_error("read dts prop (%s) fail", dts_prop);
         return INI_FAILED;
     }
 
-    len = INI_MIN(len, (int32)size);
+    len = ini_min(len, (int32)size);
     ret = memcpy_s(prop_value, (size_t)size, out_str, (size_t)len);
     if (ret != EOK) {
-        INI_ERROR("memcpy_s error, destlen=%d, srclen=%d\n ", size, len);
+        ini_error("memcpy_s error, destlen=%d, srclen=%d\n ", size, len);
         return INI_FAILED;
     }
-    INI_DEBUG("dts prop %s value is:%s", dts_prop, prop_value);
+    ini_debug("dts prop %s value is:%s", dts_prop, prop_value);
 #endif
     return INI_SUCC;
 }
@@ -1268,7 +1288,7 @@ int32 hi1102a_check_wlan_wakeup_host(void)
     int32 ret;
     const uint32 ul_test_times = 2;
 
-    if (board_info.wlan_wakeup_host == 0) {
+    if (g_board_info.wlan_wakeup_host == 0) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "wlan_wakeup_host gpio is zero!");
         return -OAL_EIO;
     }
@@ -1301,7 +1321,7 @@ int32 hi1102a_check_wlan_wakeup_host(void)
 
         oal_msleep(1);
 
-        if (gpio_get_value(board_info.wlan_wakeup_host) == 0) {
+        if (gpio_get_value(g_board_info.wlan_wakeup_host) == 0) {
             oal_print_hi11xx_log(HI11XX_LOG_ERR, "pull gpio high failed!");
             hi1102a_dump_gpio_regs();
             return -OAL_EFAIL;
@@ -1316,7 +1336,7 @@ int32 hi1102a_check_wlan_wakeup_host(void)
 
         oal_msleep(1);
 
-        if (gpio_get_value(board_info.wlan_wakeup_host) != 0) {
+        if (gpio_get_value(g_board_info.wlan_wakeup_host) != 0) {
             oal_print_hi11xx_log(HI11XX_LOG_ERR, "pull gpio low failed!");
             hi1102a_dump_gpio_regs();
             return -OAL_EFAIL;
@@ -1336,7 +1356,7 @@ int32 hi1102a_check_host_wakeup_wlan(void)
     int32 ret;
     const uint32 ul_test_times = 2;
 
-    if (board_info.host_wakeup_wlan == 0) {
+    if (g_board_info.host_wakeup_wlan == 0) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "host_wakeup_wlan gpio is zero!");
         return -OAL_EIO;
     }
@@ -1360,7 +1380,7 @@ int32 hi1102a_check_host_wakeup_wlan(void)
     }
 
     for (i = 0; i < ul_test_times; i++) {
-        gpio_direction_output(board_info.host_wakeup_wlan, GPIO_HIGHLEVEL);
+        gpio_direction_output(g_board_info.host_wakeup_wlan, GPIO_HIGHLEVEL);
         oal_msleep(1);
 
         value = 0;
@@ -1381,7 +1401,7 @@ int32 hi1102a_check_host_wakeup_wlan(void)
             return -OAL_EFAIL;
         }
 
-        gpio_direction_output(board_info.host_wakeup_wlan, GPIO_LOWLEVEL);
+        gpio_direction_output(g_board_info.host_wakeup_wlan, GPIO_LOWLEVEL);
         oal_msleep(1);
 
         value = 0;
@@ -1409,29 +1429,19 @@ int32 hi1102a_check_host_wakeup_wlan(void)
     return 0;
 }
 
-int32 hi1102a_check_wlan_flow_ctrl(void)
+int32 hi1102a_check_wlan_flow_ctrl(uint8_t flowctrl_type)
 {
     int32 i;
     uint16 value;
     int32 ret;
-    oal_uint32 l_ret;
-    oal_int32 l_priv_value;
-    oal_uint8 flowctrl_type;
     const uint32 ul_test_times = 2;
 
-    l_ret = hwifi_get_init_priv_value(WLAN_CFG_PRIV_HCC_FLOWCTRL_TYPE, &l_priv_value);
-    if (l_ret != OAL_SUCC) {
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "get flowctrl cus data error!");
-        return -1;
-    }
-
-    flowctrl_type = (oal_uint8)l_priv_value;
     if (flowctrl_type == 0) {
         oal_print_hi11xx_log(HI11XX_LOG_INFO, "flowctrl is not supported!");
         return OAL_SUCC;
     }
 
-    if (board_info.flowctrl_gpio == 0) {
+    if (g_board_info.flowctrl_gpio == 0) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "wlan_flow_ctrl gpio is zero!");
         return -OAL_EIO;
     }
@@ -1464,7 +1474,7 @@ int32 hi1102a_check_wlan_flow_ctrl(void)
 
         oal_msleep(1);
 
-        if (gpio_get_value(board_info.flowctrl_gpio) == 0) {
+        if (gpio_get_value(g_board_info.flowctrl_gpio) == 0) {
             oal_print_hi11xx_log(HI11XX_LOG_ERR, "pull gpio high failed!");
             hi1102a_dump_gpio_regs();
             return -OAL_EFAIL;
@@ -1479,7 +1489,7 @@ int32 hi1102a_check_wlan_flow_ctrl(void)
 
         oal_msleep(1);
 
-        if (gpio_get_value(board_info.flowctrl_gpio) != 0) {
+        if (gpio_get_value(g_board_info.flowctrl_gpio) != 0) {
             oal_print_hi11xx_log(HI11XX_LOG_ERR, "pull gpio low failed!");
             hi1102a_dump_gpio_regs();
             return -OAL_EFAIL;
@@ -1492,11 +1502,8 @@ int32 hi1102a_check_wlan_flow_ctrl(void)
     return OAL_SUCC;
 }
 
-int32 hi1102a_dev_io_test(void)
+STATIC int32_t hi1102a_dev_io_test_prepare(struct pm_drv_data *pm_data)
 {
-    int32 ret;
-    declare_time_cost_stru(cost);
-    struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "pm_data is NULL!");
         return -FAILURE;
@@ -1513,6 +1520,65 @@ int32 hi1102a_dev_io_test(void)
         return -OAL_ENODEV;
     }
 
+    return OAL_SUCC;
+}
+
+STATIC int32_t hi1102a_start_gpio_test(struct pm_drv_data *pm_data,
+                                       uint8_t flowctrl_type)
+{
+    int32_t ret;
+
+    hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_PATCH_LOAD_PREPARE);
+
+    ret = hcc_bus_reinit(pm_data->pst_wlan_pm_info->pst_bus);
+    if (ret) {
+        oal_print_hi11xx_log(HI11XX_LOG_ERR, "reinit bus %d failed, ret=%d",
+                             pm_data->pst_wlan_pm_info->pst_bus->bus_type, ret);
+        return ret;
+    }
+
+    wlan_pm_init_dev();
+
+    ret = hi1102a_check_device_ready();
+    if (ret) {
+        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_device_ready failed, ret=%d", ret);
+        return ret;
+    }
+
+    ret = hi1102a_check_host_wakeup_wlan();
+    if (ret) {
+        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_host_wakeup_wlan failed, ret=%d", ret);
+        return ret;
+    }
+
+    ret = hi1102a_check_wlan_wakeup_host();
+    if (ret) {
+        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_wlan_wakeup_host failed, ret=%d", ret);
+        return ret;
+    }
+
+    ret = hi1102a_check_wlan_flow_ctrl(flowctrl_type);
+    if (ret) {
+        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_wlan_flow_ctrl failed, ret=%d", ret);
+        return ret;
+    }
+
+    return OAL_SUCC;
+}
+
+
+int32_t g_ft_fail_powerdown_bypass = 0;
+int32 hi1102a_factory_io_test(uint8_t flowctrl_type)
+{
+    int32_t ret;
+    declare_time_cost_stru(cost);
+    struct pm_drv_data *pm_data = pm_get_drvdata();
+
+    ret = hi1102a_dev_io_test_prepare(pm_data);
+    if (ret != OAL_SUCC) {
+        return ret;
+    }
+
     oal_get_time_cost_start(cost);
 
     hcc_bus_wake_lock(pm_data->pst_wlan_pm_info->pst_bus);
@@ -1526,81 +1592,21 @@ int32 hi1102a_dev_io_test(void)
         return ret;
     }
 
-    hcc_bus_power_action(hcc_get_current_110x_bus(), HCC_BUS_POWER_PATCH_LOAD_PREPARE);
-    ret = hcc_bus_reinit(pm_data->pst_wlan_pm_info->pst_bus);
-    if (ret != OAL_SUCC) {
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "reinit bus %d failed, ret=%d",
-                             pm_data->pst_wlan_pm_info->pst_bus->bus_type, ret);
-        if (!ft_fail_powerdown_bypass) {
-            hi1102a_board_power_off(WLAN_POWER);
-        }
-        hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        return -OAL_EFAIL;
+    ret = hi1102a_start_gpio_test(pm_data, flowctrl_type);
+    if (!g_ft_fail_powerdown_bypass || (ret == OAL_SUCC)) {
+        hi1102a_board_power_off(WLAN_POWER);
     }
-
-    wlan_pm_init_dev();
-
-    ret = hi1102a_check_device_ready();
-    if (ret) {
-        if (!ft_fail_powerdown_bypass) {
-            hi1102a_board_power_off(WLAN_POWER);
-        }
-        hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_device_ready failed, ret=%d",
-                             ret);
-        return ret;
-    }
-
-    /* check io */
-    ret = hi1102a_check_host_wakeup_wlan();
-    if (ret) {
-        if (!ft_fail_powerdown_bypass) {
-            hi1102a_board_power_off(WLAN_POWER);
-        }
-        hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_host_wakeup_wlan failed, ret=%d",
-                             ret);
-        return ret;
-    }
-
-    ret = hi1102a_check_wlan_wakeup_host();
-    if (ret) {
-        if (!ft_fail_powerdown_bypass) {
-            hi1102a_board_power_off(WLAN_POWER);
-        }
-        hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_wlan_wakeup_host failed, ret=%d",
-                             ret);
-        return ret;
-    }
-
-    ret = hi1102a_check_wlan_flow_ctrl();
-    if (ret) {
-        if (!ft_fail_powerdown_bypass) {
-            hi1102a_board_power_off(WLAN_POWER);
-        }
-        hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        oal_print_hi11xx_log(HI11XX_LOG_ERR, "check_wlan_flow_ctrl failed, ret=%d",
-                             ret);
-        return ret;
-    }
-
-    hi1102a_board_power_off(WLAN_POWER);
 
     hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
     hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
 
     oal_get_time_cost_end(cost);
     oal_calc_time_cost_sub(cost);
-    oal_print_hi11xx_log(HI11XX_LOG_INFO, "hi1103 device io test cost %llu us", time_cost_var_sub(cost));
-    return OAL_SUCC;
+    oal_print_hi11xx_log(HI11XX_LOG_INFO, "hi1102a device io test cost %llu us, ret = %d",
+                         time_cost_var_sub(cost), ret);
+    return ret;
 }
-EXPORT_SYMBOL(hi1102a_dev_io_test); /* for kirin slt test */
+oal_module_symbol(hi1102a_factory_io_test);
 EXPORT_SYMBOL(hi1102a_chip_power_on);
 EXPORT_SYMBOL(hi1102a_chip_power_off);
 EXPORT_SYMBOL(hi1102a_bfgx_disable);

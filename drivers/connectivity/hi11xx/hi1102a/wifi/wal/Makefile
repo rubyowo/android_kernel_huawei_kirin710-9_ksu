@@ -19,7 +19,7 @@ include $(1151_ROOT_PATH)/build/1151_host_wifi/env.config
 
 # set the module objects files
 obj-m :=wal.o
-wal-objs := wal_config.o wal_config_debug.o wal_linux_bridge.o wal_linux_cfg80211.o wal_linux_ioctl.o wal_linux_ioctl_debug.o wal_main.o wal_linux_scan.o wal_linux_rx_rsp.o wal_linux_event.o wal_regdb.o wal_config_acs.o wal_linux_flowctl.o wal_dfx.o wal_linux_atcmdsrv.o
+wal-objs := wal_config.o wal_config_debug.o wal_linux_bridge.o wal_linux_cfg80211.o wal_linux_ioctl.o wal_linux_ioctl_debug.o wal_main.o wal_linux_scan.o wal_linux_rx_rsp.o wal_linux_event.o wal_regdb.o wal_linux_flowctl.o wal_dfx.o wal_linux_atcmdsrv.o
 # set the module name
 MODULE_NAME=$(subst .o,.ko,$(obj-m))
 

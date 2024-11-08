@@ -41,7 +41,7 @@ typedef struct {
 #endif
 
 /* 全局变量声明 */
-extern frw_task_stru event_task[];
+extern frw_task_stru g_event_task[];
 
 /* 函数声明 */
 extern oal_uint32 frw_task_init(oal_void);

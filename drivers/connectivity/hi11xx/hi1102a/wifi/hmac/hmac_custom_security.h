@@ -4,16 +4,15 @@
 #define __HMAC_CRYPTO_FRAME_H__
 
 #ifdef _PRE_WLAN_FEATURE_CUSTOM_SECURITY
+/* 1 其他头文件包含 */
+#include "oal_ext_if.h"
+#include "mac_vap.h"
 
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif
 #endif
-
-/* 1 其他头文件包含 */
-#include "oal_ext_if.h"
-#include "mac_vap.h"
 
 /* 2 宏定义 */
 #define CS_INVALID_AGING_TIME 0
@@ -111,6 +110,30 @@ extern oal_uint32 hmac_isolation_get_mcast_counter(mac_vap_stru *pst_mac_vap);
 extern oal_uint32 hmac_isolation_get_ucast_counter(mac_vap_stru *pst_mac_vap);
 extern oal_void hmac_show_isolation_info(mac_vap_stru *pst_mac_vap);
 extern oal_uint8 hmac_backlist_get_list_num(mac_vap_stru *pst_mac_vap);
+extern oal_uint32 hmac_config_set_blacklist_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                 oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_blacklist_add(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_blacklist_add_only(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                 oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_blacklist_del(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_show_blacklist(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_show_isolation(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_autoblacklist_enable(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                   oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_autoblacklist_aging(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                      oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_autoblacklist_threshold(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                          oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_autoblacklist_reset_time(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                           oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_isolation_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                 oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_isolation_type(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                 oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_isolation_forword(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                    oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_set_isolation_clear(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
+                                                  oal_uint8 *puc_param);
 
 #ifdef __cplusplus
 #if __cplusplus

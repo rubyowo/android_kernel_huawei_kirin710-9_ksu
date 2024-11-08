@@ -4,7 +4,7 @@
 #define _OAM_RDR_H_
 
 #include "plat_debug.h"
-#define RDR_EXCEPTION(modid) hisi_conn_rdr_system_error(modid, 0, 0)
+#define rdr_exception(modid) hisi_conn_rdr_system_error(modid, 0, 0)
 
 #if (defined CONFIG_HISI_BB) && (defined CONFIG_HI110X_PLAT_BB)
 #include <linux/hisi/rdr_pub.h>
@@ -43,8 +43,13 @@ extern int hisi_conn_rdr_exit(void);
 extern int32 hisi_conn_save_stat_info(char *buf, int32 index, int32 limit);
 extern void plat_bbox_msg_hander(int32 subsys_type, int32 exception_type);
 #else
+#ifdef CONFIG_ARCH_PLATFORM
+#define DFX_BB_MOD_CONN_START 0
+#define DFX_BB_MOD_CONN_END   100
+#else
 #define HISI_BB_MOD_CONN_START 0
 #define HISI_BB_MOD_CONN_END   100
+#endif /* end for CONFIG_ARCH_PLATFORM */
 static inline int hisi_conn_rdr_init(void)
 {
     return 0;
@@ -64,14 +69,22 @@ static inline int32 hisi_conn_save_stat_info(char *buf, int32 index, int32 limit
 static inline void plat_bbox_msg_hander(int32 subsys_type, int32 exception_type) {};
 #endif
 enum rdr_hisi_conn_system_error_type {
+#ifdef CONFIG_ARCH_PLATFORM
+    MODID_CONN_WIFI_EXEC = DFX_BB_MOD_CONN_START,
+#else
     MODID_CONN_WIFI_EXEC = HISI_BB_MOD_CONN_START,
+#endif /* end for CONFIG_ARCH_PLATFORM */
     MODID_CONN_WIFI_CHAN_EXEC,
     MODID_CONN_WIFI_WAKEUP_FAIL,
     MODID_CONN_BFGX_EXEC,
     MODID_CONN_BFGX_BEAT_TIMEOUT,
     MODID_CONN_BFGX_WAKEUP_FAIL,
     MODID_CONN_BOTT,
+#ifdef CONFIG_ARCH_PLATFORM
+    MODID_CONN_EXC_END = DFX_BB_MOD_CONN_END,
+#else
     MODID_CONN_EXC_END = HISI_BB_MOD_CONN_END,
+#endif /* end for CONFIG_ARCH_PLATFORM */
 };
 enum bbox_upload_e {
     UPLOAD_ALLOW = 0,

@@ -20,31 +20,24 @@
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_OAL_NET_C
 
-#define OAL_HIGH_HALF_BYTE(a) (((a)&0xF0) >> 4)
-#define OAL_LOW_HALF_BYTE(a)  ((a)&0x0F)
+#define oal_high_half_byte(a) (((a)&0xF0) >> 4)
+#define oal_low_half_byte(a)  ((a)&0x0F)
 
 #define MAC_DHCP_UDP_SRC_PORT   68
 #define MAC_DHCP_UDP_DES_PORT   67
 #define OAL_EXCP_DATA_BUF_LEN   64
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
-
-#define WLAN_TOS_TO_HCC_QUEUE(_tos) ( \
+#define wlan_tos_to_hcc_queue(_tos) ( \
     (((_tos) == 0) || ((_tos) == 3)) ? WLAN_UDP_BE_QUEUE : (((_tos) == 1) || ((_tos) == 2)) ? \
     WLAN_UDP_BK_QUEUE : (((_tos) == 4) || ((_tos) == 5)) ? WLAN_UDP_VI_QUEUE : WLAN_UDP_VO_QUEUE)
 
 #define WLAN_DATA_VIP_QUEUE WLAN_HI_QUEUE
-#endif
 
 /* 全局变量定义 */
 #if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
-
-oal_net_device_stru *past_net_device[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT] = { OAL_PTR_NULL };
-
+oal_net_device_stru *g_past_net_device[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT] = { OAL_PTR_NULL };
 oal_net_stru init_net;
-
 oal_sock_stru sock;
-
 #endif
 
 /*
@@ -54,8 +47,8 @@ oal_sock_stru sock;
 /*lint -e695*/
 OAL_INLINE oal_bool_enum_uint8 oal_netbuf_is_dhcp_port(oal_udp_header_stru *pst_udp_hdr)
 {
-    if (OAL_UNLIKELY(pst_udp_hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_udp_hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
 
@@ -77,8 +70,8 @@ oal_bool_enum_uint8 oal_netbuf_is_nd(oal_ipv6hdr_stru *pst_ipv6hdr)
 {
     oal_icmp6hdr_stru *pst_icmp6hdr;
 
-    if (OAL_UNLIKELY(pst_ipv6hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_ipv6hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
     if (pst_ipv6hdr->nexthdr == OAL_IPPROTO_ICMPV6) {
@@ -104,8 +97,8 @@ oal_bool_enum_uint8 oal_netbuf_is_dhcp6(oal_ipv6hdr_stru *pst_ipv6hdr)
 {
     oal_udp_header_stru *pst_udp_hdr;
 
-    if (OAL_UNLIKELY(pst_ipv6hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_ipv6hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
     if (pst_ipv6hdr->nexthdr == MAC_UDP_PROTOCAL) {
@@ -140,8 +133,8 @@ oal_void oal_netbuf_get_txtid(oal_netbuf_stru *pst_buf, oal_uint8 *puc_tos)
     oal_tcp_header_stru *pst_tcp;
 #endif
 
-    if (OAL_UNLIKELY((pst_buf == NULL) || (puc_tos == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_buf == NULL) || (puc_tos == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -245,15 +238,15 @@ oal_bool_enum_uint8 oal_netbuf_is_tcp_ack(oal_ip_header_stru *pst_ip_hdr)
     oal_uint32 ul_ip_hdr_len;
     oal_uint32 ul_tcp_hdr_len;
 
-    if (OAL_UNLIKELY(pst_ip_hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_ip_hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
 
     pst_tcp_hdr = (oal_tcp_header_stru *)(pst_ip_hdr + 1);
     ul_ip_pkt_len = OAL_NET2HOST_SHORT(pst_ip_hdr->us_tot_len);
-    ul_ip_hdr_len = (OAL_LOW_HALF_BYTE(pst_ip_hdr->us_ihl)) << 2;
-    ul_tcp_hdr_len = (OAL_HIGH_HALF_BYTE(pst_tcp_hdr->uc_offset)) << 2;
+    ul_ip_hdr_len = (oal_low_half_byte(pst_ip_hdr->us_ihl)) << 2;
+    ul_tcp_hdr_len = (oal_high_half_byte(pst_tcp_hdr->uc_offset)) << 2;
 
     if (ul_tcp_hdr_len + ul_ip_hdr_len == ul_ip_pkt_len) {
         return OAL_TRUE;
@@ -271,8 +264,8 @@ oal_bool_enum_uint8 oal_netbuf_is_icmp(oal_ip_header_stru *pst_ip_hdr)
 {
     oal_uint8 uc_protocol;
 
-    if (OAL_UNLIKELY(pst_ip_hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_ip_hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
 
@@ -286,8 +279,6 @@ oal_bool_enum_uint8 oal_netbuf_is_icmp(oal_ip_header_stru *pst_ip_hdr)
     return OAL_FALSE;
 }
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
-
 /*
  * 函 数 名  : oal_netbuf_is_tcp_ack6
  * 功能描述  : 判断ipv6 tcp报文是否为tcp ack
@@ -298,14 +289,14 @@ oal_bool_enum_uint8 oal_netbuf_is_tcp_ack6(oal_ipv6hdr_stru *pst_ipv6hdr)
     oal_uint32 ul_ip_pkt_len;
     oal_uint32 ul_tcp_hdr_len;
 
-    if (OAL_UNLIKELY(pst_ipv6hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_ipv6hdr == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
 
     pst_tcp_hdr = (oal_tcp_header_stru *)(pst_ipv6hdr + 1);
     ul_ip_pkt_len = OAL_NET2HOST_SHORT(pst_ipv6hdr->payload_len); /* ipv6 净载荷, ipv6报文头部固定为40字节 */
-    ul_tcp_hdr_len = (OAL_HIGH_HALF_BYTE(pst_tcp_hdr->uc_offset)) << 2;
+    ul_tcp_hdr_len = (oal_high_half_byte(pst_tcp_hdr->uc_offset)) << 2;
 
     if (ul_tcp_hdr_len == ul_ip_pkt_len) {
         return OAL_TRUE;
@@ -334,8 +325,8 @@ oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf)
     oal_uint8 uc_tos;
     oal_uint8 us_queue = WLAN_NORMAL_QUEUE;
 
-    if (OAL_UNLIKELY(pst_buf == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_buf == NULL)) {
+        oal_warn_on(1);
         return WLAN_NET_QUEUE_BUTT;
     }
 
@@ -360,7 +351,7 @@ oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf)
                  *  ----------------------------------------------------------------------
                  */
                 uc_tos = pst_ip->uc_tos >> WLAN_IP_PRI_SHIFT;
-                us_queue = WLAN_TOS_TO_HCC_QUEUE(uc_tos);
+                us_queue = wlan_tos_to_hcc_queue(uc_tos);
 
                 /* 如果是DHCP帧，则进入DATA_HIGH_QUEUE */
                 pst_udp_hdr = (oal_udp_header_stru *)(pst_ip + 1);
@@ -393,17 +384,15 @@ oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf)
             if (pst_ipv6->nexthdr == MAC_UDP_PROTOCAL) { /* UDP报文 */
                 ul_pri = (OAL_NET2HOST_LONG(ul_ipv6_hdr) & WLAN_IPV6_PRIORITY_MASK) >> WLAN_IPV6_PRIORITY_SHIFT;
                 uc_tos = (oal_uint8)(ul_pri >> WLAN_IP_PRI_SHIFT);
-                us_queue = WLAN_TOS_TO_HCC_QUEUE(uc_tos);
+                us_queue = wlan_tos_to_hcc_queue(uc_tos);
             } else if (pst_ipv6->nexthdr == MAC_TCP_PROTOCAL) { /* TCP报文 */
                 if (oal_netbuf_is_tcp_ack6(pst_ipv6) == OAL_TRUE) {
                     us_queue = WLAN_TCP_ACK_QUEUE;
                 } else {
                     us_queue = WLAN_TCP_DATA_QUEUE;
                 }
-            }
-
             /* 如果是DHCPV6帧，则进入WLAN_DATA_VIP_QUEUE队列缓存 */
-            else if (oal_netbuf_is_dhcp6((oal_ipv6hdr_stru *)(pst_ether_header + 1)) == OAL_TRUE) {
+            } else if (oal_netbuf_is_dhcp6((oal_ipv6hdr_stru *)(pst_ether_header + 1)) == OAL_TRUE) {
                 us_queue = WLAN_DATA_VIP_QUEUE;
             }
             break;
@@ -446,7 +435,7 @@ oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf)
             us_vlan_tci = OAL_NET2HOST_SHORT(pst_vlan_ethhdr->h_vlan_TCI);
 
             uc_tos = us_vlan_tci >> OAL_VLAN_PRIO_SHIFT; /* 右移13位，提取高3位优先级 */
-            us_queue = WLAN_TOS_TO_HCC_QUEUE(uc_tos);
+            us_queue = wlan_tos_to_hcc_queue(uc_tos);
 
             break;
 
@@ -463,7 +452,6 @@ oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf)
 oal_module_symbol(oal_netbuf_is_tcp_ack6);
 oal_module_symbol(oal_netbuf_select_queue);
 /*lint +e19*/
-#endif
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && defined(_PRE_WLAN_FEATURE_DFR)
 
@@ -479,7 +467,7 @@ struct dev_netlink_msg_hdr_stru {
     oal_uint32 len;
 };
 
-struct dev_excp_globals dev_excp_handler_data;
+OAL_STATIC struct dev_excp_globals g_dev_excp_handler_data;
 
 /*
  * Prototype    : dev_netlink_rev
@@ -503,18 +491,18 @@ void dev_netlink_rev(oal_netbuf_stru *skb)
     pst_skb = OAL_PTR_NULL;
     pst_nlh = OAL_PTR_NULL;
 
-    memset_s(dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, 0, OAL_EXCP_DATA_BUF_LEN);
+    memset_s(g_dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, 0, OAL_EXCP_DATA_BUF_LEN);
     pst_skb = oal_netbuf_get(skb);
-    if (pst_skb->len >= OAL_NLMSG_SPACE(0)) {
+    if (pst_skb->len >= oal_nlmsg_space(0)) {
         pst_nlh = oal_nlmsg_hdr(pst_skb);
         /* 检测报文长度正确性 */
-        if (!OAL_NLMSG_OK(pst_nlh, pst_skb->len)) {
+        if (!oal_nlmsg_ok(pst_nlh, pst_skb->len)) {
             OAL_IO_PRINT("[ERROR]invaild netlink buff data packge data len = :%u,skb_buff data len = %u\n",
                          pst_nlh->nlmsg_len, pst_skb->len);
             kfree_skb(pst_skb);
             return;
         }
-        ul_len = OAL_NLMSG_PAYLOAD(pst_nlh, 0);
+        ul_len = oal_nlmsg_payload(pst_nlh, 0);
         /* 后续需要拷贝sizeof(st_msg_hdr),故判断之 */
         if (ul_len < sizeof(st_msg_hdr)) {
             OAL_IO_PRINT("[ERROR]invaild netlink buff len:%u,max len:%u\n", ul_len, OAL_EXCP_DATA_BUF_LEN);
@@ -522,14 +510,14 @@ void dev_netlink_rev(oal_netbuf_stru *skb)
             return;
         }
 
-        ret = memcpy_s(dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, OAL_NLMSG_DATA(pst_nlh), ul_len);
+        ret = memcpy_s(g_dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, oal_nlmsg_data(pst_nlh), ul_len);
         if (ret != EOK) {
             OAL_IO_PRINT("memcpy_s error, destlen=%u, srclen=%u\n", OAL_EXCP_DATA_BUF_LEN, ul_len);
             kfree_skb(pst_skb);
             return;
         }
 
-        ret = memcpy_s((void *)&st_msg_hdr, sizeof(st_msg_hdr), dev_excp_handler_data.data, sizeof(st_msg_hdr));
+        ret = memcpy_s((void *)&st_msg_hdr, sizeof(st_msg_hdr), g_dev_excp_handler_data.data, sizeof(st_msg_hdr));
         if (ret != EOK) {
             OAL_IO_PRINT("memcpy_s error\n");
             kfree_skb(pst_skb);
@@ -537,9 +525,9 @@ void dev_netlink_rev(oal_netbuf_stru *skb)
         }
 
         if (st_msg_hdr.cmd == 0) {
-            dev_excp_handler_data.usepid = pst_nlh->nlmsg_pid; /* pid of sending process */
+            g_dev_excp_handler_data.usepid = pst_nlh->nlmsg_pid; /* pid of sending process */
             OAL_IO_PRINT("WIFI DFR:pid is [%d], msg is [%s]\n",
-                         dev_excp_handler_data.usepid, &dev_excp_handler_data.data[sizeof(st_msg_hdr)]);
+                         g_dev_excp_handler_data.usepid, &g_dev_excp_handler_data.data[sizeof(st_msg_hdr)]);
         }
     }
     kfree_skb(pst_skb);
@@ -552,14 +540,14 @@ void dev_netlink_rev(oal_netbuf_stru *skb)
  */
 oal_int32 dev_netlink_create(void)
 {
-    dev_excp_handler_data.nlsk = oal_netlink_kernel_create(&OAL_INIT_NET, NETLINK_DEV_ERROR, 0,
-                                                           dev_netlink_rev, OAL_PTR_NULL, OAL_THIS_MODULE);
-    if (dev_excp_handler_data.nlsk == OAL_PTR_NULL) {
+    g_dev_excp_handler_data.nlsk = oal_netlink_kernel_create(&OAL_INIT_NET, NETLINK_DEV_ERROR, 0,
+                                                             dev_netlink_rev, OAL_PTR_NULL, OAL_THIS_MODULE);
+    if (g_dev_excp_handler_data.nlsk == OAL_PTR_NULL) {
         OAL_IO_PRINT("WIFI DFR:fail to create netlink socket \n");
         return -OAL_EFAIL;
     }
 
-    OAL_IO_PRINT("WIFI DFR:suceed to create netlink socket %p \n", dev_excp_handler_data.nlsk);
+    OAL_IO_PRINT("WIFI DFR:suceed to create netlink socket %p \n", g_dev_excp_handler_data.nlsk);
     return OAL_SUCC;
 }
 
@@ -574,8 +562,8 @@ oal_int32 dev_netlink_send(oal_uint8 *data, oal_int data_len)
     oal_uint32 ret;
     oal_uint len;
 
-    if (OAL_UNLIKELY(data == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(data == NULL)) {
+        oal_warn_on(1);
         return -OAL_EFAIL;
     }
 
@@ -584,7 +572,7 @@ oal_int32 dev_netlink_send(oal_uint8 *data, oal_int data_len)
         return -OAL_EFAIL;
     }
 
-    len = OAL_NLMSG_SPACE(((oal_uint)data_len));
+    len = oal_nlmsg_space(((oal_uint)data_len));
     skb = alloc_skb(len, GFP_KERNEL);
     if (skb == NULL) {
         OAL_IO_PRINT("WIFI DFR:dev error: allocate failed, len[%lu].\n", len);
@@ -594,7 +582,7 @@ oal_int32 dev_netlink_send(oal_uint8 *data, oal_int data_len)
 
     OAL_IO_PRINT("WIFI DFR: data[%s].\n", data);
 
-    ret = memcpy_s(OAL_NLMSG_DATA(nlh), data_len, data, data_len);
+    ret = memcpy_s(oal_nlmsg_data(nlh), data_len, data, data_len);
     if (ret != EOK) {
         OAL_IO_PRINT("WIFI DFR: buf data load failed.\n");
         kfree_skb(skb);
@@ -602,15 +590,15 @@ oal_int32 dev_netlink_send(oal_uint8 *data, oal_int data_len)
     }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
-    OAL_NETLINK_CB(skb).portid = 0; /* from kernel */
+    oal_netlink_cb(skb).portid = 0; /* from kernel */
 #endif
-    if (dev_excp_handler_data.nlsk == OAL_PTR_NULL) {
+    if (g_dev_excp_handler_data.nlsk == OAL_PTR_NULL) {
         OAL_IO_PRINT("WIFI DFR: NULL Pointer_sock.\n");
         kfree_skb(skb);
         return -OAL_EFAIL;
     }
 
-    ret = oal_netlink_unicast(dev_excp_handler_data.nlsk, skb, dev_excp_handler_data.usepid, MSG_DONTWAIT);
+    ret = oal_netlink_unicast(g_dev_excp_handler_data.nlsk, skb, g_dev_excp_handler_data.usepid, MSG_DONTWAIT);
     if (ret <= 0) {
         OAL_IO_PRINT("WIFI DFR:send dev error netlink msg, ret = %d \n", ret);
     }
@@ -628,21 +616,21 @@ oal_int32 init_dev_excp_handler(oal_void)
 
     OAL_IO_PRINT("DFR: into init_exception_enable_handler\n");
 
-    memset_s((oal_uint8 *)&dev_excp_handler_data, OAL_SIZEOF(dev_excp_handler_data),
-             0, OAL_SIZEOF(dev_excp_handler_data));
+    memset_s((oal_uint8 *)&g_dev_excp_handler_data, OAL_SIZEOF(g_dev_excp_handler_data),
+             0, OAL_SIZEOF(g_dev_excp_handler_data));
 
-    dev_excp_handler_data.data = (oal_uint8 *)kzalloc(OAL_EXCP_DATA_BUF_LEN, GFP_KERNEL);
-    if (dev_excp_handler_data.data == OAL_PTR_NULL) {
-        OAL_IO_PRINT("DFR: alloc dev_excp_handler_data.puc_data fail, len = %d.\n", OAL_EXCP_DATA_BUF_LEN);
-        dev_excp_handler_data.data = OAL_PTR_NULL;
+    g_dev_excp_handler_data.data = (oal_uint8 *)kzalloc(OAL_EXCP_DATA_BUF_LEN, GFP_KERNEL);
+    if (g_dev_excp_handler_data.data == OAL_PTR_NULL) {
+        OAL_IO_PRINT("DFR: alloc g_dev_excp_handler_data.puc_data fail, len = %d.\n", OAL_EXCP_DATA_BUF_LEN);
+        g_dev_excp_handler_data.data = OAL_PTR_NULL;
         return -OAL_EFAIL;
     }
 
-    memset_s(dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, 0, OAL_EXCP_DATA_BUF_LEN);
+    memset_s(g_dev_excp_handler_data.data, OAL_EXCP_DATA_BUF_LEN, 0, OAL_EXCP_DATA_BUF_LEN);
 
     ret = dev_netlink_create();
     if (ret < 0) {
-        kfree(dev_excp_handler_data.data);
+        kfree(g_dev_excp_handler_data.data);
         OAL_IO_PRINT("init_dev_err_kernel init is ERR!\n");
         return -OAL_EFAIL;
     }
@@ -658,13 +646,13 @@ oal_int32 init_dev_excp_handler(oal_void)
  */
 oal_void deinit_dev_excp_handler(oal_void)
 {
-    if (dev_excp_handler_data.nlsk != OAL_PTR_NULL) {
-        oal_netlink_kernel_release(dev_excp_handler_data.nlsk);
-        dev_excp_handler_data.usepid = 0;
+    if (g_dev_excp_handler_data.nlsk != OAL_PTR_NULL) {
+        oal_netlink_kernel_release(g_dev_excp_handler_data.nlsk);
+        g_dev_excp_handler_data.usepid = 0;
     }
 
-    if (dev_excp_handler_data.data != OAL_PTR_NULL) {
-        kfree(dev_excp_handler_data.data);
+    if (g_dev_excp_handler_data.data != OAL_PTR_NULL) {
+        kfree(g_dev_excp_handler_data.data);
     }
 
     OAL_IO_PRINT("DFR: deinit ok.\n");

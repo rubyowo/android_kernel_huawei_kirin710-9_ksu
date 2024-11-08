@@ -3,12 +3,6 @@
 #ifndef __HMAC_TCP_OPT_STRUC_H__
 #define __HMAC_TCP_OPT_STRUC_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 #ifdef _PRE_WLAN_TCP_OPT
 
 /*****************************************************************************
@@ -17,6 +11,12 @@ extern "C" {
 #include "oal_types.h"
 #include "oal_net.h"
 #include "oam_ext_if.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TCP_OPT_STRUC_H
@@ -30,12 +30,10 @@ extern "C" {
 
 #define HMAC_INVALID_TCP_ACK_INDEX      0xFF
 
-
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
-enum
-{
+enum {
     TCP_ACK_FILTER_TYPE  = 1,
     TCP_ACK_DUP_TYPE     = 2,
     TCP_TYPE_ERROR
@@ -44,48 +42,36 @@ typedef oal_uint8 oal_tcp_ack_type_enum_uint8;
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-
-
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   6 消息定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-
-
-typedef struct _wlan_perform_tcp_impl_
-{
+typedef struct _wlan_perform_tcp_impl_ {
     oal_uint64 ull_drop_count;
     oal_uint64 ull_send_count;
     oal_uint64 ull_dup_ack_count;
 }wlan_perform_tcp_impl;
 
-typedef struct _wlan_perform_tcp_impls_
-{
+typedef struct _wlan_perform_tcp_impls_ {
     oal_uint32 ul_ack_limit;
     oal_uint64 ull_ignored_count;
     wlan_perform_tcp_impl st_tcp_info[HMAC_TCP_STREAM];
 }wlan_perform_tcp_impls;
 
-struct skb_tcp_cb
-{
+struct skb_tcp_cb {
     oal_uint16 us_index;
     oal_uint16 us_reserve;
     oal_uint32  ul_tcp_type;
     oal_uint32  ul_tcp_ack_no;
 };
 
-struct wlan_perform_tcp
-{
-    /*hcc rx/tx tcp ack param*/
+struct wlan_perform_tcp {
+    /* hcc rx/tx tcp ack param */
     oal_netbuf_head_stru ast_hcc_ack_queue[HMAC_TCP_STREAM];
     oal_uint32      aul_hcc_ack_count[HMAC_TCP_STREAM];               /* ack num in each queue */
     oal_uint32      aul_hcc_duplicate_ack_count[HMAC_TCP_STREAM];
@@ -94,10 +80,8 @@ struct wlan_perform_tcp
     oal_uint32 aul_ack_count[HMAC_TCP_STREAM];
     oal_uint32 aul_duplicate_ack_count[HMAC_TCP_STREAM];
 #endif
-    /*TBD filter upline ack later*/
 };
-struct wlan_tcp_flow
-{
+struct wlan_tcp_flow {
     oal_uint32      ul_src_ip;
     oal_uint32      ul_dst_ip;
     oal_uint16      us_src_port;
@@ -105,16 +89,14 @@ struct wlan_tcp_flow
     oal_uint8       uc_protocol;
     oal_uint32      ul_tcp_ack_no;
 };
-struct tcp_list_node
-{
+struct tcp_list_node {
     oal_dlist_head_stru    list;
     oal_uint8              uc_used;       /* 0-free, 1-used */
     struct wlan_tcp_flow   st_wlan_tcp_info;
     oal_uint8              uc_index;
-    oal_uint               ui_last_ts;  /*time of last frame*/
+    oal_uint               ui_last_ts;  /* time of last frame */
 };
-struct wlan_perform_tcp_list
-{
+struct wlan_perform_tcp_list {
     struct tcp_list_node    ast_tcp_pool[HMAC_TCP_STREAM];
     oal_uint8               uc_idle_idx_cnt;
     oal_spin_lock_stru      tcp_lock;      /* lock for tcp pool */
@@ -124,37 +106,18 @@ struct wlan_perform_tcp_list
 };
 
 /* TCP ACK 优化门限 参数 */
-typedef struct
-{
+typedef struct {
     oal_uint8    uc_tcp_ack_filter_en;          /* 定制化是否打开tcp ack过滤 */
     oal_uint16   us_rx_filter_throughput_high;
     oal_uint16   us_rx_filter_throughput_low;
+    oal_uint32   ul_tcp_ack_smooth_throughput;
 }hmac_tcp_ack_opt_th_params;
 
-/*****************************************************************************
-  8 UNION定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  9 OTHERS定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  10 函数声明
-*****************************************************************************/
-/*****************************************************************************
-  11 内联函数定义
-*****************************************************************************/
-
-
-#endif   /* end of _PRE_WLAN_TCP_OPT */
-
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
 #endif
+#endif
+#endif   /* end of _PRE_WLAN_TCP_OPT */
 
 #endif /* end of hmac_tcp_opt_struc.h */

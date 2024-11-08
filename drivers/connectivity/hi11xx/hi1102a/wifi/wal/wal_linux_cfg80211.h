@@ -3,13 +3,6 @@
 #ifndef __WAL_LINUX_CFG80211_H__
 #define __WAL_LINUX_CFG80211_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
-
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
@@ -20,6 +13,12 @@ extern "C" {
 #include "hmac_ext_if.h"
 #include "wal_linux_ioctl.h"
 #include "wal_linux_scan.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_CFG80211_H
@@ -41,15 +40,15 @@ extern "C" {
 #define WAL_MAX_CHANNEL_4_9G    196
 
 #define WAL_MIN_FREQ_2G    (2412 + 5*(WAL_MIN_CHANNEL_2G - 1))
-#define WAL_MAX_FREQ_2G    (2484)
+#define WAL_MAX_FREQ_2G    2484
 #define WAL_MIN_FREQ_5G    (5000 + 5*(WAL_MIN_CHANNEL_5G))
 #define WAL_MAX_FREQ_5G    (5000 + 5*(WAL_MAX_CHANNEL_5G))
 
 /* channel nums */
-#define WAL_SCAN_CHANNEL_MAX_NUM ((WAL_MAX_CHANNEL_2G - WAL_MIN_CHANNEL_2G + 1) + (WAL_MAX_CHANNEL_4_9G - WAL_MIN_CHANNEL_5G + 1))
+#define WAL_SCAN_CHANNEL_MAX_NUM \
+    ((WAL_MAX_CHANNEL_2G - WAL_MIN_CHANNEL_2G + 1) + (WAL_MAX_CHANNEL_4_9G - WAL_MIN_CHANNEL_5G + 1))
 
 /* wiphy 结构体初始化变量 */
-//#define WAL_MAX_PROBED_SSID_NUM     1
 #define WAL_MAX_SCAN_IE_LEN        1000
 /* 802.11n HT 能力掩码 */
 #define IEEE80211_HT_CAP_LDPC_CODING        0x0001
@@ -69,36 +68,36 @@ extern "C" {
 #define IEEE80211_HT_CAP_LSIG_TXOP_PROT     0x8000
 
 /* 802.11ac VHT Capabilities */
-#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_3895			0x00000000
-#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991			0x00000001
-#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454			0x00000002
-#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ		0x00000004
-#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ	0x00000008
-#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK			0x0000000C
-#define IEEE80211_VHT_CAP_RXLDPC				0x00000010
-#define IEEE80211_VHT_CAP_SHORT_GI_80				0x00000020
-#define IEEE80211_VHT_CAP_SHORT_GI_160				0x00000040
-#define IEEE80211_VHT_CAP_TXSTBC				0x00000080
-#define IEEE80211_VHT_CAP_RXSTBC_1				0x00000100
-#define IEEE80211_VHT_CAP_RXSTBC_2				0x00000200
-#define IEEE80211_VHT_CAP_RXSTBC_3				0x00000300
-#define IEEE80211_VHT_CAP_RXSTBC_4				0x00000400
-#define IEEE80211_VHT_CAP_RXSTBC_MASK				0x00000700
-#define IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE			0x00000800
-#define IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE			0x00001000
-#define IEEE80211_VHT_CAP_BEAMFORMER_ANTENNAS_MAX		0x00006000
-#define IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MAX		0x00030000
-#define IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE			0x00080000
-#define IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE			0x00100000
-#define IEEE80211_VHT_CAP_VHT_TXOP_PS				0x00200000
-#define IEEE80211_VHT_CAP_HTC_VHT				0x00400000
-#define IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT	23
-#define IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK	\
-		(7 << IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT)
-#define IEEE80211_VHT_CAP_VHT_LINK_ADAPTATION_VHT_UNSOL_MFB	0x08000000
-#define IEEE80211_VHT_CAP_VHT_LINK_ADAPTATION_VHT_MRQ_MFB	0x0c000000
-#define IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN			0x10000000
-#define IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN			0x20000000
+#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_3895          0x00000000
+#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_7991          0x00000001
+#define IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454         0x00000002
+#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ        0x00000004
+#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ   0x00000008
+#define IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK          0x0000000C
+#define IEEE80211_VHT_CAP_RXLDPC                0x00000010
+#define IEEE80211_VHT_CAP_SHORT_GI_80               0x00000020
+#define IEEE80211_VHT_CAP_SHORT_GI_160              0x00000040
+#define IEEE80211_VHT_CAP_TXSTBC                0x00000080
+#define IEEE80211_VHT_CAP_RXSTBC_1              0x00000100
+#define IEEE80211_VHT_CAP_RXSTBC_2              0x00000200
+#define IEEE80211_VHT_CAP_RXSTBC_3              0x00000300
+#define IEEE80211_VHT_CAP_RXSTBC_4              0x00000400
+#define IEEE80211_VHT_CAP_RXSTBC_MASK               0x00000700
+#define IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE         0x00000800
+#define IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE         0x00001000
+#define IEEE80211_VHT_CAP_BEAMFORMER_ANTENNAS_MAX       0x00006000
+#define IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MAX       0x00030000
+#define IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE         0x00080000
+#define IEEE80211_VHT_CAP_MU_BEAMFORMEE_CAPABLE         0x00100000
+#define IEEE80211_VHT_CAP_VHT_TXOP_PS               0x00200000
+#define IEEE80211_VHT_CAP_HTC_VHT               0x00400000
+#define IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT  23
+#define IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK   \
+    (7 << IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT)
+#define IEEE80211_VHT_CAP_VHT_LINK_ADAPTATION_VHT_UNSOL_MFB 0x08000000
+#define IEEE80211_VHT_CAP_VHT_LINK_ADAPTATION_VHT_MRQ_MFB   0x0c000000
+#define IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN            0x10000000
+#define IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN            0x20000000
 
 /* management */
 #define IEEE80211_STYPE_ASSOC_REQ       0x0000
@@ -124,23 +123,22 @@ extern "C" {
 #define IEEE80211_FTYPE_MGMT            0x0000
 
 #define WAL_GET_STATION_THRESHOLD        1000 /* 固定时间内允许一次抛事件读DMAC RSSI */
-#define WAL_VOWIFI_GET_STATION_THRESHOLD 200  /*亮屏且vowifi正在使用时*/
+#define WAL_VOWIFI_GET_STATION_THRESHOLD 200  /* 亮屏且vowifi正在使用时 */
 
-typedef struct cookie_arry
-{
+typedef struct cookie_arry {
     oal_uint64  ull_cookie;
     oal_uint32  ul_record_time;
 }cookie_arry_stru;
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-#define RATETAB_ENT(_rate, _rateid, _flags)     \
+#define ratetab_ent(_rate, _rateid, _flags)     \
 {                                                               \
     .bitrate        = (_rate),                                  \
     .hw_value       = (_rateid),                                \
     .flags          = (_flags),                                 \
 }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
-#define CHAN2G(_channel, _freq, _flags)  \
+#define chan2g(_channel, _freq, _flags)  \
 {                       \
     .band                   = NL80211_BAND_2GHZ,            \
     .center_freq            = (_freq),                      \
@@ -150,7 +148,7 @@ typedef struct cookie_arry
     .max_power              = 30,                           \
 }
 
-#define CHAN5G(_channel, _flags) \
+#define chan5g(_channel, _flags) \
 {                                              \
     .band                   = NL80211_BAND_5GHZ,            \
     .center_freq            = 5000 + (5 * (_channel)),      \
@@ -160,7 +158,7 @@ typedef struct cookie_arry
     .max_power              = 30,                           \
 }
 
-#define CHAN4_9G(_channel, _flags) \
+#define chan4_9g(_channel, _flags) \
 {                                              \
     .band                   = NL80211_BAND_5GHZ,            \
     .center_freq            = 4000 + (5 * (_channel)),      \
@@ -170,7 +168,7 @@ typedef struct cookie_arry
     .max_power              = 30,                           \
 }
 #else
-#define CHAN2G(_channel, _freq, _flags)  \
+#define chan2g(_channel, _freq, _flags)  \
 {                       \
     .band                   = IEEE80211_BAND_2GHZ,          \
     .center_freq            = (_freq),                      \
@@ -180,7 +178,7 @@ typedef struct cookie_arry
     .max_power              = 30,                           \
 }
 
-#define CHAN5G(_channel, _flags) \
+#define chan5g(_channel, _flags) \
 {                                              \
     .band                   = IEEE80211_BAND_5GHZ,          \
     .center_freq            = 5000 + (5 * (_channel)),      \
@@ -190,7 +188,7 @@ typedef struct cookie_arry
     .max_power              = 30,                           \
 }
 
-#define CHAN4_9G(_channel, _flags) \
+#define chan4_9g(_channel, _flags) \
 {                                              \
     .band                   = IEEE80211_BAND_5GHZ,          \
     .center_freq            = 4000 + (5 * (_channel)),      \
@@ -204,14 +202,14 @@ typedef struct cookie_arry
 
 #elif (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 
-#define RATETAB_ENT(_rate, _rateid, _flags)     \
+#define ratetab_ent(_rate, _rateid, _flags)     \
 {                                               \
     (_flags),                                   \
     (_rate),                  \
     (_rateid),                \
 }
 
-#define CHAN2G(_channel, _freq, _flags)  \
+#define chan2g(_channel, _freq, _flags)  \
 {                       \
     IEEE80211_BAND_2GHZ,          \
     (_freq),                      \
@@ -221,7 +219,7 @@ typedef struct cookie_arry
     30,                           \
 }
 
-#define CHAN5G(_channel, _flags)  \
+#define chan5g(_channel, _flags)  \
 {                                 \
     IEEE80211_BAND_5GHZ,          \
     5000 + (5 * (_channel)),      \
@@ -231,7 +229,7 @@ typedef struct cookie_arry
     30,                           \
 }
 
-#define CHAN4_9G(_channel, _flags) \
+#define chan4_9g(_channel, _flags) \
 {                                 \
     IEEE80211_BAND_5GHZ,          \
     4000 + (5 * (_channel)),      \
@@ -257,42 +255,30 @@ typedef struct cookie_arry
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
-
-
-
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-extern oal_workqueue_stru  *del_virtual_inf_workqueue;
+extern OAL_CONST wal_ioctl_mode_map_stru g_ast_mode_map[];
+extern oal_workqueue_stru  *g_del_virtual_inf_workqueue;
 #if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 extern oal_uint8 g_uc_vowifi_report_cnt;
 #endif
 
-
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   6 消息定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   9 OTHERS定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
@@ -300,8 +286,7 @@ extern oal_uint8 g_uc_vowifi_report_cnt;
 
 OAL_STATIC OAL_INLINE oal_uint32 oal_ieee80211_is_probe_resp(oal_uint16 fc)
 {
-	return (fc &  (IEEE80211_FCTL_FTYPE | IEEE80211_FCTL_STYPE)) ==
-	       (IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
+    return (fc & (IEEE80211_FCTL_FTYPE | IEEE80211_FCTL_STYPE)) == (IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
 }
 
 extern oal_void  wal_cfg80211_exit(oal_void);
@@ -333,18 +318,20 @@ extern oal_uint32 wal_cfg80211_add_vap(mac_cfg_add_vap_param_stru *pst_add_vap_p
 
 extern oal_void wal_cfg80211_reset_bands(oal_void);
 extern oal_void wal_cfg80211_save_bands(oal_void);
-oal_int32 wal_cfg80211_get_station(oal_wiphy_stru *pst_wiphy,
-                                   oal_net_device_stru *pst_dev,
+oal_int32 wal_cfg80211_get_station(
+    oal_wiphy_stru *pst_wiphy, oal_net_device_stru *pst_dev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
-                                   const
+    const oal_uint8 *puc_mac,
+#else
+    oal_uint8 *puc_mac,
 #endif
-                                   oal_uint8 *puc_mac,
-                                   oal_station_info_stru *pst_sta_info);
+    oal_station_info_stru *pst_sta_info);
 
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 
 #endif /* end of wal_linux_cfg80211.h */
+

@@ -2,6 +2,11 @@
 
 #ifndef __OAL_NET_H__
 #define __OAL_NET_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "platform_spec.h"
@@ -97,7 +102,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 
 /* convert a string,which length is 18, to a macaddress data type. */
 #define MAC_STR_LEN            18
-#define COPY_STR2MAC(mac, str) \
+#define copy_str2mac(mac, str) \
     do {                                                                      \
         oal_uint8 i;                                                          \
         for (i = 0; i < OAL_MAC_ADDR_LEN; i++) {                              \
@@ -115,10 +120,10 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define WLAN_CCMP256_GCMP_ENCRYP_LEN 24
 
 /* is address mcast? */
-#define ETHER_IS_MULTICAST(_a) (*(_a)&0x01)
+#define ether_is_multicast(_a) (*(_a)&0x01)
 
 /* is address bcast? */
-#define ETHER_IS_BROADCAST(_a) \
+#define ether_is_broadcast(_a) \
     ((_a)[0] == 0xff &&        \
         (_a)[1] == 0xff &&     \
         (_a)[2] == 0xff &&     \
@@ -126,14 +131,14 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
         (_a)[4] == 0xff &&     \
         (_a)[5] == 0xff)
 /* is address all zero? */
-#define ETHER_IS_ALL_ZERO(_a) \
+#define ether_is_all_zero(_a) \
     ((_a)[0] == 0x00 &&       \
         (_a)[1] == 0x00 &&    \
         (_a)[2] == 0x00 &&    \
         (_a)[3] == 0x00 &&    \
         (_a)[4] == 0x00 &&    \
         (_a)[5] == 0x00)
-#define ETHER_IS_IPV4_MULTICAST(_a) (((_a)[0]) == 0x01 && \
+#define ether_is_ipv4_multicast(_a) (((_a)[0]) == 0x01 && \
                                      ((_a)[1]) == 0x00 && \
                                      ((_a)[2]) == 0x5e)
 
@@ -161,21 +166,21 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define OAL_IP_ADDR_MAX_SIZE OAL_IPV6_ADDR_SIZE
 
 /* IPv4多播范围: 224.0.0.0--239.255.255.255 */
-#define OAL_IPV4_IS_MULTICAST(_a) ((oal_uint8)((_a)[0]) >= 224 && ((oal_uint8)((_a)[0]) <= 239))
+#define oal_ipv4_is_multicast(_a) ((oal_uint8)((_a)[0]) >= 224 && ((oal_uint8)((_a)[0]) <= 239))
 
 /* IPv4永久组地址判断: 224.0.0.0～224.0.0.255为永久组地址 */
 #define OAL_IPV4_PERMANET_GROUP_ADDR    0x000000E0
-#define OAL_IPV4_IS_PERMANENT_GROUP(_a) ((((_a)&0x00FFFFFF) ^ OAL_IPV4_PERMANET_GROUP_ADDR) == 0)
+#define oal_ipv4_is_permanent_group(_a) ((((_a)&0x00FFFFFF) ^ OAL_IPV4_PERMANET_GROUP_ADDR) == 0)
 
 /* IPv6组播地址: FFXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX(第一个字节全一) */
-#define OAL_IPV6_IS_MULTICAST(_a) ((oal_uint8)((_a)[0]) == 0xff)
+#define oal_ipv6_is_multicast(_a) ((oal_uint8)((_a)[0]) == 0xff)
 /* ipv6 组播mac地址 */
-#define ETHER_IS_IPV6_MULTICAST(_a) (((_a)[0]) == 0x33 && ((_a)[1]) == 0x33)
+#define ether_is_ipv6_multicast(_a) (((_a)[0]) == 0x33 && ((_a)[1]) == 0x33)
 /*
  * IPv6未指定地址: ::/128 ,该地址仅用于接口还没有被分配IPv6地址时与其它节点
  * 通讯作为源地址,例如在重复地址检测DAD中会出现.
  */
-#define OAL_IPV6_IS_UNSPECIFIED_ADDR(_a) \
+#define oal_ipv6_is_unspecified_addr(_a) \
     ((_a)[0] == 0x00 && (_a)[1] == 0x00 && (_a)[2] == 0x00 && (_a)[3] == 0x00 && \
      (_a)[4] == 0x00 && (_a)[5] == 0x00 && (_a)[6] == 0x00 && (_a)[7] == 0x00 && \
      (_a)[8] == 0x00 && (_a)[9] == 0x00 && (_a)[10] == 0x00 && (_a)[11] == 0x00 && \
@@ -183,7 +188,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 
 
 /* IPv6链路本地地址: 最高10位值为1111111010, 例如:FE80:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX  */
-#define OAL_IPV6_IS_LINK_LOCAL_ADDR(_a) (((_a)[0] == 0xFE) && ((_a)[1] >> 6 == 2))
+#define oal_ipv6_is_link_local_addr(_a) (((_a)[0] == 0xFE) && ((_a)[1] >> 6 == 2))
 
 /* IGMP record type */
 #define MAC_IGMP_QUERY_TYPE    0x11
@@ -193,7 +198,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define MAC_IGMPV3_REPORT_TYPE 0x22
 
 /* Is packet type is either leave or report */
-#define IS_IGMP_REPORT_LEAVE_PACKET(type) ( \
+#define is_igmp_report_leave_packet(type) ( \
     ((type) == MAC_IGMPV1_REPORT_TYPE) ||   \
     ((type) == MAC_IGMPV2_REPORT_TYPE) ||   \
     ((type) == MAC_IGMPV2_LEAVE_TYPE)  ||   \
@@ -208,7 +213,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define IGMPV3_BLOCK_OLD_SOURCES 6
 
 /* Is packet type is either leave or report */
-#define IS_IGMPV3_MODE(type) (              \
+#define is_igmpv3_mode(type) (              \
     ((type) == IGMPV3_MODE_IS_INCLUDE)   || \
     ((type) == IGMPV3_MODE_IS_EXCLUDE)   || \
     ((type) == IGMPV3_CHANGE_TO_INCLUDE) || \
@@ -223,7 +228,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define MLDV2_REPORT_TYPE 143
 
 /* Is packet type is either leave or report */
-#define IS_MLD_REPORT_LEAVE_PACKET(type) ( \
+#define is_mld_report_leave_packet(type) ( \
     ((type) == MLDV1_REPORT_TYPE) || \
     ((type) == MLDV1_DONE_TYPE)   || \
     ((type) == MLDV2_REPORT_TYPE))
@@ -235,7 +240,7 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define MLDV2_ALLOW_NEW_SOURCES 5
 #define MLDV2_BLOCK_OLD_SOURCES 6
 
-#define IS_MLDV2_MODE(type) ( \
+#define is_mldv2_mode(type) ( \
     ((type) == MLDV2_MODE_IS_INCLUDE)   || \
     ((type) == MLDV2_MODE_IS_EXCLUDE)   || \
     ((type) == MLDV2_CHANGE_TO_INCLUDE) || \
@@ -244,8 +249,8 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
     ((type) == MLDV2_BLOCK_OLD_SOURCES))
 
 /* Calculate the group record length */
-#define IGMPV3_GRP_REC_LEN(x) (8 + (((x)->us_grec_nsrcs + (x)->uc_grec_auxwords) << 2))
-#define MLDV2_GRP_REC_LEN(x)  (OAL_SIZEOF(mac_mld_v2_group_record_stru) + \
+#define igmpv3_grp_rec_len(x) (8 + (((x)->us_grec_nsrcs + (x)->uc_grec_auxwords) << 2))
+#define mldv2_grp_rec_len(x)  (OAL_SIZEOF(mac_mld_v2_group_record_stru) + \
                                ((x)->us_grec_srcaddr_num << 4) + \
                                (x)->uc_grec_auxwords)
 
@@ -270,9 +275,9 @@ OAL_STATIC OAL_INLINE oal_uint8 a2x(const char c)
 #define DHO_SERVERID    54
 #define DHO_END         255
 
-#define DNS_GET_QR_FROM_FLAG(flag)     ((oal_uint8)((((flag) & 0x8000U) > 0) ? 1 : 0))
-#define DNS_GET_OPCODE_FROM_FLAG(flag) ((oal_uint8)(((flag) & 0x7400U) >> 11))
-#define DNS_GET_RCODE_FROM_FLAG(flag)  ((oal_uint8)((flag) & 0x000fU))
+#define dns_get_qr_from_flag(flag)     ((oal_uint8)((((flag) & 0x8000U) > 0) ? 1 : 0))
+#define dns_get_opcode_from_flag(flag) ((oal_uint8)(((flag) & 0x7400U) >> 11))
+#define dns_get_rcode_from_flag(flag)  ((oal_uint8)((flag) & 0x000fU))
 
 #define DNS_MAX_DOMAIN_LEN 100
 
@@ -336,7 +341,6 @@ enum HWIFI_IOCTL_CMD {
     HWIFI_IOCTL_CMD_PRIV_DISCONNECT,               /* linux-2.6.30 sta发起disconnect */
     HWIFI_IOCTL_CMD_SET_FRAG,                      /* 设置分片门限值 */
     HWIFI_IOCTL_CMD_SET_RTS,                       /* 设置RTS 门限值 */
-    // _PRE_WLAN_FEATURE_HILINK
     HWIFI_IOCTL_CMD_PRIV_KICK_USER,          /* AP剔除用户 */
     HWIFI_IOCTL_CMD_SET_VENDOR_IE,           /* AP 添加私有IE接口，原为HWIFI_IOCTL_CMD_SET_OKC_IE，是hilink设置okc ie专用 */
     HWIFI_IOCTL_CMD_SET_WHITE_LST_SSIDHIDEN, /* 设置hlink白名单 */
@@ -346,7 +350,6 @@ enum HWIFI_IOCTL_CMD {
     HWIFI_IOCTL_CMD_GET_CUR_CHANNEL,         /* 获取工作信道 */
     HWIFI_IOCTL_CMD_SET_SCAN_STAY_TIME,      /* 设置扫描时工作信道驻留时间和侦听信道驻留时间 */
     HWIFI_IOCTL_CMD_SET_BEACON,              /* hostapd只配置加密参数私有接口 */
-    // _PRE_WLAN_FEATURE_11R_AP
     HWIFI_IOCTL_CMD_SET_MLME,             /* 设置MLME操作（认证、关联） */
     HWIFI_IOCTL_CMD_GET_NEIGHB_INFO,      /* 获取邻居AP扫描信息 */
     HWIFI_IOCTL_CMD_GET_HW_STAT,          /* 获取硬件流量统计 */
@@ -375,10 +378,6 @@ enum APP_IE_TYPE {
     OAL_APP_ASSOC_RSP_IE = 4,
     OAL_APP_FT_IE = 5,
     OAL_APP_REASSOC_REQ_IE = 6,
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    OAL_APP_OKC_BEACON_IE = 7,
-    OAL_APP_OKC_PROBE_IE = 8,
-#endif
     OAL_APP_VENDOR_IE,
 
     OAL_APP_IE_NUM
@@ -469,7 +468,6 @@ typedef struct {
     oal_uint16 us_window;
     oal_uint16 us_check;
     oal_uint16 us_urgent;
-
 } oal_tcp_header_stru;
 
 typedef struct {
@@ -485,7 +483,6 @@ struct mac_igmp_header {
     oal_uint8 uc_code; /* For newer IGMP */
     oal_uint16 us_csum;
     oal_uint32 ul_group;
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_igmp_header mac_igmp_header_stru;
 
@@ -518,7 +515,6 @@ struct mac_igmp_v3_grec {
     oal_uint8 uc_grec_auxwords;
     oal_uint16 us_grec_nsrcs;
     oal_uint32 ul_grec_group_ip;
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_igmp_v3_grec mac_igmp_v3_grec_stru;
 
@@ -560,7 +556,6 @@ struct mac_igmp_v3_report {
     oal_uint16 us_csum;
     oal_uint16 us_resv2;
     oal_uint16 us_ngrec;
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_igmp_v3_report mac_igmp_v3_report_stru;
 
@@ -571,7 +566,6 @@ struct mac_mld_v1_head {
     oal_uint16 us_max_response_delay;
     oal_uint16 us_reserved;
     oal_uint8 auc_group_ip[OAL_IPV6_ADDR_SIZE];
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_mld_v1_head mac_mld_v1_head_stru;
 
@@ -581,7 +575,6 @@ struct mac_mld_v2_report {
     oal_uint16 us_check_sum;
     oal_uint16 us_reserved;
     oal_uint16 us_group_address_num;
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_mld_v2_report mac_mld_v2_report_stru;
 
@@ -590,16 +583,14 @@ struct mac_mld_v2_group_record {
     oal_uint8 uc_grec_auxwords;                  // 辅助数据长度
     oal_uint16 us_grec_srcaddr_num;              //  原地址个数
     oal_uint8 auc_group_ip[OAL_IPV6_ADDR_SIZE];  // 组播组地址
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_mld_v2_group_record mac_mld_v2_group_record_stru;
 
 struct mac_vlan_tag {
     oal_uint16 us_tpid;           // tag   ID
     oal_uint16 bit_user_pri : 3,  // 帧的优先级
-               bit_CFI : 1,
+               bit_cfi : 1,
                bit_vlan_id : 12;  // 可配置的VLAN ID
-
 } __OAL_DECLARE_PACKED;
 typedef struct mac_vlan_tag mac_vlan_tag_stru;
 
@@ -681,7 +672,7 @@ struct hostap_sta_link_info {
     oal_uint32 tx_frames_rty;  /* tx frame retry cnt */
     oal_uint32 tx_frames_all;  /* tx total frame cnt */
     oal_uint32 tx_frames_fail; /* tx fail */
-    oal_uint32 SNR;            /* snr */
+    oal_uint32 snr;            /* snr */
 };
 
 struct hostap_all_sta_link_info {
@@ -771,70 +762,6 @@ struct oal_bssid_infomation {
 } __OAL_DECLARE_PACKED;
 typedef struct oal_bssid_infomation oal_bssid_infomation_stru;
 
-#ifdef _PRE_WLAN_FEATURE_HILINK
-typedef enum list_action {
-    OAL_WHITE_LIST_OPERATE_DEL = 0,
-    OAL_WHITE_LIST_OPERATE_ADD = 1,
-
-    OAL_WHITE_LIST_OPERATE_BUTT
-} white_list_operate;
-typedef oal_uint8 oal_en_white_list_operate_uint8;
-
-typedef struct oal_hilink_white_node {
-    oal_uint8 auc_mac[OAL_MAC_ADDR_LEN]; /* 目标MAC */
-    oal_en_white_list_operate_uint8 en_white_list_operate;
-    oal_uint8 uc_reserve;
-} oal_hilink_white_node_stru;
-
-typedef struct {
-    oal_uint8 auc_mac[OAL_MAC_ADDR_LEN]; /* 需要侦听的sta的mac地址 */
-    oal_uint8 en_is_on;                  /* 是否开启侦听 */
-    oal_uint8 uc_reserve;
-    oal_uint32 ul_channel;  /* 需要侦听的信道号 */
-    oal_uint32 ul_interval; /* 需要侦听时间 */
-} oal_hilink_scan_params;
-
-typedef struct {
-    oal_uint32 ul_cur_channel; /* 当前工作信道 */
-    oal_uint32 ul_cur_freq;    /* 当前工作频点 */
-} oal_hilink_current_channel;
-
-typedef struct {
-    oal_uint16 us_work_channel_stay_time; /* 工作信道驻留时长 */
-    oal_uint16 us_scan_channel_stay_time; /* 侦听信道驻留时长 */
-} oal_hilink_set_scan_time_param;
-
-typedef struct {
-    oal_uint8 auc_sta_mac[OAL_MAC_ADDR_LEN]; /* 要获取的sta的mac */
-    oal_bool_enum_uint8 en_support_11v;      /* 保存sta是否支持11v，为出参 */
-    oal_uint8 reserve;
-} oal_hilink_get_sta_11v_ability;
-
-typedef struct {
-    oal_uint8 auc_sta_mac_addr[OAL_MAC_ADDR_LEN];       /* 要切换的sta MAC地址 */
-    oal_uint8 auc_target_ap_mac_addr[OAL_MAC_ADDR_LEN]; /* 目标ap MAC地址 */
-    oal_uint8 uc_opt_class;                             /* Operation Class */
-    oal_uint8 uc_chl_num;                               /* Channel number */
-    oal_uint8 uc_phy_type;                              /* PHY type */
-    oal_uint8 uc_candidate_perf;                        /* perference data BSSID偏好值 */
-    oal_bssid_infomation_stru st_target_ap_info;        /* 目标ap信息 */
-} oal_hilink_change_sta_to_target_ap;
-
-typedef struct {
-    oal_uint8 auc_sta_mac[OAL_MAC_ADDR_LEN]; /* 要获取的sta的mac */
-    oal_bool_enum_uint8 en_support_11k;      /* 保存sta是否支持11k，为出参 */
-    oal_uint8 reserve;
-    oal_rrm_enabled_cap_ie_stru st_sta_11k_ability; /* sta 11k 能力信息 */
-} oal_hilink_get_sta_11k_ability;
-
-typedef struct {
-    oal_uint8 auc_sta_mac[OAL_MAC_ADDR_LEN]; /* 要获取的sta的mac */
-    oal_uint8 auc_target_ap_bssid[OAL_MAC_ADDR_LEN];
-    oal_uint8 uc_channel_num;
-    oal_uint8 auc_reserve[3];
-} oal_hilink_neighbor_bcn_req;
-#endif
-
 #if defined(_PRE_WLAN_FEATURE_11KV_INTERFACE)
 /* err code mask of wifi */
 #define WIFI_EVENT_START 0x1000
@@ -845,11 +772,11 @@ typedef struct {
  * @ IEEE80211_EV_DRV_EXCEPTION wifi diag事件
  * @ IEEE80211_EV_AUTH_REJECT sta在auth阶段被add_reject_sta接口下发的规则拒连，上报该事件
  */
-typedef enum ieee80211_event_en {
+enum ieee80211_event_en {
     IEEE80211_EV_HI_DETECTED_STA = WIFI_EVENT_START,
     IEEE80211_EV_DRV_EXCEPTION,
     IEEE80211_EV_AUTH_REJECT,
-} IEEE80211_DRIVER_EVENT_EN;
+};
 
 /* ioctl的命令字枚举 */
 enum ieee80211_vendor_req_sub_cmd_en {
@@ -1006,11 +933,11 @@ typedef struct ieee80211req_action_sta {
     } param;
 } oal_ieee80211req_action_sta_stru;
 
-typedef enum ieee80211_dualband_mode {
+enum ieee80211_dualband_mode {
     IEEE80211_MODE_2G_ONLY = 0,
     IEEE80211_MODE_5G_ONLY = 1,
     IEEE80211_MODE_DUALBAND = 2,
-} IEEE80211_DUALBAND_MODE_EN;
+};
 
 typedef struct dualband_para_set_to_ioctl {
     oal_uint32 abpa_enable;
@@ -1058,48 +985,6 @@ typedef struct {
     oal_bool_enum_uint8 en_support_11r;      /* 保存sta是否支持11r，为出参 */
     oal_uint8 reserve;
 } oal_hilink_get_sta_11r_ability;
-
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-#define OAL_WIFI_LED_OPTIMIZED_FLAG 52
-
-typedef enum {
-    HW_KER_LED_WLAN_OFF = 0,    /* wifi down */
-    HW_KER_LED_WLAN_ON,         /* wifi up, and no data */
-    HW_KER_LED_WLAN_BLINK_FAST, /* wifi up, and have data  */
-    HW_KER_LED_WLAN_BLINK_SLOW, /* wifi up, station connected */
-    HW_KER_LED_WLAN_BUTT
-} HW_KER_LED_WLAN_STAT_E;
-
-typedef enum {
-    HW_KER_WIFI_CHIP_BAND_2G,
-    HW_KER_WIFI_CHIP_BAND_5G,
-    HW_KER_WIFI_CHIP_BAND_BUTT
-} HW_KER_WIFI_CHIP_BAND_E;
-
-typedef enum {
-    HW_KER_WIFI_LED_WLAN = 0, /* wlan灯 */
-    HW_KER_WIFI_LED_WPS,      /* wps灯 */
-    HW_KER_WIFI_LED_TYPE_BUTT
-} HW_KER_WIFI_LED_TYPE_E;
-extern unsigned int (*g_pf_wifi_led_set)(unsigned int, unsigned int, unsigned int, unsigned int);
-#endif
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-typedef enum {
-    OAL_WIFI_DOWN = 0,
-    OAL_WIFI_UP,
-    OAL_WIFI_TX,
-    OAL_WIFI_RX,
-    OAL_WIFI_STATE_BUTT
-} oal_wifi_state_enum;
-typedef oal_uint8 oal_wifi_state_enum_uint8;
-
-typedef enum {
-    OAL_WIFI_BAND_2G = 0,
-    OAL_WIFI_BAND_5G,
-    OAL_WIFI_BAND_BUTT
-} oal_wifi_band_enum;
-typedef oal_uint8 oal_wifi_band_enum_uint8;
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_WDS
 typedef struct {
@@ -1183,7 +1068,6 @@ typedef struct {
     oal_uint16 us_user_buf_max;                 /* 上层分配的user信息个数  */
     oal_uint16 us_user_cnt;                     /* 上报的user信息个数 */
     oal_car_user_limit_stru *pst_car_user_cfg;  /* 指向user信息内存块，每个device最大128用户 */
-
 } oal_car_info_stru;
 #endif
 
@@ -1270,40 +1154,7 @@ typedef struct oal_net_dev_ioctl_data_tag {
         } kick_user_params;
 
         oal_net_all_sta_link_info_stru all_sta_link_info;
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-        struct {
-            oal_uint8 auc_mac[OAL_MAC_ADDR_LEN];
-            oal_uint16 us_reason_code; /* 去关联 reason code */
-            oal_uint8 uc_rej_user;     /* 禁止sta连接的时间 */
-            oal_uint8 uc_kick_user;    /* 类型:允许/禁止连接 */
-            oal_uint8 auc_rsv[2];
-        } fbt_kick_user_params;
-
-        oal_hilink_white_node_stru set_white_lst_ssidhiden_params;
-        oal_hilink_scan_params fbt_scan_params;
-        oal_hilink_current_channel fbt_get_cur_channel;
-        oal_hilink_set_scan_time_param fbt_set_scan_stay_time;
-        oal_hilink_get_sta_11v_ability fbt_get_sta_11v_ability;
-        oal_hilink_change_sta_to_target_ap fbt_change_sta_to_target_ap;
-        oal_hilink_get_sta_11k_ability fbt_get_sta_11k_ability;
-        oal_hilink_neighbor_bcn_req fbt_11k_sta_neighbor_bcn_req;
-
-#endif
         oal_hilink_get_sta_11h_ability fbt_get_sta_11h_ability;
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-        oal_hilink_get_sta_11r_ability fbt_get_sta_11r_ability;
-        struct {
-            en_mlme_type_enum_uint8 en_mlme_type; /* MLME类型 */
-            oal_uint8 uc_seq;                     /* 认证帧序列号 */
-            oal_uint16 us_reason;                 /* 原因码 */
-            oal_uint8 auc_macaddr[OAL_MAC_ADDR_LEN];
-            oal_uint16 us_optie_len;
-            oal_uint8 auc_optie[OAL_MAX_FT_ALL_LEN];
-        } set_mlme;
-
-#endif
-
         oal_int32 l_frag; /* 分片门限值 */
         oal_int32 l_rts;  /* RTS 门限值 */
 
@@ -1321,7 +1172,6 @@ typedef struct oal_net_dev_ioctl_data_tag {
 #if (_PRE_WLAN_FEATURE_BLACKLIST_LEVEL != _PRE_WLAN_FEATURE_BLACKLIST_NONE)
         oal_blkwhtlst_stru st_blkwhtlst;
 #endif
-
     } pri_data;
 } oal_net_dev_ioctl_data_stru;
 
@@ -1334,10 +1184,8 @@ extern oal_bool_enum_uint8 oal_netbuf_is_dhcp6(oal_ipv6hdr_stru *pst_ether_hdr);
 extern oal_void oal_netbuf_get_txtid(oal_netbuf_stru *pst_buf, oal_uint8 *puc_tos);
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
 extern oal_bool_enum_uint8 oal_netbuf_is_tcp_ack6(oal_ipv6hdr_stru *pst_ipv6hdr);
 extern oal_uint16 oal_netbuf_select_queue(oal_netbuf_stru *pst_buf);
-#endif
 
 extern oal_bool_enum_uint8 oal_netbuf_is_tcp_ack(oal_ip_header_stru *pst_ip_hdr);
 extern oal_bool_enum_uint8 oal_netbuf_is_icmp(oal_ip_header_stru *pst_ip_hdr);
@@ -1346,4 +1194,9 @@ extern oal_int32 dev_netlink_send(oal_uint8 *data, oal_int data_len);
 extern oal_int32 init_dev_excp_handler(oal_void);
 extern oal_void deinit_dev_excp_handler(oal_void);
 extern oal_int genl_msg_send_to_user(oal_void *data, oal_int i_len);
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 #endif /* end of oal_net.h */

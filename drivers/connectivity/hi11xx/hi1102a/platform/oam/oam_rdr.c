@@ -4,11 +4,15 @@
 
 #include <linux/workqueue.h>
 #include <linux/errno.h>
+#include <linux/rtc.h>
 
+#include "plat_exception_rst.h"
 #include "securec.h"
+#include "oal_util.h"
 #if (defined CONFIG_HISI_BB) && (defined CONFIG_HI110X_PLAT_BB)
 #include "mntn_subtype_exception.h"
-struct rdr_exception_info_s hisi_conn_excetption_info[] = {
+
+OAL_STATIC struct rdr_exception_info_s g_hisi_conn_excetption_info[] = {
     {
         .e_modid = (u32)MODID_CONN_WIFI_EXEC,
         .e_modid_end = (u32)MODID_CONN_WIFI_EXEC,
@@ -100,7 +104,7 @@ struct rdr_exception_info_s hisi_conn_excetption_info[] = {
         .e_desc = "CONN_BFGX_WAKEUP_FAIL",
     }
 };
-hisi_conn_ctl_t hisi_conn_modid_cfg[MODID_CONN_ARRAY_LEN] = {
+OAL_STATIC hisi_conn_ctl_t g_hisi_conn_modid_cfg[MODID_CONN_ARRAY_LEN] = {
     /* MODID_CONN_WIFI_EXEC */
     {
         .upload_en = UPLOAD_ALLOW,
@@ -132,23 +136,23 @@ hisi_conn_ctl_t hisi_conn_modid_cfg[MODID_CONN_ARRAY_LEN] = {
         .interva_stime = HISI_CONN_INTERVAL_TIME,
     },
 };
-static int32 initdone = 0;
-static int32 hisi_conn_initdone(void);
-struct work_struct hisi_conn_dump_work;
-struct workqueue_struct *hisi_conn_rdr_wq;
+OAL_STATIC int32 g_initdone = 0;
+OAL_STATIC int32 g_hisi_conn_initdone(void);
+OAL_STATIC struct work_struct g_hisi_conn_dump_work;
+OAL_STATIC struct workqueue_struct *g_hisi_conn_rdr_wq;
+OAL_STATIC struct hisi_conn_info_s g_hisi_conn_info;
 
-struct hisi_conn_info_s hisi_conn_info;
 int32 hisi_conn_stat_init(void)
 {
     int32 i;
     struct timex txc;
 
     do_gettimeofday(&(txc.time));
-    txc.time.tv_sec -= sys_tz.tz_minuteswest * 60;
+    txc.time.tv_sec -= sys_tz.tz_minuteswest * OAL_SEC_PER_MIN;
     for (i = 0; i < MODID_CONN_ARRAY_LEN; i++) {
-        hisi_conn_modid_cfg[i].stat_info.lastuploadtime = txc.time.tv_sec;
-        hisi_conn_modid_cfg[i].stat_info.happen_cnt = 0;
-        hisi_conn_modid_cfg[i].stat_info.upload_cnt = 0;
+        g_hisi_conn_modid_cfg[i].stat_info.lastuploadtime = txc.time.tv_sec;
+        g_hisi_conn_modid_cfg[i].stat_info.happen_cnt = 0;
+        g_hisi_conn_modid_cfg[i].stat_info.upload_cnt = 0;
     }
     return 0;
 }
@@ -160,33 +164,33 @@ void _hisi_conn_rdr_system_error(uint32 modid, uint32 arg1, uint32 arg2)
     ;
     modid_array = modid - MODID_CONN_WIFI_EXEC;
 
-    if (hisi_conn_modid_cfg[modid_array].upload_en == UPLOAD_DISALLOW) {
-        PS_PRINT_INFO("[%s]:upload modid[0x%x] not allow ship,value:%d!\n",
-                      __func__, modid, hisi_conn_modid_cfg[modid_array].upload_en);
+    if (g_hisi_conn_modid_cfg[modid_array].upload_en == UPLOAD_DISALLOW) {
+        ps_print_info("[%s]:upload modid[0x%x] not allow ship,value:%d!\n",
+                      __func__, modid, g_hisi_conn_modid_cfg[modid_array].upload_en);
         return;
     }
 
     do_gettimeofday(&(txc.time));
-    txc.time.tv_sec -= sys_tz.tz_minuteswest * 60;
-    subtime = txc.time.tv_sec - hisi_conn_modid_cfg[modid_array].stat_info.lastuploadtime;
-    if (hisi_conn_modid_cfg[modid_array].interva_stime < subtime) {
-        PS_PRINT_INFO("[%s]:upload bbox[0x%x]!\n", __func__, modid);
+    txc.time.tv_sec -= sys_tz.tz_minuteswest * OAL_SEC_PER_MIN;
+    subtime = txc.time.tv_sec - g_hisi_conn_modid_cfg[modid_array].stat_info.lastuploadtime;
+    if (g_hisi_conn_modid_cfg[modid_array].interva_stime < subtime) {
+        ps_print_info("[%s]:upload bbox[0x%x]!\n", __func__, modid);
         rdr_system_error(modid, arg1, arg2);
-        hisi_conn_modid_cfg[modid_array].stat_info.lastuploadtime = txc.time.tv_sec;
-        hisi_conn_modid_cfg[modid_array].stat_info.upload_cnt++;
+        g_hisi_conn_modid_cfg[modid_array].stat_info.lastuploadtime = txc.time.tv_sec;
+        g_hisi_conn_modid_cfg[modid_array].stat_info.upload_cnt++;
     } else {
-        PS_PRINT_WARNING("[%s]:upload bbox error[0x%x],cur_interva_stime:%lld,set interva_stime:%lld!\n",
-                         __func__, modid, subtime, hisi_conn_modid_cfg[modid_array].interva_stime);
+        ps_print_warning("[%s]:upload bbox error[0x%x],cur_interva_stime:%lld,set interva_stime:%lld!\n",
+                         __func__, modid, subtime, g_hisi_conn_modid_cfg[modid_array].interva_stime);
     }
-    hisi_conn_modid_cfg[modid_array].stat_info.happen_cnt++;
+    g_hisi_conn_modid_cfg[modid_array].stat_info.happen_cnt++;
 }
 int32 hisi_conn_rdr_system_error(uint32 modid, uint32 arg1, uint32 arg2)
 {
     if ((modid < MODID_CONN_WIFI_EXEC) || (modid >= MODID_CONN_BOTT)) {
-        PS_PRINT_ERR("[%s]:Input parameter is error[0x%x]!\n", __func__, modid);
+        ps_print_err("[%s]:Input parameter is error[0x%x]!\n", __func__, modid);
         return -EINVAL;
     } else {
-        if (!hisi_conn_initdone()) {
+        if (!g_hisi_conn_initdone()) {
             _hisi_conn_rdr_system_error(modid, arg1, arg2);
         }
     }
@@ -197,13 +201,7 @@ void plat_bbox_msg_hander(int32 subsys_type, int32 exception_type)
     if (subsys_type == SUBSYS_BFGX) {
         switch (exception_type) {
             case BFGX_LASTWORD_PANIC:
-                RDR_EXCEPTION(MODID_CONN_BFGX_EXEC);
-                break;
-            case BFGX_BEATHEART_TIMEOUT:
-                RDR_EXCEPTION(MODID_CONN_BFGX_BEAT_TIMEOUT);
-                break;
-            case BFGX_WAKEUP_FAIL:
-                RDR_EXCEPTION(MODID_CONN_BFGX_WAKEUP_FAIL);
+                rdr_exception(MODID_CONN_BFGX_EXEC);
                 break;
             default:
                 break;
@@ -213,13 +211,7 @@ void plat_bbox_msg_hander(int32 subsys_type, int32 exception_type)
             case WIFI_WATCHDOG_TIMEOUT:
             case BFGX_TIMER_TIMEOUT:
             case WIFI_DEVICE_PANIC:
-                RDR_EXCEPTION(MODID_CONN_WIFI_EXEC);
-                break;
-            case WIFI_WAKEUP_FAIL:
-                RDR_EXCEPTION(MODID_CONN_WIFI_WAKEUP_FAIL);
-                break;
-            case WIFI_TRANS_FAIL:
-                RDR_EXCEPTION(MODID_CONN_WIFI_CHAN_EXEC);
+                rdr_exception(MODID_CONN_WIFI_EXEC);
                 break;
             default:
                 break;
@@ -231,22 +223,23 @@ static int hisi_conn_copy_reg_to_bbox(char *src_addr, unsigned int len)
     unsigned int temp_offset;
 
     if ((src_addr == NULL) || (len == 0)) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:Input parameter is error!\n", __func__);
+        ps_print_err("[%s]:HISI_CONN_ERROR:Input parameter is error!\n", __func__);
         return -EINVAL;
     }
 
-    temp_offset = hisi_conn_info.bbox_addr_offset + len;
+    temp_offset = g_hisi_conn_info.bbox_addr_offset + len;
 
     // hisi_conn_bbox alloc size 8k
-    if (memcpy_s(((char *)hisi_conn_info.rdr_addr + hisi_conn_info.bbox_addr_offset),
-                 hisi_conn_info.hisi_conn_ret_info.log_len - hisi_conn_info.bbox_addr_offset, src_addr, len) != EOK) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:Copy log to bbox size is error! temp_offset=%u\n, max len is %u",
-                     __func__, temp_offset, hisi_conn_info.hisi_conn_ret_info.log_len);
+    if (memcpy_s(((char *)g_hisi_conn_info.rdr_addr + g_hisi_conn_info.bbox_addr_offset),
+                 g_hisi_conn_info.hisi_conn_ret_info.log_len - g_hisi_conn_info.bbox_addr_offset,
+                 src_addr, len) != EOK) {
+        ps_print_err("[%s]:HISI_CONN_ERROR:Copy log to bbox size is error! temp_offset=%u\n, max len is %u",
+                     __func__, temp_offset, g_hisi_conn_info.hisi_conn_ret_info.log_len);
         temp_offset = 0;
-        hisi_conn_info.bbox_addr_offset = 0;
+        g_hisi_conn_info.bbox_addr_offset = 0;
         return -ENOMEM;
     }
-    hisi_conn_info.bbox_addr_offset = temp_offset;
+    g_hisi_conn_info.bbox_addr_offset = temp_offset;
 
     return 0;
 }
@@ -262,14 +255,14 @@ int32 hisi_conn_save_stat_info(char *buf, int32 index, int32 limit)
     }
     index += ret;
     for (i = 0; i < MODID_CONN_ARRAY_LEN; i++) {
-        rtc_time_to_tm(hisi_conn_modid_cfg[i].stat_info.lastuploadtime, &tm);
+        rtc_time_to_tm(g_hisi_conn_modid_cfg[i].stat_info.lastuploadtime, &tm);
         ret = snprintf_s(buf + index, limit - index + 1, limit - index,
                          "   id:%-10d  upload_en:%d    upload_cnt:%llu    happen_cnt:%llu    interva_stime:%llus   lastuploadtime:%4d-%02d-%02d  %02d:%02d:%02d\n",
                          i,
-                         hisi_conn_modid_cfg[i].upload_en,
-                         hisi_conn_modid_cfg[i].stat_info.upload_cnt,
-                         hisi_conn_modid_cfg[i].stat_info.happen_cnt,
-                         hisi_conn_modid_cfg[i].interva_stime,
+                         g_hisi_conn_modid_cfg[i].upload_en,
+                         g_hisi_conn_modid_cfg[i].stat_info.upload_cnt,
+                         g_hisi_conn_modid_cfg[i].stat_info.happen_cnt,
+                         g_hisi_conn_modid_cfg[i].interva_stime,
                          tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                          tm.tm_hour, tm.tm_min, tm.tm_sec); /* 转换成当前时间 */
         if (ret < 0) {
@@ -284,8 +277,8 @@ void hisi_conn_save_bbox_info(void)
 {
     char log_buf[HISI_CONN_BUF_LEN_MAX + 1] = {0};
 
-    memset_s(hisi_conn_info.rdr_addr, hisi_conn_info.hisi_conn_ret_info.log_len,
-             0, hisi_conn_info.hisi_conn_ret_info.log_len);
+    memset_s(g_hisi_conn_info.rdr_addr, g_hisi_conn_info.hisi_conn_ret_info.log_len,
+             0, g_hisi_conn_info.hisi_conn_ret_info.log_len);
 
     hisi_conn_save_stat_info(log_buf, 0, HISI_CONN_BUF_LEN_MAX);
 
@@ -295,7 +288,7 @@ void hisi_conn_save_bbox_info(void)
 }
 static void hisi_conn_write_reg_log(void)
 {
-    switch (hisi_conn_info.dump_info.modid) {
+    switch (g_hisi_conn_info.dump_info.modid) {
         case MODID_CONN_WIFI_EXEC:
         case MODID_CONN_WIFI_CHAN_EXEC:
         case MODID_CONN_WIFI_WAKEUP_FAIL:
@@ -312,19 +305,19 @@ static void hisi_conn_write_reg_log(void)
 static void hisi_conn_rdr_dump(u32 modid, u32 etype, u64 coreid, char *pathname, pfn_cb_dump_done pfn_cb)
 {
     if (pathname == NULL) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:pathname is empty\n", __func__);
+        ps_print_err("[%s]:HISI_CONN_ERROR:pathname is empty\n", __func__);
         return;
     }
-    if (!initdone) {
-        PS_PRINT_WARNING("[%s]:HISI_CONN_ERROR: rdr not init\n", __func__);
+    if (!g_initdone) {
+        ps_print_warning("[%s]:HISI_CONN_ERROR: rdr not init\n", __func__);
         return;
     }
-    hisi_conn_info.dump_info.modid = modid;
-    hisi_conn_info.dump_info.coreid = coreid;
-    hisi_conn_info.dump_info.pathname = pathname;
-    hisi_conn_info.dump_info.cb = pfn_cb;
-    hisi_conn_info.bbox_addr_offset = 0;
-    queue_work(hisi_conn_rdr_wq, &hisi_conn_dump_work);
+    g_hisi_conn_info.dump_info.modid = modid;
+    g_hisi_conn_info.dump_info.coreid = coreid;
+    g_hisi_conn_info.dump_info.pathname = pathname;
+    g_hisi_conn_info.dump_info.cb = pfn_cb;
+    g_hisi_conn_info.bbox_addr_offset = 0;
+    queue_work(g_hisi_conn_rdr_wq, &g_hisi_conn_dump_work);
     return;
 }
 static void hisi_conn_rdr_reset(u32 modid, u32 etype, u64 coreid)
@@ -335,8 +328,8 @@ static void hisi_conn_rdr_dump_work(struct work_struct *work)
 {
     hisi_conn_write_reg_log();
 
-    if (hisi_conn_info.dump_info.cb) {
-        hisi_conn_info.dump_info.cb(hisi_conn_info.dump_info.modid, hisi_conn_info.dump_info.coreid);
+    if (g_hisi_conn_info.dump_info.cb) {
+        g_hisi_conn_info.dump_info.cb(g_hisi_conn_info.dump_info.modid, g_hisi_conn_info.dump_info.coreid);
     }
 
     return;
@@ -347,12 +340,12 @@ static int hisi_conn_register_exception(void)
     unsigned int size;
     unsigned long index;
 
-    size = sizeof(hisi_conn_excetption_info) / sizeof(struct rdr_exception_info_s);
+    size = sizeof(g_hisi_conn_excetption_info) / sizeof(struct rdr_exception_info_s);
     for (index = 0; index < size; index++) {
         /* error return 0, ok return modid */
-        ret = rdr_register_exception(&hisi_conn_excetption_info[index]);
+        ret = rdr_register_exception(&g_hisi_conn_excetption_info[index]);
         if (!ret) {
-            PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:rdr_register_exception is failed! index=%ld ret=%d\n",
+            ps_print_err("[%s]:HISI_CONN_ERROR:rdr_register_exception is failed! index=%ld ret=%d\n",
                          __func__, index, ret);
             return -EINTR;
         }
@@ -368,19 +361,24 @@ static int hisi_conn_register_core(void)
     s_soc_ops.ops_dump = hisi_conn_rdr_dump;
     s_soc_ops.ops_reset = hisi_conn_rdr_reset;
     /* register hisi_conn core dump and reset function */
-    ret = rdr_register_module_ops((u64)RDR_CONN, &s_soc_ops, &hisi_conn_info.hisi_conn_ret_info);
+    ret = rdr_register_module_ops((u64)RDR_CONN, &s_soc_ops, &g_hisi_conn_info.hisi_conn_ret_info);
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:rdr_register_module_ops is failed! ret=0x%08x\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:rdr_register_module_ops is failed! ret=0x%08x\n", __func__, ret);
     }
 
     return ret;
 }
 static int hisi_conn_addr_map(void)
 {
-    hisi_conn_info.rdr_addr = hisi_bbox_map((phys_addr_t)hisi_conn_info.hisi_conn_ret_info.log_addr,
-                                            hisi_conn_info.hisi_conn_ret_info.log_len);
-    if (!hisi_conn_info.rdr_addr) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_bbox_map is failed!\n", __func__);
+#ifdef CONFIG_ARCH_PLATFORM
+    g_hisi_conn_info.rdr_addr = dfx_bbox_map((phys_addr_t)g_hisi_conn_info.hisi_conn_ret_info.log_addr,
+                                             g_hisi_conn_info.hisi_conn_ret_info.log_len);
+#else
+    g_hisi_conn_info.rdr_addr = hisi_bbox_map((phys_addr_t)g_hisi_conn_info.hisi_conn_ret_info.log_addr,
+                                              g_hisi_conn_info.hisi_conn_ret_info.log_len);
+#endif
+    if (!g_hisi_conn_info.rdr_addr) {
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_bbox_map is failed!\n", __func__);
         return -EFAULT;
     }
 
@@ -388,18 +386,22 @@ static int hisi_conn_addr_map(void)
 }
 static int hisi_conn_remove_map(void)
 {
-    hisi_bbox_unmap ((char *)(hisi_conn_info.hisi_conn_ret_info.log_addr));
+#ifdef CONFIG_ARCH_PLATFORM
+    dfx_bbox_unmap ((char *)(g_hisi_conn_info.hisi_conn_ret_info.log_addr));
+#else
+    hisi_bbox_unmap ((char *)(g_hisi_conn_info.hisi_conn_ret_info.log_addr));
+#endif
     return 0;
 }
 static int hisi_conn_rdr_resource_init(void)
 {
-    hisi_conn_rdr_wq = create_singlethread_workqueue("hisi_conn_rdr_wq");
-    if (!hisi_conn_rdr_wq) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:Create_singlethread_workqueue is failed!\n", __func__);
+    g_hisi_conn_rdr_wq = create_singlethread_workqueue("g_hisi_conn_rdr_wq");
+    if (!g_hisi_conn_rdr_wq) {
+        ps_print_err("[%s]:HISI_CONN_ERROR:Create_singlethread_workqueue is failed!\n", __func__);
         return -EINTR;
     }
 
-    INIT_WORK(&hisi_conn_dump_work, hisi_conn_rdr_dump_work);
+    INIT_WORK(&g_hisi_conn_dump_work, hisi_conn_rdr_dump_work);
 
     return 0;
 }
@@ -409,38 +411,38 @@ int hisi_conn_rdr_init(void)
 
     ret = hisi_conn_rdr_resource_init();
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_conn_rdr_resource_init is faild!ret=%d\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_conn_rdr_resource_init is faild!ret=%d\n", __func__, ret);
         return ret;
     }
 
     /* register ics exception */
     ret = hisi_conn_register_exception();
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_conn_register_exception is faild!ret=%d\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_conn_register_exception is faild!ret=%d\n", __func__, ret);
         goto exit_resource;
     }
 
     /* register ics dump and reset function */
     ret = hisi_conn_register_core();
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_conn_register_core is failed!ret=%d\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_conn_register_core is failed!ret=%d\n", __func__, ret);
         goto exit_exception;
     }
 
     ret = hisi_conn_addr_map();
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_conn_addr_map is failed!ret=%d\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_conn_addr_map is failed!ret=%d\n", __func__, ret);
         goto exit_core;
     }
 
     ret = hisi_conn_stat_init();
     if (ret != 0) {
-        PS_PRINT_ERR("[%s]:HISI_CONN_ERROR:hisi_conn_stat_init is failed!ret=%d\n", __func__, ret);
+        ps_print_err("[%s]:HISI_CONN_ERROR:hisi_conn_stat_init is failed!ret=%d\n", __func__, ret);
         goto exit_core;
     }
 
-    PS_PRINT_INFO("hisi_conn_rdr_init all succ, buffer_len:0x%x,\n", hisi_conn_info.hisi_conn_ret_info.log_len);
-    initdone = 1;
+    ps_print_info("hisi_conn_rdr_init all succ, buffer_len:0x%x,\n", g_hisi_conn_info.hisi_conn_ret_info.log_len);
+    g_initdone = 1;
     return 0;
 
 exit_core:
@@ -448,15 +450,15 @@ exit_core:
 exit_exception:
     hisi_conn_remove_map();
 exit_resource:
-    destroy_workqueue(hisi_conn_rdr_wq);
-    initdone = 0;
+    destroy_workqueue(g_hisi_conn_rdr_wq);
+    g_initdone = 0;
     return -EFAULT;
 }
-static int32 hisi_conn_initdone(void)
+static int32 g_hisi_conn_initdone(void)
 {
-    if (!initdone) {
+    if (!g_initdone) {
         if (hisi_conn_rdr_init()) {
-            initdone = 0;
+            g_initdone = 0;
             return -1;
         }
     }
@@ -465,15 +467,15 @@ static int32 hisi_conn_initdone(void)
 
 int hisi_conn_rdr_exit(void)
 {
-    if (initdone) {
+    if (g_initdone) {
         hisi_conn_remove_map();
         rdr_unregister_module_ops((u64)RDR_CONN);
         rdr_unregister_exception(RDR_CONN);
-        destroy_workqueue(hisi_conn_rdr_wq);
-        initdone = 0;
-        PS_PRINT_INFO("hisi_conn_rdr_init exit\n");
+        destroy_workqueue(g_hisi_conn_rdr_wq);
+        g_initdone = 0;
+        ps_print_info("hisi_conn_rdr_init exit\n");
     } else {
-        PS_PRINT_INFO("hisi_conn_rdr_init not init no need exit\n");
+        ps_print_info("hisi_conn_rdr_init not init no need exit\n");
     }
 
     return 0;

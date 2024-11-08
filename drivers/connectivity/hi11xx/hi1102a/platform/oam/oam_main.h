@@ -19,10 +19,6 @@
 
 #define OAM_FEATURE_NAME_ABBR_LEN 12 /* 特性名称缩写最大长度 */
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#define OAM_DATA2SDT_FAIL_COUNT 1000
-#endif
-
 /* 打印方式定义 */
 typedef oal_uint32 (*oal_print_func)(const char *pc_string);
 
@@ -43,7 +39,7 @@ typedef enum {
 } oam_ratelimit_output_enum;
 typedef oal_uint8 oam_ratelimit_output_enum_uint8;
 
-extern oam_software_feature_stru gst_oam_feature_list[];
+extern oam_software_feature_stru g_oam_feature_list[];
 
 /* 函数声明 */
 extern oal_int32 oam_main_init(oal_void);

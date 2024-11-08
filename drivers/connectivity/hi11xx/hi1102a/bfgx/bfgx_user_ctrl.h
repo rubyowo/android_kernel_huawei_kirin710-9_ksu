@@ -3,15 +3,15 @@
 #ifndef __BFGX_USER_CTRL_H__
 #define __BFGX_USER_CTRL_H__
 /* 其他头文件包含 */
+#include <linux/skbuff.h>
 #include "plat_type.h"
-#include "hisi_customize_wifi.h"
 
 /* Define macro */
 #define DEV_SW_VERSION_HEAD5BYTE "HI1102A"
 #define DEV_SW_STR_BFGX     "@DEV_SW_VERSION_BFGX:HI1102A"
 #define DEV_SW_STR_WIFI     "@DEV_SW_VERSION_WIFI:HI1102A"
 
-#define USERCTL_KFREE(p)         \
+#define userctl_kfree(p)         \
     do {                         \
         if (likely((p) != NULL)) { \
             kfree(p);            \
@@ -46,15 +46,15 @@ typedef struct {
     wait_queue_head_t dump_type_wait;
     struct sk_buff_head dump_type_queue;
     atomic_t rotate_finish_state;
-} DUMP_CMD_QUEUE;
+} dump_cmd_queue;
 
 /* EXTERN VARIABLE */
-extern struct kobject *sysfs_hi110x_bfgx;
-extern int32 plat_loglevel;
-extern int32 bug_on_enable;
+extern struct kobject *g_sysfs_hi110x_bfgx;
+extern int32 g_plat_loglevel;
+extern int32 g_bug_on_enable;
 
 #ifdef PLATFORM_DEBUG_ENABLE
-extern int32 uart_rx_dump;
+extern int32 g_uart_rx_dump;
 #endif
 
 /* EXTERN FUNCTION */
@@ -66,7 +66,9 @@ extern void plat_wait_last_rotate_finish(void);
 extern void plat_rotate_finish_set(void);
 #endif
 extern void plat_exception_dump_file_rotate_init(void);
-#ifdef CONFIG_HISI_PMU_RTC_READCOUNT
+#if defined(CONFIG_HISI_PMU_RTC_READCOUNT)
 extern unsigned long hisi_pmu_rtc_readcount(void);
+#elif defined(CONFIG_PMU_RTC_READCOUNT)
+extern unsigned long pmu_rtc_readcount(void);
 #endif
 #endif

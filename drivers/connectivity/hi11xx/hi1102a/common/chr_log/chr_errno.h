@@ -35,7 +35,7 @@
  * | error    |CHR_XX_ERROR_ENUM| 标识异常触发因素,详细描述触发异常事件的原因  |
  * |---------------------------------------------------------------------------|
  */
-typedef enum {
+enum chr_system_enum {
     CHR_SYSTEM_PLAT = 0x01 << CHR_SYSTEM_OFFSET,
     CHR_SYSTEM_WIFI = 0x02 << CHR_SYSTEM_OFFSET,
     CHR_SYSTEM_GNSS = 0x03 << CHR_SYSTEM_OFFSET,
@@ -44,21 +44,23 @@ typedef enum {
     CHR_SYSTEM_NFC = 0x06 << CHR_SYSTEM_OFFSET,
     CHR_SYSTEM_IR = 0x07 << CHR_SYSTEM_OFFSET,
     CHR_SYSTEM_MUTT = 0x08 << CHR_SYSTEM_OFFSET,
-} CHR_SYSTEM_ENUM;
+    CHR_SYSTEM_OAM  = 0x09 << CHR_SYSTEM_OFFSET,
+    CHR_SYSTEM_PC_LR = 0x0A << CHR_SYSTEM_OFFSET,
+};
 
-typedef enum {
+enum chr_layer_enum {
     CHR_LAYER_DEV = 0x01 << CHR_LAYER_OFFSET,
     CHR_LAYER_DRV = 0x02 << CHR_LAYER_OFFSET,
     CHR_LAYER_HAL = 0x03 << CHR_LAYER_OFFSET,
-} CHR_LAYER_ENUM;
+};
 
-typedef enum {
+enum chr_wifi_event_enum {
     /* CHR_WIFI_HAL */
     CHR_WIFI_HAL_EVENT_OPEN = 0x01,
     CHR_WIFI_HAL_EVENT_SCAN = 0x02,
     CHR_WIFI_HAL_EVENT_CONNECT = 0x03,
 
-    /* CHR_WIFI_DRV */
+    /* chr_wifi_drv */
     CHR_WIFI_DRV_EVENT_OPEN = 0x01,
     CHR_WIFI_DRV_EVENT_SCAN = 0x02,
     CHR_WIFI_DRV_EVENT_CONNECT = 0x03,
@@ -67,7 +69,7 @@ typedef enum {
     CHR_WIFI_DRV_EVENT_EXCEPTION = 0x06,
     CHR_WIFI_DRV_EVENT_FAKELINK = 0x07,
 
-    /* CHR_WIFI_DRV platform event */
+    /* chr_wifi_drv platform event */
     CHR_WIFI_DRV_EVENT_PLAT = 0x08,
 
     /* CHR_WIIF_DRV_SOFTAP event */
@@ -78,25 +80,25 @@ typedef enum {
     CHR_WIFI_DRV_EVENT_11V_ROAM_FAIL = 0x0D,
     CHR_WIFI_DRV_EVENT_11R_AUTH_FAIL = 0x0E,
 
-    /* CHR_WIFI_DEV */
+    /* chr_wifi_dev */
     CHR_WIFI_DEV_EVENT_CHIP = 0x01,
     CHR_WIFI_DEV_ANTS_MSW_FAILED = 0x02,
     CHR_WIFI_DEV_ANTS_SWM_FAILED = 0x03,
     CHR_WIFI_DEV_EVENT_ERROR_LOGS = 0x04,
-} CHR_WIFI_EVENT_ENUM;
+};
 
-typedef enum {
+enum chr_gnss_event_enum {
     /* CHR_GNSS_HAL */
     CHR_GNSS_HAL_EVENT_SYSCALL = 0x01,
     CHR_GNSS_HAL_EVENT_EXCEPTION = 0x02,
     CHR_GNSS_HAL_EVENT_TIME = 0x03,
     CHR_GNSS_HAL_EVENT_INJECT = 0x04,
 
-    /* CHR_GNSS_DRV platform event */
+    /* chr_gnss_drv platform event */
     CHR_GNSS_DRV_EVENT_PLAT = 0x05,
-} CHR_GNSS_EVENT_ENUM;
+};
 
-typedef enum {
+enum chr_plt_drv_event_enum {
     /* CHR_PLT_DRV */
     CHR_PLT_DRV_EVENT_INIT = 0x01,
     CHR_PLT_DRV_EVENT_EXIT = 0x02,
@@ -114,9 +116,9 @@ typedef enum {
     CHR_PLT_DRV_EVENT_FW = 0x0e,
     CHR_PLT_DRV_EVENT_RST = 0x0f,
     CHR_PLT_DRV_EVENT_INI = 0x10,
-} CHR_PLT_DRV_EVENT_ENUM;
+};
 
-typedef enum {
+enum chr_wifi_error_enum {
     /* CHR_WIFI_HAL_EVENT_OPEN */
     CHR_WIFI_HAL_ERROR_CONFIG_READ = 0x01,
     CHR_WIFI_HAL_ERROR_SOCKET_FAIL = 0x02,
@@ -167,9 +169,16 @@ typedef enum {
     CHR_WIFI_DRV_ERROR_RF_OVERHEAT_EXCEPTION = 0x05,
     CHR_WIFI_DRV_ERROR_INTERFERENCE = 0x06,
 
+    /* CHR_WIFI_DRV_EVENT_11V_ROAM_FAIL */
+    CHR_WIFI_DRV_ERROR_ONLY_ONE_INVALID_BSS = 0x01, /* 候选列表中仅存在一个BSS且该BSS无效 */
+    CHR_WIFI_DRV_ERROR_INVALID_TARGET_BSS = 0x02, /* 选出的目标bss无效 */
+    CHR_WIFI_DRV_ERROR_MORE_THAN_ONE_BSS = 0x03, /* 候选列表存在多个bssid */
+    CHR_WIFI_DRV_ERROR_ROAM_PING_PONG = 0x04, /* 出现漫游乒乓 */
+
     /* CHR_WIFI_DEV_EVENT_CHIP */
-    /* 如下定义不在使用，保留作为旧版本CHR id查询使用*/
+    /* 如下定义不在使用，保留作为旧版本CHR id查询使用 */
     CHR_WIFI_DEV_ERROR_FEM_FAIL = 0x01,
+    CHR_WIFI_DEV_ERROR_TAS_GPIO_FAIL = 0x02,
     CHR_WIFI_DEV_ERROR_GPIO = 0x03,
     CHR_WIFI_DEV_ERROR_IOMUX = 0x05,
 
@@ -255,9 +264,9 @@ typedef enum {
     CHR_WIFI_DEV_ERROR_DFT_LOGS = 0x43,
     CHR_WIFI_DEV_ERROR_DFR_LOGS = 0x44,
     CHR_WIFI_DEV_ERROR_ANY_LOGS = 0x45,
-} CHR_WIFI_ERROR_ENUM;
+};
 
-typedef enum {
+enum chr_gnss_error_enum {
     /* CHR_GNSS_HAL_EVENT_SYSCALL */
     CHR_GNSS_HAL_ERROR_OPEN_CMD = 0x01,
     CHR_GNSS_HAL_ERROR_READ_CMD = 0x02,
@@ -286,9 +295,9 @@ typedef enum {
     CHR_GNSS_HAL_ERROR_TIME_INJECT_CMD = 0x01,
     CHR_GNSS_HAL_ERROR_LOC_INJECT_CMD = 0x02,
     CHR_GNSS_HAL_ERROR_EPH_INJECT_CMD = 0x03,
-} CHR_GNSS_ERROR_ENUM;
+};
 
-typedef enum {
+enum chr_plat_drv_error_enum {
     /* start number 1 */
     CHR_PLAT_DRV_ERROR_FIRMWARE_DOWN = 0x01,
     CHR_PLAT_DRV_ERROR_SDIO_INIT = 0x02,
@@ -338,17 +347,12 @@ typedef enum {
     /* start number 40 */
     CHR_PLAT_DRV_ERROR_HCC_DEADLOCK = 0x28, /* 连续两次HCC流控死锁 */
 
-
     /* start number 60
      * CHR_PLT_DRV_EVENT_INIT
      */
     CHR_PLAT_DRV_ERROR_BOARD_DRV_PROB = 0x3c,
     CHR_PLAT_DRV_ERROR_PLAT_INIT = 0x3d,
     CHR_PLAT_DRV_ERROR_BOARD_GPIO_INIT = 0x3e,
-
-    /* start number 80
-     * CHR_PLT_DRV_EVENT_EXIT
-     */
 
     /* start number 100
      * CHR_PLT_DRV_EVENT_DFR
@@ -368,10 +372,6 @@ typedef enum {
     CHR_PLAT_DRV_ERROR_UART_PRINT = 0x8c,
     CHR_PLAT_DRV_ERROR_UART_BAURD = 0x8d,
     CHR_PLAT_DRV_ERROR_OPEN_TTY = 0x8e,
-
-    /* start number 160
-     * CHR_PLT_DRV_EVENT_PCIE
-     */
 
     /* start number 180
      * CHR_PLT_DRV_EVENT_GPIO
@@ -452,11 +452,11 @@ typedef enum {
     CHR_PLAT_DRV_ERROR_WIFI_RST_BCPU_OPEN_BCPU = 0x16D,
     CHR_PLAT_DRV_ERROR_WIFI_RST_BCPU_BOOTUP = 0x16E,
     CHR_PLAT_DRV_ERROR_WIFI_SUBSYS_WCPU_BOOTUP = 0x16F,
-    CHR_PLAT_DRV_ERROR_BFGX_SUB_SYSTEM_RESET = 0x170, /* bfgx 子系统复位*/
+    CHR_PLAT_DRV_ERROR_BFGX_SUB_SYSTEM_RESET = 0x170, /* bfgx 子系统复位 */
     CHR_PLAT_DRV_ERROR_BFGX_SUB_SYSTEM_RST_BOOTUP = 0x171,
     CHR_PLAT_DRV_ERROR_BFGX_SUB_SYSTEM_RST_RECOVERY = 0x172, /* 370 */
     CHR_PLAT_DRV_ERROR_BCPU_PWR_RST_BOOTUP = 0x173,
-    CHR_PLAT_DRV_ERROR_BFGX_SYSTEM_RESET = 0x174,  /* bfgx 全系统复位*/
+    CHR_PLAT_DRV_ERROR_BFGX_SYSTEM_RESET = 0x174,  /* bfgx 全系统复位 */
     CHR_PLAT_DRV_ERROR_BFGX_SYSTEM_RESET_BFGX_RECOVERY = 0x175,
     CHR_PLAT_DRV_ERROR_BFGX_SYSTEM_RESET_WIFI_RECOVERY = 0x176,
     CHR_PLAT_DRV_ERROR_UART_RST_WCPU = 0x177,
@@ -465,59 +465,59 @@ typedef enum {
      * CHR_PLT_DRV_EVENT_INI
      */
     CHR_PLAT_DRV_ERROR_INI_MISS = 0x17C,
-} CHR_PLAT_DRV_ERROR_ENUM;
+};
 
 /* CHR ERRNO 错误码各位段组装 */
-#define CHR_COMBINE_EVENT_ERROR(event, error) \
+#define chr_combine_event_error(event, error) \
     ((((event) & CHR_EVENT_MASK) << CHR_EVENT_OFFSET) | (((error) & CHR_ERROR_MASK) << CHR_ERROR_OFFSET))
 
-#define CHR_PLAT_DEV(event, error) \
-    (CHR_SYSTEM_PLAT | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_PLAT_DRV(event, error) \
-    (CHR_SYSTEM_PLAT | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_PLAT_HAL(event, error) \
-    (CHR_SYSTEM_PLAT | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_plat_dev(event, error) \
+    (CHR_SYSTEM_PLAT | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_plat_drv(event, error) \
+    (CHR_SYSTEM_PLAT | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_plat_hal(event, error) \
+    (CHR_SYSTEM_PLAT | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_WIFI_DEV(event, error) \
-    (CHR_SYSTEM_WIFI | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_WIFI_DRV(event, error) \
-    (CHR_SYSTEM_WIFI | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_WIFI_HAL(event, error) \
-    (CHR_SYSTEM_WIFI | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_wifi_dev(event, error) \
+    (CHR_SYSTEM_WIFI | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_wifi_drv(event, error) \
+    (CHR_SYSTEM_WIFI | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_wifi_hal(event, error) \
+    (CHR_SYSTEM_WIFI | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_GNSS_DEV(event, error) \
-    (CHR_SYSTEM_GNSS | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_GNSS_DRV(event, error) \
-    (CHR_SYSTEM_GNSS | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_GNSS_HAL(event, error) \
-    (CHR_SYSTEM_GNSS | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_gnss_dev(event, error) \
+    (CHR_SYSTEM_GNSS | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_gnss_drv(event, error) \
+    (CHR_SYSTEM_GNSS | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_gnss_hal(event, error) \
+    (CHR_SYSTEM_GNSS | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_BT_DEV(event, error) \
-    (CHR_SYSTEM_BT | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_BT_DRV(event, error) \
-    (CHR_SYSTEM_BT | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_BT_HAL(event, error) \
-    (CHR_SYSTEM_BT | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_bt_dev(event, error) \
+    (CHR_SYSTEM_BT | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_bt_drv(event, error) \
+    (CHR_SYSTEM_BT | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_bt_hal(event, error) \
+    (CHR_SYSTEM_BT | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_FM_DEV(event, error) \
-    (CHR_SYSTEM_FM | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_FM_DRV(event, error) \
-    (CHR_SYSTEM_FM | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_FM_HAL(event, error) \
-    (CHR_SYSTEM_FM | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_fm_dev(event, error) \
+    (CHR_SYSTEM_FM | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_fm_drv(event, error) \
+    (CHR_SYSTEM_FM | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_fm_hal(event, error) \
+    (CHR_SYSTEM_FM | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_NFC_DEV(event, error) \
-    (CHR_SYSTEM_NFC | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_NFC_DRV(event, error) \
-    (CHR_SYSTEM_NFC | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_NFC_HAL(event, error) \
-    (CHR_SYSTEM_NFC | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_nfc_dev(event, error) \
+    (CHR_SYSTEM_NFC | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_nfc_drv(event, error) \
+    (CHR_SYSTEM_NFC | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_nfc_hal(event, error) \
+    (CHR_SYSTEM_NFC | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
-#define CHR_IR_DEV(event, error) \
-    (CHR_SYSTEM_IR | CHR_LAYER_DEV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_IR_DRV(event, error) \
-    (CHR_SYSTEM_IR | CHR_LAYER_DRV | CHR_COMBINE_EVENT_ERROR(event, error))
-#define CHR_IR_HAL(event, error) \
-    (CHR_SYSTEM_IR | CHR_LAYER_HAL | CHR_COMBINE_EVENT_ERROR(event, error))
+#define chr_ir_dev(event, error) \
+    (CHR_SYSTEM_IR | CHR_LAYER_DEV | chr_combine_event_error(event, error))
+#define chr_ir_drv(event, error) \
+    (CHR_SYSTEM_IR | CHR_LAYER_DRV | chr_combine_event_error(event, error))
+#define chr_ir_hal(event, error) \
+    (CHR_SYSTEM_IR | CHR_LAYER_HAL | chr_combine_event_error(event, error))
 
 #endif /* end of chr_errno.h */

@@ -36,7 +36,7 @@ typedef struct {
 } oam_customize_stru;
 
 /* OTHERS定义 */
-extern oam_customize_stru oam_customize;
+extern oam_customize_stru g_oam_customize;
 
 /* 函数声明 */
 extern oal_void oam_register_init_hook(oam_msg_moduleid_enum_uint8 en_moduleid, p_oam_customize_init_func p_func);

@@ -5,7 +5,7 @@
 #include "board.h"
 #include "securec.h"
 /* 全局变量定义 */
-uint8 hi110x_ec_version = V100;
+uint8 g_hi110x_ec_version = V100;
 
 /*
  * 函 数 名  : read_efuse_ec_version
@@ -19,35 +19,35 @@ void read_efuse_ec_version(void)
     uint32 i = 0;
 
     if (get_hi110x_subchip_type() != BOARD_VERSION_HI1102) {
-        PS_PRINT_INFO("no need read device ec version\n");
+        ps_print_info("no need read device ec version\n");
         return;
     }
 
     ret = number_type_cmd_send(RMEM_CMD_KEYWORD, GET_EFUSE_EC_VERSION);
     if (ret < 0) {
-        PS_PRINT_WARNING("send cmd %s:%s fail,ret = %d\n", RMEM_CMD_KEYWORD, GET_EFUSE_EC_VERSION, ret);
+        ps_print_warning("send cmd %s:%s fail,ret = %d\n", RMEM_CMD_KEYWORD, GET_EFUSE_EC_VERSION, ret);
         return;
     }
 
     ret = read_msg((uint8 *)buff, sizeof(buff));
     if (ret < 0) {
-        PS_PRINT_WARNING("read efuse ec version fail, read_len = %d, return = %d\n", (int32)sizeof(buff), ret);
+        ps_print_warning("read efuse ec version fail, read_len = %d, return = %d\n", (int32)sizeof(buff), ret);
         return;
     }
 
     for (i = 0; i < sizeof(buff); i++) {
-        PS_PRINT_DBG("ec version[%d]=0x%x\n", i, buff[i]);
+        ps_print_dbg("ec version[%d]=0x%x\n", i, buff[i]);
     }
 
     uc_ec_version = buff[1];         // Byte24(0x50000771)对应bit[191:184]
     uc_ec_version &= ((uint8)0x03);  // bit[185:184]标示EC version
 
     if (uc_ec_version == V100) {
-        PS_PRINT_INFO("hi110x read efuse V100[0x%x]\n", uc_ec_version);
-        hi110x_ec_version = V100;
+        ps_print_info("hi110x read efuse V100[0x%x]\n", uc_ec_version);
+        g_hi110x_ec_version = V100;
     } else {
-        PS_PRINT_INFO("hi110x read efuse V120[0x%x]\n", uc_ec_version);
-        hi110x_ec_version = V120;
+        ps_print_info("hi110x read efuse V120[0x%x]\n", uc_ec_version);
+        g_hi110x_ec_version = V120;
     }
 
     return;
@@ -60,7 +60,7 @@ void read_efuse_ec_version(void)
  */
 uint8 get_ec_version(void)
 {
-    return hi110x_ec_version;
+    return g_hi110x_ec_version;
 }
 
 /*
@@ -115,19 +115,19 @@ static int32 get_efuse_from_device(uint32 *buff, int32 len)
     int32 ret;
 
     if (buff == NULL) {
-        PS_PRINT_ERR("efuse buff is NULL\n");
+        ps_print_err("efuse buff is NULL\n");
         return -EFAIL;
     }
 
     ret = number_type_cmd_send(RMEM_CMD_KEYWORD, GET_EFUSE_CMD);
     if (ret < 0) {
-        PS_PRINT_WARNING("send cmd %s:%s fail,ret = %d\n", RMEM_CMD_KEYWORD, GET_EFUSE_CMD, ret);
+        ps_print_warning("send cmd %s:%s fail,ret = %d\n", RMEM_CMD_KEYWORD, GET_EFUSE_CMD, ret);
         return -EFAIL;
     }
 
     ret = read_msg((uint8 *)buff, len);
     if (ret < 0) {
-        PS_PRINT_WARNING("read efuse fail, read_len = %d, return = %d\n", len, ret);
+        ps_print_warning("read efuse fail, read_len = %d, return = %d\n", len, ret);
         return -EFAIL;
     }
 
@@ -137,7 +137,7 @@ static int32 get_efuse_from_device(uint32 *buff, int32 len)
  * 函 数 名  : store_efuse_into_file
  * 功能描述  : 将efuse信息保存在下
  */
-static int32 store_efuse_into_file(uint32 *buff)
+static int32 store_efuse_into_file(uint32 *buff, uint32 buff_len)
 {
     struct file *fp = NULL;
     loff_t pos;
@@ -146,7 +146,7 @@ static int32 store_efuse_into_file(uint32 *buff)
     mm_segment_t fs;
 
     if (buff == NULL) {
-        PS_PRINT_ERR("efuse buff is NULL\n");
+        ps_print_err("efuse buff is NULL\n");
         return -EFAIL;
     }
 
@@ -155,22 +155,22 @@ static int32 store_efuse_into_file(uint32 *buff)
     mask_bits(buff, DIEID_BIT_53, DIEID_BIT_53);
     mask_bits(buff, DIEID_BIT_79, DIEID_BIT_95);
 
-    memset_s(&fs, sizeof(fs), 0x00, sizeof(fs)); /* [false alarm]:fortify误报  */
+    memset_s(&fs, sizeof(fs), 0x00, sizeof(fs));
 
     fs = get_fs();
     set_fs(KERNEL_DS);
     fp = filp_open(EFUSE_FILE_PATH, O_CREAT | O_RDWR, 0644);
     if (IS_ERR(fp)) {
         set_fs(fs);
-        PS_PRINT_ERR("open %s fail, errno = %ld\n", EFUSE_FILE_PATH, PTR_ERR(fp));
+        ps_print_err("open %s fail, errno = %ld\n", EFUSE_FILE_PATH, PTR_ERR(fp));
         return -EFAIL;
     }
 
     pos = 0;
-    for (index = 0; index < EFUSE_REG_NUM; index++) {
+    for (index = 0; index < buff_len; index++) {
         ret = vfs_write(fp, (uint8 *)(&buff[index]), sizeof(uint16), &pos);
         if (ret < 0) {
-            PS_PRINT_ERR("write %s fail, ret = %d\n", EFUSE_FILE_PATH, (int32)ret);
+            ps_print_err("write %s fail, ret = %d\n", EFUSE_FILE_PATH, (int32)ret);
             filp_close(fp, NULL);
             set_fs(fs);
             return -EFAIL;
@@ -208,13 +208,13 @@ void store_efuse_info(void)
 
     ret = get_efuse_from_device(buff, sizeof(buff));
     if (ret != SUCC) {
-        PS_PRINT_ERR("get efuse from device fail\n");
+        ps_print_err("get efuse from device fail\n");
         return;
     }
 
-    ret = store_efuse_into_file(buff);
+    ret = store_efuse_into_file(buff, EFUSE_REG_NUM);
     if (ret != SUCC) {
-        PS_PRINT_ERR("store efuse into %s fail\n", EFUSE_FILE_PATH);
+        ps_print_err("store efuse into %s fail\n", EFUSE_FILE_PATH);
         return;
     }
 

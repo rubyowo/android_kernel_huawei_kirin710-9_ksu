@@ -20,9 +20,9 @@ include $(1151_ROOT_PATH)/build/1151_host_wifi/env.config
 
 # set the module objects files
 obj-m :=hmac.o
-hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_m2u.o hmac_smps.o hmac_data_acq.o hmac_rx_filter.o hmac_proxy_arp.o  hmac_hcc_adapt.o hmac_dfs.o hmac_reset.o hmac_edca_opt.o hmac_blockack.o hmac_device.o hmac_resource.o hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o
+hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_rx_filter.o  hmac_hcc_adapt.o hmac_reset.o hmac_edca_opt.o hmac_blockack.o hmac_device.o hmac_resource.o hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o
 hmac-objs += hmac_custom_security.o hmac_scan.o hmac_dfx.o hmac_arp_offload.o  hmac_tcp_opt.o hmac_fbt_main.o
-hmac-objs += hmac_acs.o hmac_proxysta.o hmac_wmmac.o
+hmac-objs += hmac_wmmac.o
 hmac-objs += hmac_traffic_classify.o
 hmac-objs += hmac_btcoex.o hmac_dscr_th_opt.o hmac_tcp_ack_filter.o hmac_auto_ddr_freq.o hmac_tx_opt.o
 hmac-dump-objs := $(hmac-objs)

@@ -3,34 +3,34 @@
 #ifndef __HMAC_CRYPTO_FRAME_H__
 #define __HMAC_CRYPTO_FRAME_H__
 
+/* 1 其他头文件包含 */
+#include "oal_ext_if.h"
+#include "mac_vap.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif
 #endif
 
-/* 1 其他头文件包含 */
-#include "oal_ext_if.h"
-#include "mac_vap.h"
-
 /* 2 宏定义 */
 #define michael_block(l, r) \
     do {                    \
-        r ^= rotl(l, 17);   \
-        l += r;             \
-        r ^= xswap(l);      \
-        l += r;             \
-        r ^= rotl(l, 3);    \
-        l += r;             \
-        r ^= rotr(l, 2);    \
-        l += r;             \
+        (r) ^= rotl((l), 17);   \
+        (l) += (r);             \
+        (r) ^= xswap((l));      \
+        (l) += (r);             \
+        (r) ^= rotl((l), 3);    \
+        (l) += (r);             \
+        (r) ^= rotr((l), 2);    \
+        (l) += (r);             \
     } while (0)
 #define IEEE80211_WEP_MICLEN 8 /* trailing MIC */
 
 #define IEEE80211_FC1_DIR_NODS   0x00 /* STA->STA */
-#define IEEE80211_FC1_DIR_TODS   0x01 /* STA->AP  */
+#define IEEE80211_FC1_DIR_TODS   0x01 /* STA->AP */
 #define IEEE80211_FC1_DIR_FROMDS 0x02 /* AP ->STA */
-#define IEEE80211_FC1_DIR_DSTODS 0x03 /* AP ->AP  */
+#define IEEE80211_FC1_DIR_DSTODS 0x03 /* AP ->AP */
 
 #define IEEE80211_NON_QOS_SEQ     16 /* index for non-QoS (including management) sequence number space */
 #define IEEE80211_FC0_TYPE_MASK   0x0c

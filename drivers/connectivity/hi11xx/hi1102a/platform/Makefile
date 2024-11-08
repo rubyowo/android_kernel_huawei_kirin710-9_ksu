@@ -32,7 +32,7 @@ include $(PLAT_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE)
 
 $(warning defconfig: $(PLAT_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE))
 
-oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_sdio_host.o oal_profiling.o oal_hcc_host.o oal_hcc_bus.o oal_hcc_test.o oal_softwdt.o oal_dft.o oal_workqueue.o oal_fsm.o oal_crc16.o
+oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_sdio_host.o oal_hcc_host.o oal_hcc_bus.o oal_hcc_test.o oal_softwdt.o oal_dft.o oal_workqueue.o oal_fsm.o oal_crc16.o
 
 oal-objs := $(addprefix oal/,$(oal-objs))
 
@@ -45,8 +45,11 @@ oam-objs := $(addprefix oam/,$(oam-objs))
 sdt-objs := sdt_drv.o
 sdt-objs := $(addprefix sdt/,$(sdt-objs))
 
-customize-objs := hisi_ini.o hisi_customize_wifi.o
+customize-objs := hisi_ini.o
 customize-objs := $(addprefix ../common/customize/,$(customize-objs))
+
+external-objs := lpcpu_feature.o
+external-objs := $(addprefix ../common/external/,$(external-objs))
 
 chr_devs-objs := chr_devs.o
 chr_devs-objs := $(addprefix ../common/chr_log/,$(chr_devs-objs))
@@ -54,16 +57,6 @@ chr_devs-objs := $(addprefix ../common/chr_log/,$(chr_devs-objs))
 main-objs := plat_main.o
 main-objs := $(addprefix main/,$(main-objs))
 pm-objs :=  plat_firmware.o plat_pm.o  plat_pm_wlan.o plat_cali.o plat_efuse.o platform_common_clk.o
-
-ifeq ($(BFGX_UART_DOWNLOAD_SUPPORT),yes)
-KBUILD_CFLAGS += -DBFGX_UART_DOWNLOAD_SUPPORT
-ifeq ($(GNSS_ONLY_ASIC_CHIP),yes)
-$(warning *******GNSS ONLY IS ASIC  work*********)
-KBUILD_CFLAGS += -DGNSS_ONLY_ASIC_CHIP
-endif
-$(warning *******BFGX_UART_DOWNLOAD_SUPPORT work*********)
-pm-objs += wireless_patch.o
-endif
 
 ifeq ($(CONFIG_HI110X_GPS_REFCLK),y)
 ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_3),y)
@@ -73,13 +66,13 @@ endif
 
 pm-objs := $(addprefix pm/,$(pm-objs))
 
-driver-objs :=  plat_sdio.o plat_uart.o
+driver-objs := plat_uart.o
 driver-objs := $(addprefix driver/,$(driver-objs))
 
-bfgx-objs := bfgx_exception_rst.o bfgx_data_parse.o bfgx_dev.o bfgx_user_ctrl.o
+bfgx-objs := bfgx_exception_rst.o bfgx_data_parse.o bfgx_dev.o bfgx_user_ctrl.o bfgx_platform_msg_handle.o
 bfgx-objs := $(addprefix ../bfgx/,$(bfgx-objs))
 
-board-objs := board.o board_hi1102.o board_hi1103.o board_hi1102a.o
+board-objs := board.o board_hi1102a.o
 board-objs := $(addprefix board/,$(board-objs))
 
 oneimage-objs := oneimage.o
@@ -100,6 +93,8 @@ plat-objs += $(main-objs)
 plat-objs += $(bfgx-objs)
 
 plat-objs += $(chr_devs-objs)
+
+plat-objs += $(external-objs)
 
 plat-objs += $(board-objs)
 
@@ -134,6 +129,7 @@ HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/board
 HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/driver
 HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/../common/oneimage
 HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/../common/customize
+HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/../common/external
 HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/../common/inc
 HI1102_INCLUDES += -I$(PLAT_DRIVER_PATH)/../common/chr_log
 
@@ -241,7 +237,9 @@ clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(HI1102_DRIVER_SRC_PATH)/$(DRIVER_FLODER) clean
 	-find ../bfgx/ -type f -name "*.o" -exec rm -f {} \;
 	-find ../bfgx/ -type f -name "*.o.cmd" -exec rm -f {} \;
+	-find ../bfgx/ -type f -name "*.o.d" -exec rm -f {} \;
 	-find ../common/ -type f -name "*.o" -exec rm -f {} \;
 	-find ../common/ -type f -name "*.o.cmd" -exec rm -f {} \;
+	-find ../common/ -type f -name "*.o.d" -exec rm -f {} \;
 
 endif

@@ -2,6 +2,11 @@
 
 #ifndef __OAL_EXT_IF_H__
 #define __OAL_EXT_IF_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "oal_types.h"
@@ -69,44 +74,19 @@ typedef enum {
     OAL_ACTION_BUTT
 } oal_product_action_enum;
 
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-// extern 上层函数，5v2 vendorID 固定为5200
-extern void (*g_pf_abnormal_action)(int vendorID, int reason, int action, void *arg, int size);
-// arg 参数收地址，size 参数空间大小(字节数); 需要调用者保证参数和大小对应
-#define OAL_REPORT_WIFI_ABNORMAL(_l_reason, _l_action, _p_arg, _l_size) g_pf_abnormal_action(5200, _l_reason, \
-                                                                                             _l_action, _p_arg, \
-                                                                                             _l_size)
-#else
-#define OAL_REPORT_WIFI_ABNORMAL(_l_reason, _l_action, _p_arg, _l_size)
+#define oal_report_wifi_abnormal(_l_reason, _l_action, _p_arg, _l_size)
 #endif
 
-#endif
-
-#if (_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT)
-// 下面定义需要和ont定义一致
-typedef enum {
-    OAL_WIFI_STA_LEAVE = 21,  // STA 离开
-    OAL_WIFI_STA_JOIN = 22,   // STA 加入
-
-    OAL_WIFI_BUTT
-} oal_wifi_sta_action_report_enum;
-// sta上下线通知
-extern void (*g_pf_wifi_asynchronous_event_report)(oal_uint32 uiIfIndex, oal_uint32 uiEvent,
-                                                   void *pValue, oal_uint32 uiValueLen);
-#define OAL_WIFI_REPORT_STA_ACTION(_ul_ifindex, _ul_eventID, _p_arg, _l_size) \
-        g_pf_wifi_asynchronous_event_report(_ul_ifindex, _ul_eventID, _p_arg, _l_size)
-#else
 typedef enum {
     OAL_WIFI_STA_LEAVE = 0,  // STA 离开
     OAL_WIFI_STA_JOIN = 1,   // STA 加入
 
     OAL_WIFI_BUTT
 } oal_wifi_sta_action_report_enum;
-#define OAL_WIFI_REPORT_STA_ACTION(_ul_ifindex, _ul_eventID, _p_arg, _l_size)
-#endif
+#define oal_wifi_report_sta_action(_ul_ifindex, _ul_eventID, _p_arg, _l_size)
 
 /* 全局变量声明 */
-extern oal_void *pst_5115_sys_ctl;
+extern oal_void *g_pst_5115_sys_ctl;
 
 /* 函数声明 */
 extern oal_int32 oal_main_init(oal_void);
@@ -118,5 +98,9 @@ extern oal_uint8 oal_board_get_service_vap_start_id(oal_void);
 typedef int (*cyg_check_hook_t)(long this_func, long call_func, long direction);
 extern void __cyg_profile_func_register(cyg_check_hook_t hook);
 #endif
-
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 #endif /* end of oal_ext_if.h */

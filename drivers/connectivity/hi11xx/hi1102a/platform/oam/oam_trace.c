@@ -9,26 +9,25 @@
 #define THIS_FILE_ID OAM_FILE_ID_OAM_TRACE_C
 
 /* 全局变量定义 */
-
 #ifdef _PRE_PROFILING_MODE
 /* 2.1 profiling全局变量定义 */
 /* 保存tx profiling测试的所有数据 */
-oam_profiling_tx_statistic_stru oam_profiling_statistic_tx;
+oam_profiling_tx_statistic_stru g_oam_profiling_statistic_tx;
 
 /* 保存rx profiling测试的所有数据 */
-oam_profiling_rx_statistic_stru oam_profiling_statistic_rx;
+oam_profiling_rx_statistic_stru g_oam_profiling_statistic_rx;
 
 /* 保存tx profiling测试的所有数据 */
-oam_profiling_alg_statistic_stru oam_profiling_statistic_alg;
+oam_profiling_alg_statistic_stru g_oam_profiling_statistic_alg;
 
 /* 保存芯片start time测试数据 */
-oam_profiling_starttime_statistic_stru oam_profiling_statistic_starttime;
+oam_profiling_starttime_statistic_stru g_oam_profiling_statistic_starttime;
 
 /* 保存芯片信道切换测试数据 */
-oam_profiling_chswitch_statistic_stru oam_profiling_statistic_chswitch;
+oam_profiling_chswitch_statistic_stru g_oam_profiling_statistic_chswitch;
 
 /* 用于profiling test的全局开关 */
-oam_profiling_statistic_debug_stru oam_profiling_statistic_debug;
+oam_profiling_statistic_debug_stru g_oam_profiling_statistic_debug;
 
 #endif
 
@@ -42,20 +41,20 @@ oal_void oam_profiling_switch_test_process(oal_uint8 uc_config_type, oal_uint8 u
     switch (uc_config_type) {
         case OAM_PROFILING_SWITCH_DEBUG_CONFIG: {
             if (OAM_PROFILING_STATISTIC_TX_DEBUG & uc_config_value) {
-                oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = OAL_TRUE;
+                g_oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = OAL_TRUE;
             } else {
-                oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = OAL_FALSE;
+                g_oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = OAL_FALSE;
             }
 
             if (OAM_PROFILING_STATISTIC_RX_DEBUG & uc_config_value) {
-                oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = OAL_TRUE;
+                g_oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = OAL_TRUE;
             } else {
-                oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = OAL_FALSE;
+                g_oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = OAL_FALSE;
             }
             if (OAM_PROFILING_STATISTIC_ALG_DEBUG & uc_config_value) {
-                oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = OAL_TRUE;
+                g_oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = OAL_TRUE;
             } else {
-                oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = OAL_FALSE;
+                g_oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = OAL_FALSE;
             }
         }
         break;
@@ -64,8 +63,6 @@ oal_void oam_profiling_switch_test_process(oal_uint8 uc_config_type, oal_uint8 u
 
             break;
     }
-
-    return;
 }
 
 /*
@@ -79,19 +76,17 @@ oal_uint32 oam_profiling_compute_time_offset(oal_time_us_stru st_time_first,
                                              oal_time_us_stru st_time_second,
                                              oal_time_us_stru *pst_time_offset)
 {
-    if (OAL_UNLIKELY(pst_time_offset == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_time_offset == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
     /* 未跨越1sec */
     if (st_time_first.i_sec == st_time_second.i_sec) {
         pst_time_offset->i_sec = 0;
         pst_time_offset->i_usec = st_time_second.i_usec - st_time_first.i_usec;
-    }
-    /* 跨越1sec */
-    else {
+    } else { /* 跨越1sec */
         pst_time_offset->i_sec = 0;
-        pst_time_offset->i_usec = 1000 * (st_time_second.i_sec - st_time_first.i_sec) -
+        pst_time_offset->i_usec = MSEC_PER_SEC * (st_time_second.i_sec - st_time_first.i_sec) -
                                   st_time_first.i_usec + st_time_second.i_usec;
     }
 
@@ -107,17 +102,15 @@ oal_void oam_profiling_packet_add(oam_profiling_enum_uint8 en_profiling_type)
     switch (en_profiling_type) {
         /* 接收流程 */
         case OAM_PROFILING_RX:
-            oam_profiling_statistic_rx.uc_skb_id_idx++;
+            g_oam_profiling_statistic_rx.uc_skb_id_idx++;
             break;
         /* 发送流程 */
         case OAM_PROFILING_TX:
-            oam_profiling_statistic_tx.uc_skb_id_idx++;
+            g_oam_profiling_statistic_tx.uc_skb_id_idx++;
             break;
         default:
             break;
     }
-
-    return;
 }
 
 /*
@@ -129,17 +122,15 @@ oal_void oam_profiling_rx_init(oal_void)
     oal_uint32 ul_packet_idx;
     oal_uint32 ul_func_idx;
 
-    oam_profiling_statistic_rx.uc_skb_id_idx = 0;
+    g_oam_profiling_statistic_rx.uc_skb_id_idx = 0;
 
     for (ul_packet_idx = 0; ul_packet_idx < OAM_PROFILING_RX_PACKET_MAX_COUNT; ul_packet_idx++) {
-        oam_profiling_statistic_rx.aus_rx_skb_id_list[ul_packet_idx] = 0;
+        g_oam_profiling_statistic_rx.aus_rx_skb_id_list[ul_packet_idx] = 0;
 
         for (ul_func_idx = 0; ul_func_idx < OAM_PROFILING_RX_FUNC_BUTT; ul_func_idx++) {
-            oam_profiling_statistic_rx.ast_rx_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
+            g_oam_profiling_statistic_rx.ast_rx_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
         }
     }
-
-    return;
 }
 
 /*
@@ -149,12 +140,12 @@ oal_void oam_profiling_rx_init(oal_void)
 oal_void oam_profiling_rx_save_data(oam_profiling_rx_func_enum_uint8 en_func_index)
 {
     /* 开关判断 */
-    if (oam_profiling_statistic_debug.i_profiling_rx_debuging_enable == OAM_PROFILING_SWITCH_OFF) {
+    if (g_oam_profiling_statistic_debug.i_profiling_rx_debuging_enable == OAM_PROFILING_SWITCH_OFF) {
         return;
     }
 
-    if (oam_profiling_statistic_rx.ast_rx_func_stand_time[oam_profiling_statistic_rx.uc_skb_id_idx][en_func_index] == 0) {
-        oam_profiling_statistic_rx.ast_rx_func_stand_time[oam_profiling_statistic_rx.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
+    if (g_oam_profiling_statistic_rx.ast_rx_func_stand_time[g_oam_profiling_statistic_rx.uc_skb_id_idx][en_func_index] == 0) {
+        g_oam_profiling_statistic_rx.ast_rx_func_stand_time[g_oam_profiling_statistic_rx.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
     }
 }
 
@@ -214,7 +205,7 @@ oal_void oam_profiling_print_all_point(oal_uint8 uc_show_level, oal_uint8 uc_pac
 
     for (uc_packet_idx = 0; uc_packet_idx < uc_packet_num; uc_packet_idx++) {
         // 判断数据是否合法
-        en_ret = oam_profiling_judge_data(uc_packet_idx, oam_profiling_statistic_rx.ast_rx_func_stand_time);
+        en_ret = oam_profiling_judge_data(uc_packet_idx, g_oam_profiling_statistic_rx.ast_rx_func_stand_time);
         if (en_ret == OAL_FALSE) {
             // log level为2时，才打印错误的packet节点信息
             if (uc_show_level != OAM_PROFILING_LOG_LEVEL_2) {
@@ -232,7 +223,6 @@ oal_void oam_profiling_print_all_point(oal_uint8 uc_show_level, oal_uint8 uc_pac
         }
         OAL_IO_PRINT("\n");
     }
-    return;
 }
 
 /*
@@ -292,8 +282,6 @@ oal_void oam_profiling_print_offset_section_point(oam_profiling_log_level_enum_u
     }
 
     OAL_IO_PRINT("Average=%5u\n", ul_average / uc_good_data_num);
-
-    return;
 }
 
 /*
@@ -310,8 +298,8 @@ oal_void oam_profiling_rx_show_offset(oal_uint8 uc_show_level)
         { OAM_PROFILING_FUNC_RX_HMAC_START, OAM_PROFILING_FUNC_RX_DMAC_END }
     };
 
-    uc_packet_num = (oam_profiling_statistic_rx.uc_skb_id_idx < OAM_PROFILING_RX_PACKET_MAX_COUNT ?
-                                                                oam_profiling_statistic_rx.uc_skb_id_idx :
+    uc_packet_num = (g_oam_profiling_statistic_rx.uc_skb_id_idx < OAM_PROFILING_RX_PACKET_MAX_COUNT ?
+                                                                g_oam_profiling_statistic_rx.uc_skb_id_idx :
                                                                 OAM_PROFILING_TX_PACKET_MAX_COUNT);
 
     OAL_IO_PRINT("RX:\n");
@@ -341,8 +329,8 @@ oal_void oam_profiling_rx_show_offset(oal_uint8 uc_show_level)
 
     oam_profiling_print_offset_section_point(uc_show_level, uc_packet_num, OAM_PROFILING_RX_OFFSET_COUNT,
                                              ast_rx_profiling_offset_section,
-                                             oam_profiling_statistic_rx.ast_rx_func_stand_time,
-                                             oam_profiling_statistic_rx.aus_rx_skb_id_list);
+                                             g_oam_profiling_statistic_rx.ast_rx_func_stand_time,
+                                             g_oam_profiling_statistic_rx.aus_rx_skb_id_list);
 
     if (uc_show_level == OAM_PROFILING_LOG_LEVEL_0) {
         return;
@@ -357,9 +345,7 @@ oal_void oam_profiling_rx_show_offset(oal_uint8 uc_show_level)
     OAL_IO_PRINT("\n");
 
     oam_profiling_print_all_point(uc_show_level, uc_packet_num, OAM_PROFILING_RX_FUNC_BUTT,
-                                  oam_profiling_statistic_rx.ast_rx_func_stand_time);
-
-    return;
+                                  g_oam_profiling_statistic_rx.ast_rx_func_stand_time);
 }
 
 /*
@@ -371,16 +357,14 @@ oal_void oam_profiling_tx_init(oal_void)
     oal_uint32 ul_packet_idx;
     oal_uint32 ul_func_idx;
 
-    oam_profiling_statistic_tx.uc_skb_id_idx = 0;
+    g_oam_profiling_statistic_tx.uc_skb_id_idx = 0;
 
     for (ul_packet_idx = 0; ul_packet_idx < OAM_PROFILING_TX_PACKET_MAX_COUNT; ul_packet_idx++) {
-        oam_profiling_statistic_tx.aus_tx_skb_id_list[ul_packet_idx] = 0;
+        g_oam_profiling_statistic_tx.aus_tx_skb_id_list[ul_packet_idx] = 0;
         for (ul_func_idx = 0; ul_func_idx < OAM_PROFILING_TX_FUNC_BUTT; ul_func_idx++) {
-            oam_profiling_statistic_tx.ast_tx_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
+            g_oam_profiling_statistic_tx.ast_tx_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
         }
     }
-
-    return;
 }
 
 /*
@@ -393,15 +377,13 @@ oal_void oam_profiling_tx_save_data(oal_void *pst_netbuf,
                                     oam_profiling_tx_func_enum_uint8 en_func_index)
 {
     /* 开关判断 */
-    if (oam_profiling_statistic_debug.i_profiling_tx_debuging_enable == OAM_PROFILING_SWITCH_OFF) {
+    if (g_oam_profiling_statistic_debug.i_profiling_tx_debuging_enable == OAM_PROFILING_SWITCH_OFF) {
         return;
     }
 
-    if (oam_profiling_statistic_tx.ast_tx_func_stand_time[oam_profiling_statistic_tx.uc_skb_id_idx][en_func_index] == 0) {
-        oam_profiling_statistic_tx.ast_tx_func_stand_time[oam_profiling_statistic_tx.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
+    if (g_oam_profiling_statistic_tx.ast_tx_func_stand_time[g_oam_profiling_statistic_tx.uc_skb_id_idx][en_func_index] == 0) {
+        g_oam_profiling_statistic_tx.ast_tx_func_stand_time[g_oam_profiling_statistic_tx.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
     }
-
-    return;
 }
 
 /*
@@ -420,8 +402,8 @@ oal_void oam_profiling_tx_show_offset(oal_uint8 uc_show_level)
         { OAM_PROFILING_FUNC_TX_COMP_DMAC_START, OAM_PROFILING_FUNC_TX_COMP_DMAC_END }
     };
 
-    uc_packet_num = (oam_profiling_statistic_tx.uc_skb_id_idx < OAM_PROFILING_TX_PACKET_MAX_COUNT ?
-                                                                oam_profiling_statistic_tx.uc_skb_id_idx :
+    uc_packet_num = (g_oam_profiling_statistic_tx.uc_skb_id_idx < OAM_PROFILING_TX_PACKET_MAX_COUNT ?
+                                                                g_oam_profiling_statistic_tx.uc_skb_id_idx :
                                                                 OAM_PROFILING_TX_PACKET_MAX_COUNT);
 
     OAL_IO_PRINT("TX:\n");
@@ -458,8 +440,8 @@ oal_void oam_profiling_tx_show_offset(oal_uint8 uc_show_level)
 
     oam_profiling_print_offset_section_point(uc_show_level, uc_packet_num, OAM_PROFILING_TX_OFFSET_COUNT,
                                              ast_tx_profiling_offset_section,
-                                             oam_profiling_statistic_tx.ast_tx_func_stand_time,
-                                             oam_profiling_statistic_tx.aus_tx_skb_id_list);
+                                             g_oam_profiling_statistic_tx.ast_tx_func_stand_time,
+                                             g_oam_profiling_statistic_tx.aus_tx_skb_id_list);
 
     if (uc_show_level == OAM_PROFILING_LOG_LEVEL_0) {
         return;
@@ -474,9 +456,7 @@ oal_void oam_profiling_tx_show_offset(oal_uint8 uc_show_level)
     OAL_IO_PRINT("\n");
 
     oam_profiling_print_all_point(uc_show_level, uc_packet_num, OAM_PROFILING_TX_FUNC_BUTT,
-                                  oam_profiling_statistic_tx.ast_tx_func_stand_time);
-
-    return;
+                                  g_oam_profiling_statistic_tx.ast_tx_func_stand_time);
 }
 
 /*
@@ -490,19 +470,17 @@ oal_void oam_profiling_alg_init(oal_void)
 
     for (ul_packet_idx = 0; ul_packet_idx < OAM_PROFILING_ALG_PACKET_MAX_COUNT; ul_packet_idx++) {
         /* 注意，netbuf的对应的SKB_ID，需要从0开始，并且 */
-        oam_profiling_statistic_alg.aus_alg_skb_id_list[ul_packet_idx] = OAM_PROFILING_PACKET_INVALID_VALUE;
-        oam_profiling_statistic_alg.uc_skb_id_idx = 0;
-        oam_profiling_statistic_alg.uc_idx_for_array = 0;
-        oam_profiling_statistic_alg.us_abnormal_index = 0;
+        g_oam_profiling_statistic_alg.aus_alg_skb_id_list[ul_packet_idx] = OAM_PROFILING_PACKET_INVALID_VALUE;
+        g_oam_profiling_statistic_alg.uc_skb_id_idx = 0;
+        g_oam_profiling_statistic_alg.uc_idx_for_array = 0;
+        g_oam_profiling_statistic_alg.us_abnormal_index = 0;
 
         for (ul_func_idx = 0; ul_func_idx < OAM_PROFILING_ALG_FUNC_BUTT; ul_func_idx++) {
-            oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
-            oam_profiling_statistic_alg.ast_alg_func_time_offset[ul_packet_idx][ul_func_idx] = 0;
-            oam_profiling_statistic_alg.aus_alg_pass_count[ul_packet_idx][ul_func_idx] = 0;
+            g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx] = 0;
+            g_oam_profiling_statistic_alg.ast_alg_func_time_offset[ul_packet_idx][ul_func_idx] = 0;
+            g_oam_profiling_statistic_alg.aus_alg_pass_count[ul_packet_idx][ul_func_idx] = 0;
         }
     }
-
-    return;
 }
 
 /*
@@ -512,11 +490,9 @@ oal_void oam_profiling_alg_init(oal_void)
 oal_void oam_profiling_alg_save_data(oam_profiling_alg_func_enum_uint8 en_func_index)
 {
     /* 原值等于0才计数， 不会去覆盖已经记录好的值 */
-    if (oam_profiling_statistic_alg.ast_alg_func_stand_time[oam_profiling_statistic_alg.uc_skb_id_idx][en_func_index] == 0) {
-        oam_profiling_statistic_alg.ast_alg_func_stand_time[oam_profiling_statistic_alg.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
+    if (g_oam_profiling_statistic_alg.ast_alg_func_stand_time[g_oam_profiling_statistic_alg.uc_skb_id_idx][en_func_index] == 0) {
+        g_oam_profiling_statistic_alg.ast_alg_func_stand_time[g_oam_profiling_statistic_alg.uc_skb_id_idx][en_func_index] = oal_5115timer_get_10ns();
     }
-
-    return;
 }
 
 /*
@@ -535,22 +511,22 @@ oal_uint32 oam_profiling_alg_show_offset(oal_void)
         OAL_IO_PRINT("      arrive_time      offset  ");
         for (ul_func_idx = OAM_PROFILING_ALG_START; ul_func_idx <= OAM_PROFILING_ALG_END; ul_func_idx++) {
             OAL_IO_PRINT("\nNo%3d ", ul_func_idx);
-            OAL_IO_PRINT("%10u  ", oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx]);
+            OAL_IO_PRINT("%10u  ", g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx]);
 
             if (ul_func_idx != OAM_PROFILING_ALG_START) {
-                ul_time_offset = oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx - 1] -
-                                 oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx];
+                ul_time_offset = g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx - 1] -
+                                 g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][ul_func_idx];
                 OAL_IO_PRINT("%10u ", ul_time_offset);
             }
         }
 
-        ul_time_offset = oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][OAM_PROFILING_ALG_START] -
-                         oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][OAM_PROFILING_ALG_END];
+        ul_time_offset = g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][OAM_PROFILING_ALG_START] -
+                         g_oam_profiling_statistic_alg.ast_alg_func_stand_time[ul_packet_idx][OAM_PROFILING_ALG_END];
         OAL_IO_PRINT("\nALG stage 1 total time is: %d (10ns)   \n\n", ul_time_offset);
     }
 
-    ul_time_offset = oam_profiling_statistic_alg.ast_alg_func_stand_time[0][OAM_PROFILING_ALG_START] -
-                     oam_profiling_statistic_alg.ast_alg_func_stand_time[0][OAM_PROFILING_ALG_END];
+    ul_time_offset = g_oam_profiling_statistic_alg.ast_alg_func_stand_time[0][OAM_PROFILING_ALG_START] -
+                     g_oam_profiling_statistic_alg.ast_alg_func_stand_time[0][OAM_PROFILING_ALG_END];
 
     OAL_IO_PRINT("ALG total time is: %d (10ns)     \n", ul_time_offset);
 
@@ -560,15 +536,13 @@ oal_uint32 oam_profiling_alg_show_offset(oal_void)
     return OAL_SUCC;
 }
 
-oal_uint32 oam_profiling_statistic_init(oal_void)
+oal_void oam_profiling_statistic_init(oal_void)
 {
-    memset_s(&oam_profiling_statistic_starttime, OAL_SIZEOF(oam_profiling_statistic_starttime),
-             0, OAL_SIZEOF(oam_profiling_statistic_starttime));
+    memset_s(&g_oam_profiling_statistic_starttime, OAL_SIZEOF(g_oam_profiling_statistic_starttime),
+             0, OAL_SIZEOF(g_oam_profiling_statistic_starttime));
 
-    memset_s(&oam_profiling_statistic_chswitch, OAL_SIZEOF(oam_profiling_statistic_chswitch), 0,
-             OAL_SIZEOF(oam_profiling_statistic_chswitch));
-
-    return OAL_SUCC;
+    memset_s(&g_oam_profiling_statistic_chswitch, OAL_SIZEOF(g_oam_profiling_statistic_chswitch), 0,
+             OAL_SIZEOF(g_oam_profiling_statistic_chswitch));
 }
 
 /*
@@ -578,9 +552,7 @@ oal_uint32 oam_profiling_statistic_init(oal_void)
  */
 oal_void oam_profiling_starttime_save_timestamp(oam_profiling_starttime_func_enum_uint8 en_func_idx)
 {
-    oam_profiling_statistic_starttime.aul_timestamp[en_func_idx] = oal_5115timer_get_10ns();
-
-    return;
+    g_oam_profiling_statistic_starttime.aul_timestamp[en_func_idx] = oal_5115timer_get_10ns();
 }
 
 /*
@@ -594,15 +566,15 @@ oal_void oam_profiling_starttime_show_offset(oal_void)
     /* 打印所有记录的时间点 */
     OAL_IO_PRINT("Print all chip start timestamps: \n");
     for (ul_idx = 0; ul_idx < OAM_PROFILING_STARTTIME_FUNC_BUTT; ul_idx++) {
-        OAL_IO_PRINT("%-16u \n", oam_profiling_statistic_starttime.aul_timestamp[ul_idx]);
+        OAL_IO_PRINT("%-16u \n", g_oam_profiling_statistic_starttime.aul_timestamp[ul_idx]);
     }
 
     OAL_IO_PRINT("Print chip start timestamp offset: \n");
     /* 统计各模块消耗时间，因为每个模块占数组两个成员，一个start，一个end，索引每次偏移2 */
     for (ul_idx = 0; ul_idx < OAM_PROFILING_STARTTIME_FUNC_BUTT; ul_idx += 2) {
         OAL_IO_PRINT("%-16u \n",
-                     oam_profiling_statistic_starttime.aul_timestamp[ul_idx] -
-                     oam_profiling_statistic_starttime.aul_timestamp[ul_idx + 1]);
+                     g_oam_profiling_statistic_starttime.aul_timestamp[ul_idx] -
+                     g_oam_profiling_statistic_starttime.aul_timestamp[ul_idx + 1]);
     }
 
     return;
@@ -615,7 +587,7 @@ oal_void oam_profiling_starttime_show_offset(oal_void)
  */
 oal_void oam_profiling_chswitch_save_timestamp(oam_profiling_chswitch_func_enum_uint8 en_func_idx)
 {
-    oam_profiling_statistic_chswitch.aul_timestamp[en_func_idx] = oal_5115timer_get_10ns();
+    g_oam_profiling_statistic_chswitch.aul_timestamp[en_func_idx] = oal_5115timer_get_10ns();
 
     return;
 }
@@ -631,15 +603,15 @@ oal_void oam_profiling_chswitch_show_offset(oal_void)
     /* 打印所有记录的时间点 */
     OAL_IO_PRINT("Print all chswitch timestamps: \n");
     for (ul_idx = 0; ul_idx < OAM_PROFILING_CHSWITCH_FUNC_BUTT; ul_idx++) {
-        OAL_IO_PRINT("%-16u \n", oam_profiling_statistic_chswitch.aul_timestamp[ul_idx]);
+        OAL_IO_PRINT("%-16u \n", g_oam_profiling_statistic_chswitch.aul_timestamp[ul_idx]);
     }
 
     OAL_IO_PRINT("Print chswitch timestamp offset: \n");
     /* 统计各模块消耗时间，因为每个模块占数组两个成员，一个start，一个end，索引每次偏移2 */
     for (ul_idx = 0; ul_idx < OAM_PROFILING_CHSWITCH_FUNC_BUTT; ul_idx += 2) {
         OAL_IO_PRINT("%-16u \n",
-                     oam_profiling_statistic_chswitch.aul_timestamp[ul_idx] -
-                     oam_profiling_statistic_chswitch.aul_timestamp[ul_idx + 1]);
+                     g_oam_profiling_statistic_chswitch.aul_timestamp[ul_idx] -
+                     g_oam_profiling_statistic_chswitch.aul_timestamp[ul_idx + 1]);
     }
 
     return;
@@ -658,21 +630,21 @@ oal_uint32 oam_profiling_set_switch(oam_profiling_enum_uint8 en_profiling_type,
     switch (en_profiling_type) {
         /* 接收流程 */
         case OAM_PROFILING_RX:
-            oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = en_profiling_switch;
+            g_oam_profiling_statistic_debug.i_profiling_rx_debuging_enable = en_profiling_switch;
             oam_profiling_rx_init();
 
             break;
 
         /* 发送流程 */
         case OAM_PROFILING_TX:
-            oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = en_profiling_switch;
+            g_oam_profiling_statistic_debug.i_profiling_tx_debuging_enable = en_profiling_switch;
             oam_profiling_tx_init();
 
             break;
 
         /* ALG流程 */
         case OAM_PROFILING_ALG:
-            oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = en_profiling_switch;
+            g_oam_profiling_statistic_debug.i_profiling_alg_debuging_enable = en_profiling_switch;
 
             break;
 
@@ -684,7 +656,7 @@ oal_uint32 oam_profiling_set_switch(oam_profiling_enum_uint8 en_profiling_type,
     return OAL_SUCC;
 }
 
-oal_uint32 oam_profiling_init(oal_void)
+oal_void oam_profiling_init(oal_void)
 {
     /* 初始化定时器 */
     oal_5115timer_init();
@@ -705,14 +677,12 @@ oal_uint32 oam_profiling_init(oal_void)
     oam_profiling_set_switch(OAM_PROFILING_RX, OAM_PROFILING_SWITCH_OFF);
     oam_profiling_set_switch(OAM_PROFILING_TX, OAM_PROFILING_SWITCH_OFF);
     oam_profiling_set_switch(OAM_PROFILING_ALG, OAM_PROFILING_SWITCH_OFF);
-
-    return OAL_SUCC;
 }
 #endif
 
 #ifdef _PRE_PROFILING_MODE
-oal_module_symbol(oam_profiling_statistic_tx);
-oal_module_symbol(oam_profiling_statistic_rx);
+oal_module_symbol(g_oam_profiling_statistic_tx);
+oal_module_symbol(g_oam_profiling_statistic_rx);
 oal_module_symbol(oam_profiling_set_switch);
 oal_module_symbol(oam_profiling_packet_add);
 

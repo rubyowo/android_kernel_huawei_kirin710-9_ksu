@@ -12,9 +12,6 @@
 #include <linux/mutex.h>
 #include <linux/kernel.h>
 
-#ifdef CONFIG_HISI_IDLE_SLEEP
-#include <linux/hisi/hisi_idle_sleep.h>
-#endif
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
@@ -33,33 +30,26 @@
 #include "hw_bfg_ps.h"
 #include "plat_type.h"
 #include "plat_debug.h"
-#include "plat_sdio.h"
 #include "plat_uart.h"
 #include "plat_firmware.h"
 #include "plat_pm.h"
 #include "plat_exception_rst.h"
 #include "plat_pm.h"
 #include "securec.h"
-
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-#include "wireless_patch.h"
-#endif
-
-#include "oal_sdio.h"
-#include "oal_sdio_comm.h"
 #include "oal_sdio_host_if.h"
 #include "oal_hcc_host_if.h"
 #include "oal_schedule.h"
 #include "plat_firmware.h"
 #include "bfgx_exception_rst.h"
 #include "oam_ext_if.h"
+#include "lpcpu_feature.h"
 
 /*****************************************************************************
   2 Global Variable Definition
 *****************************************************************************/
 #ifdef CONFIG_HUAWEI_DSM
 
-    static struct dsm_dev dsm_bt = {
+    static struct dsm_dev g_dsm_bt = {
         .name = "dsm_bt",
         .device_name = NULL,
         .ic_name = NULL,
@@ -68,19 +58,19 @@
         .buff_size = DSM_DEV_BUFF_SIZE,
     };
 
-    struct dsm_client *hw_1102a_bt_dsm_client = NULL;
+    struct dsm_client *g_hw_1102a_bt_dsm_client = NULL;
 
     void hw_1102a_register_bt_dsm_client(void)
     {
-        if (hw_1102a_bt_dsm_client == NULL) {
-            hw_1102a_bt_dsm_client = dsm_register_client(&dsm_bt);
+        if (g_hw_1102a_bt_dsm_client == NULL) {
+            g_hw_1102a_bt_dsm_client = dsm_register_client(&g_dsm_bt);
         }
     }
     void hw_1102a_unregister_bt_dsm_client(void)
     {
-        if (hw_1102a_bt_dsm_client != NULL) {
-            dsm_unregister_client(hw_1102a_bt_dsm_client, &dsm_bt);
-            hw_1102a_bt_dsm_client = NULL;
+        if (g_hw_1102a_bt_dsm_client != NULL) {
+            dsm_unregister_client(g_hw_1102a_bt_dsm_client, &g_dsm_bt);
+            g_hw_1102a_bt_dsm_client = NULL;
         }
     }
 #define LOG_BUF_SIZE 512
@@ -89,15 +79,15 @@
         char buf[LOG_BUF_SIZE] = {0};
         va_list ap;
 
-        DECLARE_DFT_TRACE_KEY_INFO("hw_1102a_bt_dsm_client_notify", OAL_DFT_TRACE_FAIL);
+        declare_dft_trace_key_info("hw_1102a_bt_dsm_client_notify", OAL_DFT_TRACE_FAIL);
         va_start(ap, fmt);
-        if (hw_1102a_bt_dsm_client && !dsm_client_ocuppy(hw_1102a_bt_dsm_client)) {
+        if (g_hw_1102a_bt_dsm_client && !dsm_client_ocuppy(g_hw_1102a_bt_dsm_client)) {
             if (fmt != NULL) {
                 if (vsnprintf_s(buf, LOG_BUF_SIZE, LOG_BUF_SIZE - 1, fmt, ap) > 0) {
-                    dsm_client_record(hw_1102a_bt_dsm_client, buf);
+                    dsm_client_record(g_hw_1102a_bt_dsm_client, buf);
                 }
             }
-            dsm_client_notify(hw_1102a_bt_dsm_client, dsm_id);
+            dsm_client_notify(g_hw_1102a_bt_dsm_client, dsm_id);
             OAL_IO_PRINT("[I]bt dsm_client_notify success,dsm_id=%d[%s]\n", dsm_id, buf);
         } else {
             OAL_IO_PRINT("[E]bt dsm_client_notify failed,dsm_id=%d\n", dsm_id);
@@ -117,16 +107,16 @@ static int pf_suspend_notify(struct notifier_block *notify_block,
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return IRQ_NONE;
     }
 
     switch (mode) {
         case PM_POST_SUSPEND:
-            PS_PRINT_INFO("host resume OK!\n");
+            ps_print_info("host resume OK!\n");
             break;
         case PM_SUSPEND_PREPARE:
-            PS_PRINT_INFO("host suspend now!\n");
+            ps_print_info("host suspend now!\n");
             break;
         default:
             break;
@@ -134,21 +124,21 @@ static int pf_suspend_notify(struct notifier_block *notify_block,
     return 0;
 }
 
-static struct notifier_block pf_suspend_notifier = {
+static struct notifier_block g_pf_suspend_notifier = {
     .notifier_call = pf_suspend_notify,
     .priority = INT_MIN,
 };
 
-struct pm_drv_data *pm_drv_data_t = NULL;
+struct pm_drv_data *g_pm_drv_data_t = NULL;
 
 struct pm_drv_data *pm_get_drvdata(void)
 {
-    return pm_drv_data_t;
+    return g_pm_drv_data_t;
 }
 
 static void pm_set_drvdata(struct pm_drv_data *data)
 {
-    pm_drv_data_t = data;
+    g_pm_drv_data_t = data;
 }
 
 /*
@@ -162,7 +152,7 @@ int32 check_bfg_state(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
@@ -174,13 +164,13 @@ STATIC void host_allow_devslp_in_node(struct ps_core_s *ps_core_d)
     /* make "host_allow_bfg_sleep()" happy */
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is null\n");
+        ps_print_err("pm_data is null\n");
         return;
     }
 
     atomic_dec(&ps_core_d->node_visit_flag);
     if (queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work) != true) {
-        PS_PRINT_INFO("queue_work send_allow_sleep_work not return true\n");
+        ps_print_info("queue_work send_allow_sleep_work not return true\n");
     }
     /* recovery the original value */
     atomic_inc(&ps_core_d->node_visit_flag);
@@ -190,10 +180,10 @@ void bfgx_state_set(uint8 on)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
-    PS_PRINT_WARNING("bfgx_state_set:%d --> %d\n", pm_data->bfgx_dev_state, on);
+    ps_print_warning("bfgx_state_set:%d --> %d\n", pm_data->bfgx_dev_state, on);
     pm_data->bfgx_dev_state = on;
 }
 
@@ -207,11 +197,11 @@ STATIC void bfgx_uart_state_set(uint8 uart_state)
     struct pm_drv_data *pm_data = pm_get_drvdata();
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
-    PS_PRINT_WARNING("bfgx_uart_state_set:%d-->%d", pm_data->uart_state, uart_state);
+    ps_print_warning("bfgx_uart_state_set:%d-->%d", pm_data->uart_state, uart_state);
     pm_data->uart_state = uart_state;
 }
 
@@ -219,7 +209,7 @@ int8 bfgx_uart_state_get(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -1;
     }
 
@@ -232,7 +222,7 @@ int32 bfgx_uart_get_baud_rate(void)
 
     ps_get_plat_reference(&ps_plat_d);
     if (unlikely(ps_plat_d == NULL)) {
-        PS_PRINT_ERR("ps_plat_d is NULL\n");
+        ps_print_err("ps_plat_d is NULL\n");
         return -EINVAL;
     }
 
@@ -248,16 +238,16 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
     struct ps_core_s *ps_core_d = NULL;
     uint64 flags;
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core has not inited\n");
+        ps_print_err("ps_core has not inited\n");
         return;
     }
 
@@ -272,7 +262,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
         oal_udelay(200);
         wait_cnt++;
         if (wait_cnt >= ul_max_wait_cnt) {
-            PS_PRINT_ERR("wait device start baud change timeout\n");
+            ps_print_err("wait device start baud change timeout\n");
             spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
             bfgx_uart_state_set(UART_READY);
             spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
@@ -283,7 +273,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
 
     ret = ps_change_uart_baud_rate(pm_data->uart_baud_switch_to, FLOW_CTRL_ENABLE);
     if (ret != 0) {
-        PS_PRINT_ERR("It is bad!!!, change uart rate fail\n");
+        ps_print_err("It is bad!!!, change uart rate fail\n");
     }
 
     /* 等待device完成切换，pull down GPIO */
@@ -291,7 +281,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
         oal_udelay(200);
         wait_cnt++;
         if (wait_cnt >= ul_max_wait_cnt) {
-            PS_PRINT_ERR("wait device bps change complete && pull down gpio fail\n");
+            ps_print_err("wait device bps change complete && pull down gpio fail\n");
             return;
         }
     }
@@ -314,11 +304,11 @@ int32 bfgx_uart_rcv_baud_change_req(uint8 uc_msg_type)
     int32 cur_rate;
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -EINVAL;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     cur_rate = bfgx_uart_get_baud_rate();
     if (((uc_msg_type == SYS_INF_BAUD_CHG_2M_REQ) && (cur_rate == HIGH_FREQ_BAUD_RATE)) ||
@@ -330,7 +320,7 @@ int32 bfgx_uart_rcv_baud_change_req(uint8 uc_msg_type)
         }
         queue_work(pm_data->wkup_dev_workqueue, &pm_data->baud_change_work);
     } else {
-        PS_PRINT_ERR("It is bad!!!, req = 0x%x,HIGH_FREQ_BAUD_RATE=%d,current = 0x%x\n",
+        ps_print_err("It is bad!!!, req = 0x%x,HIGH_FREQ_BAUD_RATE=%d,current = 0x%x\n",
                      HIGH_FREQ_BAUD_RATE, uc_msg_type, cur_rate);
     }
 
@@ -343,17 +333,17 @@ int32 bfgx_uart_rcv_baud_change_complete_ack(void)
     struct ps_core_s *ps_core_d = NULL;
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -EINVAL;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core has not inited\n");
+        ps_print_err("ps_core has not inited\n");
         return -EINVAL;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
     del_timer_sync(&pm_data->baud_change_timer);
 
     /* restart the tx work */
@@ -369,17 +359,17 @@ void bfgx_uart_baud_change_expire(uint64 data)
     struct pm_drv_data *pm_data = (struct pm_drv_data *)(uintptr_t)data;
 
     if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("devack timer para is null\n");
+        ps_print_err("devack timer para is null\n");
         return;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core has not inited\n");
+        ps_print_err("ps_core has not inited\n");
         return;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
     spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
     if (pm_data->uart_state == UART_BPS_CHG_SEND_COMPLETE) {
         ps_tx_urgent_cmd(ps_core_d, SYS_MSG, PL_BAUT_CHG_COMPLETE);
@@ -393,51 +383,51 @@ int32 bfgx_pm_feature_set(void)
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -FAILURE;
     }
 
     if (pm_data->bfgx_pm_ctrl_enable == BFGX_PM_DISABLE) {
-        PS_PRINT_INFO("bfgx platform pm ctrl disable\n");
+        ps_print_info("bfgx platform pm ctrl disable\n");
         msleep(50);
         return SUCCESS;
     }
 
     if (pm_data->bfgx_lowpower_enable == BFGX_PM_ENABLE) {
-        PS_PRINT_INFO("bfgx platform pm enable\n");
+        ps_print_info("bfgx platform pm enable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_PL_ENABLE_PM);
     } else {
-        PS_PRINT_INFO("bfgx platform pm disable\n");
+        ps_print_info("bfgx platform pm disable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_PL_DISABLE_PM);
     }
 
     if (pm_data->bfgx_bt_lowpower_enable == BFGX_PM_ENABLE) {
-        PS_PRINT_INFO("bfgx bt pm enable\n");
+        ps_print_info("bfgx bt pm enable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_BT_ENABLE_PM);
     } else {
-        PS_PRINT_INFO("bfgx bt pm disable\n");
+        ps_print_info("bfgx bt pm disable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_BT_DISABLE_PM);
     }
 
     if (pm_data->bfgx_gnss_lowpower_enable == BFGX_PM_ENABLE) {
-        PS_PRINT_INFO("bfgx gnss pm enable\n");
+        ps_print_info("bfgx gnss pm enable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_GNSS_ENABLE_PM);
     } else {
-        PS_PRINT_INFO("bfgx gnss pm disable\n");
+        ps_print_info("bfgx gnss pm disable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_GNSS_DISABLE_PM);
     }
 
     if (pm_data->bfgx_nfc_lowpower_enable == BFGX_PM_ENABLE) {
-        PS_PRINT_INFO("bfgx nfc pm enable\n");
+        ps_print_info("bfgx nfc pm enable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_NFC_ENABLE_PM);
     } else {
-        PS_PRINT_INFO("bfgx nfc pm disable\n");
+        ps_print_info("bfgx nfc pm disable\n");
         ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_NFC_DISABLE_PM);
     }
 
@@ -456,7 +446,7 @@ void bfg_wake_lock(void)
     oal_wakelock_stru *pst_bfg_wake_lock;
     oal_ulong ul_flags;
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
@@ -468,15 +458,13 @@ void bfg_wake_lock(void)
         __pm_stay_awake(&pst_bfg_wake_lock->st_wakelock);
         pst_bfg_wake_lock->locked_addr = (uintptr_t)_RET_IP_;
         pst_bfg_wake_lock->lock_count++;
-        if (OAL_UNLIKELY(pst_bfg_wake_lock->debug)) {
+        if (oal_unlikely(pst_bfg_wake_lock->debug)) {
             printk(KERN_INFO "wakelock[%s] lockcnt:%lu <==%pf\n",
                    pst_bfg_wake_lock->st_wakelock.name, pst_bfg_wake_lock->lock_count, (oal_void *)_RET_IP_);
         }
-#ifdef CONFIG_HISI_IDLE_SLEEP
-        hisi_idle_sleep_vote(ID_GPS, 1);
-        PS_PRINT_INFO("hisi_idle_sleep_vote 1!\n");
-#endif
-        PS_PRINT_INFO("bfg_wakelock active[%d],cnt %lu\n",
+
+        gps_ilde_sleep_vote(1);
+        ps_print_info("bfg_wakelock active[%d],cnt %lu\n",
                       oal_wakelock_active(pst_bfg_wake_lock), pst_bfg_wake_lock->lock_count);
     }
     oal_spin_unlock_irq_restore(&pst_bfg_wake_lock->lock, &ul_flags);
@@ -491,7 +479,7 @@ void bfg_wake_unlock(void)
     oal_wakelock_stru *pst_bfg_wake_lock;
     oal_ulong ul_flags;
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
@@ -505,18 +493,16 @@ void bfg_wake_unlock(void)
         __pm_relax(&pst_bfg_wake_lock->st_wakelock);
         pst_bfg_wake_lock->locked_addr = (oal_ulong)0x0;
 
-        if (OAL_UNLIKELY(pst_bfg_wake_lock->debug)) {
+        if (oal_unlikely(pst_bfg_wake_lock->debug)) {
             printk(KERN_INFO "wakeunlock[%s] lockcnt:%lu <==%pf\n",
                    pst_bfg_wake_lock->st_wakelock.name, pst_bfg_wake_lock->lock_count, (oal_void *)_RET_IP_);
         }
-#ifdef CONFIG_HISI_IDLE_SLEEP
-        hisi_idle_sleep_vote(ID_GPS, 0);
-        PS_PRINT_INFO("hisi_idle_sleep_vote 0!\n");
-#endif
-        PS_PRINT_INFO("bfg_wakelock active[%d], cnt %lu\n",
+
+        gps_ilde_sleep_vote(0);
+        ps_print_info("bfg_wakelock active[%d], cnt %lu\n",
                       oal_wakelock_active(pst_bfg_wake_lock), pst_bfg_wake_lock->lock_count);
     } else {
-        PS_PRINT_INFO("bfg_wakelock not active,cnt %lu\n", pst_bfg_wake_lock->lock_count);
+        ps_print_info("bfg_wakelock not active,cnt %lu\n", pst_bfg_wake_lock->lock_count);
     }
     oal_spin_unlock_irq_restore(&pst_bfg_wake_lock->lock, &ul_flags);
 #endif
@@ -540,12 +526,12 @@ static inline int32 ps_change_baud_rate_retry(int64 baud_rate, uint8 flowctl_sta
     int ret = OAL_TRUE;
     uint32 j = set_baud_retry;
     while (ps_change_uart_baud_rate(baud_rate, flowctl_status) != 0) {
-        PS_PRINT_WARNING("change uart rate fail,left retry cnt:%d,do retry\n", j);
-        DECLARE_DFT_TRACE_KEY_INFO("change uart rate fail", OAL_DFT_TRACE_FAIL);
+        ps_print_warning("change uart rate fail,left retry cnt:%d,do retry\n", j);
+        declare_dft_trace_key_info("change uart rate fail", OAL_DFT_TRACE_FAIL);
         if (--j) {
             msleep(100);
         } else {
-            PS_PRINT_ERR("change uart rate %ld fail,retried %u but not succ\n", baud_rate, set_baud_retry);
+            ps_print_err("change uart rate %ld fail,retried %u but not succ\n", baud_rate, set_baud_retry);
             ret = OAL_FALSE;
             break;
         }
@@ -560,16 +546,16 @@ static int32 process_host_wkup_dev_fail(struct ps_core_s *ps_core_d, struct pm_d
     int bwkup_gpio_val;
 
     if (!OAL_IS_ERR_OR_NULL(ps_core_d->tty) && tty_chars_in_buffer(ps_core_d->tty)) {
-        PS_PRINT_INFO("tty tx buf is not empty\n");
+        ps_print_info("tty tx buf is not empty\n");
     }
 
     bwkup_gpio_val = board_get_bwkup_gpio_val();
-    PS_PRINT_INFO("bfg still NOT wkup, gpio level:%d\n", bwkup_gpio_val);
+    ps_print_info("bfg still NOT wkup, gpio level:%d\n", bwkup_gpio_val);
 
     if (bwkup_gpio_val == 0) {
         return OAL_FALSE;
     } else {
-        PS_PRINT_INFO("bfg wakeup ack lost, complete it\n");
+        ps_print_info("bfg wakeup ack lost, complete it\n");
         spin_lock_irqsave(&pm_data->wakelock_protect_spinlock, flags);
         bfg_wake_lock();
         bfgx_state_set(BFGX_ACTIVE);
@@ -601,7 +587,7 @@ static oal_int32 host_wkup_dev_via_uart(struct ps_core_s *ps_core_d, struct pm_d
 
     for (i = 0; i < wkup_retry; i++) {
         bwkup_gpio_val = board_get_bwkup_gpio_val();
-        PS_PRINT_INFO("bfg wakeup dev,try %u,cur gpio level:%u\n", i + 1, bwkup_gpio_val);
+        ps_print_info("bfg wakeup dev,try %u,cur gpio level:%u\n", i + 1, bwkup_gpio_val);
         /* uart write long zero to wake up device */
         ps_write_tty(ps_core_d, &zero_num, sizeof(uint8));
 
@@ -609,7 +595,7 @@ static oal_int32 host_wkup_dev_via_uart(struct ps_core_s *ps_core_d, struct pm_d
                                                msecs_to_jiffies(WAIT_WKUP_DEVACK_TIMEOUT_MSEC));
         if (timeleft || (bfgx_state_get() == BFGX_ACTIVE)) {
             bwkup_gpio_val = board_get_bwkup_gpio_val();
-            PS_PRINT_INFO("bfg wkup OK, gpio level:%d\n", bwkup_gpio_val);
+            ps_print_info("bfg wkup OK, gpio level:%d\n", bwkup_gpio_val);
 
             // set default baudrate. should not try again if failed, return succ
             (void)ps_change_baud_rate_retry(pm_data->uart_baud_switch_to, FLOW_CTRL_ENABLE);
@@ -633,20 +619,20 @@ void host_wkup_dev_work(struct work_struct *work)
 
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
-    PS_PRINT_INFO("%s,dev:%d,uart:%d\n", __func__, bfgx_state_get(), bfgx_uart_get_baud_rate());
+    ps_print_info("%s,dev:%d,uart:%d\n", __func__, bfgx_state_get(), bfgx_uart_get_baud_rate());
 
     ret = ps_get_core_reference(&ps_core_d);
     if ((ret != SUCCESS) || (ps_core_d == NULL)) {
-        PS_PRINT_ERR("%s,ps_core_d is null!\n", __func__);
+        ps_print_err("%s,ps_core_d is null!\n", __func__);
         return;
     }
 
     if (is_tty_open(ps_core_d->pm_data)) {
-        PS_PRINT_ERR("%s,tty is closed skip!\n", __func__);
+        ps_print_err("%s,tty is closed skip!\n", __func__);
         return;
     }
     /*
@@ -655,10 +641,10 @@ void host_wkup_dev_work(struct work_struct *work)
      */
     if (bfgx_state_get() == BFGX_ACTIVE) {
         if (waitqueue_active(&pm_data->host_wkup_dev_comp.wait)) {
-            PS_PRINT_INFO("it seems like dev ack with NoSleep\n");
+            ps_print_info("it seems like dev ack with NoSleep\n");
             complete_all(&pm_data->host_wkup_dev_comp);
         } else { /* 目前用了一把host_mutex大锁，这种case不应存在，但低功耗模块不应依赖外部 */
-            PS_PRINT_DBG("B do wkup_dev work item after A do it but not finished\n");
+            ps_print_dbg("B do wkup_dev work item after A do it but not finished\n");
         }
         return;
     }
@@ -669,19 +655,19 @@ void host_wkup_dev_work(struct work_struct *work)
     if (!timeleft) {
         unsigned long long module_set = SSI_MODULE_MASK_COMM;
         ps_uart_state_dump(ps_core_d->tty);
-        PS_PRINT_ERR("wait dev allow slp ack timeout\n");
-        DECLARE_DFT_TRACE_KEY_INFO("wait dev allow slp ack timeout", OAL_DFT_TRACE_FAIL);
+        ps_print_err("wait dev allow slp ack timeout\n");
+        declare_dft_trace_key_info("wait dev allow slp ack timeout", OAL_DFT_TRACE_FAIL);
         ssi_dump_for_host_wkup_dev_work_only(module_set);
 
         return;
     }
 
-    INIT_COMPLETION(pm_data->dev_ack_comp);
+    oal_reinit_completion(pm_data->dev_ack_comp);
 
     /* device doesn't agree to slp */
     if (bfgx_state_get() == BFGX_ACTIVE) {
         complete_all(&pm_data->host_wkup_dev_comp);
-        PS_PRINT_DBG("we know dev ack with NoSleep\n");
+        ps_print_dbg("we know dev ack with NoSleep\n");
         return;
     }
 
@@ -690,90 +676,73 @@ void host_wkup_dev_work(struct work_struct *work)
     if (ret != OAL_TRUE) {
         unsigned long long module_set = SSI_MODULE_MASK_AON | SSI_MODULE_MASK_ARM_REG | SSI_MODULE_MASK_BCTRL;
         ps_change_uart_baud_rate(pm_data->uart_baud_switch_to, FLOW_CTRL_ENABLE);
-        PS_PRINT_INFO("host wkup bfg fail\n");
+        ps_print_info("host wkup bfg fail\n");
         ssi_dump_for_host_wkup_dev_work_only(module_set);
     }
 }
 
-#ifdef CONFIG_INPUTHUB
-/* 麒麟内核函数，先用内核版本宏隔开 */
-/* sensorbub模块的函数，睡眠唤醒时用来查询sensorhub的状态 */
-extern int getSensorMcuMode(void);
-extern int get_iomcu_power_state(void);
-#endif
-
-void host_send_disallow_msg(struct work_struct *work)
+STATIC int32_t bfg_wait_tty_resume(struct ps_core_s *ps_core_d)
 {
 #define MAX_TTYRESUME_LOOPCNT 300
-#define MAX_SENSORHUB_LOOPCNT 30
+
 #ifdef ASYNCB_SUSPENDED
     uint32 loop_tty_resume_cnt = 0;
 #endif
-#ifdef CONFIG_INPUTHUB
-    uint32 loop_sensorhub_resume_cnt = 0;
+
+    if ((ps_core_d->tty) && (ps_core_d->tty->port)) {
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
+        while (tty_port_suspended(ps_core_d->tty->port)) {
+            if (loop_tty_resume_cnt++ >= MAX_TTYRESUME_LOOPCNT) {
+                ps_print_err("tty is not ready, state:%d!\n", tty_port_suspended(ps_core_d->tty->port));
+                break;
+            }
+            msleep(SLEEP_10_MSEC);
+        }
+        ps_print_info("tty state: 0x%x ,loop_tty_resume_cnt:%d\n",
+                      tty_port_suspended(ps_core_d->tty->port), loop_tty_resume_cnt);
+#else
+        ps_print_info("tty port flag 0x%x\n", (unsigned int)ps_core_d->tty->port->flags);
+#ifdef ASYNCB_SUSPENDED
+        while (test_bit(ASYNCB_SUSPENDED, (volatile unsigned long *)&(ps_core_d->tty->port->flags))) {
+            if (loop_tty_resume_cnt++ >= MAX_TTYRESUME_LOOPCNT) {
+                ps_print_err("tty is not ready, flag is 0x%x!\n", (unsigned int)ps_core_d->tty->port->flags);
+                break;
+            }
+            msleep(SLEEP_10_MSEC);
+        }
 #endif
+#endif
+    } else {
+        ps_print_err("tty has not inited\n");
+        return OAL_FALSE;
+    }
+
+    return OAL_TRUE;
+}
+
+void host_send_disallow_msg(struct work_struct *work)
+{
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     uint64 flags;
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     ps_get_core_reference(&ps_core_d);
-    if (!ps_core_d) {
-        PS_PRINT_ERR("ps_core has not inited\n");
+    if (ps_core_d == NULL) {
+        ps_print_err("ps_core has not inited\n");
         return;
     }
 
     /* 防止host睡眠情况下被dev唤醒进入gpio中断后直接在这里下发消息，
      * 此时uart可能还没有ready,所以这里等待tty resume之后才下发消息 */
-    if ((ps_core_d->tty) && (ps_core_d->tty->port)) {
-#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
-        while (tty_port_suspended(ps_core_d->tty->port)) {
-            if (loop_tty_resume_cnt++ >= MAX_TTYRESUME_LOOPCNT) {
-                PS_PRINT_ERR("tty is not ready, state:%d!\n", tty_port_suspended(ps_core_d->tty->port));
-                break;
-            }
-            msleep(10);
-        }
-        PS_PRINT_INFO("tty state: 0x%x ,loop_tty_resume_cnt:%d\n",
-                      tty_port_suspended(ps_core_d->tty->port), loop_tty_resume_cnt);
-#else
-        PS_PRINT_INFO("tty port flag 0x%x\n", (unsigned int)ps_core_d->tty->port->flags);
-#ifdef ASYNCB_SUSPENDED
-        while (test_bit(ASYNCB_SUSPENDED, (volatile unsigned long *)&(ps_core_d->tty->port->flags))) {
-            if (loop_tty_resume_cnt++ >= MAX_TTYRESUME_LOOPCNT) {
-                PS_PRINT_ERR("tty is not ready, flag is 0x%x!\n", (unsigned int)ps_core_d->tty->port->flags);
-                break;
-            }
-            msleep(10);
-        }
-#endif
-#endif
-
-#ifdef CONFIG_INPUTHUB
-        if (get_uart_pclk_source() == UART_PCLK_FROM_SENSORHUB) {
-            /* 查询sensorhub状态，如果不是wkup状态，uart的时钟可能会不对 */
-            if (getSensorMcuMode() == 1) {
-                PS_PRINT_INFO("sensorbub state is %d\n", get_iomcu_power_state());
-                /* 0,1->ST_POWERON,8->ST_SLEEP,9->ST_WAKEUP */
-                while ((get_iomcu_power_state() != ST_WAKEUP) && (get_iomcu_power_state() != ST_POWERON_OTHER) &&
-                       (get_iomcu_power_state() != ST_POWERON)) {
-                    if (loop_sensorhub_resume_cnt++ >= MAX_SENSORHUB_LOOPCNT) {
-                        PS_PRINT_ERR("sensorhub not wakeup yet, state is %d\n", get_iomcu_power_state());
-                        break;
-                    }
-                    msleep(10);
-                }
-            }
-        }
-#endif
-    } else {
-        PS_PRINT_ERR("tty has not inited\n");
+    if (bfg_wait_tty_resume(ps_core_d) == OAL_FALSE) {
+        ps_print_err("host send disallow msg wait tty resume fail!\n");
         return;
     }
 
@@ -785,10 +754,10 @@ void host_send_disallow_msg(struct work_struct *work)
     bfgx_uart_state_set(UART_READY);
     spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
 
-    if (!ir_only_mode) {
+    if (oal_atomic_read(&g_ir_only_mode) == 0) {
         if (ps_tx_sys_cmd(ps_core_d, SYS_MSG, SYS_CFG_DISALLOW_SLP) != 0) {
-            PS_PRINT_INFO("SYS_CFG_DISALLOW_SLP MSG send fail, retry\n");
-            msleep(10);
+            ps_print_info("SYS_CFG_DISALLOW_SLP MSG send fail, retry\n");
+            msleep(SLEEP_10_MSEC);
             queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_disallow_msg_work);
             return;
         }
@@ -800,13 +769,13 @@ void host_send_disallow_msg(struct work_struct *work)
      */
     complete_all(&pm_data->host_wkup_dev_comp);
 
-    if (!ir_only_mode) {
+    if (oal_atomic_read(&g_ir_only_mode) == 0) {
         /* if any of BFNI is open, we should mod timer. */
         if ((!bfgx_other_subsys_all_shutdown(BFGX_GNSS)) ||
             (atomic_read(&pm_data->gnss_sleep_flag) == GNSS_AGREE_SLEEP)) {
-            mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+            mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
             pm_data->bfg_timer_mod_cnt++;
-            PS_PRINT_INFO("mod_timer:host_send_disallow_msg_etc\n");
+            ps_print_info("mod_timer:host_send_disallow_msg_etc\n");
         }
         ps_core_d->ps_pm->operate_beat_timer(BEAT_TIMER_RESET);
     }
@@ -823,31 +792,31 @@ void host_allow_bfg_sleep(struct work_struct *work)
     struct st_exception_info *pst_exception_data = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core has not inited\n");
+        ps_print_err("ps_core has not inited\n");
         return;
     }
 
     if (ps_core_d->tty_have_open == false) {
-        PS_PRINT_INFO("tty has closed, not send msg to dev\n");
+        ps_print_info("tty has closed, not send msg to dev\n");
         return;
     }
 
     get_exception_info_reference(&pst_exception_data);
     if (pst_exception_data == NULL) {
-        PS_PRINT_ERR("get exception info reference is error\n");
+        ps_print_err("get exception info reference is error\n");
         return;
     }
     if (atomic_read(&pst_exception_data->is_reseting_device) != PLAT_EXCEPTION_RESET_IDLE) {
-        PS_PRINT_ERR("plat is doing dfr not allow sleep\n");
-        mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+        ps_print_err("plat is doing dfr not allow sleep\n");
+        mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
         pm_data->bfg_timer_mod_cnt++;
         return;
     }
@@ -856,23 +825,23 @@ void host_allow_bfg_sleep(struct work_struct *work)
 
     /* if someone is visiting the dev_node */
     if (atomic_read(&ps_core_d->node_visit_flag) > 0) {
-        PS_PRINT_INFO("someone visit node, not send allow sleep msg\n");
+        ps_print_info("someone visit node, not send allow sleep msg\n");
         spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
         /* gnss write do NOT mod timer */
-        mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+        mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
         pm_data->bfg_timer_mod_cnt++;
         return;
     }
 
     if ((atomic_read(&pm_data->gnss_sleep_flag) != GNSS_AGREE_SLEEP) || (ps_chk_tx_queue_empty(ps_core_d) == false)) {
-        PS_PRINT_INFO("tx queue not empty, not send allow sleep msg\n");
+        ps_print_info("tx queue not empty, not send allow sleep msg\n");
         spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
-        mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+        mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
         pm_data->bfg_timer_mod_cnt++;
         return;
     }
     /* 设置device状态为睡眠态，在host唤醒dev完成之前(或dev唤醒host前)uart不可用 */
-    PS_PRINT_INFO("%s,set UART_NOT_READY,BFGX_SLEEP\n", __func__);
+    ps_print_info("%s,set UART_NOT_READY,BFGX_SLEEP\n", __func__);
     ps_core_d->ps_pm->bfgx_uart_state_set(UART_NOT_READY);
     ps_core_d->ps_pm->bfgx_dev_state_set(BFGX_SLEEP);
     /* clear mod cnt */
@@ -881,7 +850,7 @@ void host_allow_bfg_sleep(struct work_struct *work)
 
     spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
 
-    mod_timer(&pm_data->dev_ack_timer, jiffies + (WAIT_DEVACK_MSEC * HZ / 1000));
+    mod_timer(&pm_data->dev_ack_timer, jiffies + oal_msecs_to_jiffies(WAIT_DEVACK_MSEC));
 
     /*
      * we need reinit completion cnt as 0, to prevent such case:
@@ -892,10 +861,10 @@ void host_allow_bfg_sleep(struct work_struct *work)
      * 5)dev ack with ok, cnt=2,
      * this case will cause host wait dev_ack invalid.
      */
-    INIT_COMPLETION(pm_data->dev_ack_comp);
+    oal_reinit_completion(pm_data->dev_ack_comp);
 
     if (ps_tx_urgent_cmd(ps_core_d, SYS_MSG, SYS_CFG_ALLOWDEV_SLP) != 0) {
-        PS_PRINT_INFO("SYS_CFG_ALLOWDEV_SLP MSG send fail\n");
+        ps_print_info("SYS_CFG_ALLOWDEV_SLP MSG send fail\n");
     }
 }
 
@@ -907,7 +876,7 @@ void bfg_check_timer_work(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return;
     }
 
@@ -915,11 +884,11 @@ void bfg_check_timer_work(void)
     if ((pm_data->bfg_timer_mod_cnt == pm_data->bfg_timer_mod_cnt_pre) && (pm_data->bfg_timer_mod_cnt != 0) &&
         (atomic_read(&pm_data->gnss_sleep_flag) == GNSS_AGREE_SLEEP)) {
         if (time_after(jiffies, pm_data->bfg_timer_check_time)) {
-            DECLARE_DFT_TRACE_KEY_INFO("bfg_timer not work in 10s", OAL_DFT_TRACE_FAIL);
+            declare_dft_trace_key_info("bfg_timer not work in 10s", OAL_DFT_TRACE_FAIL);
             if (queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work) != true) {
-                PS_PRINT_INFO("queue_work send_allow_sleep_work not return true\n");
+                ps_print_info("queue_work send_allow_sleep_work not return true\n");
             } else {
-                PS_PRINT_INFO("timer_state(%d),queue_work send_allow_sleep_work succ\n",
+                ps_print_info("timer_state(%d),queue_work send_allow_sleep_work succ\n",
                               timer_pending(&pm_data->bfg_timer));
             }
         }
@@ -938,29 +907,29 @@ void bfg_timer_expire(uint64 data)
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = (struct pm_drv_data *)(uintptr_t)data;
     if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is null\n");
+        ps_print_err("pm_data is null\n");
         return;
     }
 
     ps_core_d = pm_data->ps_pm_interface->ps_core_data;
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return;
     }
 
     if (pm_data->bfgx_lowpower_enable == BFGX_PM_DISABLE) {
-        PS_PRINT_DBG("lowpower function disabled\n");
+        ps_print_dbg("lowpower function disabled\n");
         return;
     }
     if (pm_data->ps_pm_interface->bfgx_dev_state_get() == BFGX_SLEEP) {
-        PS_PRINT_DBG("dev has been sleep\n");
+        ps_print_dbg("dev has been sleep\n");
         return;
     }
 
     if (atomic_read(&pm_data->gnss_sleep_flag) == GNSS_AGREE_SLEEP &&
         (pm_data->uart_state < UART_BPS_CHG_SEND_ACK)) {
         if (queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work) != true) {
-            PS_PRINT_INFO("queue_work send_allow_sleep_work not return true\n");
+            ps_print_info("queue_work send_allow_sleep_work not return true\n");
         }
         pm_data->gnss_votesleep_check_cnt = 0;
         pm_data->rx_pkt_gnss_pre = 0;
@@ -970,25 +939,25 @@ void bfg_timer_expire(uint64 data)
             pm_data->rx_pkt_gnss_pre = ps_core_d->rx_pkt_num[BFGX_GNSS];
             pm_data->gnss_votesleep_check_cnt = 0;
 
-            mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+            mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
             pm_data->bfg_timer_mod_cnt++;
         } else {
             pm_data->gnss_votesleep_check_cnt++;
             if (pm_data->gnss_votesleep_check_cnt >= PL_CHECK_GNSS_VOTE_CNT) {
-                PS_PRINT_ERR("gnss_votesleep_check_cnt %d,set GNSS_AGREE_SLEEP\n", pm_data->gnss_votesleep_check_cnt);
+                ps_print_err("gnss_votesleep_check_cnt %d,set GNSS_AGREE_SLEEP\n", pm_data->gnss_votesleep_check_cnt);
                 atomic_set(&pm_data->gnss_sleep_flag, GNSS_AGREE_SLEEP);
                 queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work);
 
                 pm_data->gnss_votesleep_check_cnt = 0;
                 pm_data->rx_pkt_gnss_pre = 0;
             } else {
-                mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+                mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
                 pm_data->bfg_timer_mod_cnt++;
             }
         }
     } else {
-        PS_PRINT_INFO("uart_state %d\n", pm_data->uart_state);
-        mod_timer(&pm_data->bfg_timer, jiffies + (PLATFORM_SLEEP_TIME * HZ / 1000));
+        ps_print_info("uart_state %d\n", pm_data->uart_state);
+        mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(PLATFORM_SLEEP_TIME));
         pm_data->bfg_timer_mod_cnt++;
     }
 }
@@ -999,32 +968,32 @@ int32 host_wkup_dev(void)
     struct pm_drv_data *pm_data = pm_get_drvdata();
     struct ps_core_s *ps_core_d = NULL;
     if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d ot tty is NULL\n");
+        ps_print_err("ps_core_d ot tty is NULL\n");
         return -EINVAL;
     }
     if (pm_data->bfgx_lowpower_enable == BFGX_PM_DISABLE) {
         return 0;
     }
-    PS_PRINT_DBG("wkup start\n");
+    ps_print_dbg("wkup start\n");
 
-    INIT_COMPLETION(pm_data->host_wkup_dev_comp);
+    oal_reinit_completion(pm_data->host_wkup_dev_comp);
     queue_work(pm_data->wkup_dev_workqueue, &pm_data->wkup_dev_work);
     ps_uart_state_pre(ps_core_d->tty);
     timeleft = wait_for_completion_timeout(&pm_data->host_wkup_dev_comp, msecs_to_jiffies(WAIT_WKUPDEV_MSEC));
     if (!timeleft) {
         ps_uart_state_dump(ps_core_d->tty);
-        PS_PRINT_ERR("wait wake up dev timeout\n");
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("wait wake up dev timeout\n");
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_PM, CHR_PLAT_DRV_ERROR_BFG_WKUP_DEV);
 
         return -ETIMEDOUT;
     }
-    PS_PRINT_DBG("wkup over\n");
+    ps_print_dbg("wkup over\n");
 
     return 0;
 }
@@ -1043,7 +1012,7 @@ int32 bfgx_other_subsys_all_shutdown(uint8 subsys)
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -1075,7 +1044,7 @@ void bfgx_print_subsys_state(void)
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return;
     }
 
@@ -1101,7 +1070,7 @@ void bfgx_print_subsys_state(void)
         }
     }
 
-    PS_PRINT_ERR("%s\n", print_str);
+    ps_print_err("%s\n", print_str);
 }
 
 void bfgx_gpio_intr_enable(uint32 ul_en)
@@ -1131,21 +1100,21 @@ int32 bfgx_dev_power_on(void)
     int32 error;
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
 
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return BFGX_POWER_FAILED;
     }
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return BFGX_POWER_FAILED;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
+        ps_print_err("ps_core_d is err\n");
         return BFGX_POWER_FAILED;
     }
     /* 防止Host睡眠 */
@@ -1153,7 +1122,7 @@ int32 bfgx_dev_power_on(void)
 
     bfgx_gpio_intr_enable(OAL_TRUE);
     gnss_timesync_gpio_intr_enable(OAL_TRUE);
-    INIT_COMPLETION(pm_data->dev_bootok_ack_comp);
+    oal_reinit_completion(pm_data->dev_bootok_ack_comp);
     atomic_set(&pm_data->bfg_needwait_devboot_flag, NEED_SET_FLAG);
     error = bd_info->bd_ops.bfgx_dev_power_on();
     if (error != BFGX_POWER_SUCCESS) {
@@ -1166,15 +1135,15 @@ int32 bfgx_dev_power_on(void)
     if (!timeleft) {
         ps_uart_state_dump(ps_core_d->tty);
 
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_BCPU_BOOTUP);
 
         if (wlan_is_shutdown()) {
-            PS_PRINT_ERR("wifi off, wait bfgx boot up ok timeout\n");
+            ps_print_err("wifi off, wait bfgx boot up ok timeout\n");
             error = BFGX_POWER_WIFI_OFF_BOOT_UP_FAIL;
             goto bfgx_power_on_fail;
         } else {
-            PS_PRINT_ERR("wifi on, wait bfgx boot up ok timeout\n");
+            ps_print_err("wifi on, wait bfgx boot up ok timeout\n");
             error = BFGX_POWER_WIFI_ON_BOOT_UP_FAIL;
             goto bfgx_power_on_fail;
         }
@@ -1182,7 +1151,7 @@ int32 bfgx_dev_power_on(void)
 
     atomic_set(&pm_data->bfg_needwait_devboot_flag, NONEED_SET_FLAG);
 
-    if (!ir_only_mode) {
+    if (oal_atomic_read(&g_ir_only_mode) == 0) {
         if ((get_hi110x_subchip_type() == BOARD_VERSION_HI1103) ||
             (get_hi110x_subchip_type() == BOARD_VERSION_HI1102A)) {
             if (wlan_is_shutdown()) {
@@ -1212,26 +1181,26 @@ int32 bfgx_dev_power_off(void)
     int32 error = SUCCESS;
     struct ps_core_s *ps_core_d = NULL;
     struct pm_drv_data *pm_data = pm_get_drvdata();
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return -FAILURE;
     }
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
+        ps_print_err("ps_core_d is err\n");
         return -FAILURE;
     }
 
     /* 单红外没有心跳 */
-    if (!ir_only_mode) {
+    if (oal_atomic_read(&g_ir_only_mode) == 0) {
         pm_data->ps_pm_interface->operate_beat_timer(BEAT_TIMER_DELETE);
         del_timer_sync(&pm_data->bfg_timer);
         pm_data->bfg_timer_mod_cnt = 0;
@@ -1263,40 +1232,66 @@ int32 bfgx_dev_power_control(uint8 subsys, uint8 flag)
 {
     int32 ret = 0;
 
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-    if ((subsys != BFGX_GNSS)) {
-        PS_PRINT_ERR("gnss only only not support subs:%d\n", subsys);
-        return -FAILURE;
-    }
-#endif
-
     if (flag == BFG_POWER_GPIO_UP) {
         ret = bfgx_power_on(subsys);
         if (ret) {
-            PS_PRINT_ERR("bfgx power on is error!\n");
+            ps_print_err("bfgx power on is error!\n");
         }
     } else if (flag == BFG_POWER_GPIO_DOWN) {
         ret = bfgx_power_off(subsys);
         if (ret) {
-            PS_PRINT_ERR("bfgx power off is error!\n");
+            ps_print_err("bfgx power off is error!\n");
         }
     } else {
-        PS_PRINT_ERR("invalid input data!\n");
+        ps_print_err("invalid input data!\n");
         ret = -FAILURE;
     }
 
     return ret;
 }
 
+void gnss_lowpower_vote(uint32_t vote)
+{
+    struct pm_drv_data *pm_data = pm_get_drvdata();
+
+    ps_print_info("gnss_lowpower_vote %d!\n", vote);
+    if (vote == GNSS_AGREE_SLEEP) {
+        if (pm_data->bfgx_lowpower_enable == BFGX_PM_DISABLE) {
+            ps_print_warning("gnss low power disabled!\n");
+            return;
+        }
+        if (pm_data->ps_pm_interface->bfgx_dev_state_get() == BFGX_SLEEP) {
+            ps_print_warning("gnss proc: dev has been sleep, not allow dev slp\n");
+            return;
+        }
+
+        /* if bt and fm are both shutdown ,we will pull down gpio directly */
+        if (!timer_pending(&pm_data->bfg_timer)) {
+            ps_print_info("gnss_lowpower_vote sumit sleep work!\n");
+
+            if (queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work) != true) {
+                ps_print_info("queue_work send_allow_sleep_work not return true\n");
+            }
+        }
+
+        /* set the flag to 1 means gnss request sleep */
+        atomic_set(&pm_data->gnss_sleep_flag, GNSS_AGREE_SLEEP);
+    } else if (vote == GNSS_NOT_AGREE_SLEEP) {
+        atomic_set(&pm_data->gnss_sleep_flag, GNSS_NOT_AGREE_SLEEP);
+    } else {
+        ps_print_err("PLAT_GNSS_SLEEP_VOTE_CMD invalid arg !\n");
+    }
+}
+
 static void firmware_download_fail_proc(struct pm_drv_data *pm_data, int which_cfg)
 {
-    PS_PRINT_ERR("firmware download fail!\n");
-    DECLARE_DFT_TRACE_KEY_INFO("patch_download_fail", OAL_DFT_TRACE_FAIL);
+    ps_print_err("firmware download fail!\n");
+    declare_dft_trace_key_info("patch_download_fail", OAL_DFT_TRACE_FAIL);
     if (which_cfg == BFGX_CFG) {
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_FW, CHR_PLAT_DRV_ERROR_BFG_FW_DOWN);
     } else {
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_WIFI, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_FW, CHR_PLAT_DRV_ERROR_WIFI_FW_DOWN);
     }
 
@@ -1328,20 +1323,20 @@ int firmware_download_function(uint32 which_cfg)
     static unsigned long long count = 0;
     struct pm_drv_data *pm_data = pm_get_drvdata();
 
-    PS_PRINT_INFO("enter firmware_download_function\n");
+    ps_print_info("enter firmware_download_function\n");
 
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
     if (which_cfg >= CFG_FILE_TOTAL) {
-        PS_PRINT_ERR("cfg file index [%d] outof range\n", which_cfg);
+        ps_print_err("cfg file index [%d] outof range\n", which_cfg);
         return -FAILURE;
     }
 
     if (pm_data->pst_wlan_pm_info->pst_bus == NULL) {
-        PS_PRINT_ERR("pst_bus is null\n");
+        ps_print_err("pst_bus is null\n");
         return -FAILURE;
     }
 
@@ -1354,8 +1349,8 @@ int firmware_download_function(uint32 which_cfg)
     if (ret != OAL_SUCC) {
         hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
         hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
-        PS_PRINT_ERR("sdio reinit failed, ret:%d!\n", ret);
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        ps_print_err("sdio reinit failed, ret:%d!\n", ret);
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_FW, CHR_PLAT_DRV_ERROR_FW_SDIO_INIT);
         return -FAILURE;
     }
@@ -1364,26 +1359,25 @@ int firmware_download_function(uint32 which_cfg)
 
     /* firmware_cfg_init(sdio) function should just be called once */
     if (!test_bit(FIRMWARE_CFG_INIT_OK, &pm_data->firmware_cfg_init_flag)) {
-        PS_PRINT_INFO("firmware_cfg_init begin\n");
+        ps_print_info("firmware_cfg_init begin\n");
         ret = firmware_cfg_init();
         if (ret) {
-            PS_PRINT_ERR("firmware_cfg_init failed, ret:%d!\n", ret);
+            ps_print_err("firmware_cfg_init failed, ret:%d!\n", ret);
             hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
             hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
 
-            CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+            chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                                  CHR_PLT_DRV_EVENT_FW, CHR_PLAT_DRV_ERROR_CFG_FAIL_FIRMWARE_DOWN);
             return ret;
         }
 
-        PS_PRINT_INFO("firmware_cfg_init OK\n");
+        ps_print_info("firmware_cfg_init OK\n");
         set_bit(FIRMWARE_CFG_INIT_OK, &pm_data->firmware_cfg_init_flag);
     }
 
-    PS_PRINT_INFO("firmware_download begin\n");
+    ps_print_info("firmware_download begin\n");
 
     ret = firmware_download(which_cfg);
-
     if (ret < 0) {
         hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
         hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
@@ -1391,29 +1385,28 @@ int firmware_download_function(uint32 which_cfg)
             firmware_download_fail_proc(pm_data, which_cfg);
         } else {
             /* download firmware interrupt */
-            PS_PRINT_INFO("firmware download interrupt!\n");
-            DECLARE_DFT_TRACE_KEY_INFO("patch_download_interrupt", OAL_DFT_TRACE_FAIL);
+            ps_print_info("firmware download interrupt!\n");
+            declare_dft_trace_key_info("patch_download_interrupt", OAL_DFT_TRACE_FAIL);
         }
         return ret;
     }
-    DECLARE_DFT_TRACE_KEY_INFO("patch_download_ok", OAL_DFT_TRACE_SUCC);
+    declare_dft_trace_key_info("patch_download_ok", OAL_DFT_TRACE_SUCC);
 
     hcc_bus_unlock(pm_data->pst_wlan_pm_info->pst_bus);
     hcc_bus_wake_unlock(pm_data->pst_wlan_pm_info->pst_bus);
 
-    PS_PRINT_INFO("firmware_download success\n");
+    ps_print_info("firmware_download success\n");
 
     end_time = ktime_get();
 
     trans_time = ktime_sub(end_time, start_time);
     total_time = (unsigned long long)ktime_to_us(trans_time);
-
     if (total_time > max_time) {
         max_time = total_time;
     }
 
     count++;
-    PS_PRINT_WARNING("download firmware, count [%llu], current time [%llu]us, max time [%llu]us\n",
+    ps_print_warning("download firmware, count [%llu], current time [%llu]us, max time [%llu]us\n",
                      count, total_time, max_time);
 
     return SUCCESS;
@@ -1423,7 +1416,7 @@ int32 wlan_is_shutdown(void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return true;
     }
 
@@ -1436,7 +1429,7 @@ int32 bfgx_is_shutdown(void)
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -1448,16 +1441,11 @@ int32 wifi_power_fail_process(int32 error)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return WIFI_POWER_FAIL;
     }
 
-    if (error >= WIFI_POWER_ENUM_BUTT) {
-        PS_PRINT_ERR("error is undefined, error=[%d]\n", error);
-        return WIFI_POWER_FAIL;
-    }
-
-    PS_PRINT_INFO("wifi power fail, error=[%d]\n", error);
+    ps_print_info("wifi power fail, error=[%d]\n", error);
 
     switch (error) {
         case WIFI_POWER_SUCCESS:
@@ -1468,14 +1456,15 @@ int32 wifi_power_fail_process(int32 error)
         case WIFI_POWER_BFGX_OFF_BOOT_UP_FAIL:
             if (oal_trigger_bus_exception(pm_data->pst_wlan_pm_info->pst_bus, OAL_TRUE) == OAL_TRUE) {
                 /* exception is processing, can't power off */
-                PS_PRINT_INFO("bfgx off,sdio exception is working\n");
+                ps_print_info("bfgx off,sdio exception is working\n");
                 break;
             }
-            PS_PRINT_INFO("bfgx off,set wlan_power_state to shutdown\n");
-            oal_wlan_gpio_intr_enable(HBUS_TO_DEV(pm_data->pst_wlan_pm_info->pst_bus), OAL_FALSE);
+            ps_print_info("bfgx off,set wlan_power_state to shutdown\n");
+            oal_wlan_gpio_intr_enable(hbus_to_dev(pm_data->pst_wlan_pm_info->pst_bus), OAL_FALSE);
             pm_data->pst_wlan_pm_info->ul_wlan_power_state = POWER_STATE_SHUTDOWN;
         case WIFI_POWER_BFGX_OFF_FIRMWARE_DOWNLOAD_FAIL:
-            PS_PRINT_INFO("wifi power fail: pull down power on gpio\n");
+        case WIFI_POWER_ON_CALI_FAIL:
+            ps_print_info("wifi power fail: pull down power on gpio\n");
             board_power_off(WLAN_POWER);
             break;
 
@@ -1483,11 +1472,11 @@ int32 wifi_power_fail_process(int32 error)
         case WIFI_POWER_BFGX_ON_BOOT_UP_FAIL:
             if (oal_trigger_bus_exception(pm_data->pst_wlan_pm_info->pst_bus, OAL_TRUE) == OAL_TRUE) {
                 /* exception is processing, can't power off */
-                PS_PRINT_INFO("bfgx on,sdio exception is working\n");
+                ps_print_info("bfgx on,sdio exception is working\n");
                 break;
             }
-            PS_PRINT_INFO("bfgx on,set wlan_power_state to shutdown\n");
-            oal_wlan_gpio_intr_enable(HBUS_TO_DEV(pm_data->pst_wlan_pm_info->pst_bus), OAL_FALSE);
+            ps_print_info("bfgx on,set wlan_power_state to shutdown\n");
+            oal_wlan_gpio_intr_enable(hbus_to_dev(pm_data->pst_wlan_pm_info->pst_bus), OAL_FALSE);
             pm_data->pst_wlan_pm_info->ul_wlan_power_state = POWER_STATE_SHUTDOWN;
         case WIFI_POWER_BFGX_DERESET_WCPU_FAIL:
         case WIFI_POWER_BFGX_ON_FIRMWARE_DOWNLOAD_FAIL:
@@ -1495,26 +1484,26 @@ int32 wifi_power_fail_process(int32 error)
                 bfgx_system_reset();
                 plat_power_fail_process_done();
             } else {
-                PS_PRINT_ERR("wifi power fail, set exception info fail\n");
+                ps_print_err("wifi power fail, set exception info fail\n");
             }
             break;
 
         default:
-            PS_PRINT_ERR("error is undefined, error=[%d]\n", error);
+            ps_print_err("error is undefined, error=[%d]\n", error);
             break;
     }
 
     return WIFI_POWER_FAIL;
 }
 
-int32 wifi_notify_bfgx_status(uint8 ucStatus)
+int32 wifi_notify_bfgx_status(uint8 status)
 {
     struct ps_core_s *ps_core_d = NULL;
     int32 ret;
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
+        ps_print_err("ps_core_d is err\n");
         return -EFAULT;
         ;
     }
@@ -1522,12 +1511,12 @@ int32 wifi_notify_bfgx_status(uint8 ucStatus)
     if (!bfgx_is_shutdown()) {
         ret = prepare_to_visit_node(ps_core_d);
         if (ret < 0) {
-            PS_PRINT_ERR("prepare work fail, bring to reset work\n");
+            ps_print_err("prepare work fail, bring to reset work\n");
             plat_exception_handler(SUBSYS_BFGX, THREAD_IDLE, BFGX_WAKEUP_FAIL);
             return ret;
         }
 
-        ps_tx_sys_cmd(ps_core_d, SYS_MSG, ucStatus);
+        ps_tx_sys_cmd(ps_core_d, SYS_MSG, status);
 
         post_to_visit_node(ps_core_d);
     }
@@ -1542,20 +1531,20 @@ int32 hitalk_power_on(void)
     ktime_t start_time, end_time, trans_time;
     static unsigned long long max_download_time = 0;
     static unsigned long long num = 0;
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
 
-    PS_PRINT_INFO("hitalk power on!\n");
+    ps_print_info("hitalk power on!\n");
 
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return -FAILURE;
     }
 
     /* wifi上电时如果单红外打开，则需要关闭单红外，下载全patch */
-    if (ir_only_mode) {
+    if ((oal_atomic_read(&g_ir_only_mode) != 0)) {
         if (hw_ir_only_open_other_subsys() != BFGX_POWER_SUCCESS) {
-            PS_PRINT_ERR("ir only mode,but close ir only mode fail!\n");
+            ps_print_err("ir only mode,but close ir only mode fail!\n");
             return -FAILURE;
         }
     }
@@ -1563,9 +1552,9 @@ int32 hitalk_power_on(void)
     start_time = ktime_get();
 
     if (hcc_bus_exception_is_busy(hcc_get_current_110x_bus()) == OAL_TRUE) {
-        DECLARE_DFT_TRACE_KEY_INFO("open_fail_sdio_is_busy", OAL_DFT_TRACE_FAIL);
+        declare_dft_trace_key_info("open_fail_sdio_is_busy", OAL_DFT_TRACE_FAIL);
 
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_HITALK_POWER_ON_EXCP);
         return -FAILURE;
     }
@@ -1592,20 +1581,19 @@ int32 hitalk_power_on(void)
 
     trans_time = ktime_sub(end_time, start_time);
     total_time = (unsigned long long)ktime_to_us(trans_time);
-
     if (total_time > max_download_time) {
         max_download_time = total_time;
     }
 
     num++;
-    PS_PRINT_WARNING("hitalk power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
+    ps_print_warning("hitalk power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
                      num, total_time, max_download_time);
 
     return WIFI_POWER_SUCCESS;
 
 hitalk_power_fail:
 
-    CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+    chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                          CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_HITALK_POWER_UP_WIFI);
     return wifi_power_fail_process(error);
 }
@@ -1613,13 +1601,13 @@ hitalk_power_fail:
 int32 hitalk_power_off(void)
 {
     int32 error;
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
 
-    PS_PRINT_INFO("hitalk power off!\n");
+    ps_print_info("hitalk power off!\n");
 
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return -FAILURE;
     }
 
@@ -1642,20 +1630,20 @@ int32 wlan_power_on(void)
     ktime_t start_time, end_time, trans_time;
     static unsigned long long max_download_time = 0;
     static unsigned long long num = 0;
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
 
-    PS_PRINT_INFO("wlan power on!\n");
+    ps_print_info("wlan power on!\n");
 
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return -FAILURE;
     }
 
     /* wifi上电时如果单红外打开，则需要关闭单红外，下载全patch */
-    if (ir_only_mode) {
+    if (oal_atomic_read(&g_ir_only_mode) != 0) {
         if (hw_ir_only_open_other_subsys() != BFGX_POWER_SUCCESS) {
-            PS_PRINT_ERR("ir only mode,but close ir only mode fail!\n");
+            ps_print_err("ir only mode,but close ir only mode fail!\n");
             return -FAILURE;
         }
     }
@@ -1663,9 +1651,9 @@ int32 wlan_power_on(void)
     start_time = ktime_get();
 
     if (hcc_bus_exception_is_busy(hcc_get_current_110x_bus()) == OAL_TRUE) {
-        DECLARE_DFT_TRACE_KEY_INFO("open_fail_sdio_is_busy", OAL_DFT_TRACE_FAIL);
+        declare_dft_trace_key_info("open_fail_sdio_is_busy", OAL_DFT_TRACE_FAIL);
 
-        CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+        chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                              CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_POWER_ON_EXCP);
         return -FAILURE;
     }
@@ -1683,20 +1671,19 @@ int32 wlan_power_on(void)
 
     trans_time = ktime_sub(end_time, start_time);
     total_time = (unsigned long long)ktime_to_us(trans_time);
-
     if (total_time > max_download_time) {
         max_download_time = total_time;
     }
 
     num++;
-    PS_PRINT_WARNING("power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
+    ps_print_warning("power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
                      num, total_time, max_download_time);
 
     return WIFI_POWER_SUCCESS;
 
 wifi_power_fail:
 
-    CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+    chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                          CHR_PLT_DRV_EVENT_OPEN, CHR_PLAT_DRV_ERROR_POWER_UP_WIFI);
     return wifi_power_fail_process(error);
 }
@@ -1704,13 +1691,13 @@ wifi_power_fail:
 int32 wlan_power_off(void)
 {
     int32 error;
-    BOARD_INFO *bd_info = NULL;
+    board_info *bd_info = NULL;
 
-    PS_PRINT_INFO("wlan power off!\n");
+    ps_print_info("wlan power off!\n");
 
     bd_info = get_hi110x_board_info();
     if (unlikely(bd_info == NULL)) {
-        PS_PRINT_ERR("board info is err\n");
+        ps_print_err("board info is err\n");
         return -FAILURE;
     }
 
@@ -1747,13 +1734,12 @@ int32 bfgx_power_on(uint8 subsys)
 
     trans_time = ktime_sub(end_time, start_time);
     total_time = (unsigned long long)ktime_to_us(trans_time);
-
     if (total_time > max_download_time) {
         max_download_time = total_time;
     }
 
     num++;
-    PS_PRINT_WARNING("power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
+    ps_print_warning("power on, count [%llu], current time [%llu]us, max time [%llu]us\n",
                      num, total_time, max_download_time);
 
     return BFGX_POWER_SUCCESS;
@@ -1765,18 +1751,18 @@ int32 bfgx_power_off(uint8 subsys)
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is null\n");
+        ps_print_err("ps_core_d is null\n");
         return -FAILURE;
     }
 
     if (ps_chk_only_gnss_and_cldslp(ps_core_d)) {
-        PS_PRINT_SUC("%s power off request sleep!\n", bfgx_subsys_name[subsys]);
+        ps_print_suc("%s power off request sleep!\n", g_bfgx_subsys_name[subsys]);
         host_allow_devslp_in_node(ps_core_d);
 
         return SUCCESS;
     }
 
-    PS_PRINT_INFO("%s power off!\n", bfgx_subsys_name[subsys]);
+    ps_print_info("%s power off!\n", g_bfgx_subsys_name[subsys]);
 
     if (bfgx_other_subsys_all_shutdown(subsys)) {
         return bfgx_dev_power_off();
@@ -1784,14 +1770,14 @@ int32 bfgx_power_off(uint8 subsys)
 
     return SUCCESS;
 }
-int32 pro_memcheck_en = 0;
-struct completion pro_memcheck_finish;
+int32 g_pro_memcheck_en = 0;
+struct completion g_pro_memcheck_finish;
 int32 memcheck_is_working(void)
 {
-    if (pro_memcheck_en) {
-        complete(&pro_memcheck_finish);
-        PS_PRINT_INFO("is in product mem check test !bfg_wakeup_host=%d\n",
-                      oal_gpio_get_value(board_info.bfgn_wakeup_host));
+    if (g_pro_memcheck_en) {
+        complete(&g_pro_memcheck_finish);
+        ps_print_info("is in product mem check test !bfg_wakeup_host=%d\n",
+                      oal_gpio_get_value(g_board_info.bfgn_wakeup_host));
         return 0;
     }
     return -1;
@@ -1799,13 +1785,13 @@ int32 memcheck_is_working(void)
 void memcheck_bfgx_init(void)
 {
     bfgx_gpio_intr_enable(OAL_TRUE);
-    PS_PRINT_INFO("memcheck_bfgx_init\n");
-    pro_memcheck_en = 1;
-    init_completion(&pro_memcheck_finish);
+    ps_print_info("memcheck_bfgx_init\n");
+    g_pro_memcheck_en = 1;
+    init_completion(&g_pro_memcheck_finish);
 }
 void memcheck_bfgx_exit(void)
 {
-    pro_memcheck_en = 0;
+    g_pro_memcheck_en = 0;
     bfgx_gpio_intr_enable(OAL_FALSE);
 }
 
@@ -1813,220 +1799,148 @@ int32 memcheck_bfgx_is_succ(void)
 {
     uint64 timeleft;
     PS_PRINT_FUNCTION_NAME;
-    timeleft = wait_for_completion_timeout(&pro_memcheck_finish, msecs_to_jiffies(bfgx_mem_check_mdelay));
+    timeleft = wait_for_completion_timeout(&g_pro_memcheck_finish, msecs_to_jiffies(g_bfgx_mem_check_mdelay));
     if (!timeleft) {
-        PS_PRINT_ERR("wait bfgx memcheck_bfgx_is_succ timeout\n");
+        ps_print_err("wait bfgx memcheck_bfgx_is_succ timeout\n");
         return -1;
     }
     return 0;
 }
 
-int32 device_mem_check(unsigned long long *time)
+static int32 device_mem_check_prepare(unsigned long long *time)
 {
-    int32 ret;
-    int32 w_ret;
-    int32 b_ret;
-    uint8 *file_name = WIFI_DUMP_PATH "/readm_wifi";
-    unsigned long long total_time;
-    ktime_t start_time, end_time, trans_time;
-    struct pm_drv_data *pm_data = pm_get_drvdata();
-    if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
-        return -FAILURE;
-    }
-
     if (time == NULL) {
-        PS_PRINT_ERR("param time is  NULL!\n");
+        ps_print_err("param time is  NULL!\n");
         return -FAILURE;
     }
-    start_time = ktime_get();
-
-    PS_PRINT_INFO("device ram reg test!\n");
-
     if (!bfgx_is_shutdown()) {
-        PS_PRINT_SUC("factory ram reg test need bfgx shut down!\n");
+        ps_print_suc("factory ram reg test need bfgx shut down!\n");
         bfgx_print_subsys_state();
         return -FAILURE;
     }
     if (!wlan_is_shutdown()) {
-        PS_PRINT_SUC("factory ram reg test need wlan shut down!\n");
+        ps_print_suc("factory ram reg test need wlan shut down!\n");
         return -FAILURE;
     }
+    return SUCCESS;
+}
+
+static int32 device_mem_check_wcpu(void)
+{
+    int32 ret;
+    uint8 *file_name = WIFI_DUMP_PATH "/readm_wifi";
 
     ret = board_power_on(WLAN_POWER);
     if (ret) {
-        PS_PRINT_ERR("WLAN_POWER on failed ret=%d\n", ret);
+        ps_print_err("WLAN_POWER on failed ret=%d\n", ret);
         return -FAILURE;
     }
 
-    PS_PRINT_INFO("===================start wcpu ram reg test!\n");
-    w_ret = firmware_download_function(RAM_REG_TEST_CFG);
-    if (w_ret == SUCCESS) {
+    ret = firmware_download_function(RAM_REG_TEST_CFG);
+    if (ret == SUCCESS) {
         /* 等待device信息处理 */
-        mdelay(wlan_mem_check_mdelay);
-        w_ret = is_device_mem_test_succ();
+        mdelay(g_wlan_mem_check_mdelay);
+        ret = is_device_mem_test_succ();
         get_device_test_mem(file_name);
-    }
-    PS_PRINT_INFO("===================start bcpu ram reg test!\n");
-    board_power_off(WLAN_POWER);
-
-    board_power_on(WLAN_POWER);
-    pilot_cfg_patch_in_vendor[RAM_REG_TEST_CFG] = RAM_BCPU_CHECK_CFG_HI1102A_PILOT_PATH;
-    ret = firmware_get_cfg(cfg_path[RAM_REG_TEST_CFG], RAM_REG_TEST_CFG);
-    if (ret) {
-        PS_PRINT_INFO("ini analysis fail!\n");
-        goto exit_error;
-    }
-
-    memcheck_bfgx_init();
-    file_name = WIFI_DUMP_PATH "/readm_bfgx";
-    b_ret = firmware_download_function(RAM_BCPU_REG_TEST_CFG);
-
-    pilot_cfg_patch_in_vendor[RAM_REG_TEST_CFG] = RAM_CHECK_CFG_HI1102A_PILOT_PATH;
-    if (b_ret == SUCCESS) {
-        /* 等待device信息处理 */
-        mdelay(bfgx_mem_check_mdelay);
-        b_ret = is_device_mem_test_succ();
-        get_device_test_mem(file_name);
-        if (b_ret) {
-            firmware_get_cfg(cfg_path[RAM_REG_TEST_CFG], RAM_REG_TEST_CFG);
+        if (ret) {
+            board_power_off(WLAN_POWER);
+            return -FAILURE;
         }
-    }
-    firmware_get_cfg(cfg_path[RAM_REG_TEST_CFG], RAM_REG_TEST_CFG);
-
-    end_time = ktime_get();
-
-    trans_time = ktime_sub(end_time, start_time);
-    total_time = (unsigned long long)ktime_to_us(trans_time);
-
-    *time = total_time;
-
-    PS_PRINT_SUC("device mem reg test time [%llu]us\n", total_time);
-
-    if (!w_ret) {
-        PS_PRINT_INFO("======device wcpu ram reg test success!\n");
     } else {
-        ret = w_ret;
-        PS_PRINT_INFO("======device wcpu ram reg test failed!\n");
-    }
-
-    if (!b_ret) {
-        PS_PRINT_INFO("======device bcpu ram reg test success!\n");
-    } else {
-        ret = b_ret;
-        PS_PRINT_INFO("======device bcpu ram reg test failed!\n");
-    }
-
-exit_error:
-    memcheck_bfgx_exit();
-    board_power_off(WLAN_POWER);
-    return ret;
-}
-
-EXPORT_SYMBOL(device_mem_check);
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-/*
- * Prototype    : pm_uart_send
- * Description  : uart patch transmit function
- * Input        : uint8 *date: address of data
- *                int32 len: length of data
- * Return       : length which has been sent
- */
-int32 pm_uart_send(uint8 *data, int32 len)
-{
-    uint16 count = 0;
-
-    struct pm_drv_data *pm_data = pm_get_drvdata();
-    if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
-        return -1;
-    }
-
-    /* call interface supplied by 3 in 1 */
-    if (pm_data->ps_pm_interface->write_patch == NULL) {
-        PS_PRINT_ERR("bfg_write_patch is NULL!\n");
-        return -1;
-    }
-
-    while (1) {
-        /* this function return the length has been sent */
-        count = pm_data->ps_pm_interface->write_patch(data, len);
-        /* data has been sent over and return */
-        if (count == len) {
-            return len;
-        }
-
-        /* data has not been sent over, we will send again */
-        data = data + count;
-        len = len - count;
-        msleep(1);
-    }
-}
-
-/*
- * Prototype    : bfg_patch_download_function
- * Description  : download bfg patch
- * Return       : 0 means succeed,-1 means failed
- */
-int bfg_patch_download_function(void)
-{
-    int32 ret;
-    int32 counter = 0;
-    const uint32 loop_times = 3;
-    ktime_t start_time, end_time, trans_time;
-    static unsigned long long max_time = 0;
-    static unsigned long long count = 0;
-    unsigned long long total_time = 0;
-    struct ps_core_s *ps_core_d = NULL;
-    struct pm_drv_data *pm_data = pm_get_drvdata();
-    if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
-        return -1;
-    }
-
-    ps_get_core_reference(&ps_core_d);
-    if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is err\n");
-        return -1;
-    }
-
-    PS_PRINT_DBG("enter\n");
-    start_time = ktime_get();
-
-    /* patch_init(uart) function should just be called once */
-    ret = patch_init(ENUM_INFO_UART);
-    if (ret) {
-        PS_PRINT_ERR("patch modem init failed, ret:%d!\n", ret);
+        ps_print_err("Memory check failed because the firmware fails to be downloaded. ret=%d\n", ret);
+        board_power_off(WLAN_POWER);
         return ret;
     }
 
-    /* bfg patch download, three times for fail */
-    for (counter = 0; counter < loop_times; counter++) {
-        ps_uart_state_pre(ps_core_d->tty);
-        ret = patch_download_patch(ENUM_INFO_UART);
-        if (ret) {
-            PS_PRINT_ERR("bfg patch download fail, and reset power!\n");
-            ps_uart_state_dump(ps_core_d->tty);
-        } else {
-            end_time = ktime_get();
-            trans_time = ktime_sub(end_time, start_time);
-            total_time = (unsigned long long)ktime_to_us(trans_time);
-            if (total_time > max_time) {
-                max_time = total_time;
-            }
+    board_power_off(WLAN_POWER);
+    return SUCCESS;
+}
 
-            PS_PRINT_WARNING("download bfg patch succ,count [%llu], current time [%llu]us, max time [%llu]us\n",
-                             count, total_time, max_time);
-            /* download patch successfully */
-            return ret;
-        }
+static int32 device_mem_check_bcpu(void)
+{
+    int32 ret;
+    uint8 *file_name = WIFI_DUMP_PATH "/readm_bfgx";
+
+    board_power_on(WLAN_POWER);
+
+    g_pilot_cfg_patch_in_vendor[RAM_REG_TEST_CFG] = RAM_BCPU_CHECK_CFG_HI1102A_PILOT_PATH;
+    ret = firmware_get_cfg(g_cfg_path[RAM_REG_TEST_CFG], RAM_REG_TEST_CFG);
+    if (ret) {
+        ps_print_info("ini analysis fail!\n");
+        board_power_off(WLAN_POWER);
+        return -FAILURE;
     }
 
-    /* going to exception */
-    PS_PRINT_ERR("bfg patch download has failed finally!\n");
-    return ret;
+    memcheck_bfgx_init();
+
+    ret = firmware_download_function(RAM_BCPU_REG_TEST_CFG);
+    g_pilot_cfg_patch_in_vendor[RAM_REG_TEST_CFG] = RAM_CHECK_CFG_HI1102A_PILOT_PATH;
+    if (ret == SUCCESS) {
+        /* 等待device信息处理 */
+        mdelay(g_bfgx_mem_check_mdelay);
+        ret = is_device_mem_test_succ();
+        get_device_test_mem(file_name);
+        if (ret) {
+            memcheck_bfgx_exit();
+            board_power_off(WLAN_POWER);
+            return -FAILURE;
+        }
+    } else {
+        ps_print_err("Memory check failed because the firmware fails to be downloaded. ret=%d\n", ret);
+        board_power_off(WLAN_POWER);
+        return ret;
+    }
+
+    firmware_get_cfg(g_cfg_path[RAM_REG_TEST_CFG], RAM_REG_TEST_CFG);
+
+    memcheck_bfgx_exit();
+    board_power_off(WLAN_POWER);
+    return SUCCESS;
 }
-#endif
+
+int32 device_mem_check(unsigned long long *time)
+{
+    int32 ret;
+    unsigned long long total_time;
+    ktime_t start_time, end_time, trans_time;
+
+    ps_print_info("device ram reg test!\n");
+    ret = device_mem_check_prepare(time);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+
+    start_time = ktime_get();
+
+    ps_print_info("===================start wcpu ram reg test!\n");
+    ret = device_mem_check_wcpu();
+    if (ret == SUCCESS) {
+        ps_print_info("======device wcpu ram reg test success!\n");
+    } else {
+        ps_print_info("==device wcpu ram reg test failed!\n");
+        return ret;
+    }
+
+    ps_print_info("===================start bcpu ram reg test!\n");
+    ret = device_mem_check_bcpu();
+    if (ret == SUCCESS) {
+        ps_print_info("======device bcpu ram reg test success!\n");
+    } else {
+        ps_print_info("==device bcpu ram reg test failed!\n");
+        return ret;
+    }
+
+    end_time = ktime_get();
+    trans_time = ktime_sub(end_time, start_time);
+    total_time = (unsigned long long)ktime_to_us(trans_time);
+    *time = total_time;
+    ps_print_suc("device mem reg test time [%llu]us\n", total_time);
+
+    return SUCCESS;
+}
+
+EXPORT_SYMBOL(device_mem_check);
+
 /*
  * Prototype    : ps_pm_register
  * Description  : register interface for 3 in 1
@@ -2037,12 +1951,12 @@ int32 ps_pm_register(struct ps_pm_s *new_pm)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL\n");
+        ps_print_err("pm_data is NULL\n");
         return -FAILURE;
     }
 
     if (new_pm == NULL) {
-        PS_PRINT_ERR("new_pm is null!\n");
+        ps_print_err("new_pm is null!\n");
         return -FAILURE;
     }
 
@@ -2055,12 +1969,8 @@ int32 ps_pm_register(struct ps_pm_s *new_pm)
     pm_data->ps_pm_interface->bfg_power_set = bfgx_dev_power_control;
     pm_data->ps_pm_interface->bfgx_uart_state_get = bfgx_uart_state_get;
     pm_data->ps_pm_interface->bfgx_uart_state_set = bfgx_uart_state_set;
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-    pm_data->ps_pm_interface->download_patch = bfg_patch_download_function;
-    pm_data->ps_pm_interface->recv_patch = bfg_patch_recv;
-    pm_data->ps_pm_interface->write_patch = ps_patch_write;
-#endif
-    PS_PRINT_SUC("pm registered over!");
+
+    ps_print_suc("pm registered over!");
 
     return SUCCESS;
 }
@@ -2076,14 +1986,14 @@ int32 ps_pm_unregister(struct ps_pm_s *new_pm)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL\n");
+        ps_print_err("pm_data is NULL\n");
         return -FAILURE;
     }
 
-    PS_PRINT_DBG("enter\n");
+    ps_print_dbg("enter\n");
 
     if (new_pm == NULL) {
-        PS_PRINT_ERR("new_pm is null!\n");
+        ps_print_err("new_pm is null!\n");
         return -FAILURE;
     }
 
@@ -2096,7 +2006,7 @@ int32 ps_pm_unregister(struct ps_pm_s *new_pm)
     new_pm->bfgx_uart_state_get = NULL;
     pm_data->ps_pm_interface = NULL;
 
-    PS_PRINT_SUC("pm unregistered over!");
+    ps_print_suc("pm unregistered over!");
 
     return SUCCESS;
 }
@@ -2115,11 +2025,11 @@ irqreturn_t bfg_wake_host_isr(int irq, void *dev_id)
         return IRQ_NONE;
     }
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return IRQ_NONE;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
     spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
     if (pm_data->uart_state >= UART_BPS_CHG_SEND_ACK) {
         if (pm_data->uart_state == UART_BPS_CHG_SEND_ACK) {
@@ -2135,11 +2045,11 @@ irqreturn_t bfg_wake_host_isr(int irq, void *dev_id)
 
     pm_data->bfg_wakeup_host++;
 
-    uc_wakeup_src_debug = 1;
+    g_wakeup_src_debug = 1;
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is null\n");
+        ps_print_err("ps_core_d is null\n");
         return IRQ_NONE;
     }
 
@@ -2159,7 +2069,7 @@ oal_int32 hi110x_get_wifi_power_stat(oal_void)
 {
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return 0;
     }
     return (pm_data->pst_wlan_pm_info->ul_wlan_power_state != POWER_STATE_SHUTDOWN);
@@ -2168,10 +2078,9 @@ EXPORT_SYMBOL(hi110x_get_wifi_power_stat);
 
 STATIC int low_power_remove(void)
 {
-    int ret = 0;
     struct pm_drv_data *pm_data = pm_get_drvdata();
     if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -FAILURE;
     }
 
@@ -2196,7 +2105,7 @@ STATIC int low_power_remove(void)
 
     pm_set_drvdata(NULL);
 
-    return ret;
+    return 0;
 }
 
 STATIC void devack_timer_expire(uint64 data)
@@ -2204,22 +2113,22 @@ STATIC void devack_timer_expire(uint64 data)
     uint64 flags;
     struct pm_drv_data *pm_data = (struct pm_drv_data *)(uintptr_t)data;
     if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("devack timer para is null\n");
+        ps_print_err("devack timer para is null\n");
         return;
     }
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     if (board_get_bwkup_gpio_val() == 1) {
         pm_data->uc_dev_ack_wait_cnt++;
         if (WAIT_DEVACK_CNT > pm_data->uc_dev_ack_wait_cnt) {
-            mod_timer(&pm_data->dev_ack_timer, jiffies + (WAIT_DEVACK_MSEC * HZ / 1000));
+            mod_timer(&pm_data->dev_ack_timer, jiffies + oal_msecs_to_jiffies(WAIT_DEVACK_MSEC));
             return;
         }
         /* device doesn't agree to sleep */
-        PS_PRINT_INFO("device does not agree to sleep\n");
+        ps_print_info("device does not agree to sleep\n");
         if (unlikely(pm_data->rcvdata_bef_devack_flag == 1)) {
-            PS_PRINT_INFO("device send data to host before dev rcv allow slp msg\n");
+            ps_print_info("device send data to host before dev rcv allow slp msg\n");
             pm_data->rcvdata_bef_devack_flag = 0;
         }
 
@@ -2230,7 +2139,7 @@ STATIC void devack_timer_expire(uint64 data)
          * in exception case like:dev agree to slp after this ack timer expired
          */
         if (!bfgx_other_subsys_all_shutdown(BFGX_GNSS)) {
-            mod_timer(&pm_data->bfg_timer, jiffies + (BT_SLEEP_TIME * HZ / 1000));
+            mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(BT_SLEEP_TIME));
             pm_data->bfg_timer_mod_cnt++;
         }
 
@@ -2238,7 +2147,7 @@ STATIC void devack_timer_expire(uint64 data)
     } else {
         spin_lock_irqsave(&pm_data->wakelock_protect_spinlock, flags);
         if (pm_data->bfgx_dev_state == BFGX_ACTIVE) {
-            PS_PRINT_INFO("wkup isr occur during wait for dev allow ack\n");
+            ps_print_info("wkup isr occur during wait for dev allow ack\n");
         } else {
             pm_data->ps_pm_interface->operate_beat_timer(BEAT_TIMER_DELETE);
             bfg_wake_unlock();
@@ -2251,42 +2160,9 @@ STATIC void devack_timer_expire(uint64 data)
     }
 }
 
-STATIC int low_power_probe(void)
+STATIC int32_t low_power_irq_init(struct pm_drv_data *pm_data)
 {
-    int ret;
-    struct pm_drv_data *pm_data = NULL;
-    struct workqueue_struct *host_wkup_dev_workq = NULL;
-
-    pm_data = kzalloc(sizeof(struct pm_drv_data), GFP_KERNEL);
-    if (pm_data == NULL) {
-        PS_PRINT_ERR("no mem to allocate pm_data\n");
-        goto PMDATA_MALLOC_FAIL;
-    }
-
-    pm_data->pst_wlan_pm_info = wlan_pm_init();
-    if (pm_data->pst_wlan_pm_info == 0) {
-        PS_PRINT_ERR("no mem to allocate wlan_pm_info\n");
-        goto WLAN_INIT_FAIL;
-    }
-
-    /* FPGA版本支持2M，动态修改 */
-    if (!isAsic()) {
-        default_baud_rate = LOW_FREQ_BAUD_RATE;
-    }
-    PS_PRINT_INFO("init baudrate=%d\n", default_baud_rate);
-
-    pm_data->firmware_cfg_init_flag = 0;
-    pm_data->rcvdata_bef_devack_flag = 0;
-    pm_data->bfgx_dev_state = BFGX_SLEEP;
-    pm_data->bfgx_pm_ctrl_enable = BFGX_PM_DISABLE;
-    pm_data->bfgx_lowpower_enable = BFGX_PM_ENABLE; /* enable host low_power function defaultly */
-
-    pm_data->bfgx_bt_lowpower_enable = BFGX_PM_ENABLE;
-    pm_data->bfgx_gnss_lowpower_enable = BFGX_PM_DISABLE;
-    pm_data->bfgx_nfc_lowpower_enable = BFGX_PM_DISABLE;
-
-    atomic_set(&pm_data->gnss_sleep_flag, GNSS_AGREE_SLEEP);
-    atomic_set(&pm_data->bfg_needwait_devboot_flag, NEED_SET_FLAG);
+    int32_t ret;
 
     spin_lock_init(&pm_data->bfg_irq_spinlock);
     pm_data->board = get_hi110x_board_info();
@@ -2300,18 +2176,25 @@ STATIC int low_power_probe(void)
                       "bfgx_wake_host", NULL);
 #endif
     if (ret < 0) {
-        PS_PRINT_ERR("couldn't acquire %s IRQ\n", PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
-        goto REQ_IRQ_FAIL;
+        ps_print_err("couldn't acquire %s IRQ\n", PROC_NAME_GPIO_BFGX_WAKEUP_HOST);
+        return OAL_FAIL;
     }
 
     disable_irq_nosync(pm_data->bfg_irq);
     pm_data->ul_irq_stat = 1; /* irq diabled default. */
 
+    return OAL_SUCC;
+}
+
+STATIC int32_t low_power_workq_init(struct pm_drv_data *pm_data)
+{
+    struct workqueue_struct *host_wkup_dev_workq = NULL;
+
     /* create an ordered workqueue with @max_active = 1 & WQ_UNBOUND flag to wake up device */
     host_wkup_dev_workq = create_singlethread_workqueue("wkup_dev_workqueue");
-    if (!host_wkup_dev_workq) {
-        PS_PRINT_ERR("create wkup workqueue failed\n");
-        goto CREATE_WORKQ_FAIL;
+    if (host_wkup_dev_workq == NULL) {
+        ps_print_err("create wkup workqueue failed\n");
+        return OAL_FAIL;
     }
     pm_data->wkup_dev_workqueue = host_wkup_dev_workq;
     INIT_WORK(&pm_data->wkup_dev_work, host_wkup_dev_work);
@@ -2330,8 +2213,16 @@ STATIC int low_power_probe(void)
     spin_lock_init(&pm_data->uart_state_spinlock);
     spin_lock_init(&pm_data->wakelock_protect_spinlock);
 
-    pm_data->uart_state = UART_NOT_READY;
-    pm_data->uart_baud_switch_to = default_baud_rate;
+    /* init completion */
+    init_completion(&pm_data->host_wkup_dev_comp);
+    init_completion(&pm_data->dev_ack_comp);
+    init_completion(&pm_data->dev_bootok_ack_comp);
+
+    return OAL_SUCC;
+}
+
+STATIC void low_power_probe_timer_init(struct pm_drv_data *pm_data)
+{
     /* init timer */
     init_timer(&pm_data->dev_ack_timer);
     pm_data->dev_ack_timer.function = devack_timer_expire;
@@ -2348,23 +2239,62 @@ STATIC int low_power_probe(void)
     pm_data->rx_pkt_gnss_pre = 0;
     pm_data->gnss_votesleep_check_cnt = 0;
 
-    PS_PRINT_INFO("uart baud change support version\n");
+    ps_print_info("uart baud change support version\n");
     init_timer(&pm_data->baud_change_timer);
     pm_data->baud_change_timer.function = bfgx_uart_baud_change_expire;
     pm_data->baud_change_timer.data = (uintptr_t)pm_data;
+}
 
-    /* init completion */
-    init_completion(&pm_data->host_wkup_dev_comp);
-    init_completion(&pm_data->dev_ack_comp);
-    init_completion(&pm_data->dev_bootok_ack_comp);
+STATIC int32_t low_power_probe(void)
+{
+    int32_t ret;
+    struct pm_drv_data *pm_data = NULL;
+
+    pm_data = kzalloc(sizeof(struct pm_drv_data), GFP_KERNEL);
+    if (pm_data == NULL) {
+        ps_print_err("no mem to allocate pm_data\n");
+        goto PMDATA_MALLOC_FAIL;
+    }
+
+    pm_data->pst_wlan_pm_info = wlan_pm_init();
+    if (pm_data->pst_wlan_pm_info == 0) {
+        ps_print_err("wlan pm init failed!\n");
+        goto WLAN_INIT_FAIL;
+    }
+
+    pm_data->firmware_cfg_init_flag = 0;
+    pm_data->rcvdata_bef_devack_flag = 0;
+    pm_data->bfgx_dev_state = BFGX_SLEEP;
+    pm_data->bfgx_pm_ctrl_enable = BFGX_PM_DISABLE;
+    pm_data->bfgx_lowpower_enable = BFGX_PM_ENABLE; /* enable host low_power function defaultly */
+
+    pm_data->bfgx_bt_lowpower_enable = BFGX_PM_ENABLE;
+    pm_data->bfgx_gnss_lowpower_enable = BFGX_PM_DISABLE;
+    pm_data->bfgx_nfc_lowpower_enable = BFGX_PM_DISABLE;
+
+    atomic_set(&pm_data->gnss_sleep_flag, GNSS_AGREE_SLEEP);
+    atomic_set(&pm_data->bfg_needwait_devboot_flag, NEED_SET_FLAG);
+
+    pm_data->uart_state = UART_NOT_READY;
+    pm_data->uart_baud_switch_to = g_default_baud_rate;
+
+    if (low_power_irq_init(pm_data) != OAL_SUCC) {
+        goto REQ_IRQ_FAIL;
+    }
+
+    if (low_power_workq_init(pm_data) != OAL_SUCC) {
+        goto CREATE_WORKQ_FAIL;
+    }
+
+    low_power_probe_timer_init(pm_data);
 
     /* set driver data */
     pm_set_drvdata(pm_data);
 
     /* register host pm */
-    ret = register_pm_notifier(&pf_suspend_notifier);
+    ret = register_pm_notifier(&g_pf_suspend_notifier);
     if (ret < 0) {
-        PS_PRINT_ERR("%s : register_pm_notifier failed!\n", __func__);
+        ps_print_warning("%s : register_pm_notifier failed, ret = %d\n", __func__, ret);
     }
 
     return OAL_SUCC;
@@ -2372,7 +2302,6 @@ STATIC int low_power_probe(void)
 CREATE_WORKQ_FAIL:
     free_irq(pm_data->bfg_irq, NULL);
 REQ_IRQ_FAIL:
-
 WLAN_INIT_FAIL:
     kfree(pm_data);
 PMDATA_MALLOC_FAIL:
@@ -2385,10 +2314,10 @@ int low_power_init(void)
 
     ret = low_power_probe();
     if (ret != SUCCESS) {
-        PS_PRINT_ERR("low_power_init: low_power_probe fail\n");
+        ps_print_err("low_power_init: low_power_probe fail\n");
     }
 
-    PS_PRINT_INFO("low_power_init: success\n");
+    ps_print_info("low_power_init: success\n");
     return ret;
 }
 
@@ -2400,16 +2329,16 @@ void low_power_exit(void)
 
 #ifdef CONFIG_HI110X_GPS_SYNC
 #define GNSS_SYNC_IOREMAP_SIZE 0x1000
-struct gnss_sync_data *gnss_sync_data_t = NULL;
+struct gnss_sync_data *g_gnss_sync_data_t = NULL;
 
 struct gnss_sync_data *gnss_get_sync_data(void)
 {
-    return gnss_sync_data_t;
+    return g_gnss_sync_data_t;
 }
 
 static void gnss_set_sync_data(struct gnss_sync_data *data)
 {
-    gnss_sync_data_t = data;
+    g_gnss_sync_data_t = data;
 }
 
 static int gnss_sync_probe(struct platform_device *pdev)
@@ -2420,22 +2349,22 @@ static int gnss_sync_probe(struct platform_device *pdev)
     int32 ret;
     uint32 version = 0;
 
-    PS_PRINT_INFO("[GPS] gnss sync probe start\n");
+    ps_print_info("[GPS] gnss sync probe start\n");
 
     ret = of_property_read_u32(np, "version", &version);
     if (ret != SUCCESS) {
-        PS_PRINT_ERR("[GPS] get gnss sync version failed!\n");
+        ps_print_err("[GPS] get gnss sync version failed!\n");
         return -FAILURE;
     }
 
-    PS_PRINT_INFO("[GPS] gnss sync version %d\n", version);
+    ps_print_info("[GPS] gnss sync version %d\n", version);
     if (version == 0) {
         return SUCCESS;
     }
 
     sync_info = kzalloc(sizeof(struct gnss_sync_data), GFP_KERNEL);
     if (sync_info == NULL) {
-        PS_PRINT_ERR("[GPS] alloc memory failed\n");
+        ps_print_err("[GPS] alloc memory failed\n");
         return -ENOMEM;
     }
 
@@ -2443,26 +2372,26 @@ static int gnss_sync_probe(struct platform_device *pdev)
 
     ret = of_property_read_u32(np, "addr_base", &addr_base);
     if (ret != SUCCESS) {
-        PS_PRINT_ERR("[GPS] get gnss sync reg base failed!\n");
+        ps_print_err("[GPS] get gnss sync reg base failed!\n");
         ret = -FAILURE;
         goto sync_get_resource_fail;
     }
 
     sync_info->addr_base_virt = ioremap(addr_base, GNSS_SYNC_IOREMAP_SIZE);
     if (sync_info->addr_base_virt == NULL) {
-        PS_PRINT_ERR("[GPS] gnss sync reg ioremap failed!\n");
+        ps_print_err("[GPS] gnss sync reg ioremap failed!\n");
         ret = -ENOMEM;
         goto sync_get_resource_fail;
     }
 
     ret = of_property_read_u32(np, "addr_offset", &sync_info->addr_offset);
     if (ret != SUCCESS) {
-        PS_PRINT_ERR("[GPS] get gnss sync reg offset failed!\n");
+        ps_print_err("[GPS] get gnss sync reg offset failed!\n");
         ret = -FAILURE;
         goto sync_get_resource_fail;
     }
 
-    PS_PRINT_INFO("[GPS] gnss sync probe is finished!\n");
+    ps_print_info("[GPS] gnss sync probe is finished!\n");
 
     gnss_set_sync_data(sync_info);
 
@@ -2477,10 +2406,10 @@ sync_get_resource_fail:
 static void gnss_sync_shutdown(struct platform_device *pdev)
 {
     struct gnss_sync_data *sync_info = gnss_get_sync_data();
-    PS_PRINT_INFO("[GPS] gnss sync shutdown!\n");
+    ps_print_info("[GPS] gnss sync shutdown!\n");
 
     if (sync_info == NULL) {
-        PS_PRINT_ERR("[GPS] gnss sync info is NULL.\n");
+        ps_print_err("[GPS] gnss sync info is NULL.\n");
         return;
     }
 
@@ -2491,7 +2420,7 @@ static void gnss_sync_shutdown(struct platform_device *pdev)
 
 #define DTS_COMP_GNSS_SYNC_NAME "hisilicon,hisi_gps_sync"
 
-static const struct of_device_id gnss_sync_match_table[] = {
+static const struct of_device_id g_gnss_sync_match_table[] = {
     {
         .compatible = DTS_COMP_GNSS_SYNC_NAME,  // compatible must match with which defined in dts
         .data = NULL,
@@ -2499,7 +2428,7 @@ static const struct of_device_id gnss_sync_match_table[] = {
     {},
 };
 
-static struct platform_driver gnss_sync_driver = {
+static struct platform_driver g_gnss_sync_driver = {
     .probe = gnss_sync_probe,
     .suspend = NULL,
     .remove = NULL,
@@ -2507,25 +2436,25 @@ static struct platform_driver gnss_sync_driver = {
     .driver = {
         .name = "hisi_gps_sync",
         .owner = THIS_MODULE,
-        .of_match_table = of_match_ptr(gnss_sync_match_table),  // dts required code
+        .of_match_table = of_match_ptr(g_gnss_sync_match_table),  // dts required code
     },
 };
 
 int gnss_sync_init(void)
 {
     int ret;
-    ret = platform_driver_register(&gnss_sync_driver);
+    ret = platform_driver_register(&g_gnss_sync_driver);
     if (ret) {
-        PS_PRINT_ERR("[GPS] unable to register gnss sync driver!\n");
+        ps_print_err("[GPS] unable to register gnss sync driver!\n");
     } else {
-        PS_PRINT_INFO("[GPS] gnss sync init ok!\n");
+        ps_print_info("[GPS] gnss sync init ok!\n");
     }
     return ret;
 }
 
 void gnss_sync_exit(void)
 {
-    platform_driver_unregister(&gnss_sync_driver);
+    platform_driver_unregister(&g_gnss_sync_driver);
 }
 #endif
 

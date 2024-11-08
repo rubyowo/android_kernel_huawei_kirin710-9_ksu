@@ -42,12 +42,12 @@
 
 /* 获取CORE ID */
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-#define OAL_GET_CORE_ID() 0
+#define oal_get_core_id() 0
 #else /* 非offload架构 */
 #ifdef _PRE_WLAN_FEATURE_SMP_SUPPORT
-#define OAL_GET_CORE_ID() smp_processor_id()
+#define oal_get_core_id() smp_processor_id()
 #else
-#define OAL_GET_CORE_ID() 0 /* 主要给E5平台使用 */
+#define oal_get_core_id() 0 /* 主要给E5平台使用 */
 #endif
 #endif
 
@@ -57,22 +57,19 @@ typedef struct file oal_file_stru;
 typedef loff_t oal_file_pos;
 #define OAL_FILE_FAIL OAL_PTR_NULL
 
-#define OAL_LIKELY(_expr)   likely(_expr)
-#define OAL_UNLIKELY(_expr) unlikely(_expr)
+#define oal_likely(_expr)   likely(_expr)
+#define oal_unlikely(_expr) unlikely(_expr)
 #define OAL_FUNC_NAME       __func__
 #define OAL_RET_ADDR        ((uintptr_t)__builtin_return_address(0))
 
-/* 将几个字符串按照指定格式合成一个字符串 */
-#define OAL_SPRINTF snprintf
-
 /* 内存读屏障 */
-#define OAL_RMB() rmb()
+#define oal_rmb() rmb()
 
 /* 内存写屏障 */
-#define OAL_WMB() wmb()
+#define oal_wmb() wmb()
 
 /* 内存屏障 */
-#define OAL_MB() mb()
+#define oal_mb() mb()
 
 #define OAL_OFFSET_OF offsetof
 
@@ -87,30 +84,30 @@ typedef loff_t oal_file_pos;
     } while (0)
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 /* bug on not allow to use */
-#define OAL_BUG_ON(_con) OAL_BUILD_BUG_ON(1)
+#define oal_bug_on(_con) oal_build_bug_on(1)
 #else
-#define OAL_BUG_ON(_con) BUG_ON(_con)
+#define oal_bug_on(_con) BUG_ON(_con)
 #endif
-#define OAL_WARN_ON(condition) WARN_ON(condition)
+#define oal_warn_on(condition) WARN_ON(condition)
 
 /* E5平台描述符用，注意，host侧平台不同，MEM_BASE_ADDR需要修改 */
 #if (_PRE_TARGET_PRODUCT_TYPE_E5 == _PRE_CONFIG_TARGET_PRODUCT)
-extern oal_uint32 gul_dscr_fstvirt_addr;
-extern oal_uint32 gul_dscr_fstphy_addr;
+extern oal_uint32 g_gul_dscr_fstvirt_addr;
+extern oal_uint32 g_gul_dscr_fstphy_addr;
 
 #ifdef _PRE_E5_750_PLATFORM
 #define OAL_PLAT_MEM_BASE_ADDR 0x40000000
 #else
 #define OAL_PLAT_MEM_BASE_ADDR 0xA0000000
 #endif
-#define OAL_DSCR_VIRT_TO_PHY(_virt_addr) \
-        (((oal_uint)(_virt_addr) - (gul_dscr_fstvirt_addr)) + (gul_dscr_fstphy_addr)-OAL_PLAT_MEM_BASE_ADDR)
-#define OAL_DSCR_PHY_TO_VIRT(_phy_addr)  \
-        (((oal_uint)(_phy_addr) + OAL_PLAT_MEM_BASE_ADDR) - (gul_dscr_fstphy_addr) + (gul_dscr_fstvirt_addr))
+#define oal_dscr_virt_to_phy(_virt_addr) \
+        (((oal_uint)(_virt_addr) - (g_gul_dscr_fstvirt_addr)) + (g_gul_dscr_fstphy_addr)-OAL_PLAT_MEM_BASE_ADDR)
+#define oal_dscr_phy_to_virt(_phy_addr)  \
+        (((oal_uint)(_phy_addr) + OAL_PLAT_MEM_BASE_ADDR) - (g_gul_dscr_fstphy_addr) + (g_gul_dscr_fstvirt_addr))
 
 #elif (_PRE_TARGET_PRODUCT_TYPE_CPE == _PRE_CONFIG_TARGET_PRODUCT)
-extern oal_uint32 gul_dscr_fstvirt_addr;
-extern oal_uint32 gul_dscr_fstphy_addr;
+extern oal_uint32 g_gul_dscr_fstvirt_addr;
+extern oal_uint32 g_gul_dscr_fstphy_addr;
 
 #ifdef _PRE_CPE_711_PLATFORM
 #define OAL_PLAT_MEM_BASE_ADDR 0x15E00000 /* DDR起始地址0xA0000000 - V200芯片物理地址偏移0x40000000 */
@@ -118,30 +115,25 @@ extern oal_uint32 gul_dscr_fstphy_addr;
 #define OAL_PLAT_MEM_BASE_ADDR 0x60000000 /* DDR起始地址0x55E00000 - V200芯片物理地址偏移0x40000000 */
 #endif
 
-#define OAL_DSCR_VIRT_TO_PHY(_virt_addr) \
-        (((oal_uint)(_virt_addr) - (gul_dscr_fstvirt_addr)) + (gul_dscr_fstphy_addr)-OAL_PLAT_MEM_BASE_ADDR)
-#define OAL_DSCR_PHY_TO_VIRT(_phy_addr)  \
-        (((oal_uint)(_phy_addr) + OAL_PLAT_MEM_BASE_ADDR) - (gul_dscr_fstphy_addr) + (gul_dscr_fstvirt_addr))
+#define oal_dscr_virt_to_phy(_virt_addr) \
+        (((oal_uint)(_virt_addr) - (g_gul_dscr_fstvirt_addr)) + (g_gul_dscr_fstphy_addr)-OAL_PLAT_MEM_BASE_ADDR)
+#define oal_dscr_phy_to_virt(_phy_addr)  \
+        (((oal_uint)(_phy_addr) + OAL_PLAT_MEM_BASE_ADDR) - (g_gul_dscr_fstphy_addr) + (g_gul_dscr_fstvirt_addr))
 
-#else
-
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-#define OAL_PLAT_MEM_BASE_ADDR 0x40000000
 #else
 #define OAL_PLAT_MEM_BASE_ADDR 0x80000000
-#endif
 
-#define OAL_DSCR_VIRT_TO_PHY(_virt_addr) (virt_to_phys(_virt_addr) - OAL_PLAT_MEM_BASE_ADDR)
-#define OAL_DSCR_PHY_TO_VIRT(_phy_addr)  phys_to_virt((_phy_addr) + OAL_PLAT_MEM_BASE_ADDR)
+#define oal_dscr_virt_to_phy(_virt_addr) (virt_to_phys(_virt_addr) - OAL_PLAT_MEM_BASE_ADDR)
+#define oal_dscr_phy_to_virt(_phy_addr)  phys_to_virt((_phy_addr) + OAL_PLAT_MEM_BASE_ADDR)
 #endif
 
 /* 物理地址和虚拟地址之间的转换,作为netbuf用 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 38))
-#define OAL_VIRT_TO_PHY_ADDR(_virt_addr) (virt_to_phys((const volatile void *)(_virt_addr)) - OAL_PLAT_MEM_BASE_ADDR)
+#define oal_virt_to_phy_addr(_virt_addr) (virt_to_phys((const volatile void *)(_virt_addr)) - OAL_PLAT_MEM_BASE_ADDR)
 #else
-#define OAL_VIRT_TO_PHY_ADDR(_virt_addr) (virt_to_phys((void *)(_virt_addr)) - OAL_PLAT_MEM_BASE_ADDR)
+#define oal_virt_to_phy_addr(_virt_addr) (virt_to_phys((void *)(_virt_addr)) - OAL_PLAT_MEM_BASE_ADDR)
 #endif
-#define OAL_PHY_TO_VIRT_ADDR(_phy_addr) phys_to_virt((_phy_addr) + OAL_PLAT_MEM_BASE_ADDR)
+#define oal_phy_to_virt_addr(_phy_addr) phys_to_virt((_phy_addr) + OAL_PLAT_MEM_BASE_ADDR)
 
 #define OAL_CFG_FILE_PATH ("/tmp/1151_cfg.ini")
 
@@ -176,8 +168,6 @@ typedef struct kobject oal_kobject;
         time_cost_var_sub(name) = (oal_uint64)ktime_to_us(ktime_sub(time_cost_var_end(name), \
                                                                     time_cost_var_start(name)))
 
-/* #define random_ether_addr(addr) eth_random_addr(addr) */
-/* static inline void eth_random_addr(u8 *addr) */
 static OAL_INLINE void oal_random_ether_addr(oal_uint8 *addr)
 {
     random_ether_addr(addr);
@@ -283,8 +273,8 @@ OAL_STATIC OAL_INLINE oal_file_stru *oal_file_open_append(const oal_int8 *pc_pat
     oal_file_stru *file = NULL;
     mm_segment_t fs;
 
-    if (OAL_UNLIKELY(pc_path == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pc_path == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -310,8 +300,8 @@ OAL_STATIC OAL_INLINE oal_file_stru *oal_file_open_readonly(const oal_int8 *pc_p
     oal_file_stru *file = NULL;
     mm_segment_t fs;
 
-    if (OAL_UNLIKELY(pc_path == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pc_path == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -339,8 +329,8 @@ OAL_STATIC OAL_INLINE oal_file_stru *oal_file_write(oal_file_stru *file, oal_int
     oal_int i_ret;
     mm_segment_t fs;
 
-    if (OAL_UNLIKELY((file == NULL) || (pc_string == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((file == NULL) || (pc_string == NULL))) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -363,8 +353,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_file_close(oal_file_stru *file)
     int ret;
     mm_segment_t fs;
 
-    if (OAL_UNLIKELY(file == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(file == NULL)) {
+        oal_warn_on(1);
         return OAL_ERR_CODE_CLOSE_FILE_FAIL;
     }
     fs = get_fs();
@@ -393,8 +383,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_file_read(oal_file_stru *file,
     loff_t pos = 0;
 #endif
 
-    if (OAL_UNLIKELY((file == NULL) || (pc_buf == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((file == NULL) || (pc_buf == NULL))) {
+        oal_warn_on(1);
         return -OAL_ERR_CODE_READ_FILE_FAIL;
     }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
@@ -409,8 +399,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_file_read_ext(oal_file_stru *file,
                                                   oal_int8 *pc_buf,
                                                   oal_uint32 ul_count)
 {
-    if (OAL_UNLIKELY((file == NULL) || (pc_buf == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((file == NULL) || (pc_buf == NULL))) {
+        oal_warn_on(1);
         return -OAL_ERR_CODE_READ_FILE_FAIL;
     }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
@@ -428,8 +418,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_file_size(oal_uint32 *pul_file_size)
 {
     oal_file_stru *p_file = NULL;
 
-    if (OAL_UNLIKELY(pul_file_size == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pul_file_size == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -458,8 +448,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_atoi(const oal_int8 *c_string)
     oal_uint8       uc_sign;
     oal_int32       l_result = 0;
 
-    if (OAL_UNLIKELY(c_string == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(c_string == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -488,7 +478,6 @@ OAL_STATIC OAL_INLINE oal_int32 oal_atoi(const oal_int8 *c_string)
     }
 
     return (uc_sign == 0) ? l_result : (-l_result);
-
 }
 
 /*
@@ -497,8 +486,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_atoi(const oal_int8 *c_string)
  */
 OAL_STATIC OAL_INLINE oal_void oal_itoa(oal_int32 l_val, oal_int8 *c_string, oal_uint8 uc_strlen)
 {
-    if (OAL_UNLIKELY(c_string == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(c_string == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -518,8 +507,8 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strtok(const char *pc_token, OAL_CONST oal_i
 
     static oal_uint8 *pc_nextoken;
 
-    if (OAL_UNLIKELY(pc_delemit == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pc_delemit == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -538,7 +527,7 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strtok(const char *pc_token, OAL_CONST oal_i
      * pointer (i.e., continue breaking tokens out of the string
      * from the last strtok call)
      */
-    if (pc_token) {
+    if (pc_token != NULL) {
         pc_str = (oal_uint8 *)pc_token;
     } else {
         pc_str = pc_nextoken;
@@ -575,7 +564,7 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strtok(const char *pc_token, OAL_CONST oal_i
 }
 
 /* Works only for digits and letters, but small and fast */
-#define TOLOWER(c) (((unsigned char)(c)) | 0x20)
+#define tolower(c) (((unsigned char)(c)) | 0x20)
 
 #define isdigit(c) ('0' <= (c) && (c) <= '9')
 
@@ -600,7 +589,7 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strtok(const char *pc_token, OAL_CONST oal_i
 OAL_STATIC OAL_INLINE unsigned int simple_guess_base(const char *cp)
 {
     if (cp[0] == '0') {
-        if (TOLOWER(cp[1]) == 'x' && isxdigit(cp[2])) {
+        if (tolower(cp[1]) == 'x' && isxdigit(cp[2])) {
             return 16; /* 0x...认定为16进制 */
         } else {
             return 8; /* 0...的其他情况认定为8进制 */
@@ -614,8 +603,8 @@ OAL_STATIC OAL_INLINE unsigned long long oal_simple_strtoull(const oal_int8 *cp,
 {
     unsigned long long result = 0;
 
-    if (OAL_UNLIKELY(cp == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(cp == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -623,21 +612,21 @@ OAL_STATIC OAL_INLINE unsigned long long oal_simple_strtoull(const oal_int8 *cp,
         base = simple_guess_base(cp);
     }
 
-    if (base == 16 && cp[0] == '0' && TOLOWER(cp[1]) == 'x') { /* 判断调用strtol时传进制参数是不是16 */
-        cp += 2;                                               /* 偏移16进制的0x两字节 */
+    if (base == 16 && cp[0] == '0' && tolower(cp[1]) == 'x') { /* 判断调用strtol时传进制参数是不是16 */
+        cp += 2;                                               /* 偏移16进制的2字节 */
     }
 
     while (isxdigit(*cp)) {
         unsigned int value;
 
-        value = isdigit(*cp) ? *cp - '0' : TOLOWER(*cp) - 'a' + 10; /* 加10为了保证取出的'a'~'f'等于10~15 */
+        value = isdigit(*cp) ? *cp - '0' : tolower(*cp) - 'a' + 10; /* 加10为了保证取出的'a'~'f'等于10~15 */
         if (value >= base) {
             break;
         }
         result = result * base + value;
         cp++;
     }
-    if (endp) {
+    if (endp != NULL) {
         *endp = (oal_int8 *)cp;
     }
 
@@ -646,8 +635,8 @@ OAL_STATIC OAL_INLINE unsigned long long oal_simple_strtoull(const oal_int8 *cp,
 
 OAL_STATIC OAL_INLINE oal_int oal_strtol(OAL_CONST oal_int8 *pc_nptr, oal_int8 **ppc_endptr, oal_int32 l_base)
 {
-    if (OAL_UNLIKELY(pc_nptr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pc_nptr == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
     /* 跳过空格 */
@@ -716,14 +705,9 @@ OAL_STATIC OAL_INLINE oal_void oal_usleep_range(oal_ulong min_us, oal_ulong max_
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))
     usleep_range(min_us, max_us); /* 微妙级睡眠，可能让出CPU */
 #else
-    OAL_REFERENCE(max_us);
+    oal_reference(max_us);
     oal_udelay(min_us);
 #endif
-}
-
-OAL_STATIC OAL_INLINE oal_int8 *oal_strncpy(oal_int8 *pc_dest, OAL_CONST oal_int8 *pc_src, oal_uint32 ul_len)
-{
-    return strncpy((oal_int8 *)pc_dest, pc_src, ul_len);
 }
 
 OAL_STATIC OAL_INLINE oal_void oal_print_hex_dump(oal_uint8 *addr, oal_int32 len,
@@ -733,9 +717,9 @@ OAL_STATIC OAL_INLINE oal_void oal_print_hex_dump(oal_uint8 *addr, oal_int32 len
 #define PER_TIME_IN_HEX_DUMP 1
 
 #ifdef CONFIG_PRINTK
-    OAL_REFERENCE(groupsize);
-    if (OAL_UNLIKELY((addr == NULL) || (pre_str == NULL))) {
-        OAL_WARN_ON(1);
+    oal_reference(groupsize);
+    if (oal_unlikely((addr == NULL) || (pre_str == NULL))) {
+        oal_warn_on(1);
         return;
     }
     printk(KERN_INFO "buf %p,len:%d\n",

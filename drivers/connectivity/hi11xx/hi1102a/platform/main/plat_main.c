@@ -17,14 +17,15 @@
 #ifdef _PRE_PLAT_FEATURE_HI110X_PCIE
 #include "oal_pcie_linux.h"
 #endif
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #include "bfgx_exception_rst.h"
 #include "chr_devs.h"
-
+#endif
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_PLAT_MAIN_C
 
 /* 实现plat_init中几个跟gnss相关的函数初始化操作 */
-STATIC oal_int32 plat_gnss_init(oal_void)
+OAL_STATIC oal_int32 plat_gnss_init(oal_void)
 {
     oal_int32 l_return = OAL_FAIL;
 
@@ -64,9 +65,8 @@ gps_plat_init_fail:
 
     return l_return;
 }
-
 /* 实现plat_exit中几个跟gnss相关的函数退出操作 */
-STATIC oal_void plat_gnss_exit(oal_void)
+OAL_STATIC oal_void plat_gnss_exit(oal_void)
 {
 #ifdef CONFIG_HI110X_GPS_SYNC
     gnss_sync_exit();
@@ -228,7 +228,7 @@ chr_miscdevs_init_fail:
     hi110x_board_exit();
 #endif
 board_init_fail:
-    CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+    chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                          CHR_PLT_DRV_EVENT_INIT, CHR_PLAT_DRV_ERROR_PLAT_INIT);
 
     return l_return;
@@ -288,8 +288,8 @@ oal_void plat_exit(oal_void)
 /*lint -e578*/ /*lint -e19*/
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT) && \
     defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT)
-oal_int32 plat_init_flag = 0;
-oal_int32 plat_init_ret;
+OAL_STATIC oal_int32 g_plat_init_flag = 0;
+OAL_STATIC oal_int32 g_plat_init_ret;
 /* built-in */
 OAL_STATIC ssize_t plat_sysfs_set_init(struct kobject *dev, struct kobj_attribute *attr,
                                        const char *buf, size_t count)
@@ -312,16 +312,16 @@ OAL_STATIC ssize_t plat_sysfs_set_init(struct kobject *dev, struct kobj_attribut
         return 0;
     }
 
-    if ((sscanf(buf, "%20s", mode) != 1)) {
+    if ((sscanf_s(buf, "%20s", mode, sizeof(mode)) != 1)) {
         OAL_IO_PRINT("set value one param!\n");
         return -OAL_EINVAL;
     }
 
     if (sysfs_streq("init", mode)) {
         /* init */
-        if (plat_init_flag == 0) {
-            plat_init_ret = plat_init();
-            plat_init_flag = 1;
+        if (g_plat_init_flag == 0) {
+            g_plat_init_ret = plat_init();
+            g_plat_init_flag = 1;
         } else {
             OAL_IO_PRINT("double init!\n");
         }
@@ -351,11 +351,11 @@ OAL_STATIC ssize_t plat_sysfs_get_init(struct kobject *dev, struct kobj_attribut
         return 0;
     }
 
-    if (plat_init_flag == 1) {
-        if (plat_init_ret == OAL_SUCC) {
+    if (g_plat_init_flag == 1) {
+        if (g_plat_init_ret == OAL_SUCC) {
             ret = snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "running\n");
         } else {
-            ret = snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "boot failed ret=%d\n", plat_init_ret);
+            ret = snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "boot failed ret=%d\n", g_plat_init_ret);
         }
     } else {
         ret = snprintf_s(buf + ret, PAGE_SIZE - ret, PAGE_SIZE - ret - 1, "uninit\n");
@@ -367,15 +367,15 @@ OAL_STATIC ssize_t plat_sysfs_get_init(struct kobject *dev, struct kobj_attribut
 
     return ret;
 }
-STATIC struct kobj_attribute dev_attr_plat =
+STATIC struct kobj_attribute g_dev_attr_plat =
     __ATTR(plat, S_IRUGO | S_IWUSR, plat_sysfs_get_init, plat_sysfs_set_init);
-OAL_STATIC struct attribute *plat_init_sysfs_entries[] = {
-    &dev_attr_plat.attr,
+OAL_STATIC struct attribute *g_plat_init_sysfs_entries[] = {
+    &g_dev_attr_plat.attr,
     NULL
 };
 
-OAL_STATIC struct attribute_group plat_init_attribute_group = {
-    .attrs = plat_init_sysfs_entries,
+OAL_STATIC struct attribute_group g_plat_init_attribute_group = {
+    .attrs = g_plat_init_sysfs_entries,
 };
 
 oal_int32 plat_sysfs_init(oal_void)
@@ -403,7 +403,7 @@ oal_int32 plat_sysfs_init(oal_void)
         return -OAL_EBUSY;
     }
 
-    ret = sysfs_create_group(pst_root_boot_object, &plat_init_attribute_group);
+    ret = sysfs_create_group(pst_root_boot_object, &g_plat_init_attribute_group);
     if (ret) {
         OAL_IO_PRINT("sysfs create plat boot group fail.ret=%d\n", ret);
         ret = -OAL_ENOMEM;

@@ -3,13 +3,6 @@
 #ifndef __HMAC_RX_DATA_H__
 #define __HMAC_RX_DATA_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
-
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
@@ -24,6 +17,12 @@ extern "C" {
 #include "hmac_vap.h"
 #include "hmac_resource.h"
 
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_RX_DATA_H
 /*****************************************************************************
@@ -35,35 +34,25 @@ extern "C" {
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-
-
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   6 消息定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
 /* HMAC模块接收流程控制信息结构，存放于对应的netbuf的CB字段中，最大值为48字节 */
-typedef struct
-{
+typedef struct {
     mac_rx_ctl_stru    st_rx_info;
 }hmac_rx_ctl_stru;
 
 /* HMAC 处理 TKIP MIC FAILE 异常传递给定时器的参数 */
-typedef struct
-{
+typedef struct {
     oal_uint8            uc_vap_id;     /* 传递给定时器的 vap_id */
     oal_uint8            uc_rsv[3];
     frw_timeout_stru    *pst_timeout;   /* MIC faile 处理定时器资源 */
@@ -72,34 +61,34 @@ typedef struct
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   9 OTHERS定义
 *****************************************************************************/
-
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
+extern hmac_packet_check_rx_info_stru *hmac_get_pkt_check_rx_info_addr(oal_void);
 extern oal_uint32  hmac_rx_process_data_ap(frw_event_mem_stru *pst_event_mem);
-extern oal_void  hmac_rx_process_data_ap_tcp_ack_opt(hmac_vap_stru *pst_vap,oal_netbuf_head_stru* pst_netbuf_header);
-extern oal_uint32  hmac_rx_process_data_sta_tcp_ack_opt(hmac_vap_stru *pst_vap,oal_netbuf_head_stru* pst_netbuf_header);
+extern oal_void  hmac_rx_process_data_ap_tcp_ack_opt(hmac_vap_stru *pst_vap, oal_netbuf_head_stru* pst_netbuf_header);
+extern oal_void  hmac_rx_process_data_sta_tcp_ack_opt(
+    hmac_vap_stru *pst_vap, oal_netbuf_head_stru* pst_netbuf_header);
 extern oal_uint32  hmac_rx_process_data_sta(frw_event_mem_stru *pst_event_mem);
 #ifdef _PRE_WLAN_DFT_DUMP_FRAME
-extern oal_void  hmac_rx_report_eth_frame(mac_vap_stru   *pst_mac_vap,
-                                                      oal_netbuf_stru *pst_netbuf);
+extern oal_void  hmac_rx_report_eth_frame(
+    mac_vap_stru   *pst_mac_vap,
+    oal_netbuf_stru *pst_netbuf);
 #endif
 extern oal_void  hmac_rx_free_netbuf(oal_netbuf_stru *pst_netbuf, oal_uint16 us_nums);
 extern oal_void  hmac_rx_free_netbuf_list(
                 oal_netbuf_head_stru       *pst_netbuf_hdr,
                 oal_uint16                  us_nums_buf);
 
-extern oal_uint32 hmac_rx_lan_frame(oal_netbuf_head_stru *pst_netbuf_header);
+extern oal_void hmac_rx_lan_frame(oal_netbuf_head_stru *pst_netbuf_header);
 
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 
 #endif /* end of hmac_rx_data.h */

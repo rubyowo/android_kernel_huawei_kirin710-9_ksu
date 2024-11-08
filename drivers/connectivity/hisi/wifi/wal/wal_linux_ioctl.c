@@ -210,7 +210,7 @@ OAL_STATIC oal_uint32 wal_hipriv_always_tx_1102(oal_net_device_stru * pst_net_de
 #endif
 
 OAL_STATIC oal_uint32  wal_hipriv_always_rx(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
-OAL_STATIC oal_uint32  wal_hipriv_pcie_pm_level(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+OAL_STATIC oal_uint32  wal_hipriv_rx_filter_frag(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 OAL_STATIC oal_uint32  wal_hipriv_user_info(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 OAL_STATIC oal_uint32  wal_hipriv_add_vap(oal_net_device_stru *pst_cfg_net_dev, oal_int8 *pc_param);
 #if 0
@@ -482,7 +482,7 @@ OAL_STATIC OAL_CONST wal_hipriv_cmd_entry_stru  g_ast_hipriv_cmd[] =
 #endif //_PRE_WLAN_FEATURE_IP_FILTER
     {"userinfo",                wal_hipriv_user_info},              /* 打印指定mac地址user的所有参数信息: hipriv "vap0 userinfo XX XX XX XX XX XX(16进制oal_strtohex)" */
     {"reginfo",                 wal_hipriv_reg_info},               /* 打印寄存器信息: hipriv "Hisilicon0 reginfo 16|32(51没有16位寄存器读取功能) regtype(soc/mac/phy) startaddr endaddr" */
-    {"pcie_pm_level",           wal_hipriv_pcie_pm_level},          /* 设置pcie低功耗级别 hipriv "Hisilicon0 pcie_pm_level level(01/2/3/4)" */
+    {"rx_filter_frag",          wal_hipriv_rx_filter_frag},         /* 设置分片过滤 hipriv "Hisilicon0 rx_filter_frag 0|1" */
     {"regwrite",                wal_hipriv_reg_write},              /* 打印寄存器信息: hipriv "Hisilicon0 regwrite 32/16(51没有16位写寄存器功能) regtype(soc/mac/phy) addr val" addr val必须都是16进制0x开头 */
     {"dump_all_dscr",           wal_hipriv_dump_all_rx_dscr},       /* 打印所有的接收描述符, hipriv "Hisilicon0 dump_all_dscr" */
     {"random_mac_addr_scan",    wal_hipriv_set_random_mac_addr_scan}, /* 设置随机mac addr扫描开关，sh hipriv.sh "Hisilicon0 random_mac_addr_scan 0|1(打开|关闭)" */
@@ -8441,47 +8441,35 @@ OAL_STATIC oal_uint32  wal_hipriv_always_rx(oal_net_device_stru *pst_net_dev, oa
 }
 
 
-OAL_STATIC oal_uint32  wal_hipriv_pcie_pm_level(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param)
+OAL_STATIC oal_uint32  wal_hipriv_rx_filter_frag(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param)
 {
     wal_msg_write_stru          st_write_msg;
     oal_int8                    ac_arg[WAL_HIPRIV_CMD_NAME_MAX_LEN];
     oal_int32                   l_ret;
-    oal_uint16                  us_len;
     oal_uint32                  ul_ret;
     oal_uint32                  ul_off_set;
-    mac_cfg_pcie_pm_level_stru     *pst_pcie_pm_level;
 
-    /* 命令格式: hipriv "Hisilicon0 pcie_pm_level level(0/1/2/3/4)" */
-    pst_pcie_pm_level = (mac_cfg_pcie_pm_level_stru *)st_write_msg.auc_value;
-
-    /* ppm */
+    /* 命令格式: hipriv "Hisilicon0 rx_filter_frag 0|1" */
     ul_ret = wal_get_cmd_one_arg(pc_param, ac_arg, &ul_off_set);
     if (OAL_SUCC != ul_ret)
     {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_hipriv_pcie_pm_level::wal_get_cmd_one_arg return err_code [%d]!}\r\n", ul_ret);
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_hipriv_rx_filter_frag::wal_get_cmd_one_arg return err_code [%d]!}\r\n", ul_ret);
         return ul_ret;
     }
 
-    pst_pcie_pm_level->uc_pcie_pm_level = (oal_uint8)oal_atoi(ac_arg);
-    if (pst_pcie_pm_level->uc_pcie_pm_level > 4)
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_hipriv_pcie_pm_level::pcie pm level must in set(0/1/2/3/4);\r\n", pst_pcie_pm_level->uc_pcie_pm_level);
-        return ul_ret;
-    }
-
-    us_len = OAL_SIZEOF(mac_cfg_pcie_pm_level_stru);
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_PCIE_PM_LEVEL, us_len);
+    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_RX_FILTER_FRAG, sizeof(oal_uint8));
+    st_write_msg.auc_value[0] = (oal_uint8)oal_atoi(ac_arg);
 
     l_ret = wal_send_cfg_event(pst_net_dev,
                              WAL_MSG_TYPE_WRITE,
-                             WAL_MSG_WRITE_MSG_HDR_LENGTH + us_len,
+                             WAL_MSG_WRITE_MSG_HDR_LENGTH + sizeof(oal_uint8),
                              (oal_uint8 *)&st_write_msg,
                              OAL_FALSE,
                              OAL_PTR_NULL);
 
     if (OAL_UNLIKELY(OAL_SUCC != l_ret))
     {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_hipriv_pcie_pm_level::return err code [%d]!}\r\n", l_ret);
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_hipriv_rx_filter_frag::return err code [%d]!}\r\n", l_ret);
         return (oal_uint32)l_ret;
     }
 

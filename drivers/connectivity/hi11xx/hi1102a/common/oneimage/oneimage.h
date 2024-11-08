@@ -40,7 +40,7 @@ typedef struct hisi_proc_info {
     int proc_type;
     char *proc_node_name;
     char *proc_pro_name;
-} HISI_PROC_INFO_STRU;
+} hisi_proc_info_stru;
 
 typedef enum proc_enum {
     HW_PROC_CHIPTYPE = 0,
@@ -49,7 +49,7 @@ typedef enum proc_enum {
     HW_PROC_HOSTAPD,
     HW_PROC_FIRMWARE,
     HW_PROC_BUTT,
-} HISI_PROC_ENUM;
+} hisi_proc_enum;
 
 /* EXTERN FUNCTION */
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)

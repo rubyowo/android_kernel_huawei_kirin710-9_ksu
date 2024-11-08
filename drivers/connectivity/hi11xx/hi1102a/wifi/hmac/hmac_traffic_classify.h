@@ -3,17 +3,9 @@
 #ifndef __HMAC_TRAFFIC_CLASSIFY__
 #define __HMAC_TRAFFIC_CLASSIFY__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
-
 /*****************************************************************************
   1头文件包含
 *****************************************************************************/
-#include "oal_profiling.h"
 #include "oal_net.h"
 #include "oal_ext_if.h"
 #include "frw_ext_if.h"
@@ -24,20 +16,17 @@ extern "C" {
 #include "hmac_frag.h"
 #include "hmac_11i.h"
 #include "hmac_user.h"
-
-#ifdef _PRE_WLAN_FEATURE_MCAST /* 组播转单播 */
-#include "hmac_m2u.h"
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_PROXY_ARP
-#include "hmac_proxy_arp.h"
-#endif
-
 #include "hmac_crypto_tkip.h"
 #include "hmac_device.h"
 #include "hmac_resource.h"
 
 #include "hmac_tcp_opt.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TRAFFIC_CLASSIFY_H
@@ -45,25 +34,18 @@ extern "C" {
 /*****************************************************************************
   2宏定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   3结构体
 *****************************************************************************/
-
-
-
 /*****************************************************************************
     用户结构体: 包含了已识别业务、待识别业务序列
     这里借助hmac_user_stru，在hmac_user_stru结构体中添加宏定义字段:
     _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
 *****************************************************************************/
-
 /*****************************************************************************
     RTP头结构体:结构体中没有包含最后的CSRC标识符
 *****************************************************************************/
-typedef struct 
-{
+typedef struct {
     /*---------------------------------------------------------------------------
                                     RTP头结构
     -----------------------------------------------------------------------------
@@ -76,13 +58,11 @@ typedef struct
     -----------------------------------------------------------------------------
     |               CSRC 每个CSRC标识符32bit 标识符个数由CSRC数决定             |
     ---------------------------------------------------------------------------*/
-    
-    oal_uint8       uc_version_and_CSRC;    /* 版本号2bit、填充位(P)1bit、扩展位(X)1bit、CSRC数目4bit */
+    oal_uint8       uc_version_and_csrc;    /* 版本号2bit、填充位(P)1bit、扩展位(X)1bit、CSRC数目4bit */
     oal_uint8       uc_payload_type;        /* 标记1bit、有效载荷类型(PT)7bit */
-    oal_uint16      us_RTP_idx;             /* RTP发送序号 */
-    oal_uint32      ul_RTP_time_stamp;      /* 时间戳 */
-    oal_uint32      ul_SSRC;                /* SSRC */
-
+    oal_uint16      us_rtp_idx;             /* RTP发送序号 */
+    oal_uint32      ul_rtp_time_stamp;      /* 时间戳 */
+    oal_uint32      ul_ssrc;                /* SSRC */
 }hmac_tx_rtp_hdr;
 
 /*****************************************************************************
@@ -92,13 +72,10 @@ extern oal_void hmac_tx_traffic_classify(
                 mac_tx_ctl_stru     *pst_tx_ctl,
                 mac_ip_header_stru  *pst_ip, 
                 oal_uint8           *puc_tid);
-
-
-
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 
 #endif  /* end of hmac_traffic_classify.h */

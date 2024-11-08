@@ -34,6 +34,7 @@
 #define WLAN_SLEEP_LONG_CHECK_CNT      20  /* 入网阶段,延长至400ms */
 #define WLAN_SLEEP_FAST_CHECK_CNT      1   /* fast sleep,20ms */
 #define WLAN_WAKELOCK_HOLD_TIME        500 /* hold wakelock 500ms */
+#define WLAN_BUS_SEMA_TIME             (6 * HZ)   /* 6s 等待信号量 */
 
 #define WLAN_SDIO_MSG_RETRY_NUM      3
 #define WLAN_WAKEUP_FAIL_MAX_TIMES   1             /* 连续多少次wakeup失败，可进入DFR流程 */
@@ -83,6 +84,25 @@ struct wifi_srv_callback_handler {
     wifi_srv_pm_state_notify p_wifi_srv_pm_state_notify;
 };
 
+#ifdef _PRE_WLAN_FEATURE_DFR
+/* dfr相关功能信息 */
+typedef struct {
+    oal_uint32            *past_netdev[WLAN_VAP_MAX_NUM_PER_DEVICE_LIMIT + 1];
+    oal_uint32             ul_netdev_num;
+    oal_uint32             bit_hw_reset_enable              : 1,        /* 硬件不去关联复位开关 */
+                           bit_device_reset_enable          : 1,        /* device挂死异常恢复开关 */
+                           bit_soft_watchdog_enable         : 1,        /* 软狗功能开关 */
+                           bit_device_reset_process_flag    : 1,        /* device挂死异常复位操作启动 */
+
+                           bit_ready_to_recovery_flag  : 1,
+                           bit_user_disconnect_flag    : 1,            /* device挂死异常，需要在dfr恢复后告诉对端去关联的状态 */
+                           bit_resv                    : 26;
+    oal_uint32             ul_excp_type;       /* 异常类型 */
+    oal_completion         st_plat_process_comp;           /* 用来检测device异常恢复过程中平台工作是否完成的信号量 */
+}dfr_info_stru;
+extern dfr_info_stru g_st_dfr_info;
+#endif // _PRE_WLAN_FEATURE_DFR
+
 struct wlan_pm_s {
     hcc_bus *pst_bus;  // 保存oal_bus 的指针
 
@@ -91,6 +111,8 @@ struct wlan_pm_s {
     oal_uint ul_apmode_allow_pm_flag; /* ap模式下，是否允许下电操作,1:允许,0:不允许 */
 
     volatile oal_uint ul_wlan_dev_state;  // wlan sleep state
+    uint8_t wakeup_err_count;         // 连续唤醒失败次数
+    uint8_t fail_sleep_count;         // 连续睡眠失败次数
 
     oal_workqueue_stru *pst_pm_wq;       // pm work quque
     oal_work_stru st_wakeup_work;        // 唤醒work
@@ -154,22 +176,28 @@ typedef struct wlan_memdump_s {
 } wlan_memdump_t;
 
 /* EXTERN VARIABLE */
-extern oal_bool_enum wlan_pm_switch;
-extern oal_uint8 wlan_device_pm_switch;
-extern oal_uint8 wlan_fast_check_cnt;
+extern oal_bool_enum g_wlan_pm_switch;
+extern oal_uint8 g_wlan_device_pm_switch;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-extern oal_uint8 custom_cali_done;
+extern oal_uint8 g_custom_cali_done;
 #endif
 #ifdef _PRE_WLAN_DOWNLOAD_PM
-extern oal_uint16 download_rate_limit_pps;
+extern oal_uint16 g_download_rate_limit_pps;
 #endif
 
 /* EXTERN FUNCTION */
+extern oal_uint8 wlan_pm_get_fast_check_cnt(void);
+extern void wlan_pm_set_fast_check_cnt(oal_uint8 fast_check_cnt);
+oal_uint16 wlan_pm_get_download_rate_limit_pps(void);
+void wlan_pm_set_download_rate_limit_pps(oal_uint16 rate_limit_pps);
+#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+extern oal_uint8 wlan_pm_get_custom_cali_done(void);
+extern void wlan_pm_set_custom_cali_done(oal_uint8 cali_done);
+#endif
 extern struct wlan_pm_s *wlan_pm_get_drv(oal_void);
 extern oal_void wlan_pm_debug_sleep(void);
 extern oal_void wlan_pm_debug_wakeup(void);
 extern void wlan_pm_dump_host_info(void);
-extern oal_int32 wlan_pm_host_info_print(struct wlan_pm_s *pst_wlan_pm, char *buf, oal_int32 buf_len);
 extern void wlan_pm_dump_device_info(void);
 extern oal_void wlan_pm_debug_wake_lock(void);
 extern oal_void wlan_pm_debug_wake_unlock(void);
@@ -199,12 +227,12 @@ extern oal_void wlan_pm_feed_wdg(oal_void);
 extern oal_int32 wlan_pm_stop_wdg(struct wlan_pm_s *pst_wlan_pm_info);
 extern void wlan_pm_info_clean(void);
 extern wlan_memdump_t *get_wlan_memdump_cfg(void);
-extern oal_int32 wlan_mem_check_mdelay;
-extern oal_int32 bfgx_mem_check_mdelay;
+extern oal_int32 g_wlan_mem_check_mdelay;
+extern oal_int32 g_bfgx_mem_check_mdelay;
 extern wlan_memdump_t *get_wlan_memdump_cfg(void);
 extern void wlan_pm_wkup_src_debug_set(oal_uint32 ul_en);
 extern oal_uint32 wlan_pm_wkup_src_debug_get(void);
-#define WLAN_PM_WKUP_SRC_DEBUG(uc_vap_id, uc_mgmt_frm_type)                                   \
+#define wlan_pm_wkup_src_debug(uc_vap_id, uc_mgmt_frm_type)                                   \
     if (wlan_pm_wkup_src_debug_get() == OAL_TRUE) {                                           \
         wlan_pm_wkup_src_debug_set(OAL_FALSE);                                                \
         OAM_WARNING_LOG1(uc_vap_id, OAM_SF_RX, "{wakeup mgmt type[0x%x]}", uc_mgmt_frm_type); \

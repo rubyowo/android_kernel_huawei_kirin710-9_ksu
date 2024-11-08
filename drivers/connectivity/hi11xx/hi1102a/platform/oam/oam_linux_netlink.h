@@ -38,8 +38,8 @@ typedef struct {
 } oam_netlink_proto_ops;
 
 /* 全局变量声明 */
-extern oam_netlink_stru netlink;
-extern oam_netlink_proto_ops netlink_ops;
+extern oam_netlink_stru g_netlink;
+extern oam_netlink_proto_ops g_netlink_ops;
 
 /* 函数声明 */
 extern oal_uint32 oam_netlink_kernel_create(oal_void);

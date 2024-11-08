@@ -10,18 +10,18 @@
 
 /* 宏定义 */
 /* 单向链表头初始化 */
-#define OAL_LIST_HEAD_INIT(_list_name)                                             \
+#define oal_list_head_init(_list_name)                                             \
     {                                                                              \
         (oal_list_entry_stru *)&(_list_name), (oal_list_entry_stru *)&(_list_name) \
     }
 
 /* 单向创建链表头 */
 /*lint -e773*/
-#define OAL_LIST_CREATE_HEAD(_list_name) \
-    oal_list_head_stru _list_name = OAL_LIST_HEAD_INIT(_list_name)
+#define oal_list_create_head(_list_name) \
+    oal_list_head_stru _list_name = oal_list_head_init(_list_name)
 
 /* 单向遍历链表使用时请在其后加大括号 */
-#define OAL_LIST_SEARCH_FOR_EACH(_list_pos, _list_head) \
+#define oal_list_search_for_each(_list_pos, _list_head) \
     for ((_list_pos) = (_list_head)->pst_next; (_list_pos) != (oal_list_entry_stru *)(_list_head); \
          (_list_pos) = (_list_pos)->pst_next)
 
@@ -30,26 +30,26 @@
  * 第二个参数为链表中数据结构体类型名；
  * 第三个参数为数据结构体中模板链表结构体的名字
  */
-#define OAL_LIST_GET_ENTRY(_list_ptr, _data_type, _data_member_list_name) \
+#define oal_list_get_entry(_list_ptr, _data_type, _data_member_list_name) \
     ((_data_type *)((oal_int8 *)(_list_ptr) - (oal_uint)(&((_data_type *)0)->_data_member_list_name))) /*lint -e(413)*/
 
 /* 双向链表头初始化 */
-#define OAL_DLIST_HEAD_INIT(_dlist_name) \
+#define oal_dlist_head_init(_dlist_name) \
     {                                    \
         &(_dlist_name), &(_dlist_name)   \
     }
 
 /* 创建双向链表头 */
 /*lint -e773*/
-#define OAL_DLIST_CREATE_HEAD(_dlist_name) \
-    oal_dlist_head_stru _dlist_name = OAL_DLIST_HEAD_INIT(_dlist_name)
+#define oal_dlist_create_head(_dlist_name) \
+    oal_dlist_head_stru _dlist_name = oal_dlist_head_init(_dlist_name)
 
 /* 遍历双向链表使用时请在其后加大括号 */
-#define OAL_DLIST_SEARCH_FOR_EACH(_dlist_pos, _dilst_head) \
+#define oal_dlist_search_for_each(_dlist_pos, _dilst_head) \
     for ((_dlist_pos) = (_dilst_head)->pst_next; (_dlist_pos) != (_dilst_head); (_dlist_pos) = (_dlist_pos)->pst_next)
 
 /* 遍列双向链表，并可安全删除某个节点 */
-#define OAL_DLIST_SEARCH_FOR_EACH_SAFE(_dlist_pos, n, _dilst_head) \
+#define oal_dlist_search_for_each_safe(_dlist_pos, n, _dilst_head) \
     for ((_dlist_pos) = (_dilst_head)->pst_next, (n) = (_dlist_pos)->pst_next; (_dlist_pos) != (_dilst_head); \
          (_dlist_pos) = (n), (n) = (_dlist_pos)->pst_next)
 
@@ -58,7 +58,7 @@
  * 第二个参数为链表中数据结构体类型名；
  * 第三个参数为数据结构体中模板链表结构体的名字
  */
-#define OAL_DLIST_GET_ENTRY(_dlist_ptr, _data_type, _data_member_dlist_name) \
+#define oal_dlist_get_entry(_dlist_ptr, _data_type, _data_member_dlist_name) \
     ((_data_type *)((oal_int8 *)(_dlist_ptr) - (oal_uint)(&((_data_type *)0)->_data_member_dlist_name))) /*lint -e(413)*/
 
 /* STRUCT定义 */
@@ -84,8 +84,8 @@ typedef struct tag_oal_dlist_head_stru {
  */
 OAL_STATIC OAL_INLINE oal_void oal_list_init_head(oal_list_head_stru *pst_list_head)
 {
-    if (OAL_UNLIKELY(pst_list_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_list_head == NULL)) {
+        oal_warn_on(1);
         return;
     }
     pst_list_head->pst_next = (oal_list_entry_stru *)pst_list_head;
@@ -102,8 +102,8 @@ OAL_STATIC OAL_INLINE oal_void oal_list_add(oal_list_entry_stru *pst_new,
                                             oal_list_head_stru *pst_head)
 {
     oal_list_entry_stru *pst_tail = NULL;
-    if (OAL_UNLIKELY((pst_new == NULL) || (pst_head == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_new == NULL) || (pst_head == NULL))) {
+        oal_warn_on(1);
         return;
     }
     pst_tail = pst_head->pst_prev;
@@ -121,10 +121,10 @@ OAL_STATIC OAL_INLINE oal_void oal_list_add(oal_list_entry_stru *pst_new,
  */
 OAL_STATIC OAL_INLINE oal_list_entry_stru *oal_list_delete_head(oal_list_head_stru *pst_head)
 {
-    oal_list_entry_stru *pst_node;
+    oal_list_entry_stru *pst_node = NULL;
 
-    if (OAL_UNLIKELY(pst_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_head == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -153,8 +153,8 @@ OAL_STATIC OAL_INLINE oal_void oal_list_jion(oal_list_head_stru *pst_head1, oal_
     oal_list_entry_stru *pst_list1_tail = NULL;
     oal_list_entry_stru *pst_list2_tail = NULL;
 
-    if (OAL_UNLIKELY((pst_head1 == NULL) || (pst_head2 == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_head1 == NULL) || (pst_head2 == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -172,8 +172,8 @@ OAL_STATIC OAL_INLINE oal_void oal_list_jion(oal_list_head_stru *pst_head1, oal_
  */
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_list_is_empty(oal_list_head_stru *pst_head)
 {
-    if (OAL_UNLIKELY(pst_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_head == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
     return pst_head->pst_next == (oal_list_entry_stru *)pst_head;
@@ -186,8 +186,8 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_list_is_empty(oal_list_head_stru *
  */
 OAL_STATIC OAL_INLINE oal_void oal_dlist_init_head(oal_dlist_head_stru *pst_list)
 {
-    if (OAL_UNLIKELY(pst_list == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_list == NULL)) {
+        oal_warn_on(1);
         return;
     }
     pst_list->pst_next = pst_list;
@@ -205,8 +205,8 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_add(oal_dlist_head_stru *pst_new,
                                              oal_dlist_head_stru *pst_prev,
                                              oal_dlist_head_stru *pst_next)
 {
-    if (OAL_UNLIKELY((pst_new == NULL) || (pst_prev == NULL) || (pst_prev == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_new == NULL) || (pst_prev == NULL) || (pst_prev == NULL))) {
+        oal_warn_on(1);
         return;
     }
     pst_next->pst_prev = pst_new;
@@ -223,8 +223,8 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_add(oal_dlist_head_stru *pst_new,
  */
 OAL_STATIC OAL_INLINE oal_void oal_dlist_delete(oal_dlist_head_stru *pst_prev, oal_dlist_head_stru *pst_next)
 {
-    if (OAL_UNLIKELY((pst_prev == NULL) || (pst_next == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_prev == NULL) || (pst_next == NULL))) {
+        oal_warn_on(1);
         return;
     }
     pst_next->pst_prev = pst_prev;
@@ -238,8 +238,8 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_delete(oal_dlist_head_stru *pst_prev, o
  */
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_dlist_is_empty(oal_dlist_head_stru *pst_head)
 {
-    if (OAL_UNLIKELY(pst_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_head == NULL)) {
+        oal_warn_on(1);
         return OAL_TRUE;
     }
     if (pst_head->pst_next == OAL_PTR_NULL || pst_head->pst_prev == OAL_PTR_NULL) {
@@ -278,12 +278,12 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_add_tail(oal_dlist_head_stru *pst_new, 
  */
 OAL_STATIC OAL_INLINE oal_void oal_dlist_delete_entry(oal_dlist_head_stru *pst_entry)
 {
-    if (OAL_UNLIKELY(pst_entry == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_entry == NULL)) {
+        oal_warn_on(1);
         return ;
     }
 
-    if (OAL_UNLIKELY((pst_entry->pst_next == OAL_PTR_NULL) || (pst_entry->pst_prev == OAL_PTR_NULL))) {
+    if (oal_unlikely((pst_entry->pst_next == OAL_PTR_NULL) || (pst_entry->pst_prev == OAL_PTR_NULL))) {
         return;
     }
 
@@ -300,15 +300,15 @@ OAL_STATIC OAL_INLINE oal_dlist_head_stru *oal_dlist_delete_head(oal_dlist_head_
 {
     oal_dlist_head_stru *pst_node = NULL;
 
-    if (OAL_UNLIKELY(pst_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_head == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
     pst_node = pst_head->pst_next;
 
-    OAL_WARN_ON(pst_node == pst_head);
-    OAL_WARN_ON(pst_node == OAL_PTR_NULL);
+    oal_warn_on(pst_node == pst_head);
+    oal_warn_on(pst_node == OAL_PTR_NULL);
 
     oal_dlist_delete_entry(pst_node);
 
@@ -322,14 +322,14 @@ OAL_STATIC OAL_INLINE oal_dlist_head_stru *oal_dlist_delete_head(oal_dlist_head_
 OAL_STATIC OAL_INLINE oal_dlist_head_stru *oal_dlist_delete_tail(oal_dlist_head_stru *pst_head)
 {
     oal_dlist_head_stru *pst_node = NULL;
-    if (OAL_UNLIKELY(pst_head == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_head == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
     pst_node = pst_head->pst_prev;
 
-    OAL_WARN_ON(pst_node == pst_head);
-    OAL_WARN_ON(pst_node == OAL_PTR_NULL);
+    oal_warn_on(pst_node == pst_head);
+    oal_warn_on(pst_node == OAL_PTR_NULL);
 
     oal_dlist_delete_entry(pst_node);
 
@@ -346,8 +346,8 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_join_tail(oal_dlist_head_stru *pst_head
     oal_dlist_head_stru *pst_dlist2_tail = NULL;
     oal_dlist_head_stru *pst_dlist2_first = NULL;
 
-    if (OAL_UNLIKELY((pst_head1 == NULL) || (pst_head2 == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_head1 == NULL) || (pst_head2 == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -366,12 +366,12 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_join_tail(oal_dlist_head_stru *pst_head
  */
 OAL_STATIC OAL_INLINE oal_void oal_dlist_join_head(oal_dlist_head_stru *pst_head1, oal_dlist_head_stru *pst_head2)
 {
-    oal_dlist_head_stru *pst_head2_first;
-    oal_dlist_head_stru *pst_head2_tail;
-    oal_dlist_head_stru *pst_head1_first;
+    oal_dlist_head_stru *pst_head2_first = NULL;
+    oal_dlist_head_stru *pst_head2_tail = NULL;
+    oal_dlist_head_stru *pst_head1_first = NULL;
 
-    if (OAL_UNLIKELY((pst_head1 == NULL) || (pst_head2 == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_head1 == NULL) || (pst_head2 == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -401,8 +401,8 @@ OAL_STATIC OAL_INLINE oal_void oal_dlist_remove_head(oal_dlist_head_stru *pst_he
                                                      oal_dlist_head_stru *pst_head2,
                                                      oal_dlist_head_stru *pst_last_entry)
 {
-    if (OAL_UNLIKELY((pst_head1 == NULL) || (pst_head2 == NULL) || (pst_last_entry == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pst_head1 == NULL) || (pst_head2 == NULL) || (pst_last_entry == NULL))) {
+        oal_warn_on(1);
         return;
     }
 

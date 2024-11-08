@@ -6,33 +6,29 @@
 #include <linux/delay.h>
 #include <linux/tty.h>
 
+#include "securec.h"
 #include "board.h"
-#include "hw_bfg_ps.h"
 #include "plat_type.h"
 #include "plat_debug.h"
 #include "plat_uart.h"
-#include "bfgx_exception_rst.h"
 #include "bfgx_user_ctrl.h"
 #include "plat_pm.h"
-#include "oal_ext_if.h"
 #include "plat_cali.h"
-#include "securec.h"
-#ifdef CONFIG_HI1102_PLAT_HW_CHR
-#include "chr_user.h"
-#endif
+#include "bfgx_exception_rst.h"
+#include "bfgx_platform_msg_handle.h"
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-oal_int32 bfgx_panic_ssi_dump = 0;
-oal_debug_module_param(bfgx_panic_ssi_dump, int, S_IRUGO | S_IWUSR);
+OAL_STATIC oal_int32 g_bfgx_panic_ssi_dump = 0;
+oal_debug_module_param(g_bfgx_panic_ssi_dump, int, S_IRUGO | S_IWUSR);
 #endif
 
-uint8 uc_wakeup_src_debug = 0;
-static unsigned int reset_cnt = 0;
+uint8 g_wakeup_src_debug = 0;
+static unsigned int g_reset_cnt = 0;
 
 /* function pointer for rx data */
 int32 (*tty_recv)(void *, const uint8 *, int32);
 
-uint32 bfgx_rx_max_frame[BFGX_BUTT] = {
+uint32 g_bfgx_rx_max_frame[BFGX_BUTT] = {
     BT_RX_MAX_FRAME,
     FM_RX_MAX_FRAME,
     GNSS_RX_MAX_FRAME,
@@ -40,7 +36,7 @@ uint32 bfgx_rx_max_frame[BFGX_BUTT] = {
     NFC_RX_MAX_FRAME,
 };
 
-uint32 bfgx_rx_queue[BFGX_BUTT] = {
+uint32 g_bfgx_rx_queue[BFGX_BUTT] = {
     RX_BT_QUEUE,
     RX_FM_QUEUE,
     RX_GNSS_QUEUE,
@@ -48,12 +44,41 @@ uint32 bfgx_rx_queue[BFGX_BUTT] = {
     RX_NFC_QUEUE,
 };
 
-uint32 bfgx_rx_queue_max_num[BFGX_BUTT] = {
+OAL_STATIC uint32 g_bfgx_rx_queue_max_num[BFGX_BUTT] = {
     RX_BT_QUE_MAX_NUM,
     RX_FM_QUE_MAX_NUM,
     RX_GNSS_QUE_MAX_NUM,
     RX_IR_QUE_MAX_NUM,
     RX_NFC_QUE_MAX_NUM,
+};
+
+typedef int32_t (*ps_core_msg_handler)(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+STATIC int32_t ps_recv_no_sepreated_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+STATIC int32_t ps_recv_sepreated_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+STATIC int32_t ps_recv_debug_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+STATIC int32_t ps_recv_mem_dump_size_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+STATIC int32_t ps_recv_mem_dump_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr);
+
+STATIC ps_core_msg_handler g_ps_core_msg_handle[MSG_BUTT] = {
+    ps_exe_sys_func,             // SYS_MSG = 0x00,         系统串口消息
+    ps_recv_no_sepreated_data,   // BT_MSG = 0x01,          BT串口消息
+    ps_recv_sepreated_data,      // GNSS_FIRST_MSG = 0x02,  GNSS串口消息，第一个分段消息
+    ps_recv_sepreated_data,      // GNSS_COMMON_MSG = 0x03, GNSS串口消息，中间分段消息
+    ps_recv_sepreated_data,      // GNSS_LAST_MSG = 0x04,   GNSS串口消息，最后一个分段消息
+    ps_recv_sepreated_data,      // FM_FIRST_MSG = 0x05,    FM串口消息，第一个分段消息
+    ps_recv_sepreated_data,      // FM_COMMON_MSG = 0x06,   FM串口消息，中间分段消息
+    ps_recv_sepreated_data,      // FM_LAST_MSG = 0x07,     FM串口消息，最后一个分段消息
+    ps_recv_sepreated_data,      // IR_FIRST_MSG = 0x08,    红外串口消息，第一个分段消息
+    ps_recv_sepreated_data,      // IR_COMMON_MSG = 0x09,   红外串口消息，中间分段消息
+    ps_recv_sepreated_data,      // IR_LAST_MSG = 0x0A,     红外串口消息，最后一个分段消息
+    ps_recv_sepreated_data,      // NFC_FIRST_MSG = 0x0B,   NFC串口消息，第一个分段消息
+    ps_recv_sepreated_data,      // NFC_COMMON_MSG = 0x0C,  NFC串口消息，中间分段消息
+    ps_recv_sepreated_data,      // NFC_LAST_MSG = 0x0D,    NFC串口消息，最后一个分段消息
+    ps_recv_debug_data,          // OML_MSG = 0x0E,         可维可测消息
+    ps_recv_mem_dump_size_data,  // MEM_DUMP_SIZE = 0x0f,   bfgx异常时，要dump的mem长度消息
+    ps_recv_mem_dump_data,       // MEM_DUMP = 0x10,        bfgx异常时，内存dump消息
+    NULL,                        // WIFI_MEM_DUMP = 0x11,   UART READ WIFI MEM，内存dump消息
+    NULL,                        // BFGX_CALI_MSG = 0x12,   BFGX 校准数据上报
 };
 
 /* Function implement */
@@ -63,11 +88,11 @@ void print_uart_decode_param(void)
 
     ps_get_core_reference(&ps_core_d);
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return;
     }
 
-    PS_PRINT_WARNING("rx_pkt_type=%x,rx_have_recv_pkt_len=%d,rx_pkt_total_len=%d,rx_have_del_public_len=%d\n",
+    ps_print_warning("rx_pkt_type=%x,rx_have_recv_pkt_len=%d,rx_pkt_total_len=%d,rx_have_del_public_len=%d\n",
                      ps_core_d->rx_pkt_type, ps_core_d->rx_have_recv_pkt_len,
                      ps_core_d->rx_pkt_total_len, ps_core_d->rx_have_del_public_len);
     return;
@@ -83,12 +108,12 @@ void print_uart_decode_param(void)
  */
 int32 ps_write_tty(struct ps_core_s *ps_core_d, const uint8 *data, int32 count)
 {
-    struct tty_struct *tty;
+    struct tty_struct *tty = NULL;
 
     PS_PRINT_FUNCTION_NAME;
 
     if (unlikely((ps_core_d == NULL) || (ps_core_d->tty == NULL))) {
-        PS_PRINT_ERR("tty unavailable to perform write\n");
+        ps_print_err("tty unavailable to perform write\n");
         return -EINVAL;
     }
 
@@ -96,298 +121,6 @@ int32 ps_write_tty(struct ps_core_s *ps_core_d, const uint8 *data, int32 count)
 
     ps_uart_tty_tx_add(count);
     return tty->ops->write(tty, data, count);
-}
-
-void gnss_thread_init(struct ps_core_s *ps_core_d, uint8 info)
-{
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is null\n");
-        return;
-    }
-
-    if (info == SYS_INF_GNSS_INIT) {
-        PS_PRINT_INFO("GNSS me thread has opened\n");
-        gnss_me_thread_status = DEV_THREAD_INIT;
-    } else if (info == SYS_INF_GNSS_LPPE_INIT) {
-        PS_PRINT_INFO("GNSS lppe thread has opened\n");
-        gnss_lppe_thread_status = DEV_THREAD_INIT;
-    } else {
-        PS_PRINT_WARNING("GNSS thread info is error %d\n", info);
-        return;
-    }
-
-    if ((gnss_me_thread_status == DEV_THREAD_INIT) && (gnss_lppe_thread_status == DEV_THREAD_INIT)) {
-        complete(&ps_core_d->bfgx_info[BFGX_GNSS].wait_opened);
-    }
-
-    return;
-}
-
-void gnss_thread_exit(struct ps_core_s *ps_core_d, uint8 info)
-{
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is null\n");
-        return;
-    }
-
-    if (info == SYS_INF_GNSS_EXIT) {
-        PS_PRINT_INFO("GNSS me thread has exit\n");
-        gnss_me_thread_status = DEV_THREAD_EXIT;
-    } else if (info == SYS_INF_GNSS_LPPE_EXIT) {
-        PS_PRINT_INFO("GNSS lppe thread has exit\n");
-        gnss_lppe_thread_status = DEV_THREAD_EXIT;
-    } else {
-        PS_PRINT_WARNING("GNSS thread info is error %d\n", info);
-        return;
-    }
-
-    if ((gnss_me_thread_status == DEV_THREAD_EXIT) && (gnss_lppe_thread_status == DEV_THREAD_EXIT)) {
-        complete(&ps_core_d->bfgx_info[BFGX_GNSS].wait_closed);
-    }
-
-    return;
-}
-
-static void ps_exe_heartbeat_func(struct ps_core_s *ps_core_d, struct pm_drv_data *pm_data, uint8 syschar)
-{
-    struct st_exception_info *pst_exception_data = NULL;
-
-    if (syschar >= SYS_INF_HEARTBEAT_CMD_BASE) {
-        PS_PRINT_INFO("%ds,tty_tx=%d,tty_rx=%d,uart_tx=%d,uart_rx=%d\n",
-                      syschar - SYS_INF_HEARTBEAT_CMD_BASE - 1, ps_uart_state_cur(STATE_TTY_TX),
-                      ps_uart_state_cur(STATE_TTY_RX), ps_uart_state_cur(STATE_UART_TX),
-                      ps_uart_state_cur(STATE_UART_RX));
-        PS_PRINT_INFO("pkt_num_rx:BT=%lu,GNSS=%lu,FM=%lu,IR=%lu,SYS_MSG=%lu,OML=%lu,timer=%d,mod_cnt=%d,gnss_sleep_flag=%d\n",
-                      ps_core_d->rx_pkt_num[BFGX_BT], ps_core_d->rx_pkt_num[BFGX_GNSS],
-                      ps_core_d->rx_pkt_num[BFGX_FM], ps_core_d->rx_pkt_num[BFGX_IR],
-                      ps_core_d->rx_pkt_sys, ps_core_d->rx_pkt_oml, timer_pending(&pm_data->bfg_timer),
-                      pm_data->bfg_timer_mod_cnt, atomic_read(&pm_data->gnss_sleep_flag));
-        PS_PRINT_INFO("pkt_num_tx:BT=%lu,GNSS=%lu,FM=%lu,IR=%lu\n",
-                      ps_core_d->tx_pkt_num[BFGX_BT], ps_core_d->tx_pkt_num[BFGX_GNSS],
-                      ps_core_d->tx_pkt_num[BFGX_FM], ps_core_d->tx_pkt_num[BFGX_IR]);
-
-        get_exception_info_reference(&pst_exception_data);
-        if (pst_exception_data != NULL) {
-            if (pst_exception_data->debug_beat_flag == 1) {
-                atomic_set(&pst_exception_data->bfgx_beat_flag, BFGX_RECV_BEAT_INFO);
-            }
-        }
-    }
-}
-
-/*
- * Prototype    : ps_exe_sys_func
- * Description  : called by core when recive sys data event from device
- *              : decode rx sys packet function
- */
-int32 ps_exe_sys_func(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
-{
-    struct pm_drv_data *pm_data = NULL;
-    struct st_exception_info *pst_exception_data = NULL;
-#ifdef CONFIG_HI1102_PLAT_HW_CHR
-    CHR_ERRNO_WITH_ARG_STRU *pst_chr = NULL;
-#endif
-    uint8 syschar;
-    uint64 flags;
-
-    PS_PRINT_FUNCTION_NAME;
-
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
-
-    pm_data = pm_get_drvdata();
-    if (pm_data == NULL) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
-        return -EINVAL;
-    }
-
-    syschar = *buf_ptr;
-
-    switch (syschar) {
-        case SYS_INF_PF_INIT:
-            PS_PRINT_INFO("plat bfgx init complete\n");
-            break;
-        case SYS_INF_BT_INIT:
-            PS_PRINT_INFO("BT has opened\n");
-            complete(&ps_core_d->bfgx_info[BFGX_BT].wait_opened);
-            break;
-        case SYS_INF_WIFI_OPEN:
-            PS_PRINT_INFO("WIFI has opened by BFNGI\n");
-            complete(&ps_core_d->wait_wifi_opened);
-            break;
-        case SYS_INF_WIFI_CLOSE:
-            PS_PRINT_INFO("WIFI has closed by BFNGI\n");
-            complete(&ps_core_d->wait_wifi_closed);
-            break;
-        case SYS_INF_GNSS_INIT:
-        case SYS_INF_GNSS_LPPE_INIT:
-            gnss_thread_init(ps_core_d, syschar);
-            break;
-        case SYS_INF_FM_INIT:
-            PS_PRINT_INFO("FM has opened\n");
-            complete(&ps_core_d->bfgx_info[BFGX_FM].wait_opened);
-            break;
-        case SYS_INF_IR_INIT:
-            PS_PRINT_INFO("IR has opened\n");
-            complete(&ps_core_d->bfgx_info[BFGX_IR].wait_opened);
-            break;
-        case SYS_INF_NFC_INIT:
-            PS_PRINT_INFO("NFC has opened\n");
-            complete(&ps_core_d->bfgx_info[BFGX_NFC].wait_opened);
-            break;
-        case SYS_INF_BT_DISABLE:
-            break;
-        case SYS_INF_GNSS_DISABLE:
-            break;
-        case SYS_INF_FM_DISABLE:
-            break;
-        case SYS_INF_BT_EXIT:
-            PS_PRINT_INFO("BT has closed\n");
-            complete(&ps_core_d->bfgx_info[BFGX_BT].wait_closed);
-            break;
-        case SYS_INF_GNSS_EXIT:
-        case SYS_INF_GNSS_LPPE_EXIT:
-            gnss_thread_exit(ps_core_d, syschar);
-            break;
-        case SYS_INF_FM_EXIT:
-            PS_PRINT_INFO("FM has closed\n");
-            complete(&ps_core_d->bfgx_info[BFGX_FM].wait_closed);
-            break;
-        case SYS_INF_IR_EXIT:
-            PS_PRINT_INFO("IR has closed\n");
-            complete(&ps_core_d->bfgx_info[BFGX_IR].wait_closed);
-            break;
-        case SYS_INF_NFC_EXIT:
-            PS_PRINT_INFO("NFC has closed\n");
-            complete(&ps_core_d->bfgx_info[BFGX_NFC].wait_closed);
-            break;
-        case SYS_INF_GNSS_WAIT_DOWNLOAD:
-            break;
-        case SYS_INF_GNSS_DOWNLOAD_COMPLETE:
-            break;
-        case SYS_INF_DEV_NOAGREE_HOST_SLP:
-            PS_PRINT_INFO("dev ack to no agree to sleep\n");
-            del_timer_sync(&pm_data->dev_ack_timer);
-            ps_core_d->ps_pm->bfgx_dev_state_set(BFGX_ACTIVE);
-            ps_core_d->ps_pm->bfgx_uart_state_set(UART_READY);
-
-            if (!bfgx_other_subsys_all_shutdown(BFGX_GNSS)) {
-                mod_timer(&pm_data->bfg_timer, jiffies + (BT_SLEEP_TIME * HZ / 1000));
-                pm_data->bfg_timer_mod_cnt++;
-            }
-
-            complete(&pm_data->dev_ack_comp);
-            break;
-        case SYS_INF_DEV_AGREE_HOST_SLP:
-            PS_PRINT_INFO("dev ack to agree to sleep\n");
-            if (timer_pending(&pm_data->dev_ack_timer)) {
-                PS_PRINT_DBG("dev ack to agree to sleep in normal case\n");
-                del_timer_sync(&pm_data->dev_ack_timer);
-                complete(&pm_data->dev_ack_comp);
-                if (unlikely(pm_data->rcvdata_bef_devack_flag == 1)) {
-                    PS_PRINT_INFO("device send data to host before dev rcv allow slp msg\n");
-                    pm_data->rcvdata_bef_devack_flag = 0;
-                } else if (atomic_read(&ps_core_d->node_visit_flag) > 0) {
-                    PS_PRINT_INFO("someone visit dev node during waiting for dev_ack\n");
-                } else {
-                    spin_lock_irqsave(&pm_data->wakelock_protect_spinlock, flags);
-                    if (pm_data->bfgx_dev_state == BFGX_ACTIVE) {
-                        PS_PRINT_INFO("dev wkup isr occur during waiting for dev_ack\n");
-                    } else {
-                        pm_data->ps_pm_interface->operate_beat_timer(BEAT_TIMER_DELETE);
-                        bfg_wake_unlock();
-                    }
-                    spin_unlock_irqrestore(&pm_data->wakelock_protect_spinlock, flags);
-                }
-            } else {
-                PS_PRINT_INFO("dev ack to agree to sleep after devack timer expired,gpio state:%d\n",
-                              board_get_bwkup_gpio_val());
-                spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
-                ps_core_d->ps_pm->bfgx_uart_state_set(UART_NOT_READY);
-                ps_core_d->ps_pm->bfgx_dev_state_set(BFGX_SLEEP);
-                spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
-            }
-            break;
-        case SYS_INF_MEM_DUMP_COMPLETE:
-#ifdef HI110X_HAL_MEMDUMP_ENABLE
-            bfgx_memdump_finish();
-#endif
-            get_exception_info_reference(&pst_exception_data);
-            if (pst_exception_data != NULL) {
-                PS_PRINT_INFO("plat bfgx mem dump complete\n");
-                complete(&pst_exception_data->wait_read_bfgx_stack);
-#ifndef HI110X_HAL_MEMDUMP_ENABLE
-                if (pst_exception_data->exception_reset_enable != PLAT_EXCEPTION_ENABLE) {
-                    bfgx_store_stack_mem_to_file();
-                }
-#endif
-            }
-            break;
-        case SYS_INF_WIFI_MEM_DUMP_COMPLETE:
-            PS_PRINT_INFO("uart wifi mem dump complete\n");
-            store_wifi_mem_to_file();
-            break;
-        case SYS_INF_UART_HALT_WCPU:
-            get_exception_info_reference(&pst_exception_data);
-            if (pst_exception_data != NULL) {
-                PS_PRINT_INFO("uart halt wcpu ok\n");
-                complete(&pst_exception_data->wait_uart_halt_wcpu);
-            }
-            break;
-        case SYS_INF_UART_LOOP_SET_DONE:
-            if (uart_loop_test_info != NULL) {
-                PS_PRINT_INFO("device uart loop test set ok\n");
-                complete(&uart_loop_test_info->set_done);
-            }
-            break;
-        case SYS_INF_CHR_ERRNO_REPORT:
-            PS_PRINT_INFO("rcv SYS_INF_CHR_ERRNO_REPORT");
-#ifdef CONFIG_HI1102_PLAT_HW_CHR
-            pst_chr = (CHR_ERRNO_WITH_ARG_STRU *)(buf_ptr + 1);
-
-            if (pst_chr->errlen > CHR_ERR_DATA_MAX_LEN) {
-                PS_PRINT_ERR("host CHR system get dev errno wrong, errno 0x%x\n", pst_chr->errno);
-                break;
-            }
-
-            chr_dev_exception_callback((uint8 *)pst_chr, (pst_chr->errlen + OAL_SIZEOF(CHR_ERRNO_WITH_ARG_STRU)));
-#else
-            PS_PRINT_INFO("host chr not support,ignore errno:0x%x\n", *(uint32 *)buf_ptr);
-#endif
-
-            break;
-        case SYS_INF_BAUD_CHG_2M_REQ:
-        case SYS_INF_BAUD_CHG_6M_REQ:
-            bfgx_uart_rcv_baud_change_req(syschar);
-            break;
-        case SYS_INF_BAUD_CHG_COMP_ACK:
-            bfgx_uart_rcv_baud_change_complete_ack();
-            break;
-        case SYS_INF_GNSS_TRICKLE_SlEEP:
-            PS_PRINT_INFO("gnss trickle sleep!\n");
-            if (!timer_pending(&pm_data->bfg_timer)) {
-                PS_PRINT_SUC("gnss low power request sleep!\n");
-                if (queue_work(pm_data->wkup_dev_workqueue, &pm_data->send_allow_sleep_work) != true) {
-                    PS_PRINT_INFO("queue_work send_allow_sleep_work not return true\n");
-                }
-            }
-
-            /* set the flag to 1 means gnss request sleep */
-            atomic_set(&pm_data->gnss_sleep_flag, GNSS_AGREE_SLEEP);
-            break;
-        default:
-            /* 心跳信号 */
-            ps_exe_heartbeat_func(ps_core_d, pm_data, syschar);
-            break;
-    }
-    return 0;
 }
 
 /*
@@ -402,25 +135,25 @@ int32 ps_push_skb_queue(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint16 pkt_
     int32 ret;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
+        ps_print_err("buf_ptr is NULL\n");
         return -EINVAL;
     }
 
     skb = alloc_skb(pkt_len, GFP_ATOMIC);
     if (skb == NULL) {
-        PS_PRINT_ERR("can't allocate mem for new skb, len=%d\n", pkt_len);
+        ps_print_err("can't allocate mem for new skb, len=%d\n", pkt_len);
         return -EINVAL;
     }
 
     skb_put(skb, pkt_len);
     ret = memcpy_s(skb->data, pkt_len, buf_ptr, pkt_len);
     if (ret != EOK) {
-        PS_PRINT_ERR("skb data copy failed\n");
+        ps_print_err("skb data copy failed\n");
         kfree_skb(skb);
         return -EINVAL;
     }
@@ -438,17 +171,17 @@ int32 delete_gnss_head_skb_msg(void)
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     do {
         if ((skb = ps_skb_dequeue(ps_core_d, RX_GNSS_QUEUE)) == NULL) {
-            PS_PRINT_WARNING("gnss skb rx queue is empty\n");
+            ps_print_warning("gnss skb rx queue is empty\n");
             return 0;
         }
 
-        PS_PRINT_WARNING("gnss delete msg, skb->len=%d, qlen=%d\n",
+        ps_print_warning("gnss delete msg, skb->len=%d, qlen=%d\n",
                          skb->len, ps_core_d->bfgx_info[BFGX_GNSS].rx_queue.qlen);
 
         seperate_tag = skb->data[skb->len - 1];
@@ -458,7 +191,7 @@ int32 delete_gnss_head_skb_msg(void)
                 kfree_skb(skb);
                 break;
             default:
-                PS_PRINT_ERR("seperate_tag=%x not support\n", seperate_tag);
+                ps_print_err("seperate_tag=%x not support\n", seperate_tag);
                 kfree_skb(skb);
                 seperate_tag = GNSS_SEPER_TAG_INIT;
                 break;
@@ -480,12 +213,12 @@ int32 ps_push_skb_queue_gnss(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint16
     uint32  i;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
+        ps_print_err("buf_ptr is NULL\n");
         return -EINVAL;
     }
     spin_lock(&ps_core_d->gnss_rx_lock);
@@ -503,19 +236,19 @@ int32 ps_push_skb_queue_gnss(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint16
             if (skb != NULL) {
                 break;
             }
-            PS_PRINT_ERR("alloc new skb fail [%u]time\n", i + 1);
+            ps_print_err("alloc new skb fail [%u]time\n", i + 1);
         }
         if (skb == NULL) {
-            PS_PRINT_ERR("===can't alloc mem for new skb, tag:%x, slen=%x, pkt_len=%x\n",
+            ps_print_err("===can't alloc mem for new skb, tag:%x, slen=%x, pkt_len=%x\n",
                          seperate_tag, seperate_len, pkt_len);
             while (copy_cnt > 0) {
                 if ((skb = skb_dequeue_tail(&ps_core_d->bfgx_info[BFGX_GNSS].rx_queue)) == NULL) {
-                    PS_PRINT_ERR("===gnss rx queue has no data!\n");
+                    ps_print_err("===gnss rx queue has no data!\n");
                     spin_unlock(&ps_core_d->gnss_rx_lock);
                     return -EINVAL;
                 }
 
-                PS_PRINT_ERR("===drop gnss seperate data, tag:%x, slen=%x, skb->len=%x, pkt_len=%x\n",
+                ps_print_err("===drop gnss seperate data, tag:%x, slen=%x, skb->len=%x, pkt_len=%x\n",
                              seperate_tag, seperate_len, skb->len, pkt_len);
                 skb_pull(skb, skb->len);
                 kfree_skb(skb);
@@ -528,13 +261,13 @@ int32 ps_push_skb_queue_gnss(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint16
         skb_put(skb, seperate_len);
         ret = memcpy_s(skb->data, seperate_len, buf_ptr + copy_cnt, seperate_len - 1);
         if (ret != EOK) {
-            PS_PRINT_ERR("skb_data memcpy_s failed\n");
+            ps_print_err("skb_data memcpy_s failed\n");
             spin_unlock(&ps_core_d->gnss_rx_lock);
             kfree_skb(skb);
             return -EINVAL;
         }
         skb->data[seperate_len - 1] = seperate_tag;
-        PS_PRINT_DBG("===tag:%x, slen=%x, skb_len=%x, copy_cnt=%x, pkt_len=%x\n",
+        ps_print_dbg("===tag:%x, slen=%x, skb_len=%x, copy_cnt=%x, pkt_len=%x\n",
                      seperate_tag, seperate_len, skb->len, copy_cnt + seperate_len - 1, pkt_len);
 
         ps_skb_enqueue(ps_core_d, skb, type);
@@ -565,12 +298,12 @@ int32 ps_push_skb_debug_queue(struct ps_core_s *ps_core_d, const uint8 *buf_ptr,
     PS_PRINT_FUNCTION_NAME;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
+        ps_print_err("buf_ptr is NULL\n");
         return -EINVAL;
     }
 
@@ -588,12 +321,12 @@ int32 ps_push_skb_debug_queue(struct ps_core_s *ps_core_d, const uint8 *buf_ptr,
     count = max_t(size_t, pkt_len, DEBUG_SKB_BUFF_LEN);
     skb = alloc_skb(count, GFP_ATOMIC);
     if (skb == NULL) {
-        PS_PRINT_ERR("can't allocate mem for new debug skb, len=%d\n", count);
+        ps_print_err("can't allocate mem for new debug skb, len=%d\n", count);
         return -EINVAL;
     }
 
     if (unlikely(memcpy_s(skb_tail_pointer(skb), count, buf_ptr, pkt_len) != EOK)) {
-        PS_PRINT_ERR("memcopy_s error, destlen=%d, srclen=%d\n ", count, pkt_len);
+        ps_print_err("memcopy_s error, destlen=%d, srclen=%d\n ", count, pkt_len);
     }
     skb_put(skb, pkt_len);
     ps_skb_enqueue(ps_core_d, skb, type);
@@ -601,22 +334,13 @@ int32 ps_push_skb_debug_queue(struct ps_core_s *ps_core_d, const uint8 *buf_ptr,
     return 0;
 }
 
-int32 ps_recv_mem_dump_size_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
+STATIC int32 ps_recv_mem_dump_size_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
     uint32 dump_mem_size;
 #ifdef HI110X_HAL_MEMDUMP_ENABLE
     uint16 rx_pkt_total_len;
 #endif
-
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
+    ps_print_dbg("recv MEM DUMP SIZE data\n");
 
     if (!ps_is_device_log_enable()) {
         return 0;
@@ -628,7 +352,7 @@ int32 ps_recv_mem_dump_size_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
     dump_mem_size = *(uint32 *)buf_ptr;
 #endif
 
-    PS_PRINT_INFO("prepare to recv bfgx mem size [%d]!\n", dump_mem_size);
+    ps_print_info("prepare to recv bfgx mem size [%d]!\n", dump_mem_size);
 #ifdef HI110X_HAL_MEMDUMP_ENABLE
     rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
     bfgx_notice_hal_memdump();
@@ -639,19 +363,9 @@ int32 ps_recv_mem_dump_size_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
     return 0;
 }
 
-int32 ps_recv_mem_dump_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint32 system)
+STATIC int32 ps_recv_mem_dump_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
     uint16 rx_pkt_total_len;
-
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
 
     if (!ps_is_device_log_enable()) {
         return 0;
@@ -659,90 +373,34 @@ int32 ps_recv_mem_dump_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint32 
 
     rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
 
-    if (system == SUBSYS_BFGX) {
-        if (rx_pkt_total_len <= MEM_DUMP_RX_MAX_FRAME) {
-            PS_PRINT_DBG("recv bfgx stack size [%d]!\n", rx_pkt_total_len);
+    if (rx_pkt_total_len <= MEM_DUMP_RX_MAX_FRAME) {
+        ps_print_dbg("recv bfgx stack size [%d]!\n", rx_pkt_total_len);
 #ifdef HI110X_HAL_MEMDUMP_ENABLE
-            bfgx_memdump_enquenue(buf_ptr, rx_pkt_total_len);
+        bfgx_memdump_enquenue(buf_ptr, rx_pkt_total_len);
 #else
-            bfgx_recv_dev_mem(buf_ptr, rx_pkt_total_len);
+        bfgx_recv_dev_mem(buf_ptr, rx_pkt_total_len);
 #endif
-        }
-    } else if (system == SUBSYS_WIFI) {
-        if (rx_pkt_total_len <= WIFI_MEM_RX_MAX_FRAME) {
-            PS_PRINT_INFO("recv wifi mem size [%d]!\n", rx_pkt_total_len);
-            uart_recv_wifi_mem(buf_ptr, rx_pkt_total_len);
-        }
-    } else {
-        PS_PRINT_ERR("param system is error, system=[%d]\n", system);
     }
 
     return 0;
 }
 
-int32 ps_recv_bfgx_cali_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
-{
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    uint16 rx_pkt_total_len;
-    uint8 *cali_data_buf = NULL;
-    uint32 cali_data_len = 0;
-    uint32 copy_len = 0;
 
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
-
-    cali_data_buf = bfgx_get_cali_data_buf(&cali_data_len);
-    if (cali_data_buf == NULL) {
-        PS_PRINT_ERR("bfgx cali data buf is NULL\n");
-        return -EINVAL;
-    }
-
-    rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
-    copy_len = (rx_pkt_total_len > cali_data_len) ? cali_data_len : rx_pkt_total_len;
-
-    PS_PRINT_INFO("recv bfgx cali data, rx_len=%d,copy_len=%d\n", rx_pkt_total_len, copy_len);
-    if (unlikely(memcpy_s(cali_data_buf, cali_data_len, buf_ptr, copy_len) != EOK)) {
-        PS_PRINT_ERR("memcopy_s error, destlen=%d, srclen=%d\n ", cali_data_len, copy_len);
-    }
-
-    complete(&g_st_cali_recv_done);
-#endif
-
-    return 0;
-}
-
-int32 ps_recv_uart_loop_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
+STATIC int32 ps_recv_uart_loop_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
     int32 ret;
     uint16 rx_pkt_total_len;
-
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
 
     rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
 
     if (rx_pkt_total_len <= UART_LOOP_MAX_PKT_LEN) {
         ret = uart_loop_test_recv_pkt(ps_core_d, buf_ptr, rx_pkt_total_len);
         if (ret < 0) {
-            PS_PRINT_ERR("uart_loop_test_recv_pkt failed\n");
+            ps_print_err("uart_loop_test_recv_pkt failed\n");
             return -EINVAL;
         }
     } else {
-        PS_PRINT_ERR("uart loop test, recv pkt len is too large!\n");
+        ps_print_err("uart loop test, recv pkt len is too large!\n");
         return -EINVAL;
     }
 
@@ -758,7 +416,7 @@ static int32 ps_push_device_log_to_queue(struct ps_core_s *ps_core_d, const uint
         return 0;
     }
 
-    if (atomic_read(&ps_core_d->dbg_func_has_open) == 0) {
+    if (atomic_read(&ps_core_d->dbg_recv_dev_log) == 0) {
         return 0;
     }
 
@@ -768,14 +426,14 @@ static int32 ps_push_device_log_to_queue(struct ps_core_s *ps_core_d, const uint
 
     ret = ps_push_skb_debug_queue(ps_core_d, buf_ptr, len, RX_DBG_QUEUE);
     if (ret < 0) {
-        PS_PRINT_ERR("push debug data to skb queue failed\n");
+        ps_print_err("push debug data to skb queue failed\n");
         return -EINVAL;
     }
 
-    PS_PRINT_DBG("rx_dbg_seq.qlen = %d\n", ps_core_d->rx_dbg_seq.qlen);
+    ps_print_dbg("rx_dbg_seq.qlen = %d\n", ps_core_d->rx_dbg_seq.qlen);
     wake_up_interruptible(&ps_core_d->rx_dbg_wait);
     if (ps_core_d->rx_dbg_seq.qlen > RX_DBG_QUE_MAX_NUM) {
-        PS_PRINT_INFO("rx dbg queue too large!");
+        ps_print_info("rx dbg queue too large!");
         /* if sdt data is large，remove the head skb data */
         skb = ps_skb_dequeue(ps_core_d, RX_DBG_QUEUE);
         kfree_skb(skb);
@@ -791,22 +449,13 @@ static int32 ps_push_device_log_to_queue(struct ps_core_s *ps_core_d, const uint
  * input        : buf_ptr -> ptr of recived data buf
  * output       : return 0 -> have finish
  */
-int32 ps_recv_debug_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
+STATIC int32 ps_recv_debug_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
     uint16 rx_pkt_total_len;
     uint16 dbg_pkt_lenth = 0;
     uint8 ptr_index = 0;
 
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
-
+    ps_core_d->rx_pkt_oml++;
     rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
 
     if ((buf_ptr[START_SIGNAL_LAST_WORDS] == PACKET_START_SIGNAL)
@@ -815,31 +464,31 @@ int32 ps_recv_debug_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
         dbg_pkt_lenth = *(uint16 *)&buf_ptr[PACKET_FRAMELEN_INDEX];
         if ((dbg_pkt_lenth == rx_pkt_total_len) && (dbg_pkt_lenth == LAST_WORD_LEN) &&
             (buf_ptr[RPT_IND_INDEX_LAST_WORDS] == PACKET_RX_RPT_IND_LAST_WORDS)) {
-            PS_PRINT_ERR("recv device last words!Faulttype=0x%x,FaultReason=0x%x,PC=0x%x,LR=0x%x\n",
+            ps_print_err("recv device last words!Faulttype=0x%x,FaultReason=0x%x,PC=0x%x,LR=0x%x\n",
                          *(uint32 *)&buf_ptr[FAULT_TYPE_INDEX_LAST_WORDS],
                          *(uint32 *)&buf_ptr[FAULT_REASON_INDEX_LAST_WORDS],
                          *(uint32 *)&buf_ptr[PC_INDEX_LAST_WORDS],
                          *(uint32 *)&buf_ptr[LR_INDEX_LAST_WORDS]);
-            DECLARE_DFT_TRACE_KEY_INFO("bfgx_device_panic", OAL_DFT_TRACE_EXCEP);
+            declare_dft_trace_key_info("bfgx_device_panic", OAL_DFT_TRACE_EXCEP);
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-            if (bfgx_panic_ssi_dump) {
+            if (g_bfgx_panic_ssi_dump) {
                 ssi_dump_device_regs(SSI_MODULE_MASK_COMM | SSI_MODULE_MASK_BCTRL);
             }
 #endif
-            CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
+            chr_exception_report(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_PLAT, CHR_LAYER_DRV,
                                  CHR_PLT_DRV_EVENT_DEV, CHR_PLAT_DRV_ERROR_BFG_DEV_PANIC);
 
             plat_exception_handler(SUBSYS_BFGX, THREAD_IDLE, BFGX_LASTWORD_PANIC);
         } else {
             /* buf maybe less than log header len */
             if (rx_pkt_total_len > PACKET_HEADER_LEN) {
-                PS_PRINT_WARNING("recv wrong last words,[%x %x]\n",
+                ps_print_warning("recv wrong last words,[%x %x]\n",
                                  *(uint32 *)&buf_ptr[START_SIGNAL_LAST_WORDS],
                                  *(uint32 *)&buf_ptr[PACKET_FRAMELEN_INDEX]);
             } else {
-                PS_PRINT_WARNING("recv wrong last words,len less than head\n");
+                ps_print_warning("recv wrong last words,len less than head\n");
                 for (ptr_index = 0; ptr_index < rx_pkt_total_len; ptr_index++) {
-                    PS_PRINT_WARNING("lastwords[%d]=%x\n", ptr_index, buf_ptr[ptr_index]);
+                    ps_print_warning("lastwords[%d]=%x\n", ptr_index, buf_ptr[ptr_index]);
                 }
             }
         }
@@ -861,17 +510,17 @@ int32 ps_store_rx_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, ui
     struct bfgx_sepreted_rx_st *pst_sepreted_data = NULL;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL, subsys=%d\n", subsys);
+        ps_print_err("ps_core_d is NULL, subsys=%d\n", subsys);
         return -EINVAL;
     }
 
     if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL, subsys=%d\n", subsys);
+        ps_print_err("buf_ptr is NULL, subsys=%d\n", subsys);
         return -EINVAL;
     }
 
     if (subsys >= BFGX_BUTT) {
-        PS_PRINT_ERR("subsys index %d outof range\n", subsys);
+        ps_print_err("subsys index %d outof range\n", subsys);
         return -EINVAL;
     }
 
@@ -880,22 +529,22 @@ int32 ps_store_rx_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, ui
     rx_current_pkt_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
     pst_sepreted_data->rx_pkt_len = rx_current_pkt_len;
 
-    if (likely((uint32)(pst_sepreted_data->rx_buf_all_len + rx_current_pkt_len) <= bfgx_rx_max_frame[subsys])) {
+    if (likely((uint32)(pst_sepreted_data->rx_buf_all_len + rx_current_pkt_len) <= g_bfgx_rx_max_frame[subsys])) {
         if (likely(pst_sepreted_data->rx_buf_ptr != NULL)) {
-            if (unlikely(memcpy_s(pst_sepreted_data->rx_buf_ptr, bfgx_rx_max_frame[subsys] -
+            if (unlikely(memcpy_s(pst_sepreted_data->rx_buf_ptr, g_bfgx_rx_max_frame[subsys] -
                                   pst_sepreted_data->rx_buf_all_len, buf_ptr, rx_current_pkt_len) != EOK)) {
-                PS_PRINT_ERR("dis space is not enough\n ");
+                ps_print_err("dis space is not enough\n ");
                 return RX_PACKET_ERR;
             }
             pst_sepreted_data->rx_buf_all_len += rx_current_pkt_len;
             pst_sepreted_data->rx_buf_ptr += rx_current_pkt_len;
             return RX_PACKET_CORRECT;
         } else {
-            PS_PRINT_ERR("sepreted rx_buf_ptr is NULL\n");
+            ps_print_err("sepreted rx_buf_ptr is NULL\n");
             return RX_PACKET_ERR;
         }
     } else {
-        PS_PRINT_ERR("rx_current_pkt_len=%d,rx_pkt_total_len=%d,rx_buf_all_len=%d,subsys=%d\n",
+        ps_print_err("rx_current_pkt_len=%d,rx_pkt_total_len=%d,rx_buf_all_len=%d,subsys=%d\n",
                      pst_sepreted_data->rx_pkt_len,
                      ps_core_d->rx_pkt_total_len,
                      pst_sepreted_data->rx_buf_all_len,
@@ -904,77 +553,85 @@ int32 ps_store_rx_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, ui
     }
 }
 
-/*
- * Prototype    : ps_recv_sepreated_data
- * Description  : called by core when recive gnss data from device,
- *                  memcpy recive data to mem buf
- * input        : buf_ptr -> ptr of recived data buf
- * output       : return 0 -> have finish
- */
-int32 ps_recv_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint8 subsys, uint8 sepreted_type)
+STATIC uint8_t ps_get_sepreated_subsys_type(struct ps_core_s *ps_core_d)
 {
-    uint16 len;
-    int32 ret;
-    const uint32 ul_max_dump_len = 32;
-    struct pm_drv_data *pm_data = NULL;
-    struct st_bfgx_data *pst_bfgx_data = NULL;
-    struct bfgx_sepreted_rx_st *pst_sepreted_data = NULL;
-    int32 seq_correct = SEPRETED_RX_PKT_SEQ_ERROR;
+    uint8_t subsys = BFGX_BUTT;
+    uint8_t msg_type = ps_core_d->rx_pkt_type;
 
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL, subsys=%d\n", subsys);
-        return -EINVAL;
+    switch (msg_type) {
+        case GNSS_FIRST_MSG:
+        case GNSS_COMMON_MSG:
+        case GNSS_LAST_MSG:
+            subsys = BFGX_GNSS;
+            break;
+
+        case FM_FIRST_MSG:
+        case FM_COMMON_MSG:
+        case FM_LAST_MSG:
+            subsys = BFGX_FM;
+            break;
+
+        case IR_FIRST_MSG:
+        case IR_COMMON_MSG:
+        case IR_LAST_MSG:
+            subsys = BFGX_IR;
+            break;
+
+        case NFC_FIRST_MSG:
+        case NFC_COMMON_MSG:
+        case NFC_LAST_MSG:
+            subsys = BFGX_NFC;
+            break;
+
+        default:
+            /* BT not use sepreted rx */
+            subsys = BFGX_BUTT;
+            break;
     }
 
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL, subsys=%d\n", subsys);
-        return -EINVAL;
+    return subsys;
+}
+
+
+STATIC uint8_t ps_get_sepreated_data_type(struct ps_core_s *ps_core_d)
+{
+    uint8_t sepreted_type = RX_SEQ_BUTT;
+    uint8_t msg_type = ps_core_d->rx_pkt_type;
+
+    switch (msg_type) {
+        case GNSS_FIRST_MSG:
+        case FM_FIRST_MSG:
+        case IR_FIRST_MSG:
+        case NFC_FIRST_MSG:
+            sepreted_type = RX_SEQ_START;
+            break;
+
+        case GNSS_COMMON_MSG:
+        case FM_COMMON_MSG:
+        case IR_COMMON_MSG:
+        case NFC_COMMON_MSG:
+            sepreted_type = RX_SEQ_INT;
+            break;
+
+        case GNSS_LAST_MSG:
+        case FM_LAST_MSG:
+        case IR_LAST_MSG:
+        case NFC_LAST_MSG:
+            sepreted_type = RX_SEQ_LAST;
+            break;
+
+        default:
+            sepreted_type = RX_SEQ_BUTT;
+            break;
     }
 
-    if (subsys >= BFGX_BUTT) {
-        PS_PRINT_ERR("subsys index %d outof range\n", subsys);
-        return -EINVAL;
-    }
+    return sepreted_type;
+}
 
-    if (subsys == BFGX_BT) {
-        PS_PRINT_ERR("BT not use sepreted rx, subsys=%d\n", subsys);
-        return -EINVAL;
-    }
+STATIC int32_t ps_sepreated_type_check(struct bfgx_sepreted_rx_st *pst_sepreted_data, uint8_t sepreted_type)
+{
+    int32_t seq_correct = SEPRETED_RX_PKT_SEQ_ERROR;
 
-    if (sepreted_type >= RX_SEQ_BUTT) {
-        PS_PRINT_ERR("septeted_type %d outof range\n", sepreted_type);
-        return -EINVAL;
-    }
-
-    pm_data = pm_get_drvdata();
-    if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is null\n");
-        return -EINVAL;
-    }
-
-    if (uart_loop_test_cfg.uart_loop_enable) {
-        PS_PRINT_DBG("recv UART LOOP data\n");
-        ps_recv_uart_loop_data(ps_core_d, buf_ptr);
-        return 0;
-    }
-
-    pst_bfgx_data = &ps_core_d->bfgx_info[subsys];
-    pst_sepreted_data = &pst_bfgx_data->sepreted_rx;
-
-    spin_lock(&pst_sepreted_data->sepreted_rx_lock);
-    if (atomic_read(&pst_bfgx_data->subsys_state) != POWER_STATE_OPEN) {
-        len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
-        PS_PRINT_WARNING("%s has closed, no need to recv data, len is %d\n", bfgx_subsys_name[subsys], len);
-        oal_print_hex_dump(buf_ptr, (len < ul_max_dump_len ? len : ul_max_dump_len), HEX_DUMP_GROUP_SIZE, "rec data :");
-        spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
-        return 0;
-    }
-
-    if (subsys == BFGX_GNSS) {
-        atomic_set(&pm_data->gnss_sleep_flag, GNSS_NOT_AGREE_SLEEP);
-    }
-
-    /* 检查分包序列的正确性 */
     switch (sepreted_type) {
         case RX_SEQ_START:
             if ((pst_sepreted_data->rx_prev_seq == RX_SEQ_NULL) || (pst_sepreted_data->rx_prev_seq == RX_SEQ_LAST)) {
@@ -999,62 +656,157 @@ int32 ps_recv_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint8 
             break;
     }
 
-    if (seq_correct == SEPRETED_RX_PKT_SEQ_CORRECT) {
-        /* 接收到的分包数据都要先拷贝到组包buffer中 */
-        ret = ps_store_rx_sepreated_data(ps_core_d, buf_ptr, subsys);
-        /*
-         * 当组包发生错误时，只有在收到LAST包的时候才重置组包buffer。
-         * 因为只有收到LAST包，才能确保接收到的下一包数据的正确性。
-         */
-        if ((ret == RX_PACKET_ERR) && (sepreted_type == RX_SEQ_LAST)) {
-            PS_PRINT_ERR("%s rx data lenth err! give up this total pkt\n", bfgx_subsys_name[subsys]);
-            pst_sepreted_data->rx_buf_ptr = pst_sepreted_data->rx_buf_org_ptr;
-            pst_sepreted_data->rx_buf_all_len = 0;
-            spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
-            return -EINVAL;
-        }
+    return seq_correct;
+}
+
+STATIC void ps_sepreated_rx_buf_reset(struct bfgx_sepreted_rx_st *pst_sepreted_data)
+{
+    pst_sepreted_data->rx_buf_ptr = pst_sepreted_data->rx_buf_org_ptr;
+    pst_sepreted_data->rx_buf_all_len = 0;
+}
+
+STATIC int32_t ps_push_sepreated_data_to_queue(struct ps_core_s *ps_core_d, uint8_t subsys)
+{
+    struct st_bfgx_data *pst_bfgx_data = NULL;
+    struct bfgx_sepreted_rx_st *pst_sepreted_data = NULL;
+    int32_t ret;
+
+    pst_bfgx_data = &ps_core_d->bfgx_info[subsys];
+    pst_sepreted_data = &pst_bfgx_data->sepreted_rx;
+
+    /* 如果已经缓存的数据到达了最大值，则新来的数据被丢弃 */
+    if (pst_bfgx_data->rx_queue.qlen >= g_bfgx_rx_queue_max_num[subsys]) {
+        ps_print_warning("%s rx queue too large! qlen=%d\n",
+                         g_bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
+        oal_wait_queue_wake_up_interrupt(&pst_bfgx_data->rx_wait);
+        ps_sepreated_rx_buf_reset(pst_sepreted_data);
+        return -EINVAL;
+    }
+    /* gnss packet may large than 8KB, skb_alloc may fail, so seperate the packet to 4KB at most */
+    if (subsys == BFGX_GNSS) {
+        ret = ps_push_skb_queue_gnss(ps_core_d, pst_sepreted_data->rx_buf_org_ptr,
+                                     pst_sepreted_data->rx_buf_all_len, g_bfgx_rx_queue[subsys]);
     } else {
-        PS_PRINT_ERR("%s rx seq is err! sepreted_type=%d, rx_prev_seq=%d\n",
-                     bfgx_subsys_name[subsys], sepreted_type, pst_sepreted_data->rx_prev_seq);
-        spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
+        ret = ps_push_skb_queue(ps_core_d, pst_sepreted_data->rx_buf_org_ptr,
+                                pst_sepreted_data->rx_buf_all_len, g_bfgx_rx_queue[subsys]);
+    }
+
+    ps_sepreated_rx_buf_reset(pst_sepreted_data);
+    if (ret < 0) {
+        ps_print_err("push %s rx data to skb failed!\n", g_bfgx_subsys_name[subsys]);
+        return -EINVAL;
+    }
+
+    /* 现在skb中已经有正确完整的数据，唤醒等待数据的进程 */
+    ps_print_dbg("%s rx done! qlen=%d\n", g_bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
+    oal_wait_queue_wake_up_interrupt(&pst_bfgx_data->rx_wait);
+
+    return 0;
+}
+
+STATIC int32_t ps_sepreated_data_recv(struct ps_core_s *ps_core_d, uint8_t *buf_ptr, uint8_t subsys)
+{
+    int32_t ret;
+    int32_t seq_correct;
+    uint8_t sepreted_type;
+    struct st_bfgx_data *pst_bfgx_data = NULL;
+    struct bfgx_sepreted_rx_st *pst_sepreted_data = NULL;
+
+    sepreted_type = ps_get_sepreated_data_type(ps_core_d);
+    if (sepreted_type >= RX_SEQ_BUTT) {
+        ps_print_err("sepreted type error, type=%d\n", sepreted_type);
+        return -EINVAL;
+    }
+
+    pst_bfgx_data = &ps_core_d->bfgx_info[subsys];
+    pst_sepreted_data = &pst_bfgx_data->sepreted_rx;
+
+    /* 检查分包序列的正确性 */
+    seq_correct = ps_sepreated_type_check(pst_sepreted_data, sepreted_type);
+    if (seq_correct != SEPRETED_RX_PKT_SEQ_CORRECT) {
+        ps_print_err("%s rx seq is err! sepreted_type=%d, rx_prev_seq=%d\n",
+                     g_bfgx_subsys_name[subsys], sepreted_type, pst_sepreted_data->rx_prev_seq);
+        return -EINVAL;
+    }
+
+    /* 接收到的分包数据都要先拷贝到组包buffer中 */
+    ret = ps_store_rx_sepreated_data(ps_core_d, buf_ptr, subsys);
+    /*
+     * 当组包发生错误时，只有在收到LAST包的时候才重置组包buffer。
+     * 因为只有收到LAST包，才能确保接收到的下一包数据的正确性。
+     */
+    if ((ret == RX_PACKET_ERR) && (sepreted_type == RX_SEQ_LAST)) {
+        ps_print_err("%s rx data lenth err! give up this total pkt\n", g_bfgx_subsys_name[subsys]);
+        ps_sepreated_rx_buf_reset(pst_sepreted_data);
         return -EINVAL;
     }
 
     /* 收到LAST包，说明组包完成，否则继续接收，直到收到完整的数据包，或者中途发生错误，丢弃该包。 */
     if (sepreted_type == RX_SEQ_LAST) {
-        /* 如果已经缓存的数据到达了最大值，则新来的数据被丢弃 */
-        if (pst_bfgx_data->rx_queue.qlen >= bfgx_rx_queue_max_num[subsys]) {
-            PS_PRINT_WARNING("%s rx queue too large! qlen=%d\n",
-                             bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
-            wake_up_interruptible(&pst_bfgx_data->rx_wait);
-            pst_sepreted_data->rx_buf_ptr = pst_sepreted_data->rx_buf_org_ptr;
-            pst_sepreted_data->rx_buf_all_len = 0;
-            spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
-            return -EINVAL;
-        }
-        /* gnss packet may large than 8KB, skb_alloc may fail, so seperate the packet to 4KB at most */
-        if (subsys == BFGX_GNSS) {
-            ret = ps_push_skb_queue_gnss(ps_core_d, pst_sepreted_data->rx_buf_org_ptr,
-                                         pst_sepreted_data->rx_buf_all_len, bfgx_rx_queue[subsys]);
-        } else {
-            ret = ps_push_skb_queue(ps_core_d, pst_sepreted_data->rx_buf_org_ptr,
-                                    pst_sepreted_data->rx_buf_all_len, bfgx_rx_queue[subsys]);
-        }
-        pst_sepreted_data->rx_buf_ptr = pst_sepreted_data->rx_buf_org_ptr;
-        pst_sepreted_data->rx_buf_all_len = 0;
-        if (ret < 0) {
-            PS_PRINT_ERR("push %s rx data to skb failed!\n", bfgx_subsys_name[subsys]);
-            spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
-            return -EINVAL;
-        }
-
-        /* 现在skb中已经有正确完整的数据，唤醒等待数据的进程 */
-        PS_PRINT_DBG("%s rx done! qlen=%d\n", bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
-        wake_up_interruptible(&pst_bfgx_data->rx_wait);
+        ret = ps_push_sepreated_data_to_queue(ps_core_d, subsys);
     }
+
+    return ret;
+}
+
+/*
+ * Prototype    : ps_recv_sepreated_data
+ * Description  : called by core when recive gnss data from device,
+ *                  memcpy recive data to mem buf
+ * input        : buf_ptr -> ptr of recived data buf
+ * output       : return 0 -> have finish
+ */
+STATIC int32_t ps_recv_sepreated_data(struct ps_core_s *ps_core_d, uint8_t *buf_ptr)
+{
+    uint8_t subsys;
+    uint16_t len;
+    int32_t ret;
+    const uint32_t max_dump_len = 32;
+    struct pm_drv_data *pm_data = NULL;
+    struct st_bfgx_data *pst_bfgx_data = NULL;
+    struct bfgx_sepreted_rx_st *pst_sepreted_data = NULL;
+
+    subsys = ps_get_sepreated_subsys_type(ps_core_d);
+    if (subsys >= BFGX_BUTT) {
+        ps_print_err("sepreted subsys error, subsys=%d\n", subsys);
+        return -EINVAL;
+    }
+
+    pm_data = pm_get_drvdata();
+    if (unlikely(pm_data == NULL)) {
+        ps_print_err("pm_data is null\n");
+        return -EINVAL;
+    }
+
+    if (g_uart_loop_test_cfg.uart_loop_enable) {
+        ps_print_dbg("recv UART LOOP data\n");
+        ps_recv_uart_loop_data(ps_core_d, buf_ptr);
+        return 0;
+    }
+
+    ps_core_d->rx_pkt_num[subsys]++;
+    pst_bfgx_data = &ps_core_d->bfgx_info[subsys];
+    pst_sepreted_data = &pst_bfgx_data->sepreted_rx;
+
+    spin_lock(&pst_sepreted_data->sepreted_rx_lock);
+    if (atomic_read(&pst_bfgx_data->subsys_state) != POWER_STATE_OPEN) {
+        len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
+        ps_print_warning("%s has closed, no need to recv data, len is %d\n", g_bfgx_subsys_name[subsys], len);
+        oal_print_hex_dump(buf_ptr, (len < max_dump_len ? len : max_dump_len), HEX_DUMP_GROUP_SIZE, "rec data :");
+        spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
+        return 0;
+    }
+
+    if (subsys == BFGX_GNSS) {
+        atomic_set(&pm_data->gnss_sleep_flag, GNSS_NOT_AGREE_SLEEP);
+        oal_wake_lock_timeout(&pm_data->gnss_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
+    }
+
+    ret = ps_sepreated_data_recv(ps_core_d, buf_ptr, subsys);
+
     spin_unlock(&pst_sepreted_data->sepreted_rx_lock);
 
-    return 0;
+    return ret;
 }
 
 /*
@@ -1064,252 +816,141 @@ int32 ps_recv_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint8 
  * input        : buf_ptr -> ptr of recived data buf
  * output       : return 0 -> have finish
  */
-int32 ps_recv_no_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint8 subsys)
+STATIC int32 ps_recv_no_sepreated_data(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
     int32 ret;
     uint16 rx_pkt_total_len = 0;
+    struct pm_drv_data *pm_data = NULL;
     struct st_bfgx_data *pst_bfgx_data = NULL;
 
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL, subsys=%d\n", subsys);
-        return -EINVAL;
-    }
+    pm_data = pm_get_drvdata();
+    ps_core_d->rx_pkt_num[BFGX_BT]++;
+    pst_bfgx_data = &ps_core_d->bfgx_info[BFGX_BT];
 
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL, subsys=%d\n", subsys);
-        return -EINVAL;
-    }
-
-    if (subsys != BFGX_BT) {
-        PS_PRINT_ERR("bfgx subsys %d use sepreted rx\n", subsys);
-        return -EINVAL;
-    }
-
-    pst_bfgx_data = &ps_core_d->bfgx_info[subsys];
+    oal_wake_lock_timeout(&pm_data->bt_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
 
     /* 如果已经缓存的数据到达了最大值，则新来的数据被丢弃 */
-    if (pst_bfgx_data->rx_queue.qlen >= bfgx_rx_queue_max_num[subsys]) {
-        PS_PRINT_WARNING("%s rx queue too large! qlen=%d\n",
-                         bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
-        wake_up_interruptible(&pst_bfgx_data->rx_wait);
+    if (pst_bfgx_data->rx_queue.qlen >= g_bfgx_rx_queue_max_num[BFGX_BT]) {
+        ps_print_warning("%s rx queue too large! qlen=%d\n",
+                         g_bfgx_subsys_name[BFGX_BT], pst_bfgx_data->rx_queue.qlen);
+        oal_wait_queue_wake_up_interrupt(&pst_bfgx_data->rx_wait);
         return -EINVAL;
     }
 
     if (atomic_read(&pst_bfgx_data->subsys_state) == POWER_STATE_OPEN) {
         rx_pkt_total_len = ps_core_d->rx_pkt_total_len - sizeof(struct ps_packet_head) - sizeof(struct ps_packet_end);
-        ret = ps_push_skb_queue(ps_core_d, buf_ptr, rx_pkt_total_len, bfgx_rx_queue[subsys]);
+        ret = ps_push_skb_queue(ps_core_d, buf_ptr, rx_pkt_total_len, g_bfgx_rx_queue[BFGX_BT]);
         if (ret < 0) {
-            PS_PRINT_ERR("push %s rx data to skb failed!\n", bfgx_subsys_name[subsys]);
+            ps_print_err("push %s rx data to skb failed!\n", g_bfgx_subsys_name[BFGX_BT]);
             return -EINVAL;
         }
 
-        PS_PRINT_DBG("%s rx done! qlen=%d\n", bfgx_subsys_name[subsys], pst_bfgx_data->rx_queue.qlen);
-        wake_up_interruptible(&pst_bfgx_data->rx_wait);
+        ps_print_dbg("%s rx done! qlen=%d\n", g_bfgx_subsys_name[BFGX_BT], pst_bfgx_data->rx_queue.qlen);
+        oal_wait_queue_wake_up_interrupt(&pst_bfgx_data->rx_wait);
     }
 
     return 0;
 }
 
+STATIC void ps_core_updata_bfg_timer(struct ps_core_s *ps_core_d, uint8_t *buf_ptr)
+{
+    uint8_t pkt_type;
+    uint8_t *ptr = NULL;
+    struct pm_drv_data *pm_data = NULL;
+
+    pm_data = pm_get_drvdata();
+    ptr = buf_ptr + sizeof(struct ps_packet_head);
+    pkt_type = ps_core_d->rx_pkt_type;
+
+    /* if data comes from dev which is not SYS_INF_DEV_AGREE_HOST_SLP &
+        not gnss data & not oml data, we should re-monitor uart transfer
+      */
+    if (pkt_type == SYS_MSG) {
+        if ((*ptr != SYS_INF_DEV_AGREE_HOST_SLP) && (*ptr < SYS_INF_HEARTBEAT_CMD_BASE)) {
+            if (!bfgx_other_subsys_all_shutdown(BFGX_GNSS)) {
+                mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(BT_SLEEP_TIME));
+                pm_data->bfg_timer_mod_cnt++;
+            }
+        }
+    } else if ((pkt_type != GNSS_FIRST_MSG) && (pkt_type != GNSS_COMMON_MSG) &&
+               (pkt_type != GNSS_LAST_MSG) && (pkt_type != OML_MSG) &&
+               (oal_atomic_read(&g_ir_only_mode) == 0)) {
+        mod_timer(&pm_data->bfg_timer, jiffies + oal_msecs_to_jiffies(BT_SLEEP_TIME));
+        pm_data->bfg_timer_mod_cnt++;
+
+        pm_data->gnss_votesleep_check_cnt = 0;
+        pm_data->rx_pkt_gnss_pre = 0;
+    }
+}
+
+STATIC void ps_core_updata_pm_status(struct ps_core_s *ps_core_d, uint8_t *buf_ptr)
+{
+    uint8_t pkt_type;
+    uint8_t *ptr = NULL;
+    struct pm_drv_data *pm_data = NULL;
+
+    pm_data = pm_get_drvdata();
+    ptr = buf_ptr + sizeof(struct ps_packet_head);
+    pkt_type = ps_core_d->rx_pkt_type;
+    /*
+     * if some data comes from device which is the normal protocol msg,
+     * mark it as "received data before device ack".
+     */
+    if (unlikely(ps_core_d->ps_pm->bfgx_dev_state_get() == BFGX_SLEEP) &&
+        (pkt_type != OML_MSG) && (pkt_type != MEM_DUMP_SIZE) &&
+        (pkt_type != MEM_DUMP) && (*ptr != SYS_INF_DEV_AGREE_HOST_SLP) &&
+        (*ptr < SYS_INF_HEARTBEAT_CMD_BASE)) {
+        ps_core_d->ps_pm->pm_priv_data->rcvdata_bef_devack_flag = 1;
+        ps_print_info("recv data before dev_ack, type=[0x%x]\n", pkt_type);
+    }
+
+    if (g_wakeup_src_debug) {
+        ps_print_info("dev wakeup host pkt type is [%d]\n", pkt_type);
+        g_wakeup_src_debug = 0;
+    }
+}
+
+STATIC void ps_core_status_updata(struct ps_core_s *ps_core_d, uint8_t *buf_ptr)
+{
+    struct st_exception_info *exception_data = NULL;
+
+    get_exception_info_reference(&exception_data);
+    if (exception_data != NULL) {
+        if (exception_data->debug_beat_flag == 1) {
+            atomic_set(&exception_data->bfgx_beat_flag, BFGX_RECV_BEAT_INFO);
+        }
+    }
+
+    ps_core_updata_bfg_timer(ps_core_d, buf_ptr);
+    ps_core_updata_pm_status(ps_core_d, buf_ptr);
+}
+
 /*
- * Prototype    : ps_decode_packet_func
+ * Prototype    : ps_decode_packet
  * Description  : called by core when recive data from device is
  *                  a complete packet
  *              : decode packet function,and push sk_buff head queue
  * input        : buf_ptr -> ptr of recived data buf
  * output       : return 0 -> have finish
  */
-int32 ps_decode_packet_func(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
+STATIC int32 ps_decode_packet(struct ps_core_s *ps_core_d, uint8 *buf_ptr)
 {
-    uint8 *ptr;
-    struct pm_drv_data *pm_data = NULL;
-    struct st_exception_info *pst_exception_data = NULL;
+    uint8_t msg_type;
+    uint8 *ptr = NULL;
 
     PS_PRINT_FUNCTION_NAME;
 
-    if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
-        return -EINVAL;
-    }
-
-    if (buf_ptr == NULL) {
-        PS_PRINT_ERR("buf_ptr is NULL\n");
-        return -EINVAL;
-    }
-
-    pm_data = pm_get_drvdata();
-    ;
-    if (unlikely(pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is null\n");
-        return -EINVAL;
-    }
-
-    get_exception_info_reference(&pst_exception_data);
-    if (pst_exception_data != NULL) {
-        if (pst_exception_data->debug_beat_flag == 1) {
-            atomic_set(&pst_exception_data->bfgx_beat_flag, BFGX_RECV_BEAT_INFO);
-        }
-    }
+    ps_core_status_updata(ps_core_d, buf_ptr);
 
     ptr = buf_ptr + sizeof(struct ps_packet_head);
-
-    /* if data comes from dev which is not SYS_INF_DEV_AGREE_HOST_SLP &
-       not gnss data & not oml data, we should re-monitor uart transfer
-     */
-    if (ps_core_d->rx_pkt_type == SYS_MSG) {
-        if ((*ptr != SYS_INF_DEV_AGREE_HOST_SLP) && (*ptr < SYS_INF_HEARTBEAT_CMD_BASE)) {
-            if (!bfgx_other_subsys_all_shutdown(BFGX_GNSS)) {
-                mod_timer(&pm_data->bfg_timer, jiffies + (BT_SLEEP_TIME * HZ / 1000));
-                pm_data->bfg_timer_mod_cnt++;
-            }
-        }
-    } else if ((ps_core_d->rx_pkt_type != GNSS_First_MSG) &&
-               (ps_core_d->rx_pkt_type != GNSS_Common_MSG) &&
-               (ps_core_d->rx_pkt_type != GNSS_Last_MSG) &&
-               (ps_core_d->rx_pkt_type != OML_MSG) &&
-               (!ir_only_mode)) {
-        mod_timer(&pm_data->bfg_timer, jiffies + (BT_SLEEP_TIME * HZ / 1000));
-        pm_data->bfg_timer_mod_cnt++;
-
-        pm_data->gnss_votesleep_check_cnt = 0;
-        pm_data->rx_pkt_gnss_pre = 0;
+    msg_type = ps_core_d->rx_pkt_type;
+    if (msg_type >= MSG_BUTT) {
+        ps_print_err("msg_type:0x%x error\n", msg_type);
+        return -EINVAL;
     }
 
-    /*
-     * if some data comes from device which is the normal protocol msg,
-     * mark it as "received data before device ack".
-     */
-    if (unlikely(ps_core_d->ps_pm->bfgx_dev_state_get() == BFGX_SLEEP) &&
-        (ps_core_d->rx_pkt_type != OML_MSG) &&
-        (ps_core_d->rx_pkt_type != MEM_DUMP_SIZE) &&
-        (ps_core_d->rx_pkt_type != MEM_DUMP) &&
-        (*ptr != SYS_INF_DEV_AGREE_HOST_SLP) &&
-        (*ptr < SYS_INF_HEARTBEAT_CMD_BASE)) {
-        ps_core_d->ps_pm->pm_priv_data->rcvdata_bef_devack_flag = 1;
-        PS_PRINT_INFO("recv data before dev_ack, type=[0x%x]\n", ps_core_d->rx_pkt_type);
-    }
-
-    if (uc_wakeup_src_debug) {
-        PS_PRINT_INFO("dev wakeup host pkt type is [%d]\n", ps_core_d->rx_pkt_type);
-        uc_wakeup_src_debug = 0;
-    }
-
-    switch (ps_core_d->rx_pkt_type) {
-        case SYS_MSG:
-            PS_PRINT_DBG("recv system data\n");
-            ps_core_d->rx_pkt_sys++;
-            ps_exe_sys_func(ps_core_d, ptr);
-            break;
-
-        case BT_MSG:
-            PS_PRINT_DBG("recv BT data\n");
-            ps_core_d->rx_pkt_num[BFGX_BT]++;
-            oal_wake_lock_timeout(&pm_data->bt_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
-            ps_recv_no_sepreated_data(ps_core_d, ptr, BFGX_BT);
-            break;
-
-        case FM_FIRST_MSG:
-            PS_PRINT_DBG("into ->fm-START\n");
-            ps_core_d->rx_pkt_num[BFGX_FM]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_FM, RX_SEQ_START);
-            break;
-
-        case FM_COMMON_MSG:
-            PS_PRINT_DBG("into ->fm-INT\n");
-            ps_core_d->rx_pkt_num[BFGX_FM]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_FM, RX_SEQ_INT);
-            break;
-
-        case FM_LAST_MSG:
-            PS_PRINT_DBG("recv FM data\n");
-            ps_core_d->rx_pkt_num[BFGX_FM]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_FM, RX_SEQ_LAST);
-            break;
-
-        case GNSS_First_MSG:
-            PS_PRINT_DBG("into ->gnss-START\n");
-            ps_core_d->rx_pkt_num[BFGX_GNSS]++;
-            oal_wake_lock_timeout(&pm_data->gnss_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_GNSS, RX_SEQ_START);
-            break;
-
-        case GNSS_Common_MSG:
-            PS_PRINT_DBG("into ->gnss-INT\n");
-            ps_core_d->rx_pkt_num[BFGX_GNSS]++;
-            oal_wake_lock_timeout(&pm_data->gnss_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_GNSS, RX_SEQ_INT);
-            break;
-
-        case GNSS_Last_MSG:
-            PS_PRINT_DBG("recv GNSS data\n");
-            ps_core_d->rx_pkt_num[BFGX_GNSS]++;
-            oal_wake_lock_timeout(&pm_data->gnss_wake_lock, DEFAULT_WAKELOCK_TIMEOUT);
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_GNSS, RX_SEQ_LAST);
-            break;
-
-        case OML_MSG:
-            PS_PRINT_DBG("recv debug data\n");
-            ps_core_d->rx_pkt_oml++;
-            ps_recv_debug_data(ps_core_d, ptr);
-            break;
-
-        case NFC_First_MSG:
-            PS_PRINT_DBG("into ->nfc-START\n");
-            ps_core_d->rx_pkt_num[BFGX_NFC]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_NFC, RX_SEQ_START);
-            break;
-
-        case NFC_Common_MSG:
-            PS_PRINT_DBG("into ->nfc-INT\n");
-            ps_core_d->rx_pkt_num[BFGX_NFC]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_NFC, RX_SEQ_INT);
-            break;
-
-        case NFC_Last_MSG:
-            PS_PRINT_DBG("recv NFC data\n");
-            ps_core_d->rx_pkt_num[BFGX_NFC]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_NFC, RX_SEQ_LAST);
-            break;
-
-        case IR_FIRST_MSG:
-            PS_PRINT_DBG("into ->ir-START\n");
-            ps_core_d->rx_pkt_num[BFGX_IR]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_IR, RX_SEQ_START);
-            break;
-
-        case IR_COMMON_MSG:
-            PS_PRINT_DBG("into ->ir-INT\n");
-            ps_core_d->rx_pkt_num[BFGX_IR]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_IR, RX_SEQ_INT);
-            break;
-
-        case IR_LAST_MSG:
-            PS_PRINT_DBG("recv IR data\n");
-            ps_core_d->rx_pkt_num[BFGX_IR]++;
-            ps_recv_sepreated_data(ps_core_d, ptr, BFGX_IR, RX_SEQ_LAST);
-            break;
-
-        case MEM_DUMP_SIZE:
-            PS_PRINT_DBG("recv MEM DUMP SIZE data\n");
-            ps_recv_mem_dump_size_data(ps_core_d, ptr);
-            break;
-
-        case MEM_DUMP:
-            PS_PRINT_DBG("recv MEM DUMP data\n");
-            ps_recv_mem_dump_data(ps_core_d, ptr, SUBSYS_BFGX);
-            break;
-
-        case WIFI_MEM_DUMP:
-            PS_PRINT_DBG("recv MEM DUMP data\n");
-            ps_recv_mem_dump_data(ps_core_d, ptr, SUBSYS_WIFI);
-            break;
-
-        case BFGX_CALI_MSG:
-            PS_PRINT_DBG("recv BFGX CALI data\n");
-            ps_recv_bfgx_cali_data(ps_core_d, ptr);
-            break;
-
-        default:
-            break;
+    if (g_ps_core_msg_handle[msg_type] != NULL) {
+        g_ps_core_msg_handle[msg_type](ps_core_d, ptr);
     }
 
     return 0;
@@ -1322,9 +963,9 @@ static int32 ps_check_chr_packet(struct ps_core_s *ps_core_d, uint8* buf_ptr)
         (ps_core_d->rx_pkt_total_len > SYS_TOTAL_PACKET_LENTH)) {
         if ((ps_core_d->rx_pkt_total_len == SYS_TOTAL_PACKET_LENTH + DEV_SEND_CHR_ERRNO_LEN) ||
             (buf_ptr[sizeof(struct ps_packet_head)] == SYS_INF_CHR_ERRNO_REPORT)) {
-            PS_PRINT_DBG("Host recv CHR errno!");
+            ps_print_dbg("Host recv CHR errno!");
         } else {
-            PS_PRINT_ERR("the pkt type and len err: %x, %x\n", ps_core_d->rx_pkt_type,
+            ps_print_err("the pkt type and len err: %x, %x\n", ps_core_d->rx_pkt_type,
                          ps_core_d->rx_pkt_total_len);
             print_uart_decode_param();
             return RX_PACKET_ERR;
@@ -1341,16 +982,86 @@ static void dmd_report_uart_pkt_err(void)
 
     uart_pkt_err_count++;
     if (uart_pkt_err_count == 1) {
-         uart_pkt_err_start_time = jiffies;
-         uart_pkt_err_end_time = uart_pkt_err_start_time + 60*HZ;
+        uart_pkt_err_start_time = jiffies;
+        uart_pkt_err_end_time = uart_pkt_err_start_time + OAL_SEC_PER_MIN * HZ;
     }
     if (uart_pkt_err_count == UART_DMD_MAX_PKT_ERR_CNT) {
-         if (jiffies <= uart_pkt_err_end_time) {
-             hw_1102a_bt_dsm_client_notify(DSM_1102A_UART_PKT_ERR, "%s: report dmd for uart pkt err\n", __FUNCTION__);
-         }
-         uart_pkt_err_start_time = 0;
-         uart_pkt_err_count = 0;
+        if (jiffies <= uart_pkt_err_end_time) {
+            hw_1102a_bt_dsm_client_notify(DSM_1102A_UART_PKT_ERR, "%s: report dmd for uart pkt err\n", __FUNCTION__);
+        }
+        uart_pkt_err_start_time = 0;
+        uart_pkt_err_count = 0;
     }
+}
+
+STATIC int32_t ps_check_msg_data_len(uint8_t rx_pkt_type, uint16_t rx_pkt_total_len, uint8_t *buf_ptr)
+{
+    switch (rx_pkt_type) {
+        case BT_MSG:
+            if (rx_pkt_total_len > BT_RX_MAX_FRAME) {
+                ps_print_err("type=%d, the pkt len is ERR: 0x%x\n", rx_pkt_type, rx_pkt_total_len);
+                print_uart_decode_param();
+                return RX_PACKET_ERR;
+            }
+            break;
+        case GNSS_FIRST_MSG:
+        case GNSS_COMMON_MSG:
+        case GNSS_LAST_MSG:
+        case FM_FIRST_MSG:
+        case FM_COMMON_MSG:
+        case FM_LAST_MSG:
+        case IR_FIRST_MSG:
+        case IR_COMMON_MSG:
+        case IR_LAST_MSG:
+        case NFC_FIRST_MSG:
+        case NFC_COMMON_MSG:
+        case NFC_LAST_MSG:
+        case OML_MSG:
+            if (oal_atomic_read(&g_ir_only_mode) != 0) {
+                break;  // 单红外消息不分包，不需要分包检查
+            }
+            if ((buf_ptr[PACKET_OFFSET_HEAD_INDEX] == PACKET_START_SIGNAL) &&
+                (buf_ptr[PACKET_OFFSET_HEAD_NEXT_INDEX] == PACKET_RX_FUNC_LAST_WORDS)) {
+                if (rx_pkt_total_len > MAX_LAST_WORD_FRAME_LEN) {
+                    ps_print_err("type=%d, the pkt len is ERR: 0x%x,(max frame len is:0x%x)\n",
+                                 rx_pkt_type, rx_pkt_total_len, MAX_LAST_WORD_FRAME_LEN);
+                    print_uart_decode_param();
+                    return RX_PACKET_ERR;
+                }
+            } else if (rx_pkt_total_len > MAX_NOBT_FRAME_LEN) {
+                ps_print_err("type=%d, the pkt len is ERR: 0x%x,(max frame len is:0x%x)\n",
+                             rx_pkt_type, rx_pkt_total_len, MAX_NOBT_FRAME_LEN);
+                print_uart_decode_param();
+                return RX_PACKET_ERR;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return RX_PACKET_CORRECT;
+}
+
+STATIC int32_t ps_check_packet_head_start(struct ps_core_s *ps_core_d, uint8_t *buf_ptr, int32_t count)
+{
+    if ((ps_core_d == NULL) || (buf_ptr == NULL)) {
+        ps_print_err("ps_core_d or buf_ptr is NULL\n");
+        return -EINVAL;
+    }
+
+    if (unlikely(*buf_ptr != PACKET_START_SIGNAL)) {
+        dmd_report_uart_pkt_err();
+        ps_print_err("pkt head is ERR:%x,count=[%d],buf_ptr=[%p]\n", *buf_ptr, count, buf_ptr);
+        print_uart_decode_param();
+        return RX_PACKET_ERR;
+    }
+
+    /* if count less then sys packet lenth and continue */
+    if (count < SYS_TOTAL_PACKET_LENTH) {
+            return RX_PACKET_CONTINUE;
+    }
+
+    return RX_PACKET_CORRECT;
 }
 
 /*
@@ -1362,126 +1073,68 @@ static void dmd_report_uart_pkt_err(void)
  *                return 1 -> this packet has not a complete packet,need continue recv
  *                return -1-> this packst is a err packet,del it
  */
-int32 ps_check_packet_head(struct ps_core_s *ps_core_d, uint8 *buf_ptr, int32 count)
+int32_t ps_check_packet_head(struct ps_core_s *ps_core_d, uint8_t *buf_ptr, int32_t count)
 {
-    uint8 *ptr;
-    uint16 len;
-    uint16 lenbak;
+    uint16_t len;
+    uint16_t lenbak;
+    int32_t ret;
+    uint8_t *ptr = buf_ptr;
 
-    PS_PRINT_FUNCTION_NAME;
-
-    if ((ps_core_d == NULL) || (buf_ptr == NULL)) {
-        PS_PRINT_ERR("ps_core_d or buf_ptr is NULL\n");
-        return -EINVAL;
+    ret = ps_check_packet_head_start(ps_core_d, ptr, count);
+    if (ret != RX_PACKET_CORRECT) {
+        return ret;
     }
 
-    ptr = buf_ptr;
-    if (*ptr == PACKET_START_SIGNAL) { /* if count less then sys packet lenth and continue */
-        if (count < SYS_TOTAL_PACKET_LENTH) {
-            return RX_PACKET_CONTINUE;
-        }
-        ptr++;
-        ps_core_d->rx_pkt_type = *ptr;
-
-        /* check packet type */
-        if (ps_core_d->rx_pkt_type < MSG_BUTT) {
-            ptr++;
-            len = *ptr;
-            ptr++;
-            lenbak = *ptr;
-            lenbak = lenbak * 0x100;
-            len = len + lenbak;
-            ps_core_d->rx_pkt_total_len = len;
-
-            /* check packet lenth less then sys packet lenth */
-            if (ps_core_d->rx_pkt_total_len < SYS_TOTAL_PACKET_LENTH) {
-                PS_PRINT_ERR("the pkt len is ERR: %x\n", ps_core_d->rx_pkt_total_len);
-                print_uart_decode_param();
-                return RX_PACKET_ERR;
-            }
-
-            /* check packet lenth large than buf total lenth */
-            if (ps_core_d->rx_pkt_total_len > PUBLIC_BUF_MAX) {
-                PS_PRINT_ERR("the pkt len is too large: %x\n", ps_core_d->rx_pkt_total_len);
-                print_uart_decode_param();
-                ps_core_d->rx_pkt_total_len = 0;
-                return RX_PACKET_ERR;
-            }
-
-            /* check all service frame length */
-            switch (ps_core_d->rx_pkt_type) {
-                case BT_MSG:
-                    if (ps_core_d->rx_pkt_total_len > BT_RX_MAX_FRAME) {
-                        PS_PRINT_ERR("type=%d, the pkt len is ERR: 0x%x\n",
-                                     ps_core_d->rx_pkt_type, ps_core_d->rx_pkt_total_len);
-                        print_uart_decode_param();
-                        return RX_PACKET_ERR;
-                    }
-                    break;
-                case GNSS_First_MSG:
-                case GNSS_Common_MSG:
-                case GNSS_Last_MSG:
-                case FM_FIRST_MSG:
-                case FM_COMMON_MSG:
-                case FM_LAST_MSG:
-                case IR_FIRST_MSG:
-                case IR_COMMON_MSG:
-                case IR_LAST_MSG:
-                case NFC_First_MSG:
-                case NFC_Common_MSG:
-                case NFC_Last_MSG:
-                case OML_MSG:
-                    if (ir_only_mode) {
-                        break;  // 单红外消息不分包，不需要分包检查
-                    }
-                    if ((buf_ptr[PACKET_OFFSET_HEAD_INDEX] == PACKET_START_SIGNAL) &&
-                        (buf_ptr[PACKET_OFFSET_HEAD_NEXT_INDEX] == PACKET_RX_FUNC_LAST_WORDS)) {
-                        if (ps_core_d->rx_pkt_total_len > MAX_LAST_WORD_FRAME_LEN) {
-                            PS_PRINT_ERR("type=%d, the pkt len is ERR: 0x%x,(max frame len is:0x%x)\n",
-                                         ps_core_d->rx_pkt_type, ps_core_d->rx_pkt_total_len, MAX_LAST_WORD_FRAME_LEN);
-                            print_uart_decode_param();
-                            return RX_PACKET_ERR;
-                        }
-                    } else if (ps_core_d->rx_pkt_total_len > MAX_NOBT_FRAME_LEN) {
-                        PS_PRINT_ERR("type=%d, the pkt len is ERR: 0x%x,(max frame len is:0x%x)\n",
-                                     ps_core_d->rx_pkt_type, ps_core_d->rx_pkt_total_len, MAX_NOBT_FRAME_LEN);
-                        print_uart_decode_param();
-                        return RX_PACKET_ERR;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            /* check whether the recv packet is CHR packet */
-            if (ps_check_chr_packet(ps_core_d, buf_ptr) != 0) {
-                return RX_PACKET_ERR;
-            }
-
-            /* if pkt lenth less then sys packet lenth and continue */
-            if (ps_core_d->rx_pkt_total_len > count) { /* the packet is breaked, need continue rx */
-                return RX_PACKET_CONTINUE;
-            }
-            ptr = buf_ptr + len - sizeof(struct ps_packet_end);
-            /* check the last byte yes or not 7e */
-            if (*ptr == PACKET_END_SIGNAL) { /* the packet is a good packet */
-                return RX_PACKET_CORRECT;
-            } else { /* the packet is a err packet */
-                PS_PRINT_WARNING("the pkt end is ERR: %x\n", *ptr);
-                print_uart_decode_param();
-                return RX_PACKET_ERR;
-            }
-        } else {
-            PS_PRINT_ERR("the pkt type is ERR: %x\n", ps_core_d->rx_pkt_type);
-            print_uart_decode_param();
-            return RX_PACKET_ERR;
-        }
+    ptr++;
+    ps_core_d->rx_pkt_type = *ptr;
+    /* check packet type */
+    if (unlikely(ps_core_d->rx_pkt_type >= MSG_BUTT)) {
+        ps_print_err("the pkt type is ERR: %x\n", ps_core_d->rx_pkt_type);
+        print_uart_decode_param();
+        return RX_PACKET_ERR;
     }
-    dmd_report_uart_pkt_err();
-    PS_PRINT_WARNING("the pkt head is ERR: %x, count=[%d], buf_ptr=[%p]\n", *ptr, count, buf_ptr);
-    print_uart_decode_param();
 
-    return RX_PACKET_ERR;
+    ptr++;
+    len = *ptr;
+    ptr++;
+    lenbak = *ptr;
+    lenbak = lenbak * 0x100;
+    len = len + lenbak;
+    ps_core_d->rx_pkt_total_len = len;
+
+    /* check packet lenth */
+    if (unlikely(len < SYS_TOTAL_PACKET_LENTH || len > PUBLIC_BUF_MAX)) {
+        ps_print_err("the pkt len is ERR: %x\n", ps_core_d->rx_pkt_total_len);
+        ps_core_d->rx_pkt_total_len = 0;
+        print_uart_decode_param();
+        return RX_PACKET_ERR;
+    }
+
+    /* check all service frame length */
+    if (unlikely(ps_check_msg_data_len(ps_core_d->rx_pkt_type,
+                                       ps_core_d->rx_pkt_total_len, buf_ptr)) == RX_PACKET_ERR) {
+        return RX_PACKET_ERR;
+    }
+
+    /* check whether the recv packet is CHR packet */
+    if (ps_check_chr_packet(ps_core_d, buf_ptr) != 0) {
+        return RX_PACKET_ERR;
+    }
+
+    /* the packet is breaked, need continue rx */
+    if (ps_core_d->rx_pkt_total_len > count) {
+        return RX_PACKET_CONTINUE;
+    }
+
+    ptr = buf_ptr + len - sizeof(struct ps_packet_end);
+    /* the packet is a err packet */
+    if (unlikely(*ptr != PACKET_END_SIGNAL)) {
+        ps_print_err("the pkt end is ERR: %x\n", *ptr);
+        print_uart_decode_param();
+        return RX_PACKET_ERR;
+    }
+
+    return RX_PACKET_CORRECT;
 }
 
 void dump_uart_rx_buf(void)
@@ -1497,15 +1150,15 @@ void dump_uart_rx_buf(void)
 
     if (ps_core_d->rx_have_recv_pkt_len > 0) {
         /* have decode all public buf data, reset ptr and lenth */
-        PS_PRINT_WARNING("uart rx buf has data, rx_have_recv_pkt_len=%d\n", ps_core_d->rx_have_recv_pkt_len);
-        PS_PRINT_WARNING("uart rx buf has data, rx_have_del_public_len=%d\n", ps_core_d->rx_have_del_public_len);
-        PS_PRINT_WARNING("uart rx buf has data, rx_decode_public_buf_ptr=%p\n", ps_core_d->rx_decode_public_buf_ptr);
-        PS_PRINT_WARNING("uart rx buf has data, rx_public_buf_org_ptr=%p\n", ps_core_d->rx_public_buf_org_ptr);
+        ps_print_warning("uart rx buf has data, rx_have_recv_pkt_len=%d\n", ps_core_d->rx_have_recv_pkt_len);
+        ps_print_warning("uart rx buf has data, rx_have_del_public_len=%d\n", ps_core_d->rx_have_del_public_len);
+        ps_print_warning("uart rx buf has data, rx_decode_public_buf_ptr=%p\n", ps_core_d->rx_decode_public_buf_ptr);
+        ps_print_warning("uart rx buf has data, rx_public_buf_org_ptr=%p\n", ps_core_d->rx_public_buf_org_ptr);
 
         ul_dump_len = ps_core_d->rx_have_recv_pkt_len > UART_DUMP_RX_BUF_LENGTH ?
             UART_DUMP_RX_BUF_LENGTH : ps_core_d->rx_have_recv_pkt_len;
         for (i = 0; i < ul_dump_len; i++) {
-            PS_PRINT_WARNING("uart rx buf has data, data[%d]=0x%x\n", i, *(ps_core_d->rx_decode_public_buf_ptr + i));
+            ps_print_warning("uart rx buf has data, data[%d]=0x%x\n", i, *(ps_core_d->rx_decode_public_buf_ptr + i));
         }
     }
 
@@ -1524,15 +1177,15 @@ void reset_uart_rx_buf(void)
 
     if (ps_core_d->rx_have_recv_pkt_len > 0) {
         /* have decode all public buf data, reset ptr and lenth */
-        PS_PRINT_WARNING("uart rx buf has data, rx_have_recv_pkt_len=%d\n", ps_core_d->rx_have_recv_pkt_len);
-        PS_PRINT_WARNING("uart rx buf has data, rx_have_del_public_len=%d\n", ps_core_d->rx_have_del_public_len);
-        PS_PRINT_WARNING("uart rx buf has data, rx_decode_public_buf_ptr=%p\n", ps_core_d->rx_decode_public_buf_ptr);
-        PS_PRINT_WARNING("uart rx buf has data, rx_public_buf_org_ptr=%p\n", ps_core_d->rx_public_buf_org_ptr);
+        ps_print_warning("uart rx buf has data, rx_have_recv_pkt_len=%d\n", ps_core_d->rx_have_recv_pkt_len);
+        ps_print_warning("uart rx buf has data, rx_have_del_public_len=%d\n", ps_core_d->rx_have_del_public_len);
+        ps_print_warning("uart rx buf has data, rx_decode_public_buf_ptr=%p\n", ps_core_d->rx_decode_public_buf_ptr);
+        ps_print_warning("uart rx buf has data, rx_public_buf_org_ptr=%p\n", ps_core_d->rx_public_buf_org_ptr);
         for (i = 0; i < ps_core_d->rx_have_recv_pkt_len; i++) {
-            PS_PRINT_WARNING("uart rx buf has data, data[%d]=0x%x\n", i, *(ps_core_d->rx_decode_public_buf_ptr + i));
+            ps_print_warning("uart rx buf has data, data[%d]=0x%x\n", i, *(ps_core_d->rx_decode_public_buf_ptr + i));
         }
-        reset_cnt++;
-        PS_PRINT_WARNING("reset uart rx buf, reset cnt=%d\n", reset_cnt);
+        g_reset_cnt++;
+        ps_print_warning("reset uart rx buf, reset cnt=%d\n", g_reset_cnt);
         ps_core_d->rx_have_del_public_len = 0;
         ps_core_d->rx_have_recv_pkt_len = 0;
         ps_core_d->rx_decode_public_buf_ptr = ps_core_d->rx_public_buf_org_ptr;
@@ -1546,17 +1199,17 @@ static int32 core_recv_prepare(void *disc_data, const uint8 *data, int32 count)
     PS_PRINT_FUNCTION_NAME;
 
     if (disc_data == NULL) {
-        PS_PRINT_ERR(" disc_data is null \n");
+        ps_print_err(" disc_data is null \n");
         return 0;
     }
 
     if (unlikely(data == NULL)) {
-        PS_PRINT_ERR(" received null from TTY \n");
+        ps_print_err(" received null from TTY \n");
         return 0;
     }
 
     if (count < 0) {
-        PS_PRINT_ERR(" received count from TTY err\n");
+        ps_print_err(" received count from TTY err\n");
         return 0;
     }
 
@@ -1580,10 +1233,10 @@ static void ps_clear_rx_buf(struct ps_core_s *ps_core_d)
  */
 int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
 {
-    struct ps_core_s *ps_core_d;
-    uint8 *ptr;
+    struct ps_core_s *ps_core_d = NULL;
+    uint8 *ptr = NULL;
     int32 count1 = 0;
-    int32 ret = 0;
+    int32 ret;
 
     PS_PRINT_FUNCTION_NAME;
 
@@ -1602,7 +1255,7 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
             if (unlikely(memcpy_s(ptr, PUBLIC_BUF_MAX - ps_core_d->rx_have_recv_pkt_len,
                                   ps_core_d->rx_decode_tty_ptr, count) != EOK)) {
                 ps_clear_rx_buf(ps_core_d);
-                PS_PRINT_WARNING("received count too large! , memcopy_s error, destlen=%d, srclen=%d\n ",
+                ps_print_warning("received count too large! , memcopy_s error, destlen=%d, srclen=%d\n ",
                                  PUBLIC_BUF_MAX - ps_core_d->rx_have_recv_pkt_len, count);
                 continue;
             }
@@ -1618,7 +1271,7 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
                 /* check curr data */
                 ret = ps_check_packet_head(ps_core_d, ps_core_d->rx_decode_public_buf_ptr, count1);
                 if (ret == RX_PACKET_CORRECT) { /* this packet is correct, and push it to proto buf */
-                    ps_decode_packet_func(ps_core_d, ps_core_d->rx_decode_public_buf_ptr);
+                    ps_decode_packet(ps_core_d, ps_core_d->rx_decode_public_buf_ptr);
                     ps_core_d->rx_have_del_public_len += ps_core_d->rx_pkt_total_len;
                     ps_core_d->rx_decode_public_buf_ptr += ps_core_d->rx_pkt_total_len;
                     ps_core_d->rx_pkt_total_len = 0;
@@ -1628,7 +1281,7 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
                     if (unlikely(memmove_s(ps_core_d->rx_public_buf_org_ptr, PUBLIC_BUF_MAX,
                                            ps_core_d->rx_decode_public_buf_ptr, count1) != EOK)) {
                         ps_clear_rx_buf(ps_core_d);
-                        PS_PRINT_ERR("memmove_s error, destlen=%d, srclen=%d\n ", PUBLIC_BUF_MAX, count1);
+                        ps_print_err("memmove_s error, destlen=%d, srclen=%d\n ", PUBLIC_BUF_MAX, count1);
                         return 0;
                     }
                     ps_core_d->rx_have_recv_pkt_len = count1;
@@ -1647,7 +1300,7 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
         } else { /* if not have recv data, direct decode data in uart buf */
             ret = ps_check_packet_head(ps_core_d, ps_core_d->rx_decode_tty_ptr, count);
             if (ret == RX_PACKET_CORRECT) { /* this packet is correct, and push it to proto buf */
-                ps_decode_packet_func(ps_core_d, ps_core_d->rx_decode_tty_ptr);
+                ps_decode_packet(ps_core_d, ps_core_d->rx_decode_tty_ptr);
                 ps_core_d->rx_decode_tty_ptr = ps_core_d->rx_decode_tty_ptr + ps_core_d->rx_pkt_total_len;
                 count = count - ps_core_d->rx_pkt_total_len;
                 ps_core_d->rx_pkt_total_len = 0;
@@ -1657,7 +1310,7 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
                 /* copy data to public buf,and continue rx */
                 if (unlikely(memcpy_s(ptr, PUBLIC_BUF_MAX, ps_core_d->rx_decode_tty_ptr, count) != EOK)) {
                     ps_clear_rx_buf(ps_core_d);
-                    PS_PRINT_ERR("memcpy_s error, destlen=%d, srclen=%d\n ", PUBLIC_BUF_MAX, count);
+                    ps_print_err("memcpy_s error, destlen=%d, srclen=%d\n ", PUBLIC_BUF_MAX, count);
                     return 0;
                 }
                 ps_core_d->rx_have_recv_pkt_len = count;
@@ -1680,12 +1333,12 @@ int32 ps_core_recv(void *disc_data, const uint8 *data, int32 count)
 int32 ps_skb_enqueue(struct ps_core_s *ps_core_d, struct sk_buff *skb, uint8 type)
 {
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR(" ps_core_d is NULL\n");
+        ps_print_err(" ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (unlikely(skb == NULL)) {
-        PS_PRINT_ERR(" skb is NULL\n");
+        ps_print_err(" skb is NULL\n");
         return -EINVAL;
     }
 
@@ -1718,7 +1371,7 @@ int32 ps_skb_enqueue(struct ps_core_s *ps_core_d, struct sk_buff *skb, uint8 typ
             skb_queue_tail(&ps_core_d->bfgx_info[BFGX_IR].rx_queue, skb);
             break;
         default:
-            PS_PRINT_ERR("queue type is error, type=%d\n", type);
+            ps_print_err("queue type is error, type=%d\n", type);
             break;
     }
 
@@ -1734,7 +1387,7 @@ struct sk_buff *ps_skb_dequeue(struct ps_core_s *ps_core_d, uint8 type)
     struct sk_buff *curr_skb = NULL;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return curr_skb;
     }
 
@@ -1767,7 +1420,7 @@ struct sk_buff *ps_skb_dequeue(struct ps_core_s *ps_core_d, uint8 type)
             curr_skb = skb_dequeue(&ps_core_d->bfgx_info[BFGX_NFC].rx_queue);
             break;
         default:
-            PS_PRINT_ERR("queue type is error, type=%d\n", type);
+            ps_print_err("queue type is error, type=%d\n", type);
             break;
     }
 
@@ -1777,7 +1430,7 @@ struct sk_buff *ps_skb_dequeue(struct ps_core_s *ps_core_d, uint8 type)
 
 static struct sk_buff *ps_skb_dequeue_core(struct ps_core_s *ps_core_d, uint32 *dequeue_init_flag)
 {
-    struct sk_buff *skb;
+    struct sk_buff *skb = NULL;
     static uint8 tx_high_times;
 
     skb = ps_skb_dequeue(ps_core_d, TX_URGENT_QUEUE);
@@ -1812,12 +1465,12 @@ STATIC int32 ps_core_tx_para_check(struct ps_core_s *ps_core_d, struct pm_drv_da
 {
     *pm_data = pm_get_drvdata();
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (unlikely(*pm_data == NULL)) {
-        PS_PRINT_ERR("pm_data is NULL!\n");
+        ps_print_err("pm_data is NULL!\n");
         return -EFAULT;
     }
     return 0;
@@ -1843,7 +1496,7 @@ int32 ps_core_tx_attemper(struct ps_core_s *ps_core_d)
         return ret;
     }
 
-    PS_PRINT_DBG("enter tx work\n");
+    ps_print_dbg("enter tx work\n");
 
     while (1) {
         spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
@@ -1867,19 +1520,19 @@ int32 ps_core_tx_attemper(struct ps_core_s *ps_core_d)
         }
         /* tx skb data to uart driver until the skb is NULL */
         if (skb->len) {
-            PS_PRINT_DBG("use tty start to send data,skb->len=[%d]\n", skb->len);
+            ps_print_dbg("use tty start to send data,skb->len=[%d]\n", skb->len);
         }
 
         while (skb->len) {
             if (atomic_read(&ps_core_d->force_tx_exit) > 0) {
-                PS_PRINT_ERR("tty tx work abort for tty need release\n");
+                ps_print_err("tty tx work abort for tty need release\n");
                 kfree_skb(skb);
                 return 0;
             }
             /* len is have tx to uart byte number */
             len = ps_write_tty(ps_core_d, skb->data, skb->len);
             if (len < 0) {
-                PS_PRINT_ERR("tty have not opened!\n");
+                ps_print_err("tty have not opened!\n");
                 kfree_skb(skb);
                 return 0;
             }
@@ -1907,17 +1560,17 @@ void ps_core_tx_work(struct work_struct *work)
 
     ps_get_core_reference(&ps_core_d);
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return;
     }
 
     /* makesure tty is avilable. release_tty_drv race access tty */
-    mutex_lock(&tty_mutex);
+    mutex_lock(&g_ps_tty_mutex);
     if (ps_core_d->tty != NULL) {
         /* into tx skb buff queue */
         ps_core_tx_attemper(ps_core_d);
     }
-    mutex_unlock(&tty_mutex);
+    mutex_unlock(&g_ps_tty_mutex);
 
     return;
 }
@@ -1931,13 +1584,13 @@ void ps_core_tx_work(struct work_struct *work)
  */
 int32 ps_add_packet_head(uint8 *buf, uint8 type, uint16 lenth)
 {
-    int8 *ptr;
+    int8 *ptr = NULL;
     uint16 len;
 
     PS_PRINT_FUNCTION_NAME;
 
     if (buf == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -1947,9 +1600,9 @@ int32 ps_add_packet_head(uint8 *buf, uint8 type, uint16 lenth)
     *ptr = type;
     len = lenth;
     ptr++;
-    *ptr = LEN_LOW_BYTE(len);
+    *ptr = len_low_byte(len);
     ptr++;
-    *ptr = LEN_HIGH_BYTE(len);
+    *ptr = len_high_byte(len);
 
     ptr = buf;
     ptr = ptr + lenth;
@@ -1968,12 +1621,12 @@ int32 ps_add_packet_head(uint8 *buf, uint8 type, uint16 lenth)
  */
 int32 ps_set_sys_packet(uint8 *buf, uint8 type, uint8 content)
 {
-    int8 *ptr;
+    int8 *ptr = NULL;
 
     PS_PRINT_FUNCTION_NAME;
 
     if (buf == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -2006,12 +1659,12 @@ int32 ps_set_sys_variable_length_packet(uint8 *buf, uint8 type, const uint8 *con
     PS_PRINT_FUNCTION_NAME;
 
     if (buf == NULL) {
-        PS_PRINT_ERR("skb data buf is NULL\n");
+        ps_print_err("skb data buf is NULL\n");
         return -EINVAL;
     }
 
     if ((len > SYS_VARIABLE_LENGTH_PACKET_MAX_LEN) || (len < SYS_VARIABLE_LENGTH_PACKET_MIN_LEN)) {
-        PS_PRINT_ERR(
+        ps_print_err(
             "sys variable-length packet len wrong,should not less than %d or more than %d,pls check len=[%d]\n",
             SYS_VARIABLE_LENGTH_PACKET_MIN_LEN, SYS_VARIABLE_LENGTH_PACKET_MAX_LEN, len);
         return -EINVAL;
@@ -2041,7 +1694,7 @@ int32 ps_set_sys_variable_length_packet(uint8 *buf, uint8 type, const uint8 *con
     /* 代码前端已规定memcpy长度参数的范围 */
     /* filling sys variable-length packet real data */
     if (memcpy_s(ptr, content_len, content, content_len) != EOK) {
-        PS_PRINT_ERR("variable length cmd send failed\n");
+        ps_print_err("variable length cmd send failed\n");
         return -EINVAL;
     }
     ptr += content_len;
@@ -2063,13 +1716,13 @@ int32 ps_tx_sys_cmd(struct ps_core_s *ps_core_d, uint8 type, uint8 content)
     PS_PRINT_FUNCTION_NAME;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     skb = alloc_skb(SYS_TOTAL_PACKET_LENTH, oal_in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
     if (skb == NULL) {
-        PS_PRINT_ERR("can't allocate mem for new sys skb, len=%d\n", SYS_TOTAL_PACKET_LENTH);
+        ps_print_err("can't allocate mem for new sys skb, len=%d\n", SYS_TOTAL_PACKET_LENTH);
         return -EINVAL;
     }
 
@@ -2079,7 +1732,7 @@ int32 ps_tx_sys_cmd(struct ps_core_s *ps_core_d, uint8 type, uint8 content)
     ps_skb_enqueue(ps_core_d, skb, TX_HIGH_QUEUE);
     ret = queue_work(ps_core_d->ps_tx_workqueue, &ps_core_d->tx_skb_work);
     if (type == SYS_MSG) {
-        PS_PRINT_INFO("queue sys msg work, ret = %d, type = %d\n", ret, content);
+        ps_print_info("queue sys msg work, ret = %d, type = %d\n", ret, content);
     }
 
     return 0;
@@ -2100,12 +1753,12 @@ int32 ps_tx_sys_variable_length_cmd(struct ps_core_s *ps_core_d, uint8 type, con
     PS_PRINT_FUNCTION_NAME;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     if (content == NULL) {
-        PS_PRINT_ERR("user data buf is NULL\n");
+        ps_print_err("user data buf is NULL\n");
         return -EINVAL;
     }
 
@@ -2113,7 +1766,7 @@ int32 ps_tx_sys_variable_length_cmd(struct ps_core_s *ps_core_d, uint8 type, con
 
     skb = alloc_skb(tx_skb_len, oal_in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
     if (skb == NULL) {
-        PS_PRINT_ERR("can't allocate mem for new variable length sys skb, len=%d\n", tx_skb_len);
+        ps_print_err("can't allocate mem for new variable length sys skb, len=%d\n", tx_skb_len);
         return -EINVAL;
     }
 
@@ -2123,7 +1776,7 @@ int32 ps_tx_sys_variable_length_cmd(struct ps_core_s *ps_core_d, uint8 type, con
     ps_set_sys_variable_length_packet(skb->data, type, content, tx_skb_len);
     ps_skb_enqueue(ps_core_d, skb, TX_HIGH_QUEUE);
     ret = queue_work(ps_core_d->ps_tx_workqueue, &ps_core_d->tx_skb_work);
-    PS_PRINT_INFO("queue sys variable-length msg work, ret = %d\n", ret);
+    ps_print_info("queue sys variable-length msg work, ret = %d\n", ret);
 
     /* lint -save -e670 -specific(-e670) */ /* 屏蔽skb未释放告警 */
     return 0;
@@ -2137,13 +1790,13 @@ int32 ps_tx_urgent_cmd(struct ps_core_s *ps_core_d, uint8 type, uint8 content)
     PS_PRINT_FUNCTION_NAME;
 
     if (ps_core_d == NULL) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
     skb = alloc_skb(SYS_TOTAL_PACKET_LENTH, oal_in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
     if (skb == NULL) {
-        PS_PRINT_ERR("can't allocate mem for new sys skb, len=%d\n", SYS_TOTAL_PACKET_LENTH);
+        ps_print_err("can't allocate mem for new sys skb, len=%d\n", SYS_TOTAL_PACKET_LENTH);
         return -EINVAL;
     }
 
@@ -2153,7 +1806,7 @@ int32 ps_tx_urgent_cmd(struct ps_core_s *ps_core_d, uint8 type, uint8 content)
     ps_skb_enqueue(ps_core_d, skb, TX_URGENT_QUEUE);
     ret = queue_work(ps_core_d->ps_tx_workqueue, &ps_core_d->tx_skb_work);
     if (type == SYS_MSG) {
-        PS_PRINT_INFO("queue sys msg work, ret = %d, type = %d\n", ret, content);
+        ps_print_info("queue sys msg work, ret = %d, type = %d\n", ret, content);
     }
 
     return 0;
@@ -2165,7 +1818,7 @@ int32 ps_tx_urgent_cmd(struct ps_core_s *ps_core_d, uint8 type, uint8 content)
  */
 int32 ps_tx_fmbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t count)
 {
-    struct sk_buff *skb;
+    struct sk_buff *skb = NULL;
     uint16 tx_skb_len;
     uint16 tx_fm_len;
     uint8 start = 0;
@@ -2173,7 +1826,7 @@ int32 ps_tx_fmbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
     PS_PRINT_FUNCTION_NAME;
 
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -2189,7 +1842,7 @@ int32 ps_tx_fmbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
 
         skb = ps_alloc_skb(tx_skb_len);
         if (skb == NULL) {
-            PS_PRINT_ERR("ps alloc skb mem fail\n");
+            ps_print_err("ps alloc skb mem fail\n");
             return -EFAULT;
         }
 
@@ -2205,7 +1858,7 @@ int32 ps_tx_fmbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
         }
 
         if (copy_from_user(&skb->data[sizeof(struct ps_packet_head)], buf, tx_fm_len)) {
-            PS_PRINT_ERR("can't copy_from_user for ir\n");
+            ps_print_err("can't copy_from_user for ir\n");
             kfree_skb(skb);
             return -EFAULT;
         }
@@ -2227,7 +1880,7 @@ int32 ps_tx_fmbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
  */
 int32 ps_tx_irbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t count)
 {
-    struct sk_buff *skb;
+    struct sk_buff *skb = NULL;
     uint16 tx_skb_len;
     uint16 tx_ir_len;
     uint8 start = 0;
@@ -2235,7 +1888,7 @@ int32 ps_tx_irbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
     PS_PRINT_FUNCTION_NAME;
 
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -2251,7 +1904,7 @@ int32 ps_tx_irbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
 
         skb = ps_alloc_skb(tx_skb_len);
         if (skb == NULL) {
-            PS_PRINT_ERR("ps alloc skb mem fail\n");
+            ps_print_err("ps alloc skb mem fail\n");
             return -EFAULT;
         }
 
@@ -2267,7 +1920,7 @@ int32 ps_tx_irbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
         }
 
         if (copy_from_user(&skb->data[sizeof(struct ps_packet_head)], buf, tx_ir_len)) {
-            PS_PRINT_ERR("can't copy_from_user for ir\n");
+            ps_print_err("can't copy_from_user for ir\n");
             kfree_skb(skb);
             return -EFAULT;
         }
@@ -2289,7 +1942,7 @@ int32 ps_tx_irbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t co
  */
 int32 ps_tx_nfcbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t count)
 {
-    struct sk_buff *skb;
+    struct sk_buff *skb = NULL;
     uint16 tx_skb_len;
     uint16 tx_nfc_len;
     uint8 start = 0;
@@ -2297,7 +1950,7 @@ int32 ps_tx_nfcbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t c
     PS_PRINT_FUNCTION_NAME;
 
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -2313,23 +1966,23 @@ int32 ps_tx_nfcbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t c
 
         skb = ps_alloc_skb(tx_skb_len);
         if (skb == NULL) {
-            PS_PRINT_ERR("ps alloc skb mem fail\n");
+            ps_print_err("ps alloc skb mem fail\n");
             return -EFAULT;
         }
 
         if (count > NFC_TX_PACKET_LIMIT) {
             if (start == false) { /* this is a start gnss packet */
-                ps_add_packet_head(skb->data, NFC_First_MSG, tx_skb_len);
+                ps_add_packet_head(skb->data, NFC_FIRST_MSG, tx_skb_len);
                 start = true;
             } else { /* this is a int gnss packet */
-                ps_add_packet_head(skb->data, NFC_Common_MSG, tx_skb_len);
+                ps_add_packet_head(skb->data, NFC_COMMON_MSG, tx_skb_len);
             }
         } else { /* this is the last gnss packet */
-            ps_add_packet_head(skb->data, NFC_Last_MSG, tx_skb_len);
+            ps_add_packet_head(skb->data, NFC_LAST_MSG, tx_skb_len);
         }
 
         if (copy_from_user(&skb->data[sizeof(struct ps_packet_head)], buf, tx_nfc_len)) {
-            PS_PRINT_ERR("can't copy_from_user for nfc\n");
+            ps_print_err("can't copy_from_user for nfc\n");
             kfree_skb(skb);
             return -EFAULT;
         }
@@ -2351,7 +2004,7 @@ int32 ps_tx_nfcbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t c
  */
 int32 ps_tx_gnssbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t count)
 {
-    struct sk_buff *skb;
+    struct sk_buff *skb = NULL;
     uint16 tx_skb_len;
     uint16 tx_gnss_len;
     uint8 start = 0;
@@ -2359,7 +2012,7 @@ int32 ps_tx_gnssbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t 
     PS_PRINT_FUNCTION_NAME;
 
     if (unlikely(ps_core_d == NULL)) {
-        PS_PRINT_ERR("ps_core_d is NULL\n");
+        ps_print_err("ps_core_d is NULL\n");
         return -EINVAL;
     }
 
@@ -2375,23 +2028,23 @@ int32 ps_tx_gnssbuf(struct ps_core_s *ps_core_d, const int8 __user *buf, size_t 
 
         skb = ps_alloc_skb(tx_skb_len);
         if (skb == NULL) {
-            PS_PRINT_ERR("ps alloc skb mem fail\n");
+            ps_print_err("ps alloc skb mem fail\n");
             return -EFAULT;
         }
 
         if (count > GNSS_TX_PACKET_LIMIT) {
             if (start == false) { /* this is a start gnss packet */
-                ps_add_packet_head(skb->data, GNSS_First_MSG, tx_skb_len);
+                ps_add_packet_head(skb->data, GNSS_FIRST_MSG, tx_skb_len);
                 start = true;
             } else { /* this is a int gnss packet */
-                ps_add_packet_head(skb->data, GNSS_Common_MSG, tx_skb_len);
+                ps_add_packet_head(skb->data, GNSS_COMMON_MSG, tx_skb_len);
             }
         } else { /* this is the last gnss packet */
-            ps_add_packet_head(skb->data, GNSS_Last_MSG, tx_skb_len);
+            ps_add_packet_head(skb->data, GNSS_LAST_MSG, tx_skb_len);
         }
 
         if (copy_from_user(&skb->data[sizeof(struct ps_packet_head)], buf, tx_gnss_len)) {
-            PS_PRINT_ERR("can't copy_from_user for gnss\n");
+            ps_print_err("can't copy_from_user for gnss\n");
             kfree_skb(skb);
             return -EFAULT;
         }
@@ -2435,14 +2088,14 @@ STATIC int32 ps_core_kzalloc_check(struct ps_core_s **ps_core_d, uint8 **ptr)
 {
     *ps_core_d = kzalloc(sizeof(struct ps_core_s), GFP_KERNEL);
     if (*ps_core_d == NULL) {
-        PS_PRINT_ERR("memory allocation failed\n");
+        ps_print_err("memory allocation failed\n");
         return -ENOMEM;
     }
 
     *ptr = kzalloc(PUBLIC_BUF_MAX, GFP_KERNEL);
     if (*ptr == NULL) {
         kfree(*ps_core_d);
-        PS_PRINT_ERR("no mem to allocate to public buf!\n");
+        ps_print_err("no mem to allocate to public buf!\n");
         return -ENOMEM;
     }
 
@@ -2472,8 +2125,8 @@ int32 ps_core_init(struct ps_core_s **core_data)
     ps_core_d->rx_decode_public_buf_ptr = ptr;
 
     ps_pm_d = kzalloc(sizeof(struct ps_pm_s), GFP_KERNEL);
-    if (!ps_pm_d) {
-        PS_PRINT_ERR("ps_pm_d memory allocation failed\n");
+    if (ps_pm_d == NULL) {
+        ps_print_err("ps_pm_d memory allocation failed\n");
         kfree(ps_core_d->rx_public_buf_org_ptr);
         kfree(ps_core_d);
         return -ENOMEM;
@@ -2486,7 +2139,7 @@ int32 ps_core_init(struct ps_core_s **core_data)
         kfree(ps_core_d->ps_pm);
         kfree(ps_core_d->rx_public_buf_org_ptr);
         kfree(ps_core_d);
-        PS_PRINT_ERR("error registering ps_pm err = %d\n", err);
+        ps_print_err("error registering ps_pm err = %d\n", err);
         return -EFAULT;
     }
 
@@ -2500,7 +2153,7 @@ int32 ps_core_init(struct ps_core_s **core_data)
         kfree(ps_core_d->rx_public_buf_org_ptr);
         kfree(ps_core_d);
 #ifdef N_HW_BFG
-        PS_PRINT_ERR("error registering %d line discipline %d\n", N_HW_BFG, err);
+        ps_print_err("error registering %d line discipline %d\n", N_HW_BFG, err);
 #endif
         return -EFAULT;
     }
@@ -2596,7 +2249,7 @@ int32 ps_core_exit(struct ps_core_s *ps_core_d)
         /* TTY ldisc cleanup */
         err = plat_uart_exit();
         if (err) {
-            PS_PRINT_ERR("unable to un-register ldisc %d\n", err);
+            ps_print_err("unable to un-register ldisc %d\n", err);
         }
         /* unregister pm */
         ps_pm_unregister(ps_core_d->ps_pm);

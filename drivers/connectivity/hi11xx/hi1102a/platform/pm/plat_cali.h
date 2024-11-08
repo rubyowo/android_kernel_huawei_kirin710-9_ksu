@@ -71,7 +71,7 @@ typedef struct {
     oal_int16 s_2g_tx_power_dc_i;
     oal_int16 s_2g_tx_power_dc_q;
 #endif
-} oal_2G_tx_power_comp_val_stru;
+} oal_2g_tx_power_comp_val_stru;
 
 typedef struct {
     oal_uint8 upc_ppa_cmp;
@@ -82,7 +82,7 @@ typedef struct {
     oal_int16 s_5g_tx_power_dc_q;
     oal_uint8 auc_reserve[2];
 #endif
-} oal_5G_tx_power_comp_val_stru;
+} oal_5g_tx_power_comp_val_stru;
 
 typedef struct {
     oal_uint16 us_txdc_cmp_i;
@@ -137,8 +137,8 @@ typedef struct {
 #endif
 
 typedef struct {
-    oal_rx_dc_comp_val_stru cali_rx_dc_cmp_2G;
-    oal_2G_tx_power_comp_val_stru cali_tx_power_cmp_2G;
+    oal_rx_dc_comp_val_stru cali_rx_dc_cmp_2g;
+    oal_2g_tx_power_comp_val_stru cali_tx_power_cmp_2g;
 #ifdef _PRE_WLAN_NEW_TXDC
     oal_txdc_comp_val_stru txdc_cmp_val[HI1102_CALI_TXDC_GAIN_LVL_NUM];
 #else
@@ -149,14 +149,14 @@ typedef struct {
     hi1102_new_rxiq_comp_val_stru new_rxiq_cmp_val;
 #endif
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST) || defined(_PRE_WLAN_TXIQ_BASE_IQ_DETECTOR)
-    oal_txiq_comp_val_stru txiq_cmp_val_2G;
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
+    oal_txiq_comp_val_stru txiq_cmp_val_2g;
 #endif
-} oal_2Gcali_param_stru;
+} oal_2g_cali_param_stru;
 
 typedef struct {
-    oal_rx_dc_comp_val_stru cali_rx_dc_cmp_5G;
-    oal_5G_tx_power_comp_val_stru cali_tx_power_cmp_5G;
+    oal_rx_dc_comp_val_stru cali_rx_dc_cmp_5g;
+    oal_5g_tx_power_comp_val_stru cali_tx_power_cmp_5g;
     oal_ppf_comp_val_stru ppf_cmp_val;
 #ifdef _PRE_WLAN_NEW_TXDC
     oal_txdc_comp_val_stru txdc_cmp_val[HI1102_CALI_TXDC_GAIN_LVL_NUM];
@@ -168,15 +168,14 @@ typedef struct {
     hi1102_new_txiq_time_comp_val_stru new_txiq_time_cmp_val;
     hi1102_new_rxiq_comp_val_stru new_rxiq_cmp_val;
 #endif
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST) || defined(_PRE_WLAN_TXIQ_BASE_IQ_DETECTOR)
-    oal_txiq_comp_val_stru txiq_cmp_val_5G;
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
+    oal_txiq_comp_val_stru txiq_cmp_val_5g;
 #endif
-
-} oal_5Gcali_param_stru;
+} oal_5g_cali_param_stru;
 
 typedef struct {
-    oal_2Gcali_param_stru st_2Gcali_param[OAL_2G_CHANNEL_NUM];
-    oal_5Gcali_param_stru st_5Gcali_param[OAL_5G_CHANNEL_NUM];
+    oal_2g_cali_param_stru st_2g_cali_param[OAL_2G_CHANNEL_NUM];
+    oal_5g_cali_param_stru st_5g_cali_param[OAL_5G_CHANNEL_NUM];
 } oal_wifi_cali_param_stru;
 
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST)
@@ -214,7 +213,7 @@ typedef struct {
     oal_int16 s_txpwr_pa_vdet_dc;                           // 222 bytes
     oal_int8 ac_txpwr_dpn[OAL_BT_RF_FREQ_NUM];              // 301 bytes
     oal_uint8 auc_reserve3[1];                              // 302 bytes
-    oal_int16 s_gm_dB10;                                    // 304 bytes
+    oal_int16 s_gm_db10;                                    // 304 bytes
     oal_int32 al_pwr_fit_params[OAL_BT_FITTING_PARAM_NUM];  // 308 bytes
     oal_int16 s_base_power;                                 // 310 bytes
 
@@ -268,20 +267,19 @@ typedef struct {
 
 typedef struct {
     oal_uint32 ul_dog_tag;
-    oal_2Gcali_param_stru ast_2Gcali_param[OAL_2G_CHANNEL_NUM];
-    oal_5Gcali_param_stru ast_5Gcali_param[OAL_5G_CHANNEL_NUM];
+    oal_2g_cali_param_stru ast_2g_cali_param[OAL_2G_CHANNEL_NUM];
+    oal_5g_cali_param_stru ast_5g_cali_param[OAL_5G_CHANNEL_NUM];
     oal_ppf_comp_val_stru st_165chan_ppf_comp;
     oal_update_cali_channel_stru st_cali_update_info;
     oal_uint32 ul_check_hw_status;
 
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST) && defined(_PRE_WLAN_NEW_IQ)
-    oal_new_rxiq_comp_val_stru ast_new_rxiq_cmp_val_5G[OAL_5G_80M_CHANNEL_NUM];
-    oal_new_rxiq_comp_val_stru ast_new_rxiq_cmp_val_5G_40M[OAL_5G_80M_CHANNEL_NUM];
-    oal_new_txiq_comp_val_stru ast_new_txiq_cmp_val_5G[OAL_5G_80M_CHANNEL_NUM];
+    oal_new_rxiq_comp_val_stru ast_new_rxiq_cmp_val_5g[OAL_5G_80M_CHANNEL_NUM];
+    oal_new_rxiq_comp_val_stru ast_new_rxiq_cmp_val_5g_40m[OAL_5G_80M_CHANNEL_NUM];
+    oal_new_txiq_comp_val_stru ast_new_txiq_cmp_val_5g[OAL_5G_80M_CHANNEL_NUM];
 #endif
 
     oal_bfgn_cali_param_stru st_bfgn_cali_data;
-
 } oal_cali_param_stru;
 
 /* UNION∂®“Â */
@@ -317,7 +315,7 @@ typedef enum {
     BFGX_CFG_INI_BT_RESERVED10,
 
     BFGX_CFG_INI_BUTT
-} BFGX_CFG_INI;
+} bfgx_cfg_ini;
 
 typedef struct {
     char *name;

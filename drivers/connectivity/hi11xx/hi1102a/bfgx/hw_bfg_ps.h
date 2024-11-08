@@ -103,15 +103,7 @@
 #if (_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1103_HOST) && (_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1102A_HOST)
 #define DEFAULT_BAUD_RATE 5000000
 #else
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-#ifdef GNSS_ONLY_ASIC_CHIP
-#define DEFAULT_BAUD_RATE 2000000  // gnss_only asic set 2m
-#else
-#define DEFAULT_BAUD_RATE 1000000  // gnss_only fpga set 1m
-#endif
-#else
 #define DEFAULT_BAUD_RATE 4000000
-#endif
 #endif
 
 #define LOW_FREQ_BAUD_RATE  4000000
@@ -126,30 +118,18 @@
 #define UART_PCLK_NORMAL         1
 
 /* timeout for gnss read */
-#define GNSS_SET_READ_TIME     1
 #define GNSS_READ_DEFAULT_TIME 1000
 #define GNSS_MAX_READ_TIME     10000
 
-/* gnss update para */
-#define PLAT_GNSS_MAGIC             'w'
-#define PLAT_GNSS_DCXO_SET_PARA_CMD _IOW(PLAT_GNSS_MAGIC, 1, int)
-#define PLAT_GNSS_ABB_CLK_PARA_CMD  _IOW(PLAT_GNSS_MAGIC, 2, int)
-#define PLAT_GNSS_REFCLK_PARA_CMD   _IOW(PLAT_GNSS_MAGIC, 3, int)
-
-/* gnss abb clk control cmd */
-#define GNSS_ABB_CLK_ENABLE  1
-#define GNSS_ABB_CLK_DISABLE 0
-
 /* timeout for fm read */
-#define FM_SET_READ_TIME     1
 #define FM_READ_DEFAULT_TIME 1000
 #define FM_MAX_READ_TIME     10000
 
 /* timeout for dbg read */
-#define DBG_READ_DEFAULT_TIME 500
+#define DBG_READ_DEFAULT_TIME 5000
 
-#define LEN_LOW_BYTE(len)  ((uint8)((len) & 0xff))
-#define LEN_HIGH_BYTE(len) ((uint8)(((len) & 0xff00) >> 8))
+#define len_low_byte(len)  ((uint8)((len) & 0xff))
+#define len_high_byte(len) ((uint8)(((len) & 0xff00) >> 8))
 
 /* define for tx and rx packet queue */
 #define TX_URGENT_QUEUE 0
@@ -235,18 +215,18 @@ enum TTY_COMPLETE_TYPE_ENUM {
 enum BFGN_DATA_MSG_TYPE_ENUM {
     SYS_MSG = 0x00,         /* 系统串口消息 */
     BT_MSG = 0x01,          /* BT串口消息 */
-    GNSS_First_MSG = 0x02,  /* GNSS串口消息，第一个分段消息 */
-    GNSS_Common_MSG = 0x03, /* GNSS串口消息，中间分段消息 */
-    GNSS_Last_MSG = 0x04,   /* GNSS串口消息，最后一个分段消息 */
+    GNSS_FIRST_MSG = 0x02,  /* GNSS串口消息，第一个分段消息 */
+    GNSS_COMMON_MSG = 0x03, /* GNSS串口消息，中间分段消息 */
+    GNSS_LAST_MSG = 0x04,   /* GNSS串口消息，最后一个分段消息 */
     FM_FIRST_MSG = 0x05,    /* FM串口消息，第一个分段消息 */
     FM_COMMON_MSG = 0x06,   /* FM串口消息，中间分段消息 */
     FM_LAST_MSG = 0x07,     /* FM串口消息，最后一个分段消息 */
     IR_FIRST_MSG = 0x08,    /* 红外串口消息，第一个分段消息 */
     IR_COMMON_MSG = 0x09,   /* 红外串口消息，中间分段消息 */
     IR_LAST_MSG = 0x0A,     /* 红外串口消息，最后一个分段消息 */
-    NFC_First_MSG = 0x0B,   /* NFC串口消息，第一个分段消息 */
-    NFC_Common_MSG = 0x0C,  /* NFC串口消息，中间分段消息 */
-    NFC_Last_MSG = 0x0D,    /* NFC串口消息，最后一个分段消息 */
+    NFC_FIRST_MSG = 0x0B,   /* NFC串口消息，第一个分段消息 */
+    NFC_COMMON_MSG = 0x0C,  /* NFC串口消息，中间分段消息 */
+    NFC_LAST_MSG = 0x0D,    /* NFC串口消息，最后一个分段消息 */
     OML_MSG = 0x0E,         /* 可维可测消息 */
     MEM_DUMP_SIZE = 0x0f,   /* bfgx异常时，要dump的mem长度消息 */
     MEM_DUMP = 0x10,        /* bfgx异常时，内存dump消息 */
@@ -344,7 +324,7 @@ enum SYS_INF_MSG_VALUE_ENUM {
     SYS_INF_GNSS_LPPE_INIT = 0x1F, /* 1103 GNSS 新增的线程初始化完成 */
     SYS_INF_GNSS_LPPE_EXIT = 0x20, /* 1103 GNSS 新增的线程退出 */
 
-    SYS_INF_GNSS_TRICKLE_SlEEP = 0x21, /* 1103 GNSS TRICKLE Sleep */
+    SYS_INF_GNSS_TRICKLE_SLEEP = 0x21, /* 1103 GNSS TRICKLE Sleep */
 
     /* NOTES: add sysmsg type before this, do NOT modify the following */
     SYS_INF_HB_TIMESTAMP_LEASTVAL = 0x80, /* take 128~255 as device heart beat time stamp */
@@ -386,13 +366,13 @@ typedef enum {
 typedef enum {
     GNSS_SEPER_TAG_INIT,
     GNSS_SEPER_TAG_LAST,
-} GNSS_SEPERATE_TAG;
+} gnss_seperate_tag;
 
 typedef enum {
     SSI_MEM_TEST,
     SSI_FILE_TEST,
     SSI_TEXT_BUTT,
-} SSI_TEST_TYPE;
+} ssi_test_type;
 
 /*
  * 3 STRUCT define
@@ -409,12 +389,6 @@ struct ps_pm_s {
     int32 (*operate_beat_timer)(uint8);
     void (*bfgx_uart_state_set)(uint8);
     int8 (*bfgx_uart_state_get)(void);
-
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-    int32 (*download_patch)(void);
-    int32 (*recv_patch)(const uint8 *, int32 count);
-    int32 (*write_patch)(uint8 *, int32 count);
-#endif
 };
 
 struct ps_packet_head {
@@ -467,8 +441,8 @@ struct ps_core_s {
     wait_queue_head_t rx_dbg_wait;
     /* force tx workqueue exit, release tty mutex */
     atomic_t force_tx_exit;
-    atomic_t dbg_func_has_open;
-    uint16 dbg_read_delay;
+    atomic_t dbg_recv_dev_log;
+    atomic_t dbg_read_delay;
 
     /* define for new workqueue */
     struct workqueue_struct *ps_tx_workqueue;
@@ -591,18 +565,6 @@ typedef struct uart_loop_test {
     struct completion loop_test_done;
 } uart_loop_test_struct;
 
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-typedef struct uart_download_test {
-    uint8 baud[BAUD_STR_LEN];
-    uint32 xmodern_len;
-    uint32 file_len;
-
-    //  维测
-    uint32 used_time;
-    int32 send_status;
-} uart_download_test_st;
-#endif /* BFGX_UART_DOWNLOAD_SUPPORT */
-
 typedef struct ssi_trans_test {
     uint32 test_type;
     //  维测
@@ -615,24 +577,22 @@ typedef struct _ssi_file_st {
     uint8 file_name[SSI_PATH_NAME_LEN];
     uint32 write_addr;
 } ssi_file_st;
-extern uart_loop_cfg uart_loop_test_cfg;
-extern uart_loop_test_struct *uart_loop_test_info;
+extern uart_loop_cfg g_uart_loop_test_cfg;
+extern uart_loop_test_struct *g_uart_loop_test_info;
 extern int32 uart_loop_test_recv_pkt(struct ps_core_s *ps_core_d, const uint8 *buf_ptr, uint16 pkt_len);
 extern int32 (*tty_recv)(void *, const uint8 *, int32);
-extern uint32 bfgx_rx_queue[BFGX_BUTT];
-extern const uint8 *bfgx_subsys_name[BFGX_BUTT];
-extern uint32 bfgx_rx_max_frame[BFGX_BUTT];
+extern bool ps_bfg_subsys_active(uint32 subsys);
+extern uint32 g_bfgx_rx_queue[BFGX_BUTT];
+extern const uint8 *g_bfgx_subsys_name[BFGX_BUTT];
+extern uint32 g_bfgx_rx_max_frame[BFGX_BUTT];
 
-extern uint32 gnss_me_thread_status;
-extern uint32 gnss_lppe_thread_status;
-extern volatile bool ir_only_mode;
-extern uint8 uc_wakeup_src_debug;
-#ifdef BFGX_UART_DOWNLOAD_SUPPORT
-extern uart_download_test_st uart_download_test;
-#endif
+extern uint32 g_gnss_me_thread_status;
+extern uint32 g_gnss_lppe_thread_status;
+extern atomic_t g_ir_only_mode;
+extern uint8 g_wakeup_src_debug;
 
 /* Function declare */
-extern struct platform_device *hw_ps_device;
+extern struct platform_device *g_hw_ps_device;
 
 extern int32 ps_pm_register(struct ps_pm_s *new_pm);
 
@@ -697,7 +657,7 @@ int32 ps_change_uart_baud_rate(int64 baud_rate, uint8 enable_flowctl);
 uint8 check_bfg_not_booting(struct ps_core_s *ps_core_d);
 void host_allow_bfg_sleep(struct work_struct *work);
 uint8 bfgx_wakeup_device(struct ps_core_s *ps_core_d, uint8 type);
-int32 ps_check_packet_head(struct ps_core_s *ps_core_d, uint8 *buf_ptr, int32 count);
+int32_t ps_check_packet_head(struct ps_core_s *ps_core_d, uint8_t *buf_ptr, int32_t count);
 bool ps_chk_bfg_active(struct ps_core_s *ps_core_d);
 int32 bfgx_open_cmd_send(uint32 subsys);
 int32 prepare_to_visit_node(struct ps_core_s *ps_core_d);
@@ -706,6 +666,6 @@ void reset_uart_rx_buf(void);
 int32 ps_push_skb_queue(struct ps_core_s *ps_core_d, uint8 *buf_ptr, uint16 pkt_len, uint8 type);
 bool ps_chk_only_gnss_and_cldslp(struct ps_core_s *ps_core_d);
 extern void test_case_01(uint32 pkt_gen, uint32 pkt_len, uint8 test_type);
-extern struct kset *devices_kset;
+extern struct kset *g_devices_kset;
 
 #endif /* HW_BFG_PS_H */

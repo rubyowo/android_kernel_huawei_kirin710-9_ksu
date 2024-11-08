@@ -34,7 +34,7 @@ typedef oal_uint8 oal_direction_uint8;
 OAL_STATIC OAL_INLINE oal_void *oal_memalloc(oal_uint32 ul_size)
 {
     oal_int32 l_flags = GFP_KERNEL;
-    oal_void *puc_mem_space;
+    oal_void *puc_mem_space = NULL;
 
     /* 不睡眠或在中断程序中标志置为GFP_ATOMIC */
     if (in_interrupt() || irqs_disabled() || in_atomic()) {
@@ -46,7 +46,6 @@ OAL_STATIC OAL_INLINE oal_void *oal_memalloc(oal_uint32 ul_size)
     }
 
     puc_mem_space = kmalloc(ul_size, l_flags);
-
     if (puc_mem_space == OAL_PTR_NULL) {
         return OAL_PTR_NULL;
     }
@@ -182,11 +181,11 @@ OAL_STATIC OAL_INLINE oal_void *oal_memtry_alloc(oal_uint32 request_maxsize, oal
 OAL_STATIC OAL_INLINE oal_void *oal_mem_uncache_alloc(oal_uint32 ul_size, oal_uint32 *pul_phy_addr)
 {
     oal_int32 l_flags = GFP_KERNEL;
-    oal_void *puc_mem_space;
+    oal_void *puc_mem_space = NULL;
     oal_uint32 ul_dma_real_addr;
 
-    if (OAL_UNLIKELY(pul_phy_addr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pul_phy_addr == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -253,36 +252,5 @@ OAL_STATIC OAL_INLINE oal_void oal_free(oal_void *p_buf)
 {
     kfree(p_buf);
 }
-
-/*
- * 函 数 名  : oal_memcopy
- * 功能描述  : 复制内存。不允许两块内存重叠。
- * 输入参数  : *p_dst: 内存复制目的地址
- *             *p_src: 内存复制源地址
- *             ul_size: 复制内存大小
- */
-OAL_STATIC OAL_INLINE oal_void oal_memcopy(oal_void *p_dst, const oal_void *p_src, oal_uint32 ul_size)
-{
-    memcpy(p_dst, p_src, ul_size);
-}
-
-/*
- * 函 数 名  : oal_memmove
- * 功能描述  : 复制内存。允许两块内存重叠。
- */
-OAL_STATIC OAL_INLINE oal_void oal_memmove(oal_void *p_dst, const oal_void *p_src, oal_uint32 ul_size)
-{
-    memmove(p_dst, p_src, ul_size);
-}
-
-/*
- * 函 数 名  : oal_memset
- * 功能描述  : 内存填充。
- */
-OAL_STATIC OAL_INLINE oal_void oal_memset(oal_void *p_buf, oal_int32 l_data, oal_uint32 ul_size)
-{
-    memset(p_buf, l_data, ul_size);
-}
-
 #endif /* end of oal_mm.h */
 

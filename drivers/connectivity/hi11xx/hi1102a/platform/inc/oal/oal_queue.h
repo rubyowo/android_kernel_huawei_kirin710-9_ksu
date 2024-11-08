@@ -15,7 +15,7 @@
 #define OAL_QUEUE_DESTROY
 
 /* 判断x是否是2的整数幂 */
-#define OAL_IS_NOT_POW_OF_2(_x) ((_x) & ((_x) - 1))
+#define oal_is_not_pow_of_2(_x) ((_x) & ((_x) - 1))
 
 /* STRUCT定义 */
 typedef struct {
@@ -70,19 +70,19 @@ OAL_STATIC OAL_INLINE oal_void oal_queue_set_16(oal_queue_stru_16 *pst_queue, oa
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_queue_init(oal_queue_stru *pst_queue, oal_uint8 uc_max_events)
 {
-    oal_uint *pul_buf;
+    oal_uint *pul_buf = NULL;
 
     if (uc_max_events == 0) {
         return OAL_SUCC;
     } else {
-        if (OAL_UNLIKELY(OAL_IS_NOT_POW_OF_2(uc_max_events))) {
+        if (oal_unlikely(oal_is_not_pow_of_2(uc_max_events))) {
             return OAL_ERR_CODE_CONFIG_UNSUPPORT;
         }
 
-        pul_buf = (oal_uint *)OAL_MEM_ALLOC (OAL_MEM_POOL_ID_LOCAL,
-                                             (oal_uint16)(uc_max_events * OAL_SIZEOF(oal_uint)),
-                                             OAL_TRUE);
-        if (OAL_UNLIKELY(pul_buf == OAL_PTR_NULL)) {
+        pul_buf = (oal_uint *)oal_mem_alloc_m(OAL_MEM_POOL_ID_LOCAL,
+                                              (oal_uint16)(uc_max_events * OAL_SIZEOF(oal_uint)),
+                                              OAL_TRUE);
+        if (oal_unlikely(pul_buf == OAL_PTR_NULL)) {
             return OAL_ERR_CODE_ALLOC_MEM_FAIL;
         }
 
@@ -108,7 +108,7 @@ OAL_STATIC OAL_INLINE oal_void oal_queue_destroy(oal_queue_stru *pst_queue)
         return;
     }
 
-    OAL_MEM_FREE(pst_queue->pul_buf, OAL_TRUE);
+    oal_mem_free_m(pst_queue->pul_buf, OAL_TRUE);
 
     oal_queue_set(pst_queue, OAL_PTR_NULL, 0);
 }
@@ -175,7 +175,7 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_queue_enqueue_16(oal_queue_stru_16 *pst_que
 OAL_STATIC OAL_INLINE oal_void *oal_queue_dequeue(oal_queue_stru *pst_queue)
 {
     oal_uint8 uc_head_index;
-    oal_void *p_element;
+    oal_void *p_element = NULL;
 
     /* 异常: 队列为空 */
     if (pst_queue->uc_element_cnt == 0) {

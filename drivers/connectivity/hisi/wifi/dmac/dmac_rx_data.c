@@ -2926,10 +2926,30 @@ oal_uint32 dmac_rx_filter_frame_encrypt(dmac_user_stru        *pst_dmac_user,
             && (mac_get_data_type(pst_netbuf) != MAC_DATA_EAPOL))
         {
             pst_dmac_user->st_query_stats.ul_rx_filter_encrypt_cnt++;
+            OAM_WARNING_LOG1(pst_dmac_user->st_user_base_info.uc_vap_id, OAM_SF_RX,
+                "{dmac_rx_filter_frame_encrypt::plaintext drop! data type[%d]}",
+                mac_get_data_type(pst_netbuf));
             return OAL_FAIL;
         }
     }
 
+    return OAL_SUCC;
+}
+
+oal_uint32 dmac_rx_filter_frame_frag(mac_vap_stru *pst_vap, dmac_rx_ctl_stru *rx_cb_ctrl)
+{
+    mac_ieee80211_frame_stru *mac_hdr = NULL;
+    oal_uint8 frag_num;
+    oal_bool_enum_uint8 more_frag;
+    mac_hdr = (mac_ieee80211_frame_stru *)(mac_get_rx_cb_mac_hdr(&(rx_cb_ctrl->st_rx_info)));
+    frag_num = (oal_uint8)mac_hdr->bit_frag_num;
+    more_frag = (oal_bool_enum_uint8)mac_hdr->st_frame_control.bit_more_frag;
+    /* 接收分段帧：more frag置1或者frag num不为0 */
+    if (more_frag || frag_num != 0) {
+        OAM_WARNING_LOG2(pst_vap->uc_vap_id, OAM_SF_RX,
+            "{dmac_rx_filter_frame_frag:: more frag = [%d], frag_num = [%d]}", more_frag, frag_num);
+        return OAL_FAIL;
+    }
     return OAL_SUCC;
 }
 
@@ -3172,11 +3192,18 @@ dmac_rx_frame_ctrl_enum_uint8  dmac_rx_process_frame(
         goto rx_pkt_drop;
     }
 
-    /* 加密场景下接收到不加密的数据帧，则过滤。 */
+    /* 过滤二：加密场景下接收到不加密的数据帧，则过滤。 */
     ul_ret = dmac_rx_filter_frame_encrypt(pst_ta_dmac_user, pst_cb_ctrl, pst_netbuf);
     if (OAL_SUCC != ul_ret)
     {
         goto rx_pkt_drop;
+    }
+
+    /* 过滤三：分段帧过滤 */
+    if (g_rx_filter_frag == OAL_TRUE) {
+        if (dmac_rx_filter_frame_frag(pst_vap, pst_cb_ctrl) != OAL_SUCC) {
+            goto rx_pkt_drop;
+        }
     }
 
     OAL_MIPS_RX_STATISTIC(DMAC_PROFILING_FUNC_RX_DMAC_HANDLE_PER_MPDU_FILTER_CIPHER_AMPDU);

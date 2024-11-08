@@ -20,7 +20,7 @@
 #define CHR_READ_SEMA           1
 
 #ifdef CHR_DEBUG
-#define CHR_DBG(s, args...)                                                 \
+#define chr_dbg(s, args...)                                                 \
     do {                                                                    \
         /*lint -e515*/                                                      \
         /*lint -e516*/                                                      \
@@ -29,9 +29,9 @@
         /*lint +e516*/                                                      \
     } while (0)
 #else
-#define CHR_DBG(s, args...)
+#define chr_dbg(s, args...)
 #endif
-#define CHR_ERR(s, args...)                                               \
+#define chr_err(s, args...)                                               \
     do {                                                                  \
         /*lint -e515*/                                                    \
         /*lint -e516*/                                                    \
@@ -39,7 +39,7 @@
         /*lint +e515*/                                                    \
         /*lint +e516*/                                                    \
     } while (0)
-#define CHR_WARNING(s, args...)                                               \
+#define chr_warning(s, args...)                                               \
     do {                                                                      \
         /*lint -e515*/                                                        \
         /*lint -e516*/                                                        \
@@ -47,7 +47,7 @@
         /*lint +e515*/                                                        \
         /*lint +e516*/                                                        \
     } while (0)
-#define CHR_INFO(s, args...)                                                \
+#define chr_info(s, args...)                                                \
     do {                                                                    \
         /*lint -e515*/                                                      \
         /*lint -e516*/                                                      \
@@ -58,7 +58,7 @@
 
 #define CHR_MAGIC          'C'
 #define CHR_MAX_NR         2
-#define chr_ERRNO_WRITE_NR 1
+#define CHR_ERRNO_WRITE_NR 1
 #define CHR_ERRNO_WRITE    _IOW(CHR_MAGIC, 1, int32)
 #define CHR_ERRNO_ASK      _IOW(CHR_MAGIC, 2, int32)
 
@@ -89,27 +89,33 @@ typedef struct {
     wait_queue_head_t errno_wait;
     struct sk_buff_head errno_queue;
     struct semaphore errno_sem;
-} CHR_EVENT;
+} chr_event;
+
 typedef struct {
     uint8 framehead;
     uint8 reserved[3];
     uint32 error;
     uint8 frametail;
-} CHR_DEV_EXCEPTION_STRU;
+} chr_dev_exception_stru;
 
 typedef struct {
     uint32 errno;
     uint16 errlen;
     uint16 flag : 1;
     uint16 resv : 15;
-
-} CHR_DEV_EXCEPTION_STRU_PARA;
+} chr_dev_exception_stru_para;
 
 typedef struct {
     uint32 chr_errno;
     uint16 chr_len;
     uint8 *chr_ptr;
-} CHR_HOST_EXCEPTION_STRU;
+} chr_host_exception_stru;
+
+typedef int32 (*rx_process_callback)(uint8 *chr_data, chr_dev_exception_stru_para *chr_dev_exception_p);
+typedef struct chr_rx_callback {
+    rx_process_callback rx_process;
+} chr_rx_callback_stru;
+
 
 typedef struct {
     char ac_fw_ver[20];
@@ -218,7 +224,7 @@ typedef struct {
 } chr_dmac_pm_info_stru;
 
 typedef struct {
-    CHR_DEV_EXCEPTION_STRU_PARA st_dev_exception_info;
+    chr_dev_exception_stru_para st_dev_exception_info;
     chr_dmac_common_info_stru st_common_info;
     chr_dmac_rate_info_stru st_chr_rate_info;
     chr_dmac_radio_link_quality_info_stru st_radio_link_quality_info;
@@ -427,7 +433,7 @@ typedef struct {
 } chr_hmac_pm_info_stru;
 
 typedef struct {
-    CHR_DEV_EXCEPTION_STRU_PARA st_dev_exception_info;
+    chr_dev_exception_stru_para st_dev_exception_info;
     chr_hmac_common_info_stru st_common_info;
     chr_hmac_rate_info_stru st_chr_rate_info;
     chr_hmac_radio_link_quality_info_stru st_radio_link_quality_info;
@@ -443,6 +449,8 @@ typedef struct {
 } chr_hmac_info_stru;
 
 /* º¯ÊýÉùÃ÷ */
+extern struct st_exception_info *g_exception_info;
+
 #ifdef CONFIG_HI1102_PLAT_HW_CHR
 extern int chr_miscdevs_init(void);
 extern void chr_miscdevs_exit(void);

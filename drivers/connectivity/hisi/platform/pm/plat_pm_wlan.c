@@ -18,8 +18,8 @@
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/host.h>
 #include <linux/gpio.h>
-#ifdef CONFIG_HISI_IDLE_SLEEP
-#include <linux/hisi/hisi_idle_sleep.h>
+#ifdef CONFIG_LPCPU_IDLE_SLEEP
+#include <linux/hisi/lpcpu_idle_sleep.h>
 #endif
 #include "oal_sdio.h"
 #include "oal_sdio_comm.h"
@@ -393,9 +393,9 @@ oal_int32 wlan_pm_open(oal_void)
         OAM_WARNING_LOG0(0, OAM_SF_PWR, "wlan_pm_open::aleady opened");
         return OAL_ERR_CODE_ALREADY_OPEN;
     }
-#ifdef CONFIG_HISI_IDLE_SLEEP
-    hisi_idle_sleep_vote(ID_WIFI,1);
-    OAM_WARNING_LOG0(0, OAM_SF_PWR, "wlan_pm_open::hisi_idle_sleep_vote value 1!");
+#ifdef CONFIG_LPCPU_IDLE_SLEEP
+    lpcpu_idle_sleep_vote(ID_WIFI, 1);
+    OAM_WARNING_LOG0(0, OAM_SF_PWR, "wlan_pm_open::lpcpu_idle_sleep_vote value 1!");
 #endif
     if(!pst_wlan_pm->pst_sdio->st_sdio_wakelock.lock_count)
     {
@@ -414,9 +414,9 @@ oal_int32 wlan_pm_open(oal_void)
 		oal_sdio_wake_unlock(pst_wlan_pm->pst_sdio);
 		mutex_unlock(&pm_data->host_mutex);
 		DECLARE_DFT_TRACE_KEY_INFO("wlan_power_on_fail",OAL_DFT_TRACE_FAIL);
-       #ifdef CONFIG_HISI_IDLE_SLEEP
-        hisi_idle_sleep_vote(ID_WIFI,0);
-       #endif
+        #ifdef CONFIG_LPCPU_IDLE_SLEEP
+        lpcpu_idle_sleep_vote(ID_WIFI, 0);
+        #endif
         return OAL_FAIL;
     }
 
@@ -428,8 +428,8 @@ oal_int32 wlan_pm_open(oal_void)
         {
             OAM_ERROR_LOG0(0,OAM_SF_PWR, "wlan_pm_open::NO g_pst_custom_process_func registered");
             mutex_unlock(&pm_data->host_mutex);
-            #ifdef CONFIG_HISI_IDLE_SLEEP
-            hisi_idle_sleep_vote(ID_WIFI,0);
+            #ifdef CONFIG_LPCPU_IDLE_SLEEP
+            lpcpu_idle_sleep_vote(ID_WIFI, 0);
             #endif
             return OAL_FAIL;
         }
@@ -448,8 +448,8 @@ oal_int32 wlan_pm_open(oal_void)
                 {
                     OAL_IO_PRINT("dump device mem when cali custom failed!\n");
                 }
-                #ifdef CONFIG_HISI_IDLE_SLEEP
-                hisi_idle_sleep_vote(ID_WIFI,0);
+                #ifdef CONFIG_LPCPU_IDLE_SLEEP
+                lpcpu_idle_sleep_vote(ID_WIFI, 0);
                 #endif
                 return OAL_FAIL;
             }
@@ -602,9 +602,9 @@ oal_uint32 wlan_pm_close(oal_void)
     mutex_unlock(&pm_data->host_mutex);
 
     hcc_dev_flowctrl_on(hcc_get_default_handler(), 0);
-#ifdef CONFIG_HISI_IDLE_SLEEP
-    hisi_idle_sleep_vote(ID_WIFI,0);
-    OAM_WARNING_LOG0(0, OAM_SF_PWR, "wlan_pm_close::hisi_idle_sleep_vote 0!");
+#ifdef CONFIG_LPCPU_IDLE_SLEEP
+    lpcpu_idle_sleep_vote(ID_WIFI, 0);
+    OAM_WARNING_LOG0(0, OAM_SF_PWR, "wlan_pm_close::lpcpu_idle_sleep_vote 0!");
 #endif
     OAM_WARNING_LOG0(0,OAM_SF_PWR,"wlan_pm_close succ!\n");
     DECLARE_DFT_TRACE_KEY_INFO("wlan_close_succ",OAL_DFT_TRACE_SUCC);

@@ -10,8 +10,8 @@
 /* 全局变量定义 */
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
 
-OAL_DLIST_CREATE_HEAD(g_wakelock_head);
-OAL_DEFINE_SPINLOCK(g_wakelock_lock);
+oal_dlist_create_head(g_wakelock_head);
+oal_define_spinlock(g_wakelock_lock);
 /*lint -e19*/
 oal_module_symbol(g_wakelock_head);
 oal_module_symbol(g_wakelock_lock);
@@ -81,8 +81,8 @@ oal_void _oal_smp_task_lock_(oal_task_lock_stru *pst_lock, uintptr_t claim_addr)
 
     oal_ulong flags;
 
-    if (OAL_WARN_ON(in_interrupt() || in_atomic())) {
-        DECLARE_DFT_TRACE_KEY_INFO("smp_task_lock_sched_warn", OAL_DFT_TRACE_EXCEP);
+    if (oal_warn_on(in_interrupt() || in_atomic())) {
+        declare_dft_trace_key_info("smp_task_lock_sched_warn", OAL_DFT_TRACE_EXCEP);
         return;
     }
 
@@ -126,9 +126,9 @@ oal_int32 oal_print_all_wakelock_buff(char *buf, oal_int32 buf_len)
         return count;
     }
     count += ret;
-    OAL_DLIST_SEARCH_FOR_EACH_SAFE(pst_entry, pst_entry_temp, &g_wakelock_head)
+    oal_dlist_search_for_each_safe(pst_entry, pst_entry_temp, &g_wakelock_head)
     {
-        oal_wakelock_stru *pst_wakelock = (oal_wakelock_stru *)OAL_DLIST_GET_ENTRY(pst_entry, oal_wakelock_stru, list);
+        oal_wakelock_stru *pst_wakelock = (oal_wakelock_stru *)oal_dlist_get_entry(pst_entry, oal_wakelock_stru, list);
         if (buf_len > ret) {
             ret = snprintf_s(buf + count, buf_len - count, buf_len - count - 1, "%s     %lu  %d  %s %pf\n",
                              pst_wakelock->st_wakelock.name,
@@ -145,9 +145,9 @@ oal_int32 oal_print_all_wakelock_buff(char *buf, oal_int32 buf_len)
     }
     return count;
 #else
-    OAL_REFERENCE(ret);
-    OAL_REFERENCE(buf);
-    OAL_REFERENCE(buf_len);
+    oal_reference(ret);
+    oal_reference(buf);
+    oal_reference(buf_len);
 #endif
 }
 
@@ -173,9 +173,9 @@ oal_int32 oal_set_wakelock_debuglevel(const char *name, oal_uint32 level)
     oal_dlist_head_stru *pst_entry;
     oal_dlist_head_stru *pst_entry_temp;
     OAL_IO_PRINT("lockname     lockcnt  debug  lockuser");
-    OAL_DLIST_SEARCH_FOR_EACH_SAFE(pst_entry, pst_entry_temp, &g_wakelock_head)
+    oal_dlist_search_for_each_safe(pst_entry, pst_entry_temp, &g_wakelock_head)
     {
-        oal_wakelock_stru *pst_wakelock = (oal_wakelock_stru *)OAL_DLIST_GET_ENTRY(pst_entry, oal_wakelock_stru, list);
+        oal_wakelock_stru *pst_wakelock = (oal_wakelock_stru *)oal_dlist_get_entry(pst_entry, oal_wakelock_stru, list);
 
         if (!oal_strcmp(name, pst_wakelock->st_wakelock.name)) {
             OAL_IO_PRINT("set wakelock %s debuglevel from %u to %u\n",
@@ -185,8 +185,8 @@ oal_int32 oal_set_wakelock_debuglevel(const char *name, oal_uint32 level)
         }
     }
 #else
-    OAL_REFERENCE(name);
-    OAL_REFERENCE(level);
+    oal_reference(name);
+    oal_reference(level);
 #endif
     return -OAL_ENODEV;
 }

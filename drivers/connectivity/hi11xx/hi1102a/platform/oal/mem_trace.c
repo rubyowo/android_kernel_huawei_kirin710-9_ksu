@@ -60,7 +60,7 @@ typedef struct {
     oal_uint32 ul_node_shortage;  // 发生过node不够用的情形
 } mem_trace_mgmt;
 
-OAL_STATIC mem_trace_mgmt mem_trace_mgmt;
+OAL_STATIC mem_trace_mgmt g_mem_trace_mgmt;
 
 /*
  * 函 数 名  : mem_trace_get_mgr
@@ -68,7 +68,7 @@ OAL_STATIC mem_trace_mgmt mem_trace_mgmt;
  */
 OAL_STATIC OAL_INLINE mem_trace_mgmt *mem_trace_get_mgr(oal_void)
 {
-    return &mem_trace_mgmt;
+    return &g_mem_trace_mgmt;
 }
 
 /*
@@ -159,7 +159,7 @@ oal_void __mem_trace_add_node(oal_ulong ul_addr,
     pst_entry = oal_dlist_delete_head(&(pst_mgr->st_free_list_head));
     oal_dlist_add_tail(pst_entry, &(pst_mgr->st_used_list_head));
 
-    pst_mem_trace_node = OAL_DLIST_GET_ENTRY(pst_entry, mem_trace_node, st_list_entry);
+    pst_mem_trace_node = oal_dlist_get_entry(pst_entry, mem_trace_node, st_list_entry);
     pst_mem_trace_node->ul_addr = ul_addr;
     pst_mem_trace_node->ul_time = (oal_uint32)OAL_TIME_JIFFY;
     pst_mem_trace_node->ul_last_trace_time = pst_mem_trace_node->ul_time;
@@ -172,14 +172,13 @@ oal_void __mem_trace_add_node(oal_ulong ul_addr,
                        &(pst_mgr->ast_hast_table[ul_addr & MEM_TRACE_HASH_TBL_SIZE_MASK]));
     pst_mgr->ul_cnt++;
     pst_owner = mem_trace_owner_search(ul_fileid, ul_linenum);
-
     if (pst_owner != NULL) {
         pst_owner->ul_fileid = ul_fileid;
         pst_owner->ul_linenum = ul_linenum;
         pst_owner->ul_cnt++;
         oal_dlist_add_tail(&(pst_mem_trace_node->st_owner_list_entry), &pst_owner->st_owner_list_head);
     } else {
-        OAL_WARN_ON(1);
+        oal_warn_on(1);
     }
 
     oal_spin_unlock_irq_restore(&pst_mgr->st_spin_lock, &ul_irq_save);
@@ -203,11 +202,10 @@ oal_void __mem_trace_delete_node(oal_ulong ul_addr,
 
     oal_spin_lock_irq_save(&pst_mgr->st_spin_lock, &ul_irq_save);
 
-    OAL_DLIST_SEARCH_FOR_EACH_SAFE(pst_entry, pst_entry_tmp,
+    oal_dlist_search_for_each_safe(pst_entry, pst_entry_tmp,
                                    &(pst_mgr->ast_hast_table[ul_addr & MEM_TRACE_HASH_TBL_SIZE_MASK]))
     {
-        pst_mem_trace_node = OAL_DLIST_GET_ENTRY(pst_entry, mem_trace_node, st_hash_list_entry);
-
+        pst_mem_trace_node = oal_dlist_get_entry(pst_entry, mem_trace_node, st_hash_list_entry);
         if (pst_mem_trace_node->ul_addr == ul_addr) {
             oal_dlist_delete_entry(pst_entry);  // 从hash链表删除
             pst_mem_trace_node->ul_last_trace_time = (oal_uint32)OAL_TIME_JIFFY;
@@ -223,7 +221,6 @@ oal_void __mem_trace_delete_node(oal_ulong ul_addr,
         oal_dlist_delete_entry(&(pst_mem_trace_node->st_list_entry));                           // 从used 链表删除
         oal_dlist_add_tail(&(pst_mem_trace_node->st_list_entry), &pst_mgr->st_free_list_head);  // 增加到free链表
         pst_owner = mem_trace_owner_search(pst_mem_trace_node->ul_fileid, pst_mem_trace_node->ul_linenum);
-
         if (pst_owner != NULL) {
             oal_dlist_delete_entry(&(pst_mem_trace_node->st_owner_list_entry));  // 从owner链表删除
             pst_owner->ul_cnt--;
@@ -233,9 +230,9 @@ oal_void __mem_trace_delete_node(oal_ulong ul_addr,
     } else if (!pst_mgr->ul_node_shortage) {
         // 释放一个没有登记的内存
         oal_bool_enum_uint8 en_ever_del = OAL_FALSE;
-        OAL_DLIST_SEARCH_FOR_EACH(pst_entry, &pst_mgr->st_free_list_head)
+        oal_dlist_search_for_each(pst_entry, &pst_mgr->st_free_list_head)
         {
-            pst_mem_trace_node = OAL_DLIST_GET_ENTRY(pst_entry, mem_trace_node, st_list_entry);
+            pst_mem_trace_node = oal_dlist_get_entry(pst_entry, mem_trace_node, st_list_entry);
             if (pst_mem_trace_node->ul_addr == ul_addr) {
                 OAL_IO_PRINT("0x%lx add@[%d:%d:%u] del@[%d:%d:%u]\n",
                              ul_addr,
@@ -253,7 +250,7 @@ oal_void __mem_trace_delete_node(oal_ulong ul_addr,
                          ul_addr, ul_fileid, ul_linenum, (oal_uint32)OAL_TIME_JIFFY);
         } else {
             OAL_IO_PRINT("delete node not registered, addr=0x%lx)\n", ul_addr);
-            OAL_WARN_ON(1);
+            oal_warn_on(1);
         }
     }
 
@@ -276,10 +273,9 @@ oal_void __mem_trace_probe(oal_ulong ul_addr,
 
     oal_spin_lock_irq_save(&pst_mgr->st_spin_lock, &ul_irq_save);
 
-    OAL_DLIST_SEARCH_FOR_EACH(pst_entry, &(pst_mgr->ast_hast_table[ul_addr & MEM_TRACE_HASH_TBL_SIZE_MASK]))
+    oal_dlist_search_for_each(pst_entry, &(pst_mgr->ast_hast_table[ul_addr & MEM_TRACE_HASH_TBL_SIZE_MASK]))
     {
-        pst_mem_trace_node = OAL_DLIST_GET_ENTRY(pst_entry, mem_trace_node, st_hash_list_entry);
-
+        pst_mem_trace_node = oal_dlist_get_entry(pst_entry, mem_trace_node, st_hash_list_entry);
         if (pst_mem_trace_node->ul_addr == ul_addr) {
             pst_mem_trace_node->ul_last_trace_fileid = ul_probe_fileid;
             pst_mem_trace_node->ul_last_trace_line = ul_probe_line;
@@ -297,7 +293,7 @@ oal_void __mem_trace_probe(oal_ulong ul_addr,
             OAL_IO_PRINT("the node(0x%p) maybe not register!\n", (void *)ul_addr);
             mem_trace_info_show(MEM_TRACE_INFO_MODE2, 0, 0);
             mem_trace_info_show(MEM_TRACE_INFO_MODE1, 0, 0);
-            OAL_WARN_ON(1);
+            oal_warn_on(1);
         }
     }
 }
@@ -323,14 +319,13 @@ oal_void mem_trace_info_show(oal_uint32 ul_mode, oal_uint32 ul_fileid, oal_uint3
     if (ul_mode == MEM_TRACE_INFO_MODE0) {
         OAL_IO_PRINT("    Addr    | File_id | Line |    Time    | trace_file | trace_line | Last_time\r\n");
         pst_owner = mem_trace_owner_search(ul_fileid, ul_line);
-
         if (pst_owner != NULL) {
             if (pst_owner->ul_fileid != ul_fileid) {
                 OAL_IO_PRINT("no mem trace owner find!\r\n");
             } else {
-                OAL_DLIST_SEARCH_FOR_EACH(pst_entry, &(pst_owner->st_owner_list_head))
+                oal_dlist_search_for_each(pst_entry, &(pst_owner->st_owner_list_head))
                 {
-                    pst_mem_trace_node = OAL_DLIST_GET_ENTRY(pst_entry, mem_trace_node, st_owner_list_entry);
+                    pst_mem_trace_node = oal_dlist_get_entry(pst_entry, mem_trace_node, st_owner_list_entry);
                     OAL_IO_PRINT("0x%p |%8u | %4u | %10u | %10u | %10u | %10u\r\n",
                                  (oal_void *)pst_mem_trace_node->ul_addr,
                                  pst_mem_trace_node->ul_fileid,

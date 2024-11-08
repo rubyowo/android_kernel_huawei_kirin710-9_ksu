@@ -5,6 +5,7 @@
 
 /* Other Include Head File */
 #include "chr_errno.h"
+#include "oal_types.h"
 
 /************************  主动上报  *******************************/
 /* 芯片校准异常事件上报 */
@@ -53,18 +54,25 @@ typedef struct chr_chip_excption_event_info_tag {
     oal_uint32 ul_errid;
 } chr_platform_exception_event_info_stru;
 
+
+typedef struct {
+    oal_uint32 chr_sys;      // host根据该标记，区分CHR类型
+    oal_uint32 file_line;    // 文件id && 行号
+    oal_uint32 oam_sn;       // sn号
+    oal_uint32 err_log_cnt;  // 错误日志上报次数
+} chr_oam_stru;
+
+
 typedef struct chr_scan_exception_event_info_tag {
     int sub_event_id;
     char module_name[CHR_EXCEPTION_MODULE_NAME_LEN];
     char error_code[CHR_EXCEPTION_ERROR_CODE_LEN];
-
 } chr_scan_exception_event_info_stru;
 
 typedef struct chr_connect_exception_event_info_tag {
     int sub_event_id;
     char platform_module_name[CHR_EXCEPTION_MODULE_NAME_LEN];
     char error_code[CHR_EXCEPTION_ERROR_CODE_LEN];
-
 } chr_connect_exception_event_info_stru;
 
 typedef enum chr_LogPriority {
@@ -72,7 +80,7 @@ typedef enum chr_LogPriority {
     CHR_LOG_INFO,
     CHR_LOG_WARN,
     CHR_LOG_ERROR,
-} CHR_LOGPRIORITY;
+} chr_logpriority;
 
 typedef enum chr_dev_index {
     CHR_INDEX_KMSG_PLAT = 0,
@@ -86,7 +94,7 @@ typedef enum chr_dev_index {
     CHR_INDEX_APP_IR,
 #endif
     CHR_INDEX_MUTT,
-} CHR_DEV_INDEX;
+} chr_dev_index;
 
 typedef enum {
     CHR_DEVICE = 0x0,
@@ -97,9 +105,8 @@ typedef enum {
 
     /* 适配上层,增加chr上报结束flag */
     CHR_REPORT_FINISH = 0xFFFF,
-
-}CHR_REPORT_FLAGS_ENUM;
-typedef uint16 chr_report_flags_enum_uint16;
+}chr_report_flags_enum;
+typedef oal_uint16 chr_report_flags_enum_uint16;
 
 
 #define CHR_LOG_TAG_PLAT CHR_INDEX_KMSG_PLAT
@@ -113,7 +120,7 @@ typedef struct {
     oal_uint16 errlen;
     oal_uint16 flag : 1;
     oal_uint16 resv : 15;
-} CHR_ERRNO_WITH_ARG_STRU;
+} chr_errno_with_arg_stru;
 
 
 typedef struct {
@@ -160,44 +167,47 @@ typedef struct {
 
 typedef uint32 (*chr_get_wifi_info)(uint32);
 typedef uint32 (*chr_get_wifi_info_ext)(hmac_get_wifi_info_ext_stru*);
-
+typedef void (*chr_process_web_fail)(uint32 ul_chr_event_id, uint32 ul_rx_rate);
 typedef struct stru_callback {
     uint32 (*chr_get_wifi_info)(uint32);
     uint32  (*chr_get_wifi_ext_info_from_host)(hmac_get_wifi_info_ext_stru *);
+    void (*chr_process_web_fail)(uint32 ul_chr_event_id, uint32 ul_rx_rate);
 } chr_callback_stru;
 
-extern int32 __chr_printLog(CHR_LOGPRIORITY prio, CHR_DEV_INDEX dev_index, const int8 *fmt, ...);
+extern int32 __chr_printlog(chr_logpriority prio, chr_dev_index dev_index, const int8 *fmt, ...);
 extern int __chr_exception(uint32 errno);
 extern void chr_dev_exception_callback(void *buff, uint16 len);
 extern int32 __chr_exception_para(uint32 chr_errno, uint8 *chr_ptr, uint16 chr_len);
 extern int32 __chr_exception_para_q(uint32 chr_errno, chr_report_flags_enum_uint16 chr_flag,
-                                          uint8 *chr_ptr, uint16 chr_len);
+                                    uint8 *chr_ptr, uint16 chr_len);
 extern void chr_host_callback_register(chr_get_wifi_info pfunc);
 extern void chr_host_callback_unregister(void);
+extern void chr_process_web_fail_callback_register(chr_process_web_fail pfunc);
+extern void chr_process_web_fail_callback_unregister(void);
 extern void chr_get_wifi_ext_info_callback_register(chr_get_wifi_info_ext pfunc);
 extern void chr_get_wifi_ext_info_callback_unregister(void);
 extern void chr_test(void);
 
-#define CHR_LOG(prio, tag, fmt...)                   __chr_printLog(prio, tag, ##fmt)
-#define CHR_EXCEPTION(errno)                         __chr_exception(errno)
-#define CHR_EXCEPTION_P(chr_errno, chr_ptr, chr_len) __chr_exception_para(chr_errno, chr_ptr, chr_len)
-#define CHR_EXCEPTION_Q(chr_errno, chr_flag, chr_ptr, chr_len) __chr_exception_para_q(chr_errno, chr_flag, chr_ptr, chr_len)
+#define chr_log(prio, tag, fmt...)                   __chr_printlog(prio, tag, ##fmt)
+#define chr_exception(errno)                         __chr_exception(errno)
+#define chr_exception_p(chr_errno, chr_ptr, chr_len) __chr_exception_para(chr_errno, chr_ptr, chr_len)
+#define chr_exception_q(chr_errno, chr_flag, chr_ptr, chr_len) __chr_exception_para_q(chr_errno, chr_flag, chr_ptr, chr_len)
 
-#define CHR_EXCEPTION_REPORT(excption_event, module, plant, subplant, errid)                 \
+#define chr_exception_report(excption_event, module, plant, subplant, errid)                 \
     do {                                                                                     \
         chr_platform_exception_event_info_stru chr_platform_exception_event_info;            \
         chr_platform_exception_event_info.ul_module = module;                                \
         chr_platform_exception_event_info.ul_plant = plant;                                  \
         chr_platform_exception_event_info.ul_subplant = subplant;                            \
         chr_platform_exception_event_info.ul_errid = errid;                                  \
-        CHR_EXCEPTION_P (excption_event, (oal_uint8 *)(& chr_platform_exception_event_info), \
+        chr_exception_p (excption_event, (oal_uint8 *)(& chr_platform_exception_event_info), \
                          OAL_SIZEOF(chr_platform_exception_event_info_stru));                \
     } while (0)
 
 #else
-#define CHR_LOG(prio, tag, fmt, ...)
-#define CHR_EXCEPTION(chr_errno)
-#define CHR_EXCEPTION_P(chr_errno, chr_ptr, chr_len)
-#define CHR_EXCEPTION_REPORT(excption_event, module, plant, subplant, errid)
+#define chr_log(prio, tag, fmt, ...)
+#define chr_exception(chr_errno)
+#define chr_exception_p(chr_errno, chr_ptr, chr_len)
+#define chr_exception_report(excption_event, module, plant, subplant, errid)
 #endif
 #endif

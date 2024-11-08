@@ -2,6 +2,11 @@
 
 #ifndef __OAL_HCC_BUS_H
 #define __OAL_HCC_BUS_H
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "oal_sdio_comm.h"
@@ -66,7 +71,7 @@ struct bus_msg_stru {
 };
 
 /* 全局变量声明 */
-extern oal_atomic wakeup_dev_wait_ack;
+extern oal_atomic g_wakeup_dev_wait_ack;
 
 /* 一种类型对应一种IP驱动，PCIE驱动不同SOC架构驱动差异较大 */
 #define HCC_BUS_SDIO  0
@@ -94,7 +99,7 @@ typedef enum _HCC_BUS_Q_PRIO_ {
     HCC_BUS_Q_NORMAL,
     HCC_BUS_Q_LOW,
     HCC_BUS_Q_BUTT
-} HCC_BUS_Q_PRIO;
+} hcc_bus_q_prio;
 
 /* Power Action */
 typedef enum _HCC_BUS_POWER_ACTION_TYPE_ {
@@ -107,19 +112,19 @@ typedef enum _HCC_BUS_POWER_ACTION_TYPE_ {
     HCC_BUS_SW_POWER_PATCH_LAUCH,     /* swtich power patch lauch */
     HCC_BUS_SW_POWER_PATCH_LOAD_PREPARE,
     HCC_BUS_POWER_BUTT
-} HCC_BUS_POWER_ACTION_TYPE;
+} hcc_bus_power_action_type;
 
 typedef enum _HCC_BUS_POWER_CTRL_TYPE_ {
     HCC_BUS_CTRL_POWER_DOWN, /* the func callbed by bus */
     HCC_BUS_CTRL_POWER_UP,   /* the func callbed by bus */
     HCC_BUS_CTRL_POWER_BUTT
-} HCC_BUS_POWER_CTRL_TYPE;
+} hcc_bus_power_ctrl_type;
 
-#define HCC_TO_BUS(hcc)   (((struct hcc_handler *)(hcc))->bus_dev->cur_bus)
-#define HCC_TO_DEV(hcc)   (((struct hcc_handler *)(hcc))->bus_dev)
-#define HBUS_TO_DEV(bus)  (((hcc_bus *)(bus))->bus_dev)
-#define HBUS_TO_HCC(bus)  (((hcc_bus *)(bus))->bus_dev->hcc)
-#define HDEV_TO_HBUS(dev) ((dev)->cur_bus)
+#define hcc_to_bus(hcc)   (((struct hcc_handler *)(hcc))->bus_dev->cur_bus)
+#define hcc_to_dev(hcc)   (((struct hcc_handler *)(hcc))->bus_dev)
+#define hbus_to_dev(bus)  (((hcc_bus *)(bus))->bus_dev)
+#define hbus_to_hcc(bus)  (((hcc_bus *)(bus))->bus_dev->hcc)
+#define hdev_to_hbus(dev) ((dev)->cur_bus)
 typedef struct _hcc_bus_ hcc_bus;
 typedef struct _hcc_bus_dev_ hcc_bus_dev;
 
@@ -163,9 +168,9 @@ typedef struct _hcc_bus_opt_ops {
     oal_int32 (*deinit)(hcc_bus *pst_bus); /* ip deinit */
 
     /* do something before power on/off */
-    oal_int32 (*power_action)(hcc_bus *pst_bus, HCC_BUS_POWER_ACTION_TYPE action);
+    oal_int32 (*power_action)(hcc_bus *pst_bus, hcc_bus_power_action_type action);
 
-    oal_int32 (*power_ctrl)(hcc_bus *hi_bus, HCC_BUS_POWER_CTRL_TYPE ctrl, int (*func)(void *data), oal_void *data);
+    oal_int32 (*power_ctrl)(hcc_bus *hi_bus, hcc_bus_power_ctrl_type ctrl, int (*func)(void *data), oal_void *data);
 
     oal_int32 (*wlan_gpio_handler)(hcc_bus *pst_bus, oal_int32 irq);     /* wlan gpio handler func */
     oal_int32 (*flowctrl_gpio_handler)(hcc_bus *pst_bus, oal_int32 irq); /* flowctrl gpio handler func */
@@ -329,8 +334,13 @@ extern oal_int32 hcc_bus_bindcpu(hcc_bus *hi_bus, oal_uint32 chan, oal_int32 is_
 extern oal_int32 hcc_dev_bindcpu(oal_uint32 dev_id, oal_int32 is_bind);
 extern oal_int32 hi110x_hcc_dev_bindcpu(oal_int32 is_bind);
 #if defined(CONFIG_ARCH_HISI)
+#if defined(CONFIG_ARCH_PLATFORM)
+extern void get_slow_cpus(struct cpumask *cpumask);
+extern void get_fast_cpus(struct cpumask *cpumask);
+#else
 extern void hisi_get_slow_cpus(struct cpumask *cpumask);
 extern void hisi_get_fast_cpus(struct cpumask *cpumask);
+#endif
 #endif
 extern oal_uint32 hcc_bus_flowctrl_init(oal_uint8 uc_hcc_flowctrl_type);
 
@@ -395,8 +405,6 @@ extern oal_int32 hcc_switch_action_register(hcc_switch_action *action, void *dat
 extern oal_void hcc_switch_action_unregister(hcc_switch_action *action);
 extern oal_int32 hcc_switch_bus(oal_uint32 dev_id, oal_uint32 bus_type);
 extern oal_int32 hcc_send_message(struct hcc_handler *hcc, oal_uint32 val);
-extern oal_int32 hcc_dev_switch_enable(oal_uint32 dev_id);
-extern oal_int32 hcc_dev_switch_disable(oal_uint32 dev_id);
 extern oal_int32 hi110x_switch_hcc_bus_request(oal_uint32 target);
 extern oal_int32 hi110x_switch_to_hcc_highspeed_chan(oal_uint32 is_high);
 extern oal_int32 hcc_bus_performance_core_schedule(oal_uint32 dev_id);
@@ -408,7 +416,7 @@ extern oal_void hcc_bus_sched_flowctrl_gpio_task(hcc_bus *pst_bus, oal_int32 l_i
 OAL_STATIC OAL_INLINE oal_void hcc_bus_rx_transfer_lock(hcc_bus *hi_bus)
 {
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
     mutex_lock(&hi_bus->rx_transfer_lock);
@@ -418,7 +426,7 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_rx_transfer_lock(hcc_bus *hi_bus)
 OAL_STATIC OAL_INLINE oal_void hcc_bus_rx_transfer_unlock(hcc_bus *hi_bus)
 {
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
     mutex_unlock(&hi_bus->rx_transfer_lock);
@@ -427,7 +435,7 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_rx_transfer_unlock(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_uint32 hcc_bus_get_max_trans_size(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return 0;
     }
 
@@ -440,12 +448,12 @@ OAL_STATIC OAL_INLINE oal_uint32 hcc_bus_get_max_trans_size(hcc_bus *hi_bus)
  */
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_state(hcc_bus *hi_bus, oal_uint32 mask)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "hcc_bus_get_state: hibus is null");
         return 0;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "hcc_bus_get_state: hi_bus->opt_ops is null");
         return 0;
     }
@@ -464,11 +472,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_state(hcc_bus *hi_bus, oal_uint32 ma
  */
 OAL_STATIC OAL_INLINE oal_void hcc_bus_enable_state(hcc_bus *hi_bus, oal_uint32 mask)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return;
     }
 
@@ -481,11 +489,11 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_enable_state(hcc_bus *hi_bus, oal_uint32 
 
 OAL_STATIC OAL_INLINE oal_void hcc_bus_disable_state(hcc_bus *hi_bus, oal_uint32 mask)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return;
     }
 
@@ -498,11 +506,11 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_disable_state(hcc_bus *hi_bus, oal_uint32
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_lock(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -515,11 +523,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_lock(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_unlock(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -532,11 +540,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_unlock(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_sleep_request(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -549,11 +557,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_sleep_request(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_sleep_request_host(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -566,11 +574,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_sleep_request_host(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_sleep_state(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -583,11 +591,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_sleep_state(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_int_mask(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -600,11 +608,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_int_mask(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_int_unmask(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -617,15 +625,15 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_int_unmask(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_trans_count(hcc_bus *hi_bus, oal_uint64 *tx, oal_uint64 *rx)
 {
-    if (OAL_LIKELY(tx)) {
+    if (oal_likely(tx)) {
         *tx = 0;
     }
 
-    if (OAL_LIKELY(rx)) {
+    if (oal_likely(rx)) {
         *rx = 0;
     }
 
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -638,11 +646,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_get_trans_count(hcc_bus *hi_bus, oal_uin
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_wakeup_request(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -653,13 +661,13 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_wakeup_request(hcc_bus *hi_bus)
     return hi_bus->opt_ops->wakeup_request(hi_bus);
 }
 
-OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_action(hcc_bus *hi_bus, HCC_BUS_POWER_ACTION_TYPE action)
+OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_action(hcc_bus *hi_bus, hcc_bus_power_action_type action)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -670,10 +678,10 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_action(hcc_bus *hi_bus, HCC_BUS_PO
     return hi_bus->opt_ops->power_action(hi_bus, action);
 }
 
-OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_ctrl_register(hcc_bus *hi_bus, HCC_BUS_POWER_CTRL_TYPE ctrl,
+OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_ctrl_register(hcc_bus *hi_bus, hcc_bus_power_ctrl_type ctrl,
                                                             int (*func)(void *data), void *data)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         if (func != NULL) {
             /* ip driver no callback, call the function directly */
             return func(data);
@@ -681,7 +689,7 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_ctrl_register(hcc_bus *hi_bus, HCC
         return -OAL_ENODEV;
     }
 
-    if (OAL_WARN_ON(hi_bus->opt_ops == NULL)) {
+    if (oal_warn_on(hi_bus->opt_ops == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -698,37 +706,37 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_power_ctrl_register(hcc_bus *hi_bus, HCC
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_send_message(hcc_bus *hi_bus, oal_uint32 val)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_LIKELY(hi_bus->opt_ops->send_msg)) {
+    if (oal_likely(hi_bus->opt_ops->send_msg)) {
         return hi_bus->opt_ops->send_msg(hi_bus, val);
     } else {
         return -OAL_ENODEV;
     }
 }
 
-extern oal_uint32 hcc_tx_err_cnt;
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_tx_netbuf_list(hcc_bus *hi_bus, oal_netbuf_head_stru *pst_head,
                                                        hcc_netbuf_queue_type qtype)
 {
+    OAL_STATIC oal_int32 hcc_tx_err_cnt = 0;
     oal_int32 ret;
 
-    if (OAL_UNLIKELY(!hi_bus)) {
+    if (oal_unlikely(!hi_bus)) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "hcc_bus_tx_netbuf_list: bus is null");
         return -OAL_EINVAL;
     }
 
-    if (OAL_LIKELY(hi_bus->opt_ops->tx_netbuf_list)) {
+    if (oal_likely(hi_bus->opt_ops->tx_netbuf_list)) {
         oal_print_hi11xx_log(HI11XX_LOG_DBG, "tx netbuf list:%s, skb head:%p, len:%d, qtype:%d",
                              hi_bus->bus_type == HCC_BUS_SDIO ? "sdio" : "pcie",
-                             OAL_NETBUF_HEAD_NEXT(pst_head),
+                             oal_netbuf_head_next(pst_head),
                              oal_netbuf_list_len(pst_head),
                              qtype);
 
         ret = hi_bus->opt_ops->tx_netbuf_list(hi_bus, pst_head, qtype);
-        if (OAL_UNLIKELY(ret < 0)) {
+        if (oal_unlikely(ret < 0)) {
             hcc_tx_err_cnt++;
             if (hcc_tx_err_cnt >= 2) {
                 oal_msleep(1000);
@@ -737,7 +745,7 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_tx_netbuf_list(hcc_bus *hi_bus, oal_netb
             }
             return 0;
         } else {
-            if (OAL_UNLIKELY(hcc_tx_err_cnt)) {
+            if (oal_unlikely(hcc_tx_err_cnt)) {
                 hcc_tx_err_cnt = 0;
             }
             return ret;
@@ -749,12 +757,12 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_tx_netbuf_list(hcc_bus *hi_bus, oal_netb
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_netbuf_list(hcc_bus *hi_bus, oal_netbuf_head_stru *pst_head)
 {
-    if (OAL_UNLIKELY(!hi_bus)) {
+    if (oal_unlikely(!hi_bus)) {
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "hcc_bus_rx_netbuf_list: bus is null");
         return -OAL_EINVAL;
     }
 
-    if (OAL_LIKELY(hi_bus->opt_ops->rx_netbuf_list)) {
+    if (oal_likely(hi_bus->opt_ops->rx_netbuf_list)) {
         return hi_bus->opt_ops->rx_netbuf_list(hi_bus, pst_head);
     } else {
         return -OAL_ENODEV;
@@ -763,11 +771,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_rx_netbuf_list(hcc_bus *hi_bus, oal_netb
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_reinit(hcc_bus *hi_bus)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->reinit == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->reinit == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -776,11 +784,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_reinit(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_voltage_bias_init(hcc_bus *hi_bus)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->voltage_bias_init == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->voltage_bias_init == NULL)) {
         return -OAL_ENODEV;
     }
 
@@ -789,11 +797,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_voltage_bias_init(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_check_tx_condition(hcc_bus *hi_bus, hcc_netbuf_queue_type qtype)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return OAL_TRUE;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->tx_condition == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->tx_condition == NULL)) {
         /* 没有回调说明 发送不受限制 直接返回1 */
         return OAL_TRUE;
     }
@@ -803,11 +811,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_check_tx_condition(hcc_bus *hi_bus, hcc_
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_patch_read(hcc_bus *hi_bus, oal_uint8 *buff, oal_int32 len, oal_uint32 timeout)
 {
-    if (OAL_WARN_ON((hi_bus == NULL) || (buff == NULL))) {
+    if (oal_warn_on((hi_bus == NULL) || (buff == NULL))) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->patch_read == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->patch_read == NULL)) {
         return -OAL_EIO;
     }
 
@@ -816,11 +824,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_patch_read(hcc_bus *hi_bus, oal_uint8 *b
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_patch_write(hcc_bus *hi_bus, oal_uint8 *buff, oal_int32 len)
 {
-    if (OAL_WARN_ON((hi_bus == NULL) || (buff == NULL))) {
+    if (oal_warn_on((hi_bus == NULL) || (buff == NULL))) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->patch_write == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->patch_write == NULL)) {
         return -OAL_EIO;
     }
 
@@ -829,11 +837,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_patch_write(hcc_bus *hi_bus, oal_uint8 *
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_wakeup_complete(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->wakeup_complete == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->wakeup_complete == NULL)) {
         return -OAL_EIO;
     }
 
@@ -842,11 +850,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_wakeup_complete(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_suspend_tx(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->switch_suspend_tx == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->switch_suspend_tx == NULL)) {
         return -OAL_EIO;
     }
 
@@ -855,11 +863,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_suspend_tx(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_resume_tx(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->switch_resume_tx == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->switch_resume_tx == NULL)) {
         return OAL_SUCC;
     }
 
@@ -868,11 +876,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_resume_tx(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_clean_res(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return -OAL_EINVAL;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->switch_clean_res == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->switch_clean_res == NULL)) {
         return OAL_SUCC;
     }
 
@@ -881,11 +889,11 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_switch_clean_res(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_void hcc_bus_chip_info(hcc_bus *hi_bus, oal_uint32 is_need_wakeup, oal_uint32 is_full_log)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->chip_info == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->chip_info == NULL)) {
         return;
     }
 
@@ -896,11 +904,11 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_chip_info(hcc_bus *hi_bus, oal_uint32 is_
 #define HCC_PRINT_TRANS_FLAG_DEVICE_REGS (1 << 1)
 OAL_STATIC OAL_INLINE oal_void hcc_bus_print_trans_info(hcc_bus *hi_bus, oal_uint64 print_flag)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->print_trans_info == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->print_trans_info == NULL)) {
         return;
     }
 
@@ -910,11 +918,11 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_print_trans_info(hcc_bus *hi_bus, oal_uin
 
 OAL_STATIC OAL_INLINE oal_void hcc_bus_reset_trans_info(hcc_bus *hi_bus)
 {
-    if (OAL_WARN_ON(hi_bus == NULL)) {
+    if (oal_warn_on(hi_bus == NULL)) {
         return;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->reset_trans_info == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->reset_trans_info == NULL)) {
         return;
     }
 
@@ -923,11 +931,11 @@ OAL_STATIC OAL_INLINE oal_void hcc_bus_reset_trans_info(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_pending_signal_check(hcc_bus *hi_bus)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return OAL_FALSE;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->pending_signal_check == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->pending_signal_check == NULL)) {
         return OAL_FALSE;
     }
 
@@ -936,16 +944,21 @@ OAL_STATIC OAL_INLINE oal_int32 hcc_bus_pending_signal_check(hcc_bus *hi_bus)
 
 OAL_STATIC OAL_INLINE oal_int32 hcc_bus_pending_signal_process(hcc_bus *hi_bus)
 {
-    if (OAL_UNLIKELY(hi_bus == NULL)) {
+    if (oal_unlikely(hi_bus == NULL)) {
         return 0;
     }
 
-    if (OAL_UNLIKELY(hi_bus->opt_ops->pending_signal_process == NULL)) {
+    if (oal_unlikely(hi_bus->opt_ops->pending_signal_process == NULL)) {
         return 0;
     }
 
     return hi_bus->opt_ops->pending_signal_process(hi_bus);
 }
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of Hcc.h */
 

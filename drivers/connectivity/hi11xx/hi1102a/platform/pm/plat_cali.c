@@ -14,14 +14,16 @@
 
 /* 全局变量定义 */
 /* 保存校准数据的buf */
-oal_uint8 *pucCaliDataBuf = NULL;
+OAL_STATIC oal_uint8 *g_cali_data_buf = NULL;
 oal_uint8 g_uc_netdev_is_open = OAL_FALSE;
+/* 由于校准异常触发dfr恢复的次数 */
+oal_uint32 g_cali_excp_dfr_count   = 0;
 
 /* add for hi1102a bfgx */
-oal_uint8 *pucBfgxCaliDataBuf_hi1102a = NULL;
+OAL_STATIC oal_uint8 *g_bfgx_cali_data_buf_hi1102a = NULL;
 
 /* 定义不能超过BFGX_BT_CUST_INI_SIZE/4 (128) */
-bfgx_ini_cmd bfgx_ini_config_cmd_hi1102a[BFGX_BT_CUST_INI_SIZE / 4] = {
+OAL_STATIC bfgx_ini_cmd g_bfgx_ini_config_cmd_hi1102a[BFGX_BT_CUST_INI_SIZE / 4] = {
     { "bt_maxpower",                   0x0505 },
     { "bt_edrpow_offset",              0 },
     { "bt_blepow_offset",              0 },
@@ -44,7 +46,7 @@ bfgx_ini_cmd bfgx_ini_config_cmd_hi1102a[BFGX_BT_CUST_INI_SIZE / 4] = {
 };
 
 /* 定义不能超过BFGX_BT_CUST_INI_SIZE/4 (128) */
-int32 bfgx_cust_ini_data_hi1102a[BFGX_BT_CUST_INI_SIZE / 4] = {0};
+OAL_STATIC int32 g_bfgx_cust_ini_data_hi1102a[BFGX_BT_CUST_INI_SIZE / 4] = {0};
 
 /*
  * 函 数 名  : get_cali_count
@@ -60,20 +62,20 @@ oal_int32 get_cali_count(oal_uint32 *count)
     oal_uint32 cali_parm;
 
     if (count == NULL) {
-        PS_PRINT_ERR("count is NULL\n");
+        ps_print_err("count is NULL\n");
         return -EFAIL;
     }
 
-    if (pucCaliDataBuf == NULL) {
-        PS_PRINT_ERR("pucCaliDataBuf is NULL\n");
+    if (g_cali_data_buf == NULL) {
+        ps_print_err("g_cali_data_buf is NULL\n");
         return -EFAIL;
     }
 
-    pst_cali_data = (oal_cali_param_stru *)pucCaliDataBuf;
+    pst_cali_data = (oal_cali_param_stru *)g_cali_data_buf;
     cali_count = pst_cali_data->st_cali_update_info.ul_cali_time;
     cali_parm = *(oal_uint32 *)&(pst_cali_data->st_cali_update_info);
 
-    PS_PRINT_WARNING("cali count is [%d], cali update info is [%d]\n", cali_count, cali_parm);
+    ps_print_warning("cali count is [%d], cali update info is [%d]\n", cali_count, cali_parm);
 
     *count = cali_parm;
 
@@ -94,53 +96,53 @@ int32 get_bfgx_cali_data(oal_uint8 *buf, oal_uint32 *len, oal_uint32 buf_len)
     oal_uint32 bfgx_cali_data_len;
     oal_int32 ret;
 
-    PS_PRINT_INFO("%s\n", __func__);
+    ps_print_info("%s\n", __func__);
 
     if (unlikely(buf == NULL)) {
-        PS_PRINT_ERR("buf is NULL\n");
+        ps_print_err("buf is NULL\n");
         return -EFAIL;
     }
 
     if (unlikely(len == NULL)) {
-        PS_PRINT_ERR("len is NULL\n");
+        ps_print_err("len is NULL\n");
         return -EFAIL;
     }
 
-    if (unlikely(pucBfgxCaliDataBuf_hi1102a == NULL)) {
-        PS_PRINT_ERR("pucBfgxCaliDataBuf_hi1102a is NULL\n");
+    if (unlikely(g_bfgx_cali_data_buf_hi1102a == NULL)) {
+        ps_print_err("g_bfgx_cali_data_buf_hi1102a is NULL\n");
         return -EFAIL;
     }
 
-    if (pucCaliDataBuf == NULL) {
-        PS_PRINT_ERR("pucCaliDataBuf is NULL\n");
+    if (g_cali_data_buf == NULL) {
+        ps_print_err("g_cali_data_buf is NULL\n");
         return -EFAIL;
     }
 
     bfgx_cali_data_len = sizeof(oal_bfgn_cali_param_stru);
     if (bfgx_cali_data_len > BFGX_BT_CALI_DATA_SIZE) {
-        PS_PRINT_ERR("bfgx data buffer[%d] is smaller than struct size[%d]\n",
+        ps_print_err("bfgx data buffer[%d] is smaller than struct size[%d]\n",
                      BFGX_BT_CALI_DATA_SIZE, bfgx_cali_data_len);
         return -EFAIL;
     }
 
-    pst_cali_data = (oal_cali_param_stru *)pucCaliDataBuf;
-    ret = memcpy_s(pucBfgxCaliDataBuf_hi1102a, BFGX_CALI_DATA_BUF_LEN,
+    pst_cali_data = (oal_cali_param_stru *)g_cali_data_buf;
+    ret = memcpy_s(g_bfgx_cali_data_buf_hi1102a, BFGX_CALI_DATA_BUF_LEN,
                    (oal_uint8 *)&(pst_cali_data->st_bfgn_cali_data), bfgx_cali_data_len);
     if (ret != EOK) {
-        PS_PRINT_ERR("get_bfgx_cali_data: memcpy_s failed,ret = %d\n", ret);
+        ps_print_err("get_bfgx_cali_data: memcpy_s failed,ret = %d\n", ret);
         return -EFAIL;
     }
 
 #ifdef HISI_NVRAM_SUPPORT
     if (bfgx_nv_data_init() != OAL_SUCC) {
-        PS_PRINT_ERR("bfgx nv data init fail!\n");
+        ps_print_err("bfgx nv data init fail!\n");
     }
 #endif
 
     bfgx_cali_data_len = sizeof(bfgx_cali_data_stru);
-    ret = memcpy_s(buf, buf_len, pucBfgxCaliDataBuf_hi1102a, bfgx_cali_data_len);
+    ret = memcpy_s(buf, buf_len, g_bfgx_cali_data_buf_hi1102a, bfgx_cali_data_len);
     if (ret != EOK) {
-        PS_PRINT_ERR("cali buf len[%d] is smaller than struct size[%d] ret=%d\n", buf_len, bfgx_cali_data_len, ret);
+        ps_print_err("cali buf len[%d] is smaller than struct size[%d] ret=%d\n", buf_len, bfgx_cali_data_len, ret);
         return -EFAIL;
     }
     *len = bfgx_cali_data_len;
@@ -151,11 +153,11 @@ int32 get_bfgx_cali_data(oal_uint8 *buf, oal_uint32 *len, oal_uint32 buf_len)
 /*
  * 函 数 名  : get_cali_data_buf_addr
  * 功能描述  : 返回保存校准数据的内存地址
- * 返 回 值  : g_pucCaliDataBuf的地址，也可能是NULL
+ * 返 回 值  : g_cali_data_buf的地址，也可能是NULL
  */
 void *get_cali_data_buf_addr(void)
 {
-    return pucCaliDataBuf;
+    return g_cali_data_buf;
 }
 
 /*
@@ -168,15 +170,15 @@ void *bfgx_get_cust_ini_data_buf(uint32 *pul_len)
 {
     bfgx_cali_data_stru *pst_bfgx_cali_data_buf = NULL;
 
-    if (pucBfgxCaliDataBuf_hi1102a == NULL) {
+    if (g_bfgx_cali_data_buf_hi1102a == NULL) {
         return NULL;
     }
 
-    pst_bfgx_cali_data_buf = (bfgx_cali_data_stru *)pucBfgxCaliDataBuf_hi1102a;
+    pst_bfgx_cali_data_buf = (bfgx_cali_data_stru *)g_bfgx_cali_data_buf_hi1102a;
 
     *pul_len = sizeof(pst_bfgx_cali_data_buf->auc_bt_cust_ini_data);
 
-    PS_PRINT_INFO("bfgx cust ini buf size is %d\n", *pul_len);
+    ps_print_info("bfgx cust ini buf size is %d\n", *pul_len);
 
     return pst_bfgx_cali_data_buf->auc_bt_cust_ini_data;
 }
@@ -191,15 +193,15 @@ void *bfgx_get_nv_data_buf(uint32 *pul_len)
 {
     bfgx_cali_data_stru *pst_bfgx_cali_data_buf = NULL;
 
-    if (pucBfgxCaliDataBuf_hi1102a == NULL) {
+    if (g_bfgx_cali_data_buf_hi1102a == NULL) {
         return NULL;
     }
 
-    pst_bfgx_cali_data_buf = (bfgx_cali_data_stru *)pucBfgxCaliDataBuf_hi1102a;
+    pst_bfgx_cali_data_buf = (bfgx_cali_data_stru *)g_bfgx_cali_data_buf_hi1102a;
 
     *pul_len = sizeof(pst_bfgx_cali_data_buf->auc_nv_data);
 
-    PS_PRINT_INFO("bfgx nv buf size is %d\n", *pul_len);
+    ps_print_info("bfgx nv buf size is %d\n", *pul_len);
 
     return pst_bfgx_cali_data_buf->auc_nv_data;
 }
@@ -220,7 +222,7 @@ void plat_bfgx_cali_data_test(void)
 
     pst_cali_data = (oal_cali_param_stru *)get_cali_data_buf_addr();
     if (pst_cali_data == NULL) {
-        PS_PRINT_ERR("get_cali_data_buf_addr failed\n");
+        ps_print_err("get_cali_data_buf_addr failed\n");
         return;
     }
 
@@ -241,17 +243,17 @@ void plat_bfgx_cali_data_test(void)
  */
 oal_int32 cali_data_buf_malloc(void)
 {
-    pucCaliDataBuf = OS_KZALLOC_GFP(RF_CALI_DATA_BUF_LEN);
-    if (pucCaliDataBuf == NULL) {
-        PS_PRINT_ERR("malloc for pucCaliDataBuf fail\n");
+    g_cali_data_buf = os_kzalloc_gfp(RF_CALI_DATA_BUF_LEN);
+    if (g_cali_data_buf == NULL) {
+        ps_print_err("malloc for g_cali_data_buf fail\n");
         return -EFAIL;
     }
 
-    pucBfgxCaliDataBuf_hi1102a = (oal_uint8 *)OS_KZALLOC_GFP(BFGX_CALI_DATA_BUF_LEN);
-    if (pucBfgxCaliDataBuf_hi1102a == NULL) {
-        OS_MEM_KFREE(pucCaliDataBuf);
-        pucCaliDataBuf = NULL;
-        PS_PRINT_ERR("malloc for pucBfgxCaliDataBuf_hi1102a fail\n");
+    g_bfgx_cali_data_buf_hi1102a = (oal_uint8 *)os_kzalloc_gfp(BFGX_CALI_DATA_BUF_LEN);
+    if (g_bfgx_cali_data_buf_hi1102a == NULL) {
+        os_mem_kfree(g_cali_data_buf);
+        g_cali_data_buf = NULL;
+        ps_print_err("malloc for g_bfgx_cali_data_buf_hi1102a fail\n");
         return -EFAIL;
     }
 
@@ -264,15 +266,15 @@ oal_int32 cali_data_buf_malloc(void)
  */
 void cali_data_buf_free(void)
 {
-    if (pucCaliDataBuf != NULL) {
-        OS_MEM_KFREE(pucCaliDataBuf);
+    if (g_cali_data_buf != NULL) {
+        os_mem_kfree(g_cali_data_buf);
     }
-    pucCaliDataBuf = NULL;
+    g_cali_data_buf = NULL;
 
-    if (pucBfgxCaliDataBuf_hi1102a != NULL) {
-        OS_MEM_KFREE(pucBfgxCaliDataBuf_hi1102a);
+    if (g_bfgx_cali_data_buf_hi1102a != NULL) {
+        os_mem_kfree(g_bfgx_cali_data_buf_hi1102a);
     }
-    pucBfgxCaliDataBuf_hi1102a = NULL;
+    g_bfgx_cali_data_buf_hi1102a = NULL;
 }
 
 /*
@@ -290,31 +292,31 @@ int32 bfgx_cust_ini_init(void)
     uint32 ul_len;
 
     for (i = 0; i < BFGX_CFG_INI_BUTT; i++) {
-        l_ori_val = bfgx_ini_config_cmd_hi1102a[i].init_value;
+        l_ori_val = g_bfgx_ini_config_cmd_hi1102a[i].init_value;
 
         /* 获取ini的配置值 */
-        l_ret = get_cust_conf_int32(INI_MODU_DEV_BT, bfgx_ini_config_cmd_hi1102a[i].name, &l_cfg_value);
+        l_ret = get_cust_conf_int32(INI_MODU_DEV_BT, g_bfgx_ini_config_cmd_hi1102a[i].name, &l_cfg_value);
         if (l_ret == INI_FAILED) {
-            bfgx_cust_ini_data_hi1102a[i] = l_ori_val;
-            PS_PRINT_WARNING("bfgx read ini file failed cfg_id[%d],default value[%d]!", i, l_ori_val);
+            g_bfgx_cust_ini_data_hi1102a[i] = l_ori_val;
+            ps_print_warning("bfgx read ini file failed cfg_id[%d],default value[%d]!", i, l_ori_val);
             continue;
         }
 
-        bfgx_cust_ini_data_hi1102a[i] = l_cfg_value;
+        g_bfgx_cust_ini_data_hi1102a[i] = l_cfg_value;
 
-        PS_PRINT_INFO("bfgx ini init [id:%d] [%s] changed from [%d]to[%d]",
-                      i, bfgx_ini_config_cmd_hi1102a[i].name, l_ori_val, l_cfg_value);
+        ps_print_info("bfgx ini init [id:%d] [%s] changed from [%d]to[%d]",
+                      i, g_bfgx_ini_config_cmd_hi1102a[i].name, l_ori_val, l_cfg_value);
     }
 
     pst_buf = bfgx_get_cust_ini_data_buf(&ul_len);
     if (pst_buf == NULL) {
-        PS_PRINT_ERR("get cust ini buf fail!");
+        ps_print_err("get cust ini buf fail!");
         return INI_FAILED;
     }
 
-    l_ret = memcpy_s(pst_buf, ul_len, bfgx_cust_ini_data_hi1102a, ul_len);
+    l_ret = memcpy_s(pst_buf, ul_len, g_bfgx_cust_ini_data_hi1102a, ul_len);
     if (l_ret != EOK) {
-        PS_PRINT_ERR("bfgx_cust_ini_init: memcpy_s failed, ret=%d\n!", l_ret);
+        ps_print_err("bfgx_cust_ini_init: memcpy_s failed, ret=%d\n!", l_ret);
         return INI_FAILED;
     }
 
@@ -337,27 +339,26 @@ oal_int32 bfgx_nv_data_init(void)
     l_ret = read_conf_from_nvram(bt_cal_nvram_tmp, OAL_BT_NVRAM_DATA_LENGTH,
                                  OAL_BT_NVRAM_NUMBER, OAL_BT_NVRAM_NAME);
     if (l_ret != INI_SUCC) {
-        PS_PRINT_ERR("bfgx_nv_data_init::BT read NV error!");
+        ps_print_err("bfgx_nv_data_init::BT read NV error!");
         // last byte of NV ram is used to mark if NV ram is failed to read.
         bt_cal_nvram_tmp[OAL_BT_NVRAM_DATA_LENGTH - 1] = OAL_TRUE;
-    }
-    else {
+    } else {
         // last byte of NV ram is used to mark if NV ram is failed to read.
         bt_cal_nvram_tmp[OAL_BT_NVRAM_DATA_LENGTH - 1] = OAL_FALSE;
     }
 
     pst_buf = bfgx_get_nv_data_buf(&ul_len);
     if (pst_buf == NULL) {
-        PS_PRINT_ERR("get bfgx nv buf fail!");
+        ps_print_err("get bfgx nv buf fail!");
         return INI_FAILED;
     }
 
     l_ret = memcpy_s(pst_buf, ul_len, bt_cal_nvram_tmp, OAL_BT_NVRAM_DATA_LENGTH);
     if (l_ret != EOK) {
-        PS_PRINT_ERR("bfgx_nv_data_init: memcpy_s failed, ret=%d\n!", l_ret);
+        ps_print_err("bfgx_nv_data_init: memcpy_s failed, ret=%d\n!", l_ret);
         return INI_FAILED;
     }
-    PS_PRINT_INFO("bfgx_nv_data_init SUCCESS");
+    ps_print_info("bfgx_nv_data_init SUCCESS");
     return INI_SUCC;
 }
 #endif
@@ -374,13 +375,13 @@ int32 bfgx_customize_init(void)
     /* 申请用于保存校准数据的buffer */
     ret = cali_data_buf_malloc();
     if (ret != OAL_SUCC) {
-        PS_PRINT_ERR("alloc cali data buf fail\n");
+        ps_print_err("alloc cali data buf fail\n");
         return INI_FAILED;
     }
 
     ret = bfgx_cust_ini_init();
     if (ret != OAL_SUCC) {
-        PS_PRINT_ERR("bfgx ini init fail!\n");
+        ps_print_err("bfgx ini init fail!\n");
         cali_data_buf_free();
         return INI_FAILED;
     }
@@ -388,7 +389,7 @@ int32 bfgx_customize_init(void)
 #ifdef HISI_NVRAM_SUPPORT
     ret = bfgx_nv_data_init();
     if (ret != OAL_SUCC) {
-        PS_PRINT_ERR("bfgx nv data init fail!\n");
+        ps_print_err("bfgx nv data init fail!\n");
         cali_data_buf_free();
         return INI_FAILED;
     }

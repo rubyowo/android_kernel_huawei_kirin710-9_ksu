@@ -2,6 +2,11 @@
 
 #ifndef __OAL_HCC_HOST_IF_H
 #define __OAL_HCC_HOST_IF_H
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 #include "oal_ext_if.h"
 #include "oal_util.h"
@@ -50,8 +55,6 @@ struct hcc_transfer_param {
 
 #define HCC_RX_LOW_WATERLINE             128
 #define HCC_RX_HIGH_WATERLINE            512
-
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
 
 #define CTRL_BURST_LIMIT                 256
 #define CTRL_LOW_WATERLINE               128
@@ -105,17 +108,7 @@ typedef enum _hcc_queue_type_ {
     HCC_QUEUE_COUNT
 } hcc_queue_type;
 
-#else
-
-typedef enum _hcc_queue_type_ {
-    DATA_HI_QUEUE = 0,
-    DATA_LO_QUEUE = 1,
-    HCC_QUEUE_COUNT
-} hcc_queue_type;
-
-#endif
-
-#define DECLARE_HCC_TX_PARAM_INITIALIZER(name, mtype, stype, ext_len, arg_flag, queueid) \
+#define declare_hcc_tx_param_initializer(name, mtype, stype, ext_len, arg_flag, queueid) \
     struct hcc_transfer_param name;                                                      \
     hcc_hdr_param_init(&(name), mtype, stype, ext_len, arg_flag, queueid);
 
@@ -127,8 +120,8 @@ OAL_STATIC OAL_INLINE oal_void hcc_hdr_param_init(struct hcc_transfer_param *par
                                                   oal_uint32 fc_flag,
                                                   oal_uint32 queue_id)
 {
-    if (OAL_UNLIKELY(param == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(param == NULL)) {
+        oal_warn_on(1);
         return;
     }
     param->main_type = main_type;
@@ -139,15 +132,16 @@ OAL_STATIC OAL_INLINE oal_void hcc_hdr_param_init(struct hcc_transfer_param *par
 }
 
 /* 全局变量，供pm 统计收发包总数 */
-extern oal_uint32 pm_wifi_rxtx_count;
-extern oal_uint32 hcc_assemble_count;
+extern oal_uint32 g_pm_wifi_rxtx_count;
+extern oal_uint32 hcc_get_assemble_count(oal_void);
+extern oal_void hcc_set_assemble_count(oal_uint32 assemble_count);
 
-#define HCC_GET_CHAN_STRING(type) (((type) == HCC_TX) ? "tx" : "rx")
+#define hcc_get_chan_string(type) (((type) == HCC_TX) ? "tx" : "rx")
 
 typedef enum _hcc_send_mode_ {
-    hcc_single_send = 0,
-    hcc_assem_send,
-    hcc_mode_count
+    HCC_SINGLE_SEND = 0,
+    HCC_ASSEM_SEND,
+    HCC_MODE_COUNT
 } hcc_send_mode;
 
 typedef enum _hcc_flowctrl_type_ {
@@ -193,7 +187,6 @@ typedef struct _hcc_tx_assem_info_ {
     oal_netbuf_head_stru assembled_head;
     /* the queue is assembling */
     hcc_queue_type assembled_queue_type;
-
 } hcc_tx_assem_info;
 
 typedef struct _hcc_rx_assem_info_ {
@@ -228,7 +221,6 @@ typedef struct _hcc_trans_queues_ {
     hcc_trans_queue queues[HCC_QUEUE_COUNT];
 } hcc_trans_queues;
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
 typedef oal_bool_enum_uint8 (*hcc_flowctl_get_mode)(oal_void);
 oal_void hcc_flowctl_get_device_mode_register(hcc_flowctl_get_mode get_mode);
 
@@ -238,7 +230,6 @@ oal_void hcc_flowctl_operate_subq_register(hcc_flowctl_start_subq start_subq, hc
 oal_void hcc_host_set_flowctl_param(oal_uint8 uc_queue_type, oal_uint16 us_burst_limit,
                                     oal_uint16 us_low_waterline, oal_uint16 us_high_waterline);
 oal_void hcc_host_get_flowctl_stat(oal_void);
-#endif
 oal_int32 hcc_print_current_trans_info(oal_void);
 
 typedef oal_void (*flowctrl_cb)(oal_void);
@@ -255,11 +246,9 @@ typedef struct _hcc_tx_flow_ctrl_info_ {
     oal_wait_queue_head_stru wait_queue;
     flowctrl_cb net_stopall;
     flowctrl_cb net_startall;
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
     hcc_flowctl_get_mode get_mode;
     hcc_flowctl_stop_subq stop_subq;
     hcc_flowctl_start_subq start_subq;
-#endif
     oal_timer_list_stru flow_timer;
     oal_ulong timeout;
     oal_delayed_work worker;
@@ -341,9 +330,7 @@ oal_int32 hcc_tx(struct hcc_handler *hcc, oal_netbuf_stru *netbuf, struct hcc_tr
 oal_int32 hcc_thread_process(struct hcc_handler *hcc);
 oal_int32 hcc_transfer_thread(oal_void *data);
 #endif
-#ifndef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
 oal_void hcc_tx_flow_ctrl_cb_register(flowctrl_cb stopall, flowctrl_cb startall);
-#endif
 
 struct hcc_handler *hcc_module_init(hcc_bus_dev *pst_bus_dev);
 
@@ -385,7 +372,7 @@ extern struct custom_process_func_handler *oal_get_custom_process_func(oal_void)
 
 OAL_STATIC OAL_INLINE void hcc_tx_transfer_lock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
@@ -396,7 +383,7 @@ OAL_STATIC OAL_INLINE void hcc_tx_transfer_lock(struct hcc_handler *hcc)
 
 OAL_STATIC OAL_INLINE void hcc_tx_transfer_unlock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
@@ -407,25 +394,25 @@ OAL_STATIC OAL_INLINE void hcc_tx_transfer_unlock(struct hcc_handler *hcc)
 
 OAL_STATIC OAL_INLINE void hcc_rx_transfer_lock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
-    hcc_bus_rx_transfer_lock(HCC_TO_BUS(hcc));
+    hcc_bus_rx_transfer_lock(hcc_to_bus(hcc));
 }
 
 OAL_STATIC OAL_INLINE void hcc_rx_transfer_unlock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
-    hcc_bus_rx_transfer_unlock(HCC_TO_BUS(hcc));
+    hcc_bus_rx_transfer_unlock(hcc_to_bus(hcc));
 }
 
 OAL_STATIC OAL_INLINE void hcc_transfer_lock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
@@ -435,7 +422,7 @@ OAL_STATIC OAL_INLINE void hcc_transfer_lock(struct hcc_handler *hcc)
 
 OAL_STATIC OAL_INLINE void hcc_transfer_unlock(struct hcc_handler *hcc)
 {
-    if (OAL_UNLIKELY(hcc == NULL)) {
+    if (oal_unlikely(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
@@ -445,7 +432,7 @@ OAL_STATIC OAL_INLINE void hcc_transfer_unlock(struct hcc_handler *hcc)
 
 OAL_STATIC OAL_INLINE oal_void hcc_sched_transfer(struct hcc_handler *hcc)
 {
-    if (OAL_WARN_ON(hcc == NULL)) {
+    if (oal_warn_on(hcc == NULL)) {
         OAL_IO_PRINT("%s,hcc is null\n", __FUNCTION__);
         return;
     }
@@ -492,13 +479,13 @@ extern oal_void hcc_test_exit_module(struct hcc_handler *hcc);
 /* function stub */
 OAL_STATIC OAL_INLINE oal_int32 hcc_test_init_module(struct hcc_handler *hcc)
 {
-    OAL_REFERENCE(hcc);
+    oal_reference(hcc);
     return OAL_SUCC;
 }
 
 OAL_STATIC OAL_INLINE oal_void hcc_test_exit_module(struct hcc_handler *hcc)
 {
-    OAL_REFERENCE(hcc);
+    oal_reference(hcc);
     return;
 }
 #endif
@@ -507,7 +494,7 @@ extern oal_void hcc_print_device_mem_info(oal_void);
 extern oal_void hcc_trigger_device_panic(oal_void);
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-extern struct custom_process_func_handler custom_process_func;
+extern struct custom_process_func_handler g_custom_process_func;
 #endif
 
 #define HCC_NETBUF_RESERVED_ROOM_SIZE (HCC_HDR_TOTAL_LEN + HISDIO_H2D_SCATT_BUFFLEN_ALIGN)
@@ -528,7 +515,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hcc_netbuf_alloc(oal_uint32 ul_size)
     }
 
     pst_netbuf = __netdev_alloc_skb(NULL, ul_size + HCC_NETBUF_RESERVED_ROOM_SIZE, flags);
-    if (OAL_UNLIKELY(pst_netbuf != NULL)) {
+    if (oal_unlikely(pst_netbuf != NULL)) {
         skb_reserve(pst_netbuf, HCC_NETBUF_RESERVED_ROOM_SIZE);
     }
 #else
@@ -539,16 +526,15 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hcc_netbuf_alloc(oal_uint32 ul_size)
 
 OAL_STATIC OAL_INLINE oal_void hcc_tx_netbuf_free(oal_netbuf_stru *pst_netbuf)
 {
-    struct hcc_tx_cb_stru *pst_cb_stru;
+    struct hcc_tx_cb_stru *pst_cb_stru = NULL;
 
-    if (OAL_WARN_ON(pst_netbuf == NULL)) {
+    if (oal_warn_on(pst_netbuf == NULL)) {
         OAL_IO_PRINT("[Error] pst_netbuf is null r failed!%s\n", __FUNCTION__);
         return;
     }
 
-    pst_cb_stru = (struct hcc_tx_cb_stru *)OAL_NETBUF_CB(pst_netbuf);
-
-    if (OAL_UNLIKELY(pst_cb_stru->magic != HCC_TX_WAKELOCK_MAGIC)) {
+    pst_cb_stru = (struct hcc_tx_cb_stru *)oal_netbuf_cb(pst_netbuf);
+    if (oal_unlikely(pst_cb_stru->magic != HCC_TX_WAKELOCK_MAGIC)) {
 #ifdef CONFIG_PRINTK
         printk(KERN_EMERG "BUG: tx netbuf:%p on CPU#%d,magic:%08x should be %08x\n", pst_cb_stru,
                raw_smp_processor_id(), pst_cb_stru->magic, HCC_TX_WAKELOCK_MAGIC);
@@ -556,12 +542,12 @@ OAL_STATIC OAL_INLINE oal_void hcc_tx_netbuf_free(oal_netbuf_stru *pst_netbuf)
                        (oal_uint8 *)pst_netbuf, sizeof(oal_netbuf_stru), true); /* 内核函数固定的传参 */
         printk(KERN_ERR "\n");
 #endif
-        OAL_WARN_ON(1);
-        DECLARE_DFT_TRACE_KEY_INFO("tx_wakelock_crash", OAL_DFT_TRACE_EXCEP);
+        oal_warn_on(1);
+        declare_dft_trace_key_info("tx_wakelock_crash", OAL_DFT_TRACE_EXCEP);
         return;
     }
 
-    if (OAL_LIKELY(pst_cb_stru->destory)) {
+    if (oal_likely(pst_cb_stru->destory)) {
         pst_cb_stru->destory(hcc_get_110x_handler());
     }
 
@@ -573,8 +559,8 @@ OAL_STATIC OAL_INLINE oal_void hcc_tx_netbuf_free(oal_netbuf_stru *pst_netbuf)
 OAL_STATIC OAL_INLINE oal_void hcc_tx_netbuf_list_free(oal_netbuf_head_stru *pst_netbuf_hdr)
 {
     oal_netbuf_stru *pst_netbuf = NULL;
-    if (OAL_UNLIKELY(pst_netbuf_hdr == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pst_netbuf_hdr == NULL)) {
+        oal_warn_on(1);
         return;
     }
     for (;;) {
@@ -585,5 +571,10 @@ OAL_STATIC OAL_INLINE oal_void hcc_tx_netbuf_list_free(oal_netbuf_head_stru *pst
         hcc_tx_netbuf_free(pst_netbuf);
     }
 }
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of oal_hcc_if.h */

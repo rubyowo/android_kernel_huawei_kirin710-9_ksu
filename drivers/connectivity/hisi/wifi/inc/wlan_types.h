@@ -383,6 +383,7 @@ typedef enum
     WLAN_WITP_AUTH_FILS_SK_PFS,
     WLAN_WITP_AUTH_FILS_PK,
 #endif
+    WLAN_WITP_AUTH_TBPEKE,
     WLAN_WITP_AUTH_AUTOMATIC,
 
     WLAN_WITP_ALG_AUTH_BUTT
@@ -965,8 +966,7 @@ OAL_STATIC OAL_INLINE oal_uint8  wlan_hdr_get_frame_type(oal_uint8 *puc_header)
 
 OAL_STATIC OAL_INLINE oal_int8  wlan_rssi_lpf(oal_int8 c_old, oal_int8 c_new)
 {
-    oal_int8   c_delta;
-    oal_int8   c_factor;
+    oal_int8   c_delta, c_factor;
 
     /* 如果c_new是正数或0，则说明该RSSI有问题，不需要往下计算 */
     if (c_new >= 0)

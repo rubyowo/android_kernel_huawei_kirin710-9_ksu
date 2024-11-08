@@ -16,7 +16,7 @@
 #define OAM_ONT_LOG_STRING_LIMIT         200
 #define OAM_ONT_LOG_DEFAULT_EVENT        HW_KER_WIFI_LOG_BUTT  // 默认不输入到ont proc log
 #define OAM_ONT_LOG_MAX_COUNT            50
-#define OAM_REPORT_PRODUCT_LOG_FUN(_uiChipIndex, _uiEvent, _uilevel, fmt, arg...) \
+#define oam_report_product_log_fun(_uiChipIndex, _uiEvent, _uilevel, fmt, arg...) \
         hw_wifi_log_dbg(_uiChipIndex, _uiEvent, _uilevel, fmt, ##arg)
 
 typedef struct {
@@ -46,8 +46,8 @@ typedef enum {
     HW_KER_WIFI_CHIP_5G_LOG,
     HW_KER_WIFI_CHIP_ALL_LOG,
     HW_KER_WIFI_CHIP_LOG_BUTT
-} HW_KER_WIFI_CHIP_LOG_E;  // chipIndex
-typedef oal_uint32 oam_ONT_CHIP_LOG_E_enum_uint32;
+} hw_ker_wifi_chip_log_e;  // chipIndex
+typedef oal_uint32 oam_ont_chip_log_e_enum_uint32;
 
 typedef enum {
     HW_KER_WIFI_LOG_CONFIG = 0, /* 配置操作 */
@@ -56,7 +56,7 @@ typedef enum {
     HW_KER_WIFI_LOG_CHANNEL,    /* 存储信道扫描，记录信道扫描结果，上一个信道与当前选择的信道 */
     HW_KER_WIFI_LOG_COLLISION,  /* BSSID 冲突扫描 */
     HW_KER_WIFI_LOG_BUTT
-} HW_KER_WIFI_LOG_E;
+} hw_ker_wifi_log_e;
 typedef oal_uint8 oam_ont_log_enum_uint8;
 #endif
 

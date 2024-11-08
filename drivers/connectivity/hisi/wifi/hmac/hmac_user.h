@@ -446,7 +446,7 @@ extern oal_void hmac_tid_clear(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hm
 extern hmac_user_stru*  mac_res_get_hmac_user_alloc(oal_uint16 us_idx);
 extern hmac_user_stru*  mac_res_get_hmac_user(oal_uint16 us_idx);
 extern hmac_user_stru  *mac_vap_get_hmac_user_by_addr(mac_vap_stru *pst_mac_vap, oal_uint8  *puc_mac_addr);
-
+void hmac_user_clear_defrag_res(hmac_user_stru *hmac_user);
 
 #ifdef _PRE_WLAN_FEATURE_WAPI
 extern hmac_wapi_stru *hmac_user_get_wapi_ptr(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_pairwise, oal_uint16 us_pairwise_idx);

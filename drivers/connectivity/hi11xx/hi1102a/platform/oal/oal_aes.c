@@ -17,12 +17,12 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_byte(OAL_CONST oal_uint32 x, OAL_CONST unsig
 
 OAL_STATIC OAL_INLINE oal_uint32 oal_ror32(oal_uint32 word, oal_uint shift)
 {
-    return ((word >> shift) | (word << (32 - shift)));
+    return ((word >> shift) | (word << (32 - shift))); /* 数据位宽32bits */
 }
 
-OAL_STATIC OAL_CONST oal_uint32 rco_tab[OAL_AES_RCO_TAB_LEN] = { 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 };
+OAL_STATIC OAL_CONST oal_uint32 g_rco_tab[OAL_AES_RCO_TAB_LEN] = { 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 };
 
-OAL_STATIC OAL_CONST oal_uint32 crypto_ft_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
+OAL_STATIC OAL_CONST oal_uint32 g_crypto_ft_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
     {
         0xa56363c6,
         0x847c7cf8,
@@ -1057,7 +1057,7 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_ft_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
     }
 };
 
-OAL_STATIC OAL_CONST oal_uint32 crypto_fl_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
+OAL_STATIC OAL_CONST oal_uint32 g_crypto_fl_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
     {
         0x00000063,
         0x0000007c,
@@ -2092,7 +2092,7 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_fl_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
     }
 };
 
-OAL_STATIC OAL_CONST oal_uint32 crypto_it_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
+OAL_STATIC OAL_CONST oal_uint32 g_crypto_it_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
     {
         0x50a7f451,
         0x5365417e,
@@ -3127,7 +3127,7 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_it_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
     }
 };
 
-OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
+OAL_STATIC OAL_CONST oal_uint32 g_crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_CRYPTO_KEY_SIZE] = {
     {
         0x00000052,
         0x00000009,
@@ -4172,20 +4172,20 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
         t = w ^ (x);                  \
         (y) = u ^ v ^ w;              \
         (y) ^= oal_ror32(u ^ t, 8) ^  \
-               oal_ror32(v ^ t, 16) ^ \
-               oal_ror32(t, 24);      \
+                oal_ror32(v ^ t, 16) ^ \
+                oal_ror32(t, 24);      \
     } while (0)
 
 #define ls_box(x) (                    \
-    crypto_fl_tab[0][oal_byte(x, 0)] ^ \
-    crypto_fl_tab[1][oal_byte(x, 1)] ^ \
-    crypto_fl_tab[2][oal_byte(x, 2)] ^ \
-    crypto_fl_tab[3][oal_byte(x, 3)])
+    g_crypto_fl_tab[0][oal_byte(x, 0)] ^ \
+    g_crypto_fl_tab[1][oal_byte(x, 1)] ^ \
+    g_crypto_fl_tab[2][oal_byte(x, 2)] ^ \
+    g_crypto_fl_tab[3][oal_byte(x, 3)])
 
 #define oal_loop4(i)                               \
     do {                                           \
         t = oal_ror32(t, 8);                       \
-        t = ls_box(t) ^ rco_tab[i];                \
+        t = ls_box(t) ^ g_rco_tab[i];                \
         t ^= pst_aes_key->ul_key_enc[4 * (i)];     \
         pst_aes_key->ul_key_enc[4 * (i) + 4] = t;  \
         t ^= pst_aes_key->ul_key_enc[4 * (i) + 1]; \
@@ -4199,7 +4199,7 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 #define oal_loop6(i)                               \
     do {                                           \
         t = oal_ror32(t, 8);                       \
-        t = ls_box(t) ^ rco_tab[i];                \
+        t = ls_box(t) ^ g_rco_tab[i];                \
         t ^= pst_aes_key->ul_key_enc[6 * (i)];     \
         pst_aes_key->ul_key_enc[6 * (i) + 6] = t;  \
         t ^= pst_aes_key->ul_key_enc[6 * (i) + 1]; \
@@ -4217,7 +4217,7 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 #define loop8tophalf(i)                            \
     do {                                           \
         t = oal_ror32(t, 8);                       \
-        t = ls_box(t) ^ rco_tab[i];                \
+        t = ls_box(t) ^ g_rco_tab[i];                \
         t ^= pst_aes_key->ul_key_enc[8 * (i)];     \
         pst_aes_key->ul_key_enc[8 * (i) + 8] = t;  \
         t ^= pst_aes_key->ul_key_enc[8 * (i) + 1]; \
@@ -4243,10 +4243,10 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 
 #define f_rn(bo, bi, n, k)                                                         \
     do {                                                                           \
-        (bo)[n] = crypto_ft_tab[0][oal_byte((bi)[n], 0)] ^                         \
-                crypto_ft_tab[1][oal_byte((bi)[((n) + 1) & 3], 1)] ^               \
-                crypto_ft_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
-                crypto_ft_tab[3][oal_byte((bi)[((n) + 3) & 3], 3)] ^ *((k) + (n)); \
+        (bo)[n] = g_crypto_ft_tab[0][oal_byte((bi)[n], 0)] ^                         \
+                g_crypto_ft_tab[1][oal_byte((bi)[((n) + 1) & 3], 1)] ^               \
+                g_crypto_ft_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
+                g_crypto_ft_tab[3][oal_byte((bi)[((n) + 3) & 3], 3)] ^ *((k) + (n)); \
     } while (0)
 
 #define f_nround(bo, bi, k) \
@@ -4260,10 +4260,10 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 
 #define f_rl(bo, bi, n, k)                                                         \
     do {                                                                           \
-        (bo)[n] = crypto_fl_tab[0][oal_byte((bi)[n], 0)] ^                         \
-                crypto_fl_tab[1][oal_byte((bi)[((n) + 1) & 3], 1)] ^               \
-                crypto_fl_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
-                crypto_fl_tab[3][oal_byte((bi)[((n) + 3) & 3], 3)] ^ *((k) + (n)); \
+        (bo)[n] = g_crypto_fl_tab[0][oal_byte((bi)[n], 0)] ^                         \
+                g_crypto_fl_tab[1][oal_byte((bi)[((n) + 1) & 3], 1)] ^               \
+                g_crypto_fl_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
+                g_crypto_fl_tab[3][oal_byte((bi)[((n) + 3) & 3], 3)] ^ *((k) + (n)); \
     } while (0)
 
 #define f_lround(bo, bi, k) \
@@ -4277,10 +4277,10 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 /* AES解密过程用到的宏 */
 #define i_rn(bo, bi, n, k)                                                         \
     do {                                                                           \
-        (bo)[n] = crypto_it_tab[0][oal_byte((bi)[n], 0)] ^                         \
-                crypto_it_tab[1][oal_byte((bi)[((n) + 3) & 3], 1)] ^               \
-                crypto_it_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
-                crypto_it_tab[3][oal_byte((bi)[((n) + 1) & 3], 3)] ^ *((k) + (n)); \
+        (bo)[n] = g_crypto_it_tab[0][oal_byte((bi)[n], 0)] ^                         \
+                g_crypto_it_tab[1][oal_byte((bi)[((n) + 3) & 3], 1)] ^               \
+                g_crypto_it_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
+                g_crypto_it_tab[3][oal_byte((bi)[((n) + 1) & 3], 3)] ^ *((k) + (n)); \
     } while (0)
 
 #define i_nround(bo, bi, k) \
@@ -4294,10 +4294,10 @@ OAL_STATIC OAL_CONST oal_uint32 crypto_il_tab[OAL_AES_CRYPTO_ARRY_SIZE][OAL_AES_
 
 #define i_rl(bo, bi, n, k)                                                         \
     do {                                                                           \
-        (bo)[n] = crypto_il_tab[0][oal_byte((bi)[n], 0)] ^                         \
-                crypto_il_tab[1][oal_byte((bi)[((n) + 3) & 3], 1)] ^               \
-                crypto_il_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
-                crypto_il_tab[3][oal_byte((bi)[((n) + 1) & 3], 3)] ^ *((k) + (n)); \
+        (bo)[n] = g_crypto_il_tab[0][oal_byte((bi)[n], 0)] ^                         \
+                g_crypto_il_tab[1][oal_byte((bi)[((n) + 3) & 3], 1)] ^               \
+                g_crypto_il_tab[2][oal_byte((bi)[((n) + 2) & 3], 2)] ^               \
+                g_crypto_il_tab[3][oal_byte((bi)[((n) + 1) & 3], 3)] ^ *((k) + (n)); \
     } while (0)
 
 #define i_lround(bo, bi, k) \
@@ -4391,10 +4391,10 @@ oal_uint32 oal_aes_encrypt(oal_aes_key_stru *pst_aes_key,
                            OAL_CONST oal_uint8 *puc_plaintext)
 {
     oal_uint32 b0[4], b1[4];
-    oal_uint32 *pul_dst;
+    oal_uint32 *pul_dst = NULL;
     oal_uint32 ul_key_len;
-    OAL_CONST oal_uint32 *pul_src;
-    OAL_CONST oal_uint32 *pul_kp;
+    OAL_CONST oal_uint32 *pul_src = NULL;
+    OAL_CONST oal_uint32 *pul_kp = NULL;
 
     if ((pst_aes_key == OAL_PTR_NULL) || (puc_ciphertext == OAL_PTR_NULL) || (puc_plaintext == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
@@ -4448,10 +4448,10 @@ oal_uint32 oal_aes_decrypt(oal_aes_key_stru *pst_aes_key,
                            OAL_CONST oal_uint8 *puc_ciphertext)
 {
     oal_uint32 b0[4], b1[4];
-    oal_uint32 *pul_dst;
+    oal_uint32 *pul_dst = NULL;
     oal_uint32 ul_key_len;
-    OAL_CONST oal_uint32 *pul_src;
-    OAL_CONST oal_uint32 *pul_kp;
+    OAL_CONST oal_uint32 *pul_src = NULL;
+    OAL_CONST oal_uint32 *pul_kp = NULL;
 
     if ((pst_aes_key == OAL_PTR_NULL) || (puc_ciphertext == OAL_PTR_NULL) || (puc_plaintext == OAL_PTR_NULL)) {
         return OAL_ERR_CODE_PTR_NULL;
@@ -4587,7 +4587,7 @@ OAL_STATIC OAL_INLINE oal_void oal_bip_ipn_swap(oal_uint8 *d, OAL_CONST oal_uint
  * 输入参数  : pst_netbuf : 存储加802.11头的帧的netbuf
  *             aad        : 待组合的AAD结构指针
  */
-OAL_STATIC oal_void oal_bip_aad(oal_netbuf_stru *pst_netbuf, oal_uint8 *aad)
+OAL_STATIC oal_void oal_bip_aad(oal_netbuf_stru *pst_netbuf, oal_uint8 *aad, oal_uint32 aad_len)
 {
     /* BIP AAD: FC(masked) || A1 || A2 || A3 */
     oal_int32 ret;
@@ -4595,10 +4595,12 @@ OAL_STATIC oal_void oal_bip_aad(oal_netbuf_stru *pst_netbuf, oal_uint8 *aad)
     aad[0] = pst_netbuf->data[0];
     /* Mask FC Retry, PwrMgt, MoreData flags to zero */
     aad[1] = pst_netbuf->data[1] & ~(BIT(4) | BIT(5) | BIT(6));
-    /* A1 || A2 || A3 */ /* 2表示偏移已经填充数据的区域，3表示FC填充完成后还有3块A1、A2、A3 */
-    ret = memcpy_s(aad + 2, OAL_AAD_LEN - 2, pst_netbuf->data + 4, 3 * OAL_ETH_ALEN);
-    if (ret != EOK) {
-        OAL_IO_PRINT("aad buf too short");
+    if (aad_len > 2) {
+        /* A1 || A2 || A3 */ /* 2表示偏移已经填充数据的区域，3表示FC填充完成后还有3块A1、A2、A3 */
+        ret = memcpy_s(aad + 2, aad_len - 2, pst_netbuf->data + 4, 3 * OAL_ETH_ALEN);
+        if (ret != EOK) {
+            OAL_IO_PRINT("aad buf too short");
+        }
     }
 }
 
@@ -4636,10 +4638,10 @@ OAL_STATIC oal_uint32 oal_aes_128_cmac_vector(oal_aes_key_stru *aes_key,
                                               OAL_CONST oal_uint32 *len,
                                               oal_uint8 *mac)
 {
-    oal_uint8 *cbc;
-    oal_uint8 *pad;
-    OAL_CONST oal_uint8 *pos;
-    oal_uint8 *end;
+    oal_uint8 *cbc = NULL;
+    oal_uint8 *pad = NULL;
+    OAL_CONST oal_uint8 *pos = NULL;
+    oal_uint8 *end = NULL;
     oal_uint32 i;
     oal_uint32 e;
     oal_uint32 left;
@@ -4736,7 +4738,7 @@ OAL_STATIC oal_void oal_aes_cmac(oal_aes_key_stru *aes_key, oal_uint8 *scratch, 
 oal_uint32 oal_crypto_aes_cmac_encrypt(oal_aes_ctx_stru *aes_ctx, oal_netbuf_stru *pst_netbuf)
 {
     oal_mmie_stru *mmie = OAL_PTR_NULL;
-    oal_uint8 *pn;
+    oal_uint8 *pn = NULL;
     oal_uint8 aad[OAL_AAD_LEN];
     oal_int i;
 
@@ -4752,7 +4754,7 @@ oal_uint32 oal_crypto_aes_cmac_encrypt(oal_aes_ctx_stru *aes_ctx, oal_netbuf_str
     mmie->length = OAL_SIZEOF(*mmie) - OAL_IE_HDR_LEN;
     mmie->key_id = oal_host_to_le16(aes_ctx->key_idx);
 
-    /* PN = PN + 1 */
+    /* PN equal PN + 1 */
     pn = aes_ctx->pn;
 
     for (i = OAL_SIZEOF(aes_ctx->pn) - 1; i >= 0; i--) {
@@ -4762,7 +4764,7 @@ oal_uint32 oal_crypto_aes_cmac_encrypt(oal_aes_ctx_stru *aes_ctx, oal_netbuf_str
         }
     }
     oal_bip_ipn_swap(mmie->sequence_number, pn);
-    oal_bip_aad(pst_netbuf, aad);
+    oal_bip_aad(pst_netbuf, aad, sizeof(aad));
 
     oal_aes_cmac(&aes_ctx->key, aes_ctx->crypto_buf, aad, sizeof(aad),
                  pst_netbuf->data + OAL_AES_FRAME_HEAD_LEN, pst_netbuf->len - OAL_AES_FRAME_HEAD_LEN, mmie->mic);
@@ -4801,7 +4803,7 @@ OAL_STATIC oal_uint32 oal_crypto_aes_cmac_decrypt(oal_aes_ctx_stru *aes_ctx,
         return OAL_ERR_CODE_PMF_REPLAY_ATTAC;
     }
 
-    oal_bip_aad(pst_netbuf, aad);
+    oal_bip_aad(pst_netbuf, aad, sizeof(aad));
     oal_aes_cmac(&aes_ctx->key, aes_ctx->crypto_buf, aad, sizeof(aad),
                  pst_netbuf->data + OAL_AES_FRAME_HEAD_LEN, pst_netbuf->len - OAL_AES_FRAME_HEAD_LEN, mic);
 

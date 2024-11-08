@@ -17,24 +17,26 @@
 #define OAL_VA_LIST va_list
 
 #define OAL_MAC_ADDRESS_LAN 6
+
+#define OAL_SEC_PER_MIN 60
 /* 拼接为16 bit或者 32bit */
-#define OAL_MAKE_WORD16(lsb, msb)           ((((oal_uint16)(msb) << 8) & 0xFF00) | (lsb))
-#define OAL_MAKE_WORD32(lsw, msw)           ((((oal_uint32)(msw) << 16) & 0xFFFF0000) | (lsw))
-#define OAL_JOIN_WORD32(lsb, ssb, asb, msb) (((oal_uint32)(msb) << 24) | ((oal_uint32)(asb) << 16) | \
+#define oal_make_word16(lsb, msb)           ((((oal_uint16)(msb) << 8) & 0xFF00) | (lsb))
+#define oal_make_word32(lsw, msw)           ((((oal_uint32)(msw) << 16) & 0xFFFF0000) | (lsw))
+#define oal_join_word32(lsb, ssb, asb, msb) (((oal_uint32)(msb) << 24) | ((oal_uint32)(asb) << 16) | \
                                              ((oal_uint32)(ssb) << 8) | (lsb))
-#define OAL_JOIN_WORD20(lsw, msw)           ((((oal_uint32)(msw) << 10) & 0xFFC00) | ((lsw) & 0x3FF))
+#define oal_join_word20(lsw, msw)           ((((oal_uint32)(msw) << 10) & 0xFFC00) | ((lsw) & 0x3FF))
 
 /* 计算为字节对齐后填充后的长度 */
-#define PADDING(x, size)           (((x) + (size) - 1) & (~ ((size) - 1)))
+#define padding(x, size)           (((x) + (size) - 1) & (~ ((size) - 1)))
 
 /* increment with wrap-around */
-#define OAL_INCR(_l, _sz)  \
+#define oal_incr(_l, _sz)  \
     do {                   \
         (_l)++;            \
         (_l) &= ((_sz) - 1); \
     } while (0)
 
-#define OAL_DECR(_l, _sz)  \
+#define oal_decr(_l, _sz)  \
     do {                   \
         (_l)--;            \
         (_l) &= ((_sz) - 1); \
@@ -44,57 +46,59 @@
 #define OAL_SIZEOF sizeof
 
 /* 获取数组大小 */
-#define OAL_ARRAY_SIZE(_ast_array) (sizeof(_ast_array) / sizeof((_ast_array)[0]))
+#define oal_array_size(_ast_array) (sizeof(_ast_array) / sizeof((_ast_array)[0]))
 
 /* 四字节对齐 */
-#define OAL_GET_4BYTE_ALIGN_VALUE(_ul_size) (((_ul_size) + 0x03) & (~0x03))
+#define oal_get_4byte_align_value(_ul_size) (((_ul_size) + 0x03) & (~0x03))
 
 /* 获取当前线程信息 */
 #define OAL_CURRENT_TASK (current_thread_info()->task)
 
-#define OAL_SWAP_BYTEORDER_16(_val) ((((_val)&0x00FF) << 8) + (((_val)&0xFF00) >> 8))
+#define oal_swap_byteorder_16(_val) ((((_val)&0x00FF) << 8) + (((_val)&0xFF00) >> 8))
 
 #if (_PRE_BIG_CPU_ENDIAN == _PRE_CPU_ENDIAN) /* BIG_ENDIAN */
-#define OAL_BYTEORDER_TO_LE32(_val)     OAL_SWAP_BYTEORDER_32(_val)
-#define OAL_BYTEORDER_TO_LE16(_val)     OAL_SWAP_BYTEORDER_16(_val)
-#define OAL_MASK_INVERSE(_len, _offset) ((oal_uint32)(OAL_SWAP_BYTEORDER_32(~(((1 << (_len)) - 1) << (_offset)))))
-#define OAL_MASK(_len, _offset)         ((oal_uint32)(OAL_SWAP_BYTEORDER_32(((1 << (_len)) - 1) << (_offset))))
-#define OAL_NTOH_16(_val)               (_val)
-#define OAL_NTOH_32(_val)               (_val)
-#define OAL_HTON_16(_val)               (_val)
-#define OAL_HTON_32(_val)               (_val)
+#define oal_byteorder_to_le32(_val)     OAL_SWAP_BYTEORDER_32(_val)
+#define oal_byteorder_to_le16(_val)     oal_swap_byteorder_16(_val)
+#define oal_mask_inverse(_len, _offset) ((oal_uint32)(OAL_SWAP_BYTEORDER_32(~(((1 << (_len)) - 1) << (_offset)))))
+#define oal_mask(_len, _offset)         ((oal_uint32)(OAL_SWAP_BYTEORDER_32(((1 << (_len)) - 1) << (_offset))))
+#define oal_ntoh_16(_val)               (_val)
+#define oal_ntoh_32(_val)               (_val)
+#define oal_hton_16(_val)               (_val)
+#define oal_hton_32(_val)               (_val)
 
 #elif (_PRE_LITTLE_CPU_ENDIAN == _PRE_CPU_ENDIAN) /* LITTLE_ENDIAN */
-#define OAL_BYTEORDER_TO_LE32(_val)     (_val)
-#define OAL_BYTEORDER_TO_LE16(_val)     (_val)
-#define OAL_MASK_INVERSE(_len, _offset) ((oal_uint32)(~(((1UL << (_len)) - 1) << (_offset))))
-#define OAL_MASK(_len, _offset)         ((oal_uint32)(((1UL << (_len)) - 1) << (_offset)))
-#define OAL_NTOH_16(_val)               OAL_SWAP_BYTEORDER_16(_val)
-#define OAL_NTOH_32(_val)               OAL_SWAP_BYTEORDER_32(_val)
-#define OAL_HTON_16(_val)               OAL_SWAP_BYTEORDER_16(_val)
-#define OAL_HTON_32(_val)               OAL_SWAP_BYTEORDER_32(_val)
+#define oal_byteorder_to_le32(_val)     (_val)
+#define oal_byteorder_to_le16(_val)     (_val)
+#define oal_mask_inverse(_len, _offset) ((oal_uint32)(~(((1UL << (_len)) - 1) << (_offset))))
+#define oal_mask(_len, _offset)         ((oal_uint32)(((1UL << (_len)) - 1) << (_offset)))
+#define oal_ntoh_16(_val)               oal_swap_byteorder_16(_val)
+#define oal_ntoh_32(_val)               OAL_SWAP_BYTEORDER_32(_val)
+#define oal_hton_16(_val)               oal_swap_byteorder_16(_val)
+#define oal_hton_32(_val)               OAL_SWAP_BYTEORDER_32(_val)
 #endif
 
-#define OAL_ANY_NULL_PTR1(_ptr1)                             (((_ptr1) == NULL))
-#define OAL_ANY_NULL_PTR2(_ptr1, _ptr2)                      (((_ptr1) == NULL) || ((_ptr2) == NULL))
-#define OAL_ANY_NULL_PTR3(_ptr1, _ptr2, _ptr3)               (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
+#define oal_any_null_ptr1(_ptr1)                             (((_ptr1) == NULL))
+#define oal_any_null_ptr2(_ptr1, _ptr2)                      (((_ptr1) == NULL) || ((_ptr2) == NULL))
+#define oal_any_null_ptr3(_ptr1, _ptr2, _ptr3)               (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
                                                               ((_ptr3) == NULL))
-#define OAL_ANY_NULL_PTR4(_ptr1, _ptr2, _ptr3, _ptr4)        (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
+#define oal_any_null_ptr4(_ptr1, _ptr2, _ptr3, _ptr4)        (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
                                                               ((_ptr3) == NULL) || ((_ptr4) == NULL))
-#define OAL_ANY_NULL_PTR5(_ptr1, _ptr2, _ptr3, _ptr4, _ptr5) (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
+#define oal_any_null_ptr5(_ptr1, _ptr2, _ptr3, _ptr4, _ptr5) (((_ptr1) == NULL) || ((_ptr2) == NULL) || \
                                                               ((_ptr3) == NULL) || ((_ptr4) == NULL) || \
                                                               ((_ptr5) == NULL))
-#define OAL_VALUE_EQ_ANY2(_value, _val0, _val1)              (((_val0) == (_value)) || ((_val1) == (_value)))
+#define oal_value_eq_any2(_value, _val0, _val1)              (((_val0) == (_value)) || ((_val1) == (_value)))
+#define oal_value_not_in_valid_range(_value, _start, _end)   (((_value) < (_start)) || ((_value) > (_end)))
+#define oal_all_true_value2(_val0, _val1)                    (((_val0) == OAL_TRUE) && ((_val1) == OAL_TRUE))
 
 #if (!defined(_PRE_PC_LINT) && !defined(WIN32))
 #ifdef __GNUC__
-#define OAL_BUILD_BUG_ON(_con) ((oal_void)sizeof(char[1 - 2 * !!(_con)]))
+#define oal_build_bug_on(_con) ((oal_void)sizeof(char[1 - 2 * !!(_con)]))
 #else
-#define OAL_BUILD_BUG_ON(_con)
+#define oal_build_bug_on(_con)
 #endif
 #else
-#define OAL_BUG_ON(_con)
-#define OAL_BUILD_BUG_ON(_con)
+#define oal_bug_on(_con)
+#define oal_build_bug_on(_con)
 #endif
 
 #ifndef atomic_inc_return
@@ -104,34 +108,34 @@
 #endif
 
 /* 比较宏 */
-#define OAL_MIN(_A, _B) (((_A) < (_B)) ? (_A) : (_B))
+#define oal_min(_A, _B) (((_A) < (_B)) ? (_A) : (_B))
 
 /* 比较宏 */
-#define OAL_MAX(_A, _B) (((_A) > (_B)) ? (_A) : (_B))
+#define oal_max(_A, _B) (((_A) > (_B)) ? (_A) : (_B))
 
-#define OAL_SUB(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : (0))
+#define oal_sub(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : (0))
 
-#define OAL_ABSOLUTE_SUB(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : ((_B) - (_A)))
+#define oal_absolute_sub(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : ((_B) - (_A)))
 
 /* 从某个设备读取某个寄存器地址的32-bit寄存器的值。 */
-#define OAL_REG_READ32(_addr) \
+#define oal_reg_read32(_addr) \
     *((OAL_VOLATILE oal_uint32 *)(_addr))
 
-#define OAL_REG_READ16(_addr) \
+#define oal_reg_read16(_addr) \
     *((OAL_VOLATILE oal_uint16 *)(_addr))
 
 /* 往某个设备某个32-bit寄存器地址写入某个值 */
-#define OAL_REG_WRITE32(_addr, _val) \
+#define oal_reg_write32(_addr, _val) \
     (*((OAL_VOLATILE oal_uint32 *)(_addr)) = (_val))
-#define OAL_REG_WRITE16(_addr, _val) \
+#define oal_reg_write16(_addr, _val) \
     (*((OAL_VOLATILE oal_uint16 *)(_addr)) = (_val))
 
 /* Is val aligned to "align" ("align" must be power of 2) */
 #ifndef IS_ALIGNED
-#define OAL_IS_ALIGNED(val, align) \
+#define oal_is_aligned(val, align) \
     (((oal_uint32)(val) & ((align) - 1)) == 0)
 #else
-#define OAL_IS_ALIGNED IS_ALIGNED
+#define oal_is_aligned IS_ALIGNED
 #endif
 
 /* Bit Values */
@@ -174,15 +178,15 @@
 #define OAL_BITS_PER_BYTE 8 /* 一个字节中包含的bit数目 */
 
 /* 位操作 */
-#define OAL_SET_BIT(_val)                        (1 << (_val))
-#define OAL_LEFT_SHIFT(_data, _num)              ((_data) << (_num))
-#define OAL_RGHT_SHIFT(_data, _num)              ((_data) >> (_num))
-#define OAL_WRITE_BITS(_data, _val, _bits, _pos) \
+#define oal_set_bit(_val)                        (1 << (_val))
+#define oal_left_shift(_data, _num)              ((_data) << (_num))
+#define oal_rght_shift(_data, _num)              ((_data) >> (_num))
+#define oal_write_bits(_data, _val, _bits, _pos) \
     do {                                                                    \
         (_data) &= ~((((oal_uint32)1 << (_bits)) - 1) << (_pos));           \
         (_data) |= (((_val) & (((oal_uint32)1 << (_bits)) - 1)) << (_pos)); \
     } while (0)
-#define OAL_GET_BITS(_data, _bits, _pos) (((_data) >> (_pos)) & (((oal_uint32)1 << (_bits)) - 1))
+#define oal_get_bits(_data, _bits, _pos) (((_data) >> (_pos)) & (((oal_uint32)1 << (_bits)) - 1))
 
 /* 位数定义 */
 #define NUM_1_BITS  1
@@ -253,12 +257,12 @@
 #define BIT_OFFSET_31 31
 
 /* 定点数四舍五入，并取整数部分, fract_bits为小数位数 */
-#define _ROUND_POS(fix_num, fract_bits) (((fix_num) + (1 << ((fract_bits)-1))) >> (fract_bits))
-#define _ROUND_NEG(fix_num, fract_bits) (-_ROUND_POS(-(fix_num), (fract_bits)))
-#define OAL_ROUND(fix_num, fract_bits)\
-        ((fix_num) > 0 ? _ROUND_POS(fix_num, fract_bits) : _ROUND_NEG(fix_num, fract_bits))
+#define _round_pos(fix_num, fract_bits) (((fix_num) + (1 << ((fract_bits)-1))) >> (fract_bits))
+#define _round_neg(fix_num, fract_bits) (-_round_pos(-(fix_num), (fract_bits)))
+#define oal_round(fix_num, fract_bits)\
+        ((fix_num) > 0 ? _round_pos(fix_num, fract_bits) : _round_neg(fix_num, fract_bits))
 /* 计算为字节对齐后填充后的长度 */
-#define OAL_ROUNDUP(_old_len, _align) ((((_old_len) + ((_align)-1)) / (_align)) * (_align))
+#define oal_roundup(_old_len, _align) ((((_old_len) + ((_align)-1)) / (_align)) * (_align))
 
 #define OAL_RSSI_INIT_MARKER   0x320 /* RSSI平滑值初始值 */
 #define OAL_RSSI_MAX_DELTA     24    /* 最大步长 24/8 = 3 */
@@ -283,7 +287,7 @@
 #include "platform_oneimage_define.h"
 #ifndef HI11XX_LOG_MODULE_NAME
 #define HI11XX_LOG_MODULE_NAME "[HI11XX]"
-extern oal_int32 hi11xx_loglevel;
+extern oal_int32 g_hi11xx_loglevel;
 #else
 static oal_int32 HI11XX_LOG_MODULE_NAME_VAR = HI11XX_LOG_INFO;
 #if defined(PLATFORM_DEBUG_ENABLE) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -292,18 +296,18 @@ module_param(HI11XX_LOG_MODULE_NAME_VAR, int, S_IRUGO | S_IWUSR);
 #endif
 
 #ifndef HI11XX_LOG_MODULE_NAME_VAR
-#define HI11XX_LOG_MODULE_NAME_VAR hi11xx_loglevel
-extern oal_int32 hi11xx_loglevel;
+#define HI11XX_LOG_MODULE_NAME_VAR g_hi11xx_loglevel
+extern oal_int32 g_hi11xx_loglevel;
 #endif
 
-#define HI11XX_LOG_MODULE_NAME_NUMS_STR(num) #num
+#define hi11xx_log_module_name_nums_str(num) #num
 
-extern char *hi11xx_loglevel_format[];
+extern char *g_hi11xx_loglevel_format[];
 
 #define oal_print_hi11xx_log(loglevel, fmt, arg...)                           \
     do {                                                                      \
-        if (OAL_UNLIKELY(HI11XX_LOG_MODULE_NAME_VAR >= loglevel)) {           \
-            printk("%s%s" fmt "[%s:%d]\n", hi11xx_loglevel_format[loglevel], \
+        if (oal_unlikely(HI11XX_LOG_MODULE_NAME_VAR >= loglevel)) {           \
+            printk("%s%s" fmt "[%s:%d]\n", g_hi11xx_loglevel_format[loglevel], \
             HI11XX_LOG_MODULE_NAME, ##arg, __FUNCTION__, __LINE__);            \
         }                                                                      \
     } while (0)
@@ -321,7 +325,7 @@ struct _hwifi_panic_log_ {
     hwifi_panic_log_cb cb;
     oal_void *data;
 };
-#define DECLARE_WIFI_PANIC_STRU(module_name, func) \
+#define declare_wifi_panic_stru(module_name, func) \
     hwifi_panic_log module_name = {                \
         .name = #module_name,                      \
         .cb = (hwifi_panic_log_cb)func,            \
@@ -371,8 +375,8 @@ OAL_STATIC OAL_INLINE oal_void oal_print_inject_check_stack(oal_void)
 OAL_STATIC OAL_INLINE oal_uint8 oal_strtohex(const oal_int8 *c_string)
 {
     oal_uint8 uc_ret = 0;
-    if (OAL_UNLIKELY(c_string == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(c_string == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -398,8 +402,8 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoaddr(const oal_int8 *pc_param, oal_uint8
     oal_uint8 uc_char_index;
     const oal_uint32 uc_mac_max_num = 12;
 
-    if (OAL_UNLIKELY((pc_param == NULL) || (puc_mac_addr == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pc_param == NULL) || (puc_mac_addr == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -433,8 +437,8 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoipv6(const oal_int8 *pc_param, oal_uint8
     oal_uint8 uc_char_index;
     const oal_uint32 uc_ipv6_max_num = OAL_IPV6_ADDR_LEN * 2; /* ipv6格式需要，xx:xx 对应两个ipv6地址 */
 
-    if (OAL_UNLIKELY((pc_param == NULL) || (puc_ipv6_addr == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pc_param == NULL) || (puc_ipv6_addr == NULL))) {
+        oal_warn_on(1);
         return;
     }
 
@@ -480,6 +484,23 @@ OAL_STATIC OAL_INLINE oal_int oal_strncasecmp(OAL_CONST oal_int8 *p_buf1, OAL_CO
 #endif
 }
 
+/*
+ * 函 数 名  : oal_get_random_bytes
+ * 功能描述  : 从urandom文件获取随机值
+ * 输入参数  : pc_random_buf :从文件读出数据后存放的buf
+ *             ul_random_len :读取数据大小(字节数)
+ */
+OAL_STATIC OAL_INLINE void oal_get_random_bytes(oal_int8 *pc_random_buf, oal_uint32 ul_random_len)
+{
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    if (oal_unlikely(pc_random_buf == NULL)) {
+        oal_warn_on(1);
+        return;
+    }
+    get_random_bytes(pc_random_buf, ul_random_len);
+#endif
+}
+
 OAL_STATIC OAL_INLINE oal_uint8 oal_get_random(oal_void)
 {
     return 1;
@@ -497,39 +518,39 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_gen_random(oal_uint32 ul_val, oal_uint8 us_r
         ul_rand = ul_val;
     }
     ul_rand = ul_rand * 1664525L + 1013904223L;
-    return (oal_uint8)(ul_rand >> 24);
+    return (oal_uint8)(ul_rand >> 24); /* 右移24位，取32位数据的高8位作为随机数 */
 }
 
 /*
  * 函 数 名  : oal_bit_get_num_one_byte
- * 功能描述  : 获取单字节中的bit1的个数
- * 输入参数  : uc_byte:需要操作的字节
+ * 功能描述  : 合并计数器法获取单字节中的bit1的个数
+ * 输入参数  : byte:需要操作的字节
  * 返 回 值  : bit的个数
  */
-OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_num_one_byte(oal_uint8 uc_byte)
+OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_num_one_byte(oal_uint8 byte)
 {
-    uc_byte = (uc_byte & 0x55) + ((uc_byte >> 1) & 0x55);
-    uc_byte = (uc_byte & 0x33) + ((uc_byte >> 2) & 0x33);
-    uc_byte = (uc_byte & 0x0F) + ((uc_byte >> 4) & 0x0F);
+    byte = (byte & 0x55) + ((byte >> 1) & 0x55);
+    byte = (byte & 0x33) + ((byte >> 2) & 0x33);
+    byte = (byte & 0x0F) + ((byte >> 4) & 0x0F);
 
-    return uc_byte;
+    return byte;
 }
 
 /*
  * 函 数 名  : oal_bit_get_num_four_byte
- * 功能描述  : 获取4字节中bit1的个数
- * 输入参数  : uc_byte:需要操作的字节
+ * 功能描述  : 合并计数器法获取4字节中bit1的个数
+ * 输入参数  : four_bytes:需要操作的字节
  * 返 回 值  : bit的个数
  */
-OAL_STATIC OAL_INLINE oal_uint32 oal_bit_get_num_four_byte(oal_uint32 ul_byte)
+OAL_STATIC OAL_INLINE oal_uint32 oal_bit_get_num_four_byte(oal_uint32 four_bytes)
 {
-    ul_byte = (ul_byte & 0x55555555) + ((ul_byte >> 1) & 0x55555555);
-    ul_byte = (ul_byte & 0x33333333) + ((ul_byte >> 2) & 0x33333333);
-    ul_byte = (ul_byte & 0x0F0F0F0F) + ((ul_byte >> 4) & 0x0F0F0F0F);
-    ul_byte = (ul_byte & 0x00FF00FF) + ((ul_byte >> 8) & 0x00FF00FF);
-    ul_byte = (ul_byte & 0x0000FFFF) + ((ul_byte >> 16) & 0x0000FFFF);
+    four_bytes = (four_bytes & 0x55555555) + ((four_bytes >> 1) & 0x55555555);
+    four_bytes = (four_bytes & 0x33333333) + ((four_bytes >> 2) & 0x33333333);
+    four_bytes = (four_bytes & 0x0F0F0F0F) + ((four_bytes >> 4) & 0x0F0F0F0F);
+    four_bytes = (four_bytes & 0x00FF00FF) + ((four_bytes >> 8) & 0x00FF00FF);
+    four_bytes = (four_bytes & 0x0000FFFF) + ((four_bytes >> 16) & 0x0000FFFF);
 
-    return ul_byte;
+    return four_bytes;
 }
 
 /*
@@ -540,8 +561,8 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_bit_get_num_four_byte(oal_uint32 ul_byte)
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_one_byte(oal_uint8 *puc_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(puc_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *puc_byte |= ((oal_uint8)(1 << nr));
@@ -555,8 +576,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_one_byte(oal_uint8 *puc_byte, oal
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_one_byte(oal_uint8 *puc_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(puc_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *puc_byte &= (~((oal_uint8)(1 << nr)));
@@ -575,8 +596,8 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_bit_one_byte(oal_uint8 uc_byte, oal_
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_four_byte(oal_uint32 *pul_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(pul_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pul_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *pul_byte |= ((oal_uint32)(1 << nr));
@@ -590,8 +611,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_four_byte(oal_uint32 *pul_byte, o
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_four_byte(oal_uint32 *pul_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(pul_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pul_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *pul_byte &= ~((oal_uint32)(1 << nr));
@@ -603,8 +624,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_four_byte(oal_uint32 *pul_byte,
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_eight_byte(oal_uint64 *pull_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(pull_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pull_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *pull_byte |= ((oal_uint64)1 << nr);
@@ -616,8 +637,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_eight_byte(oal_uint64 *pull_byte,
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_eight_byte(oal_uint64 *pull_byte, oal_bitops nr)
 {
-    if (OAL_UNLIKELY(pull_byte == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pull_byte == NULL)) {
+        oal_warn_on(1);
         return;
     }
     *pull_byte &= ~((oal_uint64)1 << nr);
@@ -701,7 +722,7 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_four_byte(oal_uint32 ul_b
         uc_ret += 4;
     }
 
-    if (!(ul_byte & 3)) {
+    if (!(ul_byte & 0x3)) {
         ul_byte >>= 2; /* 说明4bit数据的低2bit全为0，所以可以直接从高2bit开始找为1的位数 */
         uc_ret += 2;
     }
@@ -740,7 +761,7 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_four_byte(oal_uint32 ul_
         uc_ret += 4;
     }
 
-    if (!(ul_byte & 3)) {
+    if (!(ul_byte & 0x3)) {
         ul_byte >>= 2; /* 说明4bit数据的低2bit全为1，所以可以直接从高2bit开始找为0的位数 */
         uc_ret += 2;
     }
@@ -815,14 +836,14 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_cmp_seq_num(oal_uint32 ul_seq_num1
  * 输入参数  : pc_src: 源字符串
  *             pc_dst: 目的字符串
  */
-OAL_STATIC OAL_INLINE oal_int32 oal_strcmp(const oal_int8 *pc_src, const oal_int8 *pc_dst)
+OAL_STATIC OAL_INLINE oal_int32 oal_strcmp(const char *pc_src, const char *pc_dst)
 {
     oal_int8 c_c1;
     oal_int8 c_c2;
     oal_int32 l_ret = 0;
 
-    if (OAL_UNLIKELY((pc_src == NULL) || (pc_dst == NULL))) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely((pc_src == NULL) || (pc_dst == NULL))) {
+        oal_warn_on(1);
         return 1;
     }
 
@@ -845,10 +866,10 @@ OAL_STATIC OAL_INLINE oal_int32 oal_strcmp(const oal_int8 *pc_src, const oal_int
 OAL_STATIC OAL_INLINE oal_int8 *oal_strim(oal_int8 *pc_s)
 {
     oal_uint32 ul_size;
-    oal_int8 *pc_end;
+    oal_int8 *pc_end = NULL;
 
-    if (OAL_UNLIKELY(pc_s == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(pc_s == NULL)) {
+        oal_warn_on(1);
         return NULL;
     }
 
@@ -872,65 +893,6 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strim(oal_int8 *pc_s)
 }
 
 /*
- * 函 数 名  : oal_strcat
- * 功能描述  : 往dest字符串后追加src字符串
- */
-OAL_STATIC OAL_INLINE oal_int8 *oal_strcat(oal_int8 *dest, const oal_int8 *src)
-{
-    oal_int8 *pc_tmp = NULL;
-
-    if (OAL_UNLIKELY((dest == NULL) || (src == NULL))) {
-        OAL_WARN_ON(1);
-        return NULL;
-    }
-
-    pc_tmp = dest;
-
-    while (*dest) {
-        dest++;
-    }
-
-    while ((*dest++ = *src++) != '\0') {
-        ;  // do nothing
-    }
-
-    return pc_tmp;
-}
-
-/*
- * 函 数 名  : oal_strncat
- * 功能描述  : 往dest字符串从src中添加指定个数字符
- */
-OAL_STATIC OAL_INLINE oal_int8 *oal_strncat(oal_int8 *dest, const oal_int8 *src, oal_int32 l_cnt)
-{
-    oal_int8 *pc_tmp = NULL;
-
-    if (OAL_UNLIKELY((dest == NULL) || (src == NULL))) {
-        OAL_WARN_ON(1);
-        return NULL;
-    }
-
-    pc_tmp = dest;
-
-    if (l_cnt <= 0) {
-        return pc_tmp;
-    }
-
-    while (*dest) {
-        dest++;
-    }
-
-    while ((*dest++ = *src++) != '\0') {
-        if (--l_cnt == 0) {
-            *dest = '\0';
-            break;
-        }
-    }
-
-    return pc_tmp;
-}
-
-/*
  * 函 数 名  : oal_strstr
  * 功能描述  : 在pc_s1中查找pc_s2第一次出现的位置
  */
@@ -947,8 +909,8 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_init_lut(oal_uint8 *puc_lut_index_table, oa
 {
     oal_uint8 uc_lut_idx;
 
-    if (OAL_UNLIKELY(puc_lut_index_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_index_table == NULL)) {
+        oal_warn_on(1);
         return OAL_FAIL;
     }
 
@@ -975,8 +937,8 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_get_lut_index(oal_uint8 *puc_lut_index_table
     oal_uint8 uc_temp = 0;
     oal_uint16 us_index = 0;
 
-    if (OAL_UNLIKELY(puc_lut_index_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_index_table == NULL)) {
+        oal_warn_on(1);
         return 0;
     }
 
@@ -1009,11 +971,11 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_get_lut_index(oal_uint8 *puc_lut_index_table
  */
 OAL_STATIC OAL_INLINE oal_void oal_del_lut_index(oal_uint8 *puc_lut_index_table, oal_uint8 uc_idx)
 {
-    oal_uint8 uc_byte = uc_idx >> 3;
+    oal_uint8 uc_byte = uc_idx >> 3; /* 右移3 bits，取index的高5位 */
     oal_uint8 uc_bit = uc_idx & 0x07;
 
-    if (OAL_UNLIKELY(puc_lut_index_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_index_table == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -1024,11 +986,11 @@ OAL_STATIC OAL_INLINE oal_bool_enum oal_is_active_lut_index(oal_uint8 *puc_lut_i
                                                             oal_uint16 us_max_lut_size,
                                                             oal_uint8 uc_idx)
 {
-    oal_uint8 uc_byte = uc_idx >> 3;
+    oal_uint8 uc_byte = uc_idx >> 3; /* 右移3bit，取index的高5位 */
     oal_uint8 uc_bit = uc_idx & 0x07;
 
-    if (OAL_UNLIKELY(puc_lut_idx_status_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_idx_status_table == NULL)) {
+        oal_warn_on(1);
         return OAL_FALSE;
     }
 
@@ -1043,11 +1005,11 @@ OAL_STATIC OAL_INLINE oal_void oal_set_lut_index_status(oal_uint8 *puc_lut_idx_s
                                                         oal_uint16 us_max_lut_size,
                                                         oal_uint8 uc_idx)
 {
-    oal_uint8 uc_byte = uc_idx >> 3;
+    oal_uint8 uc_byte = uc_idx >> 3; /* 右移3bit，取index的高5位 */
     oal_uint8 uc_bit = uc_idx & 0x07;
 
-    if (OAL_UNLIKELY(puc_lut_idx_status_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_idx_status_table == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -1062,11 +1024,11 @@ OAL_STATIC OAL_INLINE oal_void oal_reset_lut_index_status(oal_uint8 *puc_lut_idx
                                                           oal_uint16 us_max_lut_size,
                                                           oal_uint8 uc_idx)
 {
-    oal_uint8 uc_byte = uc_idx >> 3;
+    oal_uint8 uc_byte = uc_idx >> 3; /* 右移3bit，取index的高5位 */
     oal_uint8 uc_bit = uc_idx & 0x07;
 
-    if (OAL_UNLIKELY(puc_lut_idx_status_table == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(puc_lut_idx_status_table == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -1088,7 +1050,7 @@ OAL_STATIC OAL_INLINE oal_uint32 *oal_get_virt_addr(oal_uint32 *pul_phy_addr)
         return pul_phy_addr;
     }
 
-    return (oal_uint32 *)OAL_PHY_TO_VIRT_ADDR((oal_uint)pul_phy_addr);
+    return (oal_uint32 *)oal_phy_to_virt_addr((uintptr_t)pul_phy_addr);
 }
 
 extern oal_int32 oal_dump_stack_str(oal_uint8 *puc_str, oal_uint32 ul_max_size);
@@ -1096,15 +1058,15 @@ extern oal_int32 oal_dump_stack_str(oal_uint8 *puc_str, oal_uint32 ul_max_size);
 OAL_STATIC OAL_INLINE oal_int8 oal_get_real_rssi(oal_int16 s_scaled_rssi)
 {
     /* 四舍五入 */
-    return OAL_ROUND(s_scaled_rssi, OAL_RSSI_FRACTION_BITS);
+    return oal_round(s_scaled_rssi, OAL_RSSI_FRACTION_BITS);
 }
 
 OAL_STATIC OAL_INLINE oal_void oal_rssi_smooth(oal_int16 *ps_old_rssi, oal_int8 c_new_rssi)
 {
     oal_int16 s_delta;
 
-    if (OAL_UNLIKELY(ps_old_rssi == NULL)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(ps_old_rssi == NULL)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -1125,7 +1087,6 @@ OAL_STATIC OAL_INLINE oal_void oal_rssi_smooth(oal_int16 *ps_old_rssi, oal_int8 
 
     /* old_rssi四舍五入后计算delta */
     s_delta = (oal_int16)c_new_rssi - oal_get_real_rssi(*ps_old_rssi);
-
     if (s_delta > OAL_RSSI_MAX_DELTA) {
         s_delta = OAL_RSSI_MAX_DELTA;
     }

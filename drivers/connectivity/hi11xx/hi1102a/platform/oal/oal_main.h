@@ -13,10 +13,10 @@
 #define NBFH_ON_MASK               0x2
 
 /* 全局变量声明 */
-extern oal_uint8 wlan_service_device_per_chip[WLAN_SERVICE_DEVICE_MAX_NUM_PER_CHIP];
-extern oal_uint8 hitalk_status; /* 记录当前固件类型 */
-extern struct genl_family *nl80211_fam;
-extern struct genl_multicast_group *nl80211_mlme_mcgrp;
+extern oal_uint8 g_wlan_service_device_per_chip[WLAN_SERVICE_DEVICE_MAX_NUM_PER_CHIP];
+extern oal_uint8 g_hitalk_status; /* 记录当前固件类型 */
+extern struct genl_family *g_nl80211_fam;
+extern struct genl_multicast_group *g_nl80211_mlme_mcgrp;
 
 /* 函数声明 */
 extern oal_int32 oal_main_init(oal_void);

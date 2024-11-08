@@ -4,6 +4,7 @@
 #define __PLAT_PM_H__
 
 /* Include other Head file */
+#include <linux/version.h>
 #include <linux/mutex.h>
 #include <linux/kernel.h>
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
@@ -16,7 +17,6 @@
 #include <dsm/dsm_pub.h>
 #endif
 /* Define macro */
-/* #define ENABLE_BFG_LOWPOWER_FEATURE */
 #define BFG_LOCK_NAME               "bfg_wake_lock"
 #define BT_LOCK_NAME                "bt_wake_lock"
 #define GNSS_LOCK_NAME              "gnss_wake_lock"
@@ -44,6 +44,8 @@
 #define WAIT_DEVACK_CNT               10
 #define WAIT_DEVACK_TIMEOUT_MSEC      200
 #define WAIT_WKUP_DEVACK_TIMEOUT_MSEC 1000
+
+#define SLEEP_10_MSEC              10
 
 /* iomcu power state:0,1->ST_POWERON,8->ST_SLEEP,9->ST_WAKEUP */
 #define ST_POWERON       0
@@ -101,39 +103,41 @@ enum WIFI_POWER_ON_EXCEPTION_ENUM {
     WIFI_POWER_BFGX_ON_FIRMWARE_DOWNLOAD_FAIL = 6,
     WIFI_POWER_ON_FIRMWARE_DOWNLOAD_INTERRUPT = 7,
 
-    WIFI_POWER_ENUM_BUTT,
+    WIFI_POWER_ON_CALI_FAIL = 8,
+
+    WIFI_POWER_ENUM_BUTT
 };
 
 #ifdef CONFIG_HI110X_GPS_SYNC
 enum gnss_rat_mode_enum {
-    gnss_rat_mode_no_service = 0,
-    gnss_rat_mode_gsm = 1,
-    gnss_rat_mode_cdma = 2,
-    gnss_rat_mode_wcdma = 3,
-    gnss_rat_mode_lte = 6,
-    gnss_rat_mode_nr = 11,
-    gnss_rat_mode_butt
+    GNSS_RAT_MODE_NO_SERVICE = 0,
+    GNSS_RAT_MODE_GSM = 1,
+    GNSS_RAT_MODE_CDMA = 2,
+    GNSS_RAT_MODE_WCDMA = 3,
+    GNSS_RAT_MODE_LTE = 6,
+    GNSS_RAT_MODE_NR = 11,
+    GNSS_RAT_MODE_BUTT
 };
 
 enum gnss_sync_mode_enum {
-    gnss_sync_mode_unknown = -1,
-    gnss_sync_mode_lte = 0,
-    gnss_sync_mode_lte2 = 1,
-    gnss_sync_mode_cdma = 2,
-    gnss_sync_mode_g1 = 3,
-    gnss_sync_mode_g2 = 4,
-    gnss_sync_mode_g3 = 5,
-    gnss_sync_mode_pw = 6,
-    gnss_sync_mode_sw = 7,
-    gnss_sync_mode_nstu = 8,
-    gnss_sync_mode_butt
+    GNSS_SYNC_MODE_UNKNOWN = -1,
+    GNSS_SYNC_MODE_LTE = 0,
+    GNSS_SYNC_MODE_LTE2 = 1,
+    GNSS_SYNC_MODE_CDMA = 2,
+    GNSS_SYNC_MODE_G1 = 3,
+    GNSS_SYNC_MODE_G2 = 4,
+    GNSS_SYNC_MODE_G3 = 5,
+    GNSS_SYNC_MODE_PW = 6,
+    GNSS_SYNC_MODE_SW = 7,
+    GNSS_SYNC_MODE_NSTU = 8,
+    GNSS_SYNC_MODE_BUTT
 };
 
 enum gnss_sync_version_enum {
-    gnss_sync_version_off = 0, // feature switch off
-    gnss_sync_version_4g = 1, // support 2/3/4g
-    gnss_sync_version_5g = 2, // based 1 and add 5g
-    gnss_sync_version_butt
+    GNSS_SYNC_VERSION_OFF = 0, // feature switch off
+    GNSS_SYNC_VERSION_4G = 1, // support 2/3/4g
+    GNSS_SYNC_VERSION_5G = 2, // based 1 and add 5g
+    GNSS_SYNC_VERSION_BUTT
 };
 #endif
 
@@ -147,7 +151,7 @@ struct pm_drv_data {
     struct wlan_pm_s *pst_wlan_pm_info;
 
     /* board customize info */
-    BOARD_INFO *board;
+    board_info *board;
     /* wake lock for bfg,be used to prevent host form suspend */
     oal_wakelock_stru bfg_wake_lock;
     oal_wakelock_stru bt_wake_lock;
@@ -240,45 +244,47 @@ struct gnss_sync_data {
 #endif
 
 /* EXTERN FUNCTION */
-extern struct pm_drv_data *pm_get_drvdata(void);
-extern int32 host_wkup_dev(void);
-extern struct pm_drv_data *pm_get_drvdata(void);
-extern int32 bfgx_other_subsys_all_shutdown(uint8 subsys);
-extern void bfgx_print_subsys_state(void);
-extern int32 wlan_is_shutdown(void);
-extern int32 bfgx_is_shutdown(void);
-extern int32 hitalk_power_on(void);
-extern int32 hitalk_power_off(void);
-extern int32 wlan_power_on(void);
-extern int32 wlan_power_off(void);
-extern int32 bfgx_power_on(uint8 subsys);
-extern int32 bfgx_power_off(uint8 subsys);
-extern int32 bfgx_pm_feature_set(void);
-extern int firmware_download_function(uint32 which_cfg);
-extern oal_int32 hi110x_get_wifi_power_stat(oal_void);
-extern int32 device_mem_check(unsigned long long *time);
-extern int32 bfgx_uart_rcv_baud_change_req(uint8 uc_msg_type);
-extern int32 bfgx_uart_rcv_baud_change_complete_ack(void);
-extern int32 memcheck_is_working(void);
-extern void bfg_wake_lock(void);
-extern void bfg_wake_unlock(void);
-extern void bfg_check_timer_work(void);
-extern int low_power_init(void);
-extern void low_power_exit(void);
+struct pm_drv_data *pm_get_drvdata(void);
+int32 host_wkup_dev(void);
+struct pm_drv_data *pm_get_drvdata(void);
+int32 bfgx_other_subsys_all_shutdown(uint8 subsys);
+void bfgx_print_subsys_state(void);
+int32 wlan_is_shutdown(void);
+int32 bfgx_is_shutdown(void);
+int32 hitalk_power_on(void);
+int32 hitalk_power_off(void);
+int32 wlan_power_on(void);
+int32 wlan_power_off(void);
+int32 bfgx_power_on(uint8 subsys);
+int32 bfgx_power_off(uint8 subsys);
+void gnss_lowpower_vote(uint32_t vote);
+int32 wifi_power_fail_process(int32 error);
+int32 bfgx_pm_feature_set(void);
+int firmware_download_function(uint32 which_cfg);
+oal_int32 hi110x_get_wifi_power_stat(oal_void);
+int32 device_mem_check(unsigned long long *time);
+int32 bfgx_uart_rcv_baud_change_req(uint8 uc_msg_type);
+int32 bfgx_uart_rcv_baud_change_complete_ack(void);
+int32 memcheck_is_working(void);
+void bfg_wake_lock(void);
+void bfg_wake_unlock(void);
+void bfg_check_timer_work(void);
+int low_power_init(void);
+void low_power_exit(void);
 #ifdef CONFIG_HI110X_GPS_SYNC
-extern struct gnss_sync_data *gnss_get_sync_data(void);
-extern int gnss_sync_init(void);
-extern void gnss_sync_exit(void);
+struct gnss_sync_data *gnss_get_sync_data(void);
+int gnss_sync_init(void);
+void gnss_sync_exit(void);
 #endif
 #ifdef CONFIG_HUAWEI_DSM
-extern void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
-extern void hw_1102a_register_bt_dsm_client(void);
-extern void hw_1102a_unregister_bt_dsm_client(void);
-extern void hw_1102a_bt_dsm_client_notify(int dsm_id, const char *fmt, ...);
+void hw_1102a_dsm_client_notify(int dsm_id, const char *fmt, ...);
+void hw_1102a_register_bt_dsm_client(void);
+void hw_1102a_unregister_bt_dsm_client(void);
+void hw_1102a_bt_dsm_client_notify(int dsm_id, const char *fmt, ...);
 #endif
 #endif
-extern int32 pm_uart_send(uint8 *date, int32 len);
-extern int32 wlan_power_on(void);
-extern int32 wlan_power_off(void);
-extern irqreturn_t bfg_wake_host_isr(int irq, void *dev_id);
-extern int32 bfgx_dev_power_control(uint8 subsys, uint8 flag);
+int32 pm_uart_send(uint8 *date, int32 len);
+int32 wlan_power_on(void);
+int32 wlan_power_off(void);
+irqreturn_t bfg_wake_host_isr(int irq, void *dev_id);
+int32 bfgx_dev_power_control(uint8 subsys, uint8 flag);

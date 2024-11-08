@@ -12,31 +12,31 @@
 /* Macro Definition */
 #define INI_TIME_TEST
 
-#define INI_MIN(_A, _B)        (((_A) < (_B)) ? (_A) : (_B))
-#define INI_DEBUG(fmt, arg...) \
+#define ini_min(_A, _B)        (((_A) < (_B)) ? (_A) : (_B))
+#define ini_debug(fmt, arg...) \
     do {                                                                                   \
-        if (plat_loglevel >= PLAT_LOG_DEBUG) {                                           \
+        if (g_plat_loglevel >= PLAT_LOG_DEBUG) {                                           \
             printk(KERN_INFO "INI_DRV:D]%s:%d]" fmt "\n", __FUNCTION__, __LINE__, ##arg); \
         }                                                                                  \
     } while (0)
 
-#define INI_INFO(fmt, arg...)                                                              \
+#define ini_info(fmt, arg...)                                                              \
     do {                                                                                   \
-        if (plat_loglevel >= PLAT_LOG_INFO) {                                            \
+        if (g_plat_loglevel >= PLAT_LOG_INFO) {                                            \
             printk(KERN_INFO "INI_DRV:D]%s:%d]" fmt "\n", __FUNCTION__, __LINE__, ##arg); \
         }                                                                                  \
     } while (0)
 
-#define INI_WARNING(fmt, arg...)                                                             \
+#define ini_warning(fmt, arg...)                                                             \
     do {                                                                                     \
-        if (plat_loglevel >= PLAT_LOG_WARNING) {                                           \
+        if (g_plat_loglevel >= PLAT_LOG_WARNING) {                                           \
             printk(KERN_WARNING "INI_DRV:W]%s:%d]" fmt "\n", __FUNCTION__, __LINE__, ##arg); \
         }                                                                                    \
     } while (0)
 
-#define INI_ERROR(fmt, arg...)                                                               \
+#define ini_error(fmt, arg...)                                                               \
     do {                                                                                     \
-        if (plat_loglevel >= PLAT_LOG_ERR) {                                               \
+        if (g_plat_loglevel >= PLAT_LOG_ERR) {                                               \
             printk(KERN_ERR "INI_DRV:E]%s:%d]" fmt "\n\n\n", __FUNCTION__, __LINE__, ##arg); \
         }                                                                                    \
     } while (0)
@@ -90,9 +90,9 @@
 #define INI_STR_POWER_JP         "[HOST_WIFI_POWER_JP]"
 #define INI_STR_POWER_COMMON     "[HOST_WIFI_POWER_COMMON]"
 
-#define INI_INIT_MUTEX(mutex)   mutex_init(mutex)
-#define INI_MUTEX_LOCK(mutex)   mutex_lock(mutex)
-#define INI_MUTEX_UNLOCK(mutex) mutex_unlock(mutex)
+#define ini_init_mutex(mutex)   mutex_init(mutex)
+#define ini_mutex_lock(mutex)   mutex_lock(mutex)
+#define ini_mutex_unlock(mutex) mutex_unlock(mutex)
 
 #define INI_STR_MODU_LEN     40
 #define MAX_READ_LINE_NUM    192
@@ -115,25 +115,25 @@
 #define INI_FILE_TIMESPEC_UNRECONFIG    0
 #define INI_FILE_TIMESPEC_RECONFIG      BIT0
 #define INI_NVRAM_RECONFIG              BIT1
-#define INF_FILE_GET_CTIME(file_dentry) ((file_dentry)->d_inode->i_ctime.tv_sec)
+#define inf_file_get_ctime(file_dentry) ((file_dentry)->d_inode->i_ctime.tv_sec)
 #define INI_KERNEL_READ_LEN             512
 
 /* STRUCT Type Definition */
 typedef struct ini_board_vervion {
     unsigned char board_version[INI_VERSION_STR_LEN];
-} INI_BOARD_VERSION_STRU;
+} ini_board_version_stru;
 
 typedef struct ini_param_vervion {
     unsigned char param_version[INI_VERSION_STR_LEN];
-} INI_PARAM_VERSION_STRU;
+} ini_param_version_stru;
 
-typedef struct file INI_FILE;
+typedef struct file ini_file;
 
 /* Global Variable Declaring */
 extern char g_ini_file_name[INI_FILE_PATH_LEN];
-extern INI_BOARD_VERSION_STRU board_version;
-extern INI_PARAM_VERSION_STRU param_version;
-extern uint8 ini_i3c_switch;
+extern ini_board_version_stru g_board_version;
+extern ini_param_version_stru g_param_version;
+extern uint8 g_ini_i3c_switch;
 
 /* Function Declare */
 extern int32 get_cust_conf_int32(int32 tag_index, int8 *puc_var, int32 *pul_value);
@@ -144,7 +144,7 @@ extern uint8 ini_read_i3c_switch(void);
 extern uint8 get_i3c_switch_mode(void);
 
 extern int32 ini_file_check_conf_update(void);
-extern int8 *get_str_from_file(int8 *pc_file_path, const int8 * target_str);
+extern int8 *get_str_from_file(int8 *pc_file_path, const int8 *target_str);
 extern int32 ini_cfg_init(void);
 extern void ini_cfg_exit(void);
 #endif

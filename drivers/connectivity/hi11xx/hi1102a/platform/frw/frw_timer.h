@@ -21,7 +21,7 @@ extern oal_void frw_timer_timeout_proc_event(oal_ulong arg);
 extern oal_void frw_timer_restart(oal_void);
 extern oal_void frw_timer_stop(oal_void);
 #if defined(_PRE_FRW_TIMER_BIND_CPU) && defined(CONFIG_NR_CPUS)
-extern oal_uint32 frw_timer_cpu_count[];
+extern oal_uint32 g_frw_timer_cpu_count[];
 #endif
 
 /* return true if the time a is after time b,in case of overflow and wrap around to zero */

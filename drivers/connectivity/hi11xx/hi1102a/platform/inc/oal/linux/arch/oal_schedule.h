@@ -47,12 +47,12 @@ typedef struct _oal_spin_lock_stru_ {
 } oal_spin_lock_stru;
 
 #ifdef CONFIG_SPIN_LOCK_MAGIC_DEBUG
-#define OAL_DEFINE_SPINLOCK(x) oal_spin_lock_stru x = { \
+#define oal_define_spinlock(x) oal_spin_lock_stru x = { \
     .magic = OAL_SPIN_LOCK_MAGIC_TAG,                   \
     .lock = __SPIN_LOCK_UNLOCKED(x)                     \
 }
 #else
-#define OAL_DEFINE_SPINLOCK(x) oal_spin_lock_stru x = { \
+#define oal_define_spinlock(x) oal_spin_lock_stru x = { \
     .lock = __SPIN_LOCK_UNLOCKED(x)                     \
 }
 #endif
@@ -93,35 +93,34 @@ typedef wait_queue_head_t oal_wait_queue_head_stru;
  * was interrupted by a signal, and the remaining jiffies otherwise
  * if the condition evaluated to true before the timeout elapsed.
  */
-#define OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(_st_wq, _condition, _timeout) \
+#define oal_wait_event_interruptible_timeout(_st_wq, _condition, _timeout) \
     wait_event_interruptible_timeout(_st_wq, _condition, _timeout)
 
-#define OAL_WAIT_EVENT_TIMEOUT(_st_wq, _condition, _timeout) \
-    wait_event_timeout(_st_wq, _condition, _timeout)
+#define oal_wait_event_timeout(_st_wq, _condition, _timeout) wait_event_timeout(_st_wq, _condition, _timeout)
 
-#define OAL_WAIT_EVENT_INTERRUPTIBLE(_st_wq, _condition) \
+#define oal_wait_event_interruptible(_st_wq, _condition) \
     wait_event_interruptible(_st_wq, _condition)
 
-#define OAL_WAIT_QUEUE_WAKE_UP_INTERRUPT(_pst_wq) wake_up_interruptible(_pst_wq)
+#define oal_wait_queue_wake_up_interrupt(_pst_wq) wake_up_interruptible(_pst_wq)
 
-#define OAL_WAIT_QUEUE_WAKE_UP(_pst_wq) wake_up(_pst_wq)
+#define oal_wait_queue_wake_up(_pst_wq) wake_up(_pst_wq)
 
-#define OAL_INTERRUPTIBLE_SLEEP_ON(_pst_wq) interruptible_sleep_on(_pst_wq)
+#define oal_interruptible_sleep_on(_pst_wq) interruptible_sleep_on(_pst_wq)
 
-#define OAL_WAIT_QUEUE_INIT_HEAD(_pst_wq) init_waitqueue_head(_pst_wq)
+#define oal_wait_queue_init_head(_pst_wq) init_waitqueue_head(_pst_wq)
 
 /* 获取毫秒级时间戳 */
-#define OAL_TIME_GET_STAMP_MS() jiffies_to_msecs(jiffies)
+#define oal_time_get_stamp_ms() jiffies_to_msecs(jiffies)
 
 /* 获取高精度毫秒时间戳,精度1ms */
-#define OAL_TIME_GET_HIGH_PRECISION_MS() oal_get_time_stamp_from_timeval()
+#define oal_time_get_high_precision_ms() oal_get_time_stamp_from_timeval()
 
-#define OAL_ENABLE_CYCLE_COUNT()
-#define OAL_DISABLE_CYCLE_COUNT()
-#define OAL_GET_CYCLE_COUNT() 0
+#define oal_enable_cycle_count()
+#define oal_disable_cycle_count()
+#define oal_get_cycle_count() 0
 
 /* 寄存器反转模块运行时间计算 */
-#define OAL_TIME_CALC_RUNTIME(_ul_start, _ul_end) \
+#define oal_time_calc_runtime(_ul_start, _ul_end) \
         (oal_uint32)((oal_div_u64((oal_uint64)(OAL_TIME_US_MAX_LEN), HZ) * 1000) + \
                       (((OAL_TIME_US_MAX_LEN) % HZ) * (1000 / HZ)) - (_ul_start) + (_ul_end))
 
@@ -129,15 +128,13 @@ typedef wait_queue_head_t oal_wait_queue_head_stru;
 
 #define OAL_TIME_HZ HZ
 
-#define OAL_MSECS_TO_JIFFIES(_msecs) msecs_to_jiffies(_msecs)
+#define oal_msecs_to_jiffies(_msecs) msecs_to_jiffies(_msecs)
 
-#define OAL_JIFFIES_TO_MSECS(_jiffies) jiffies_to_msecs(_jiffies)
+#define oal_jiffies_to_msecs(_jiffies) jiffies_to_msecs(_jiffies)
 
-#define OAL_GET_REAL_TIME(_pst_tm) oal_get_real_time(_pst_tm)
+#define oal_init_completion(_my_completion) init_completion(_my_completion)
 
-#define OAL_INIT_COMPLETION(_my_completion) init_completion(_my_completion)
-
-#define OAL_COMPLETE(_my_completion) complete(_my_completion)
+#define oal_complete(_my_completion) complete(_my_completion)
 
 #define oal_in_interrupt() in_interrupt()
 
@@ -148,8 +145,8 @@ typedef oal_uint32 (*oal_module_func_t)(oal_void);
 
 #define oal_module_license(_license_name) MODULE_LICENSE(_license_name)
 
-#define oal_module_param        module_param
-#define oal_module_param_string module_param_string
+#define OAL_MODULE_PARAM        module_param
+#define OAL_MODULE_PARAM_STRING module_param_string
 
 #define OAL_S_IRUGO S_IRUGO
 
@@ -162,7 +159,7 @@ typedef oal_uint32 (*oal_module_func_t)(oal_void);
 #define oal_module_exit(_module_name) module_exit(_module_name)
 #define oal_module_symbol(_symbol)    EXPORT_SYMBOL(_symbol)
 #endif
-#define OAL_MODULE_DEVICE_TABLE(_type, _name) MODULE_DEVICE_TABLE(_type, _name)
+#define oal_module_device_table(_type, _name) MODULE_DEVICE_TABLE(_type, _name)
 
 #define oal_smp_call_function_single(core, task, info, wait) smp_call_function_single(core, task, info, wait)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))
@@ -228,7 +225,7 @@ OAL_STATIC OAL_INLINE oal_void oal_spin_lock_magic_bug(oal_spin_lock_stru *pst_l
 {
     const int l_dump_len = 32;
 #ifdef CONFIG_SPIN_LOCK_MAGIC_DEBUG
-    if (OAL_UNLIKELY((oal_uint32)OAL_SPIN_LOCK_MAGIC_TAG != pst_lock->magic)) {
+    if (oal_unlikely((oal_uint32)OAL_SPIN_LOCK_MAGIC_TAG != pst_lock->magic)) {
 #ifdef CONFIG_PRINTK
         /* spinlock never init or memory overwrite? */
         printk(KERN_EMERG "[E]SPIN_LOCK_BUG: spinlock:%p on CPU#%d, %s,magic:%08x should be %08x\n", pst_lock,
@@ -239,7 +236,7 @@ OAL_STATIC OAL_INLINE oal_void oal_spin_lock_magic_bug(oal_spin_lock_stru *pst_l
                        l_dump_len + sizeof(oal_spin_lock_stru) + l_dump_len, true); /* 意为把前后32字节内容都dump出来 */
         printk(KERN_EMERG "\n");
 #endif
-        OAL_WARN_ON(1);
+        oal_warn_on(1);
     }
 #endif
 }
@@ -460,6 +457,17 @@ OAL_STATIC OAL_INLINE oal_void oal_atomic_inc(oal_atomic *p_vector)
 }
 
 /*
+ * 函 数 名  : oal_atomic_add
+ * 功能描述  : 原子加
+ * 输入参数  : *p_vector: 需要进行原子操作的原子变量地址
+ *             l_val: 增加的值
+ */
+OAL_STATIC OAL_INLINE oal_void oal_atomic_add(oal_atomic *p_vector, oal_int32 l_val)
+{
+    atomic_add(l_val, p_vector);
+}
+
+/*
  * 函 数 名  : oal_atomic_inc_and_test
  * 功能描述  : 原子递增后检查结果是否为0
  * 输入参数  : *p_vector: 需要进行原子操作的原子变量地址
@@ -492,7 +500,7 @@ OAL_STATIC OAL_INLINE oal_void oal_time_get_stamp_us(oal_time_us_stru *pst_usec)
 
     pst_usec->i_sec = ts.tv_sec;
 
-    pst_usec->i_usec = ts.tv_nsec / 1000;
+    pst_usec->i_usec = ts.tv_nsec / MSEC_PER_SEC;
 }
 
 /*
@@ -706,12 +714,12 @@ OAL_STATIC OAL_INLINE oal_void oal_smp_task_unlock(oal_task_lock_stru *pst_lock)
 {
     oal_ulong flags;
 
-    if (OAL_WARN_ON(in_interrupt() || in_atomic())) {
+    if (oal_warn_on(in_interrupt() || in_atomic())) {
         return;
     }
 
-    if (OAL_UNLIKELY(!pst_lock->claimed)) {
-        OAL_WARN_ON(1);
+    if (oal_unlikely(!pst_lock->claimed)) {
+        oal_warn_on(1);
         return;
     }
 
@@ -735,7 +743,7 @@ OAL_STATIC OAL_INLINE oal_void oal_smp_task_lock_init(oal_task_lock_stru *pst_lo
     memset_s((oal_void *)pst_lock, sizeof(oal_task_lock_stru), 0, sizeof(oal_task_lock_stru));
 
     oal_spin_lock_init(&pst_lock->lock);
-    OAL_WAIT_QUEUE_INIT_HEAD(&pst_lock->wq);
+    oal_wait_queue_init_head(&pst_lock->wq);
     pst_lock->claimed = 0;
     pst_lock->claim_cnt = 0;
 }
@@ -752,8 +760,8 @@ OAL_STATIC OAL_INLINE oal_uint64 oal_get_time_stamp_from_timeval(oal_void)
 
     do_gettimeofday(&tv);
     curr_time = tv.tv_usec;
-    do_div(curr_time, 1000);
-    curr_time = curr_time + tv.tv_sec * 1000;
+    do_div(curr_time, MSEC_PER_SEC);
+    curr_time = curr_time + tv.tv_sec * MSEC_PER_SEC;
 
     return curr_time;
 }
@@ -767,7 +775,7 @@ OAL_STATIC OAL_INLINE oal_void oal_get_real_time(oal_time_stru *pst_tm)
     do_gettimeofday(&(txc.time));
 
     /* 把UTC时间调整本地时间 */
-    txc.time.tv_sec -= sys_tz.tz_minuteswest * 60;
+    txc.time.tv_sec -= sys_tz.tz_minuteswest * OAL_SEC_PER_MIN;
     /* 算出时间中的年月日等数值到tm中 */
     rtc_time_to_tm(txc.time.tv_sec, &tm);
 

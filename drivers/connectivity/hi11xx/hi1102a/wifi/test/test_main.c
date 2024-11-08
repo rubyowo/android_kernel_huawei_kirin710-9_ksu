@@ -1,11 +1,4 @@
 
-
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 头文件包含 */
 #include "oal_ext_if.h"
 #include "hal_ext_if.h"
@@ -38,7 +31,7 @@ oal_uint32 wal_test_hipriv_reg_write(oal_int8 *pc_param)
     pst_device = &g_pst_hal_board->ast_chip[0].ast_device[0];
 
     /* 入参检查 */
-    if (OAL_UNLIKELY(pc_param == OAL_PTR_NULL)) {
+    if (oal_unlikely(pc_param == OAL_PTR_NULL)) {
         OAL_IO_PRINT("wal_test_hipriv_reg_write: pst_net_dev or pc_param null ptr error!\n");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -50,7 +43,7 @@ oal_uint32 wal_test_hipriv_reg_write(oal_int8 *pc_param)
         return OAL_FAIL;
     }
 
-    ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16);
+    ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16); /* 16代表十六进制 */
 
     /* 获取需要写入的值 */
     pc_token = oal_strtok(OAL_PTR_NULL, pc_sep, &pc_ctx);
@@ -59,7 +52,7 @@ oal_uint32 wal_test_hipriv_reg_write(oal_int8 *pc_param)
         return OAL_FAIL;
     }
 
-    ul_val = (oal_uint32)oal_strtol(pc_token, &pc_end, 16);
+    ul_val = (oal_uint32)oal_strtol(pc_token, &pc_end, 16); /* 16代表十六进制 */
 
     OAL_IO_PRINT("wal_test_hipriv_reg_write, addr = 0x%x, val = 0x%x.\n", ul_addr, ul_val);
 
@@ -81,7 +74,7 @@ oal_uint32 wal_test_hipriv_reg_read(oal_int8 *pc_param)
     pst_device = &g_pst_hal_board->ast_chip[0].ast_device[0];
 
     /* 入参检查 */
-    if (OAL_UNLIKELY(pc_param == OAL_PTR_NULL)) {
+    if (oal_unlikely(pc_param == OAL_PTR_NULL)) {
         OAL_IO_PRINT("wal_test_hipriv_reg_read : pst_net_dev or pc_param null ptr error!\n");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -93,7 +86,7 @@ oal_uint32 wal_test_hipriv_reg_read(oal_int8 *pc_param)
         return OAL_FAIL;
     }
 
-    ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16);
+    ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16); /* 16代表十六进制 */
 
     OAL_IO_PRINT("addr = 0x%x, val = 0x%x.\n", ul_addr, ul_val);
 
@@ -122,25 +115,28 @@ oal_void wal_long_rf_test(oal_void)
                      IDX_WITP_NOT_RECROD_INDEX, HAL_SOFT_REG_TBL_SOC, OAL_FALSE);
 #endif
 
-    for (ul_loop = 0; ul_loop < 50000; ul_loop++) {
+    for (ul_loop = 0; ul_loop < 50000; ul_loop++) { /* 循环次数为50000次 */
         hi1151_rf_write_reg(pst_device, 1, 0x0);
         hi1151_rf_read_reg(pst_device, 1, &us_val);
         if (us_val != 0x0) {
-            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 1, expect val = 0x0, real val = 0x%x.\n", ul_loop, us_val);
+            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 1, expect val = 0x0, real val = 0x%x.\n",
+                         ul_loop, us_val);
             return;
         }
 
-        hi1151_rf_write_reg(pst_device, 3, 0x0F0E);
+        hi1151_rf_write_reg(pst_device, 3, 0x0F0E); /* addr等于3 */
         hi1151_rf_read_reg(pst_device, 3, &us_val);
         if (us_val != 0x0F0E) {
-            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 3, expect val = 0x0F0E, real val = 0x%x.\n", ul_loop, us_val);
+            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 3, expect val = 0x0F0E, real val = 0x%x.\n",
+                         ul_loop, us_val);
             return;
         }
 
-        hi1151_rf_write_reg(pst_device, 5, 0x0016);
+        hi1151_rf_write_reg(pst_device, 5, 0x0016); /* addr等于5 */
         hi1151_rf_read_reg(pst_device, 5, &us_val);
         if (us_val != 0x0016) {
-            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 5, expect val = 0x0016, real val = 0x%x.\n", ul_loop, us_val);
+            OAL_IO_PRINT("wal_long_rf_test fail, loop = %d, addr = 5, expect val = 0x0016, real val = 0x%x.\n",
+                         ul_loop, us_val);
             return;
         }
     }
@@ -167,7 +163,8 @@ oal_void wal_long_mac_test(oal_void)
     pst_device = &g_pst_hal_board->ast_chip[0].ast_device[0];
 
     for (ul_loop = 0; ul_loop < 1; ul_loop++) {
-        WITP_REG_WRITE32(pst_device, WITP_PA_AP0_MACADDR_L_REG, 0x12345678, IDX_WITP_PA_AP0_MACADDR_L_REG, HAL_SOFT_REG_TBL_MAC, OAL_FALSE);
+        WITP_REG_WRITE32(pst_device, WITP_PA_AP0_MACADDR_L_REG, 0x12345678, IDX_WITP_PA_AP0_MACADDR_L_REG,
+                         HAL_SOFT_REG_TBL_MAC, OAL_FALSE);
     }
 
     OAL_IO_PRINT("wal_long_mac_test end.\n");
@@ -194,7 +191,7 @@ oal_uint32 wal_test_5115_reg_read(oal_int8 *pc_param)
     } st_reg_info = {0};
 
     /* 入参检查 */
-    if (OAL_UNLIKELY(pc_param == OAL_PTR_NULL)) {
+    if (oal_unlikely(pc_param == OAL_PTR_NULL)) {
         OAL_IO_PRINT("wal_hipriv_5115_reg_read: pst_net_dev or pc_param null ptr error!");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -207,7 +204,7 @@ oal_uint32 wal_test_5115_reg_read(oal_int8 *pc_param)
 
     /* 参数检查 */
     /*lint -e960*/
-    if ((0 != oal_strcmp(pc_token, "sys")) && (0 != oal_strcmp(pc_token, "pci0"))) {
+    if ((oal_strcmp(pc_token, "sys") != 0) && (0 != oal_strcmp(pc_token, "pci0"))) {
         return OAL_FAIL;
     }
     /*lint +e960*/
@@ -219,22 +216,21 @@ oal_uint32 wal_test_5115_reg_read(oal_int8 *pc_param)
         return OAL_FAIL;
     }
 
-    st_reg_info.ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16);
+    st_reg_info.ul_addr = (oal_uint32)oal_strtol(pc_token, &pc_end, 16); /* 16代表十六进制 */
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    if ((0 == oal_strcmp(st_reg_info.pc_reg_type, "sys"))) { /* sys ctl */
-        st_reg_info.ul_val = oal_readl(pst_5115_sys_ctl + (st_reg_info.ul_addr - OAL_PCIE_SYS_BASE_PHYS));
+    if ((oal_strcmp(st_reg_info.pc_reg_type, "sys") == 0)) { /* sys ctl */
+        st_reg_info.ul_val = oal_readl(g_pst_5115_sys_ctl + (st_reg_info.ul_addr - OAL_PCIE_SYS_BASE_PHYS));
     } else { /* pcie0 */
         /* 配置工作模式，读5115侧 */
-        ul_val = oal_readl(pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        ul_val = oal_readl(g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
         ul_val |= BIT21;
-        oal_writel(ul_val, pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        oal_writel(ul_val, g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
 
-        /* TBD，后续整改成pst_device->p_pci_dbi_base */
         /* 配置工作模式，恢复读wifi侧 */
-        ul_val = oal_readl(pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        ul_val = oal_readl(g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
         ul_val &= (~BIT21);
-        oal_writel(ul_val, pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        oal_writel(ul_val, g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
     }
 #endif
 
@@ -245,9 +241,9 @@ oal_uint32 wal_test_5115_reg_read(oal_int8 *pc_param)
 
 
 oal_int32 test_hipriv_proc_write(oal_file_stru *pst_file,
-                                       const oal_int8 *pc_buffer,
-                                       oal_uint32 ul_len,
-                                       oal_void *p_data)
+                                 const oal_int8 *pc_buffer,
+                                 oal_uint32 ul_len,
+                                 oal_void *p_data)
 {
     oal_int8    *pc_cmd = OAL_PTR_NULL;
     oal_uint32   ul_ret;
@@ -255,45 +251,44 @@ oal_int32 test_hipriv_proc_write(oal_file_stru *pst_file,
     OAL_IO_PRINT("test_hipriv_proc_write start!\n");
 
     if (ul_len > TEST_HIPRIV_CMD_MAX_LEN) {
-        OAL_IO_PRINT("test_hipriv_proc_write: test_hipriv_proc_write ul_len > WAL_HIPRIV_CMD_MAX_LEN, ul_len:%d.\n", ul_len);
+        OAL_IO_PRINT("test_hipriv_proc_write: test_hipriv_proc_write ul_len > WAL_HIPRIV_CMD_MAX_LEN, ul_len:%d.\n",
+                     ul_len);
         return -OAL_EINVAL;
     }
 
-    pc_cmd = OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, TEST_HIPRIV_CMD_MAX_LEN, OAL_TRUE);
-    if (OAL_UNLIKELY(pc_cmd == OAL_PTR_NULL)) {
+    pc_cmd = oal_mem_alloc_m(OAL_MEM_POOL_ID_LOCAL, TEST_HIPRIV_CMD_MAX_LEN, OAL_TRUE);
+    if (oal_unlikely(pc_cmd == OAL_PTR_NULL)) {
         OAL_IO_PRINT("test_hipriv_proc_write: alloc mem return null ptr!");
         return -OAL_ENOMEM;
     }
 
-    OAL_MEMZERO(pc_cmd, TEST_HIPRIV_CMD_MAX_LEN);
+    memset_s(pc_cmd, TEST_HIPRIV_CMD_MAX_LEN, 0, TEST_HIPRIV_CMD_MAX_LEN);
 
     ul_ret = oal_copy_from_user(pc_cmd, pc_buffer, ul_len);
-
     /* copy_from_user函数的目的是从用户空间拷贝数据到内核空间，失败返回没有被拷贝的字节数，成功返回0 */
     if (ul_ret > 0) {
         OAL_IO_PRINT("test_hipriv_proc_write: oal_copy_from_user return ul_ret:%d.\n", ul_ret);
-        OAL_MEM_FREE(pc_cmd, OAL_TRUE);
-
+        oal_mem_free_m(pc_cmd, OAL_TRUE);
         return -OAL_EFAUL;
     }
 
     pc_cmd[ul_len - 1] = '\0';
 
     if (pc_cmd[0] == '1') {
-        wal_test_hipriv_reg_write(&pc_cmd[2]);
+        wal_test_hipriv_reg_write(&pc_cmd[2]); /* pc_cmd[2]地址为参数调用test_hipriv_reg_write */
     } else if (pc_cmd[0] == '2') {
-        wal_test_hipriv_reg_read(&pc_cmd[2]);
+        wal_test_hipriv_reg_read(&pc_cmd[2]); /* pc_cmd[2]地址为参数调用test_hipriv_reg_read */
     } else if (pc_cmd[0] == '3') {
         wal_long_rf_test();
     } else if (pc_cmd[0] == '4') {
         wal_long_mac_test();
     } else if (pc_cmd[0] == '5') {
-        wal_test_5115_reg_read(&pc_cmd[2]);
+        wal_test_5115_reg_read(&pc_cmd[2]); /* pc_cmd[2]地址为参数调用test_5115_reg_read */
     } else {
         OAL_IO_PRINT("test_hipriv_proc_write: the  param is invalid!");
     }
 
-    OAL_MEM_FREE(pc_cmd, OAL_TRUE);
+    oal_mem_free_m(pc_cmd, OAL_TRUE);
 
     return (oal_int32)ul_len;
 }
@@ -303,8 +298,8 @@ OAL_STATIC oal_uint32 test_hipriv_create_proc(oal_void *p_proc_arg)
 {
     OAL_IO_PRINT("enter func:test_hipriv_create_proc!");
 
-    /* 420十进制对应八进制是0644 linux模式定义 S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH); */
     /* S_IRUSR文件所有者具可读取权限, S_IWUSR文件所有者具可写入权限, S_IRGRP用户组具可读取权限, S_IROTH其他用户具可读取权限 */
+    /* 420十进制对应八进制是0644 linux模式定义 S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH); */
     g_pst_test_proc_entry = oal_create_proc_entry(WITP_RW_TEST_HIPRIV_PROC_ENTRY_NAME, 420, NULL);
     if (g_pst_test_proc_entry == OAL_PTR_NULL) {
         OAL_IO_PRINT("test_hipriv_create_proc: oal_create_proc_entry return null ptr!");
@@ -359,9 +354,4 @@ OAL_STATIC oal_void test_main_exit(oal_void)
 oal_module_init(test_main_init);
 oal_module_exit(test_main_exit);
 /*lint +e578*/ /*lint +e19*/
-#ifdef __cplusplus
-#if __cplusplus
-}
-#endif
-#endif
 

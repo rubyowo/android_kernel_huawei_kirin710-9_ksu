@@ -3,12 +3,6 @@
 #ifndef __HMAC_TEST_MAIN_H__
 #define __HMAC_TEST_MAIN_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 /* 1 其他头文件包含 */
 #include "oal_ext_if.h"
 #include "frw_ext_if.h"
@@ -19,21 +13,18 @@ extern "C" {
 #include "hmac_ext_if.h"
 #include "hmac_vap.h"
 
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TEST_MAIN_H
 
 /* 2 宏定义 */
 /* 用于芯片验证调用前，检查开关 */
-#ifdef _PRE_WLAN_CHIP_TEST
-#define HMAC_CHIP_TEST_CALL(func_call)        \
-    do {                                      \
-        if (0 != hmac_test_get_chip_test()) { \
-            (func_call);                      \
-        }                                     \
-    } while (0);
-#else
-#define HMAC_CHIP_TEST_CALL(func_call)
-#endif
+#define hmac_chip_test_call(func_call)
 
 /* 3 枚举定义 */
 /* 4 全局变量声明 */

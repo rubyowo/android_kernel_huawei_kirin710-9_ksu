@@ -2,8 +2,6 @@
 
 /* 头文件包含 */
 #include "oal_main.h"
-#include "oal_workqueue.h"
-#include "oal_mem.h"
 #include "oal_schedule.h"
 #include "oal_net.h"
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
@@ -35,9 +33,9 @@ void __iomem *l2cache_base;
 #endif
 
 /* 动态/静态DBDC，其中一个默认使能 */
-oal_uint8 wlan_service_device_per_chip[WLAN_SERVICE_DEVICE_MAX_NUM_PER_CHIP] = { WLAN_INIT_DEVICE_RADIO_CAP };
+oal_uint8 g_wlan_service_device_per_chip[WLAN_SERVICE_DEVICE_MAX_NUM_PER_CHIP] = { WLAN_INIT_DEVICE_RADIO_CAP };
 
-oal_uint8 hitalk_status = 0; /* 记录当前固件类型 */
+oal_uint8 g_hitalk_status = 0; /* 记录当前固件类型 */
 
 /* 函数实现 */
 /* 有些内核版本可能没开启CONFIG_STACKTRACE, 增加CONFIG_STACKTRACE的宏 */
@@ -55,18 +53,6 @@ oal_int32 oal_dump_stack_str(oal_uint8 *puc_str, oal_uint32 ul_max_size)
 oal_int32 ATTR_OAL_NO_FUNC_TRACE oal_main_init(oal_void)
 {
     oal_uint32 ul_rslt;
-
-    // kernel symbol not exported, find manually
-#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && \
-    ((_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT))
-    nl80211_fam = (struct genl_family *)kallsyms_lookup_name("nl80211_fam");
-    nl80211_mlme_mcgrp = (struct genl_multicast_group *)kallsyms_lookup_name("nl80211_mlme_mcgrp");
-    if (!nl80211_fam || !nl80211_mlme_mcgrp) {
-        OAL_IO_PRINT("find kernel symbol failed:fam=%p mcgrp=%p\n", nl80211_fam, nl80211_mlme_mcgrp);
-        return -OAL_EFAIL;
-    }
-#endif
-
 #ifdef _PRE_MEM_TRACE
     mem_trace_init();
 #endif
@@ -76,8 +62,6 @@ oal_int32 ATTR_OAL_NO_FUNC_TRACE oal_main_init(oal_void)
         OAL_IO_PRINT("hisi root sysfs init failed\n");
     }
 #endif
-
-    /* 为了解各模块的启动时间，增加时间戳打印 */
 
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT) && \
     defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT)
@@ -104,14 +88,13 @@ oal_int32 ATTR_OAL_NO_FUNC_TRACE oal_main_init(oal_void)
 
     /* 启动成功 */
 #if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
-    memset_s(past_net_device, WLAN_VAP_SUPPORT_MAX_NUM_LIMIT * OAL_SIZEOF(oal_net_device_stru *),
+    memset_s(g_past_net_device, WLAN_VAP_SUPPORT_MAX_NUM_LIMIT * OAL_SIZEOF(oal_net_device_stru *),
              0, WLAN_VAP_SUPPORT_MAX_NUM_LIMIT * OAL_SIZEOF(oal_net_device_stru *));
 #endif
 
-#ifndef BFGX_UART_DOWNLOAD_SUPPORT
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
     /* HCC初始化 */
-    if (OAL_UNLIKELY(hcc_dev_init() != OAL_SUCC)) {
+    if (oal_unlikely(hcc_dev_init() != OAL_SUCC)) {
         OAL_IO_PRINT("[ERROR]hcc_module_init return err null\n");
         return -OAL_EFAIL;
     }
@@ -122,20 +105,17 @@ oal_int32 ATTR_OAL_NO_FUNC_TRACE oal_main_init(oal_void)
 #endif
 
 #ifdef _PRE_CONFIG_HISI_CONN_SOFTWDFT
-    if (OAL_UNLIKELY(oal_softwdt_init() != OAL_SUCC)) {
+    if (oal_unlikely(oal_softwdt_init() != OAL_SUCC)) {
         OAL_IO_PRINT("oal_softwdt_init init failed!\n");
         return -OAL_EFAIL;
     }
 #endif
 
 #ifdef _PRE_OAL_FEATURE_KEY_PROCESS_TRACE
-    if (OAL_UNLIKELY(oal_dft_init() != OAL_SUCC)) {
+    if (oal_unlikely(oal_dft_init() != OAL_SUCC)) {
         OAL_IO_PRINT("oal_dft_init init failed!\n");
         return -OAL_EFAIL;
     }
-#endif
-#else
-    OAL_IO_PRINT("gnss only version not support wifi hcc\\n");
 #endif
 
     oal_dump_stack_str_init();
@@ -206,7 +186,7 @@ OAL_STATIC oal_uint8 oal_device_check_enable_num(oal_void)
     oal_uint8 uc_device_id;
 
     for (uc_device_id = 0; uc_device_id < WLAN_SERVICE_DEVICE_MAX_NUM_PER_CHIP; uc_device_id++) {
-        if (wlan_service_device_per_chip[uc_device_id]) {
+        if (g_wlan_service_device_per_chip[uc_device_id]) {
             uc_device_num++;
         }
     }
@@ -243,6 +223,6 @@ oal_module_symbol(oal_board_get_service_vap_start_id);
 oal_module_symbol(oal_main_init);
 oal_module_symbol(oal_main_exit);
 oal_module_symbol(l2cache_base);
-oal_module_symbol(wlan_service_device_per_chip);
-oal_module_symbol(hitalk_status);
+oal_module_symbol(g_wlan_service_device_per_chip);
+oal_module_symbol(g_hitalk_status);
 oal_module_license("GPL");

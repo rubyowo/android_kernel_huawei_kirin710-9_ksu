@@ -118,7 +118,7 @@ enum _hcc_netbuf_queue_type_ {
 
 typedef enum _hcc_netbuf_queue_type_ hcc_netbuf_queue_type;
 
-typedef struct EXCEPTION_BCPU_DUMP_HEADER {
+typedef struct exception_bcpu_dump_header {
     oal_uint32 align_type;
     oal_uint32 start_addr;
     oal_uint32 men_len;

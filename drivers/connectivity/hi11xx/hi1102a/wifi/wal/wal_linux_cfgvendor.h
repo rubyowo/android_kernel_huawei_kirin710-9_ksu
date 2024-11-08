@@ -3,65 +3,57 @@
 #ifndef __WAL_LINUX_CFGVENDOR_H__
 #define __WAL_LINUX_CFGVENDOR_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 #include "oal_ext_if.h"
 #include "oal_types.h"
 
-
-#undef  THIS_FILE_ID
+#undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_CFGVENDOR_H
 
-#define ATTRIBUTE_U32_LEN                  (OAL_NLMSG_HDRLEN  + 4)
-#define VENDOR_ID_OVERHEAD                 ATTRIBUTE_U32_LEN
-#define VENDOR_SUBCMD_OVERHEAD             ATTRIBUTE_U32_LEN
-#define VENDOR_DATA_OVERHEAD               (OAL_NLMSG_HDRLEN)
+#define ATTRIBUTE_U32_LEN      (OAL_NLMSG_HDRLEN + 4)
+#define VENDOR_ID_OVERHEAD     ATTRIBUTE_U32_LEN
+#define VENDOR_SUBCMD_OVERHEAD ATTRIBUTE_U32_LEN
+#define VENDOR_DATA_OVERHEAD   (OAL_NLMSG_HDRLEN)
 
-
-#define VENDOR_REPLY_OVERHEAD       (VENDOR_ID_OVERHEAD + \
-                                    VENDOR_SUBCMD_OVERHEAD + \
-                                    VENDOR_DATA_OVERHEAD)
+#define VENDOR_REPLY_OVERHEAD (VENDOR_ID_OVERHEAD +     \
+                               VENDOR_SUBCMD_OVERHEAD + \
+                               VENDOR_DATA_OVERHEAD)
 
 /* Feature set */
-#define VENDOR_DBG_MEMORY_DUMP_SUPPORTED    (1 << (0))  /* Memory dump of FW */
+#define VENDOR_DBG_MEMORY_DUMP_SUPPORTED (1 << (0)) /* Memory dump of FW */
 
-#define VENDOR_BG_BAND_MASK             (1 << 0)    /* 2.4 GHZ Band */
-#define VENDOR_A_BAND_MASK              (1 << 1)    /* 5 GHZ Band */
+#define VENDOR_BG_BAND_MASK (1 << 0) /* 2.4 GHZ Band */
+#define VENDOR_A_BAND_MASK  (1 << 1) /* 5 GHZ Band */
 
 /* 2G信道与5G信道总数 */
-#define VENDOR_CHANNEL_LIST_ALL  (MAC_CHANNEL_FREQ_2_BUTT + MAC_CHANNEL_FREQ_5_BUTT)
+#define VENDOR_CHANNEL_LIST_ALL (MAC_CHANNEL_FREQ_2_BUTT + MAC_CHANNEL_FREQ_5_BUTT)
 
 /* firmware event ring, ring id 2 */
-#define VENDOR_FW_EVENT_RING_NAME    "fw_event"
-#define VENDOR_FW_EVENT_RING_SIZE    (64 * 1024)
+#define VENDOR_FW_EVENT_RING_NAME "fw_event"
+#define VENDOR_FW_EVENT_RING_SIZE (64 * 1024)
 
-/* Feature enums *//* 需和wifi_hal.h中定义保持一致 */
-#define WIFI_FEATURE_INFRA              0x0001      /** Basic infrastructure mode */
-#define WIFI_FEATURE_INFRA_5G           0x0002      /** Support for 5 GHz Band */
-#define WIFI_FEATURE_HOTSPOT            0x0004      /** Support for GAS/ANQP */
-#define WIFI_FEATURE_P2P                0x0008      /** Wifi-Direct */
-#define WIFI_FEATURE_SOFT_AP            0x0010      /** Soft AP */
-#define WIFI_FEATURE_GSCAN              0x0020      /** G-Scan APIs */
-#define WIFI_FEATURE_NAN                0x0040      /** Neighbor Awareness Networking */
-#define WIFI_FEATURE_D2D_RTT            0x0080      /** Device-to-device RTT */
-#define WIFI_FEATURE_D2AP_RTT           0x0100      /** Device-to-AP RTT */
-#define WIFI_FEATURE_BATCH_SCAN         0x0200      /** Batched Scan (legacy) */
-#define WIFI_FEATURE_PNO                0x0400      /** Preferred network offload */
-#define WIFI_FEATURE_ADDITIONAL_STA     0x0800      /** Support for two STAs */
-#define WIFI_FEATURE_TDLS               0x1000      /** Tunnel directed link setup */
-#define WIFI_FEATURE_TDLS_OFFCHANNEL    0x2000      /** Support for TDLS off channel */
-#define WIFI_FEATURE_EPR                0x4000      /** Enhanced power reporting */
-#define WIFI_FEATURE_AP_STA             0x8000      /** Support for AP STA Concurrency */
-#define WIFI_FEATURE_LINK_LAYER_STATS   0x10000     /** Link layer stats collection */
-#define WIFI_FEATURE_LOGGER             0x20000     /** WiFi Logger */
-#define WIFI_FEATURE_HAL_EPNO           0x40000     /** WiFi PNO enhanced */
-#define WIFI_FEATURE_RSSI_MONITOR       0x80000     /** RSSI Monitor */
-#define WIFI_FEATURE_MKEEP_ALIVE        0x100000    /** WiFi mkeep_alive */
-#define MKEEP_ALIVE_IP_PKT_MAXLEN       128
+/* Feature enums */                            /* 需和wifi_hal.h中定义保持一致 */
+#define WIFI_FEATURE_INFRA            0x0001   /** Basic infrastructure mode */
+#define WIFI_FEATURE_INFRA_5G         0x0002   /** Support for 5 GHz Band */
+#define WIFI_FEATURE_HOTSPOT          0x0004   /** Support for GAS/ANQP */
+#define WIFI_FEATURE_P2P              0x0008   /** Wifi-Direct */
+#define WIFI_FEATURE_SOFT_AP          0x0010   /** Soft AP */
+#define WIFI_FEATURE_GSCAN            0x0020   /** G-Scan APIs */
+#define WIFI_FEATURE_NAN              0x0040   /** Neighbor Awareness Networking */
+#define WIFI_FEATURE_D2D_RTT          0x0080   /** Device-to-device RTT */
+#define WIFI_FEATURE_D2AP_RTT         0x0100   /** Device-to-AP RTT */
+#define WIFI_FEATURE_BATCH_SCAN       0x0200   /** Batched Scan (legacy) */
+#define WIFI_FEATURE_PNO              0x0400   /** Preferred network offload */
+#define WIFI_FEATURE_ADDITIONAL_STA   0x0800   /** Support for two STAs */
+#define WIFI_FEATURE_TDLS             0x1000   /** Tunnel directed link setup */
+#define WIFI_FEATURE_TDLS_OFFCHANNEL  0x2000   /** Support for TDLS off channel */
+#define WIFI_FEATURE_EPR              0x4000   /** Enhanced power reporting */
+#define WIFI_FEATURE_AP_STA           0x8000   /** Support for AP STA Concurrency */
+#define WIFI_FEATURE_LINK_LAYER_STATS 0x10000  /** Link layer stats collection */
+#define WIFI_FEATURE_LOGGER           0x20000  /** WiFi Logger */
+#define WIFI_FEATURE_HAL_EPNO         0x40000  /** WiFi PNO enhanced */
+#define WIFI_FEATURE_RSSI_MONITOR     0x80000  /** RSSI Monitor */
+#define WIFI_FEATURE_MKEEP_ALIVE      0x100000 /** WiFi mkeep_alive */
+#define MKEEP_ALIVE_IP_PKT_MAXLEN     128
 
 enum mkeep_alive_attributes {
     MKEEP_ALIVE_ATTRIBUTE_ID,
@@ -93,15 +85,14 @@ enum gscan_attributes {
     /* remaining reserved for additional attributes */
     GSCAN_ATTRIBUTE_NUM_OF_RESULTS = 30,
     GSCAN_ATTRIBUTE_FLUSH_RESULTS,
-    GSCAN_ATTRIBUTE_SCAN_RESULTS,                       /* flat array of wifi_scan_result */
-    GSCAN_ATTRIBUTE_SCAN_ID,                            /* indicates scan number */
-    GSCAN_ATTRIBUTE_SCAN_FLAGS,                         /* indicates if scan was aborted */
-    GSCAN_ATTRIBUTE_AP_FLAGS,                           /* flags on significant change event */
+    GSCAN_ATTRIBUTE_SCAN_RESULTS, /* flat array of wifi_scan_result */
+    GSCAN_ATTRIBUTE_SCAN_ID,      /* indicates scan number */
+    GSCAN_ATTRIBUTE_SCAN_FLAGS,   /* indicates if scan was aborted */
+    GSCAN_ATTRIBUTE_AP_FLAGS,     /* flags on significant change event */
     GSCAN_ATTRIBUTE_NUM_CHANNELS,
     GSCAN_ATTRIBUTE_CHANNEL_LIST,
 
-	/* remaining reserved for additional attributes */
-
+    /* remaining reserved for additional attributes */
     GSCAN_ATTRIBUTE_SSID = 40,
     GSCAN_ATTRIBUTE_BSSID,
     GSCAN_ATTRIBUTE_CHANNEL,
@@ -111,7 +102,6 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_RTTSD,
 
     /* remaining reserved for additional attributes */
-
     GSCAN_ATTRIBUTE_HOTLIST_BSSIDS = 50,
     GSCAN_ATTRIBUTE_RSSI_LOW,
     GSCAN_ATTRIBUTE_RSSI_HIGH,
@@ -147,7 +137,6 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_BSSID_PREF,
     GSCAN_ATTRIBUTE_RSSI_MODIFIER,
 
-
     /* Roam cfg */
     GSCAN_ATTRIBUTE_A_BAND_BOOST_THRESHOLD = 90,
     GSCAN_ATTRIBUTE_A_BAND_PENALTY_THRESHOLD,
@@ -176,39 +165,37 @@ enum gscan_attributes {
     GSCAN_ATTRIBUTE_MAX
 };
 
-
 typedef enum {
     VENDOR_NL80211_SUBCMD_UNSPECIFIED,
 
     VENDOR_NL80211_SUBCMD_RANGE_START = 0x0001,
-    VENDOR_NL80211_SUBCMD_RANGE_END   = 0x0FFF,
+    VENDOR_NL80211_SUBCMD_RANGE_END = 0x0FFF,
 
     VENDOR_NL80211_SUBCMD_GSCAN_RANGE_START = 0x1000,
-    VENDOR_NL80211_SUBCMD_GSCAN_RANGE_END   = 0x10FF,
+    VENDOR_NL80211_SUBCMD_GSCAN_RANGE_END = 0x10FF,
 
     VENDOR_NL80211_SUBCMD_RTT_RANGE_START = 0x1100,
-    VENDOR_NL80211_SUBCMD_RTT_RANGE_END   = 0x11FF,
+    VENDOR_NL80211_SUBCMD_RTT_RANGE_END = 0x11FF,
 
     VENDOR_NL80211_SUBCMD_LSTATS_RANGE_START = 0x1200,
-    VENDOR_NL80211_SUBCMD_LSTATS_RANGE_END   = 0x12FF,
+    VENDOR_NL80211_SUBCMD_LSTATS_RANGE_END = 0x12FF,
 
     VENDOR_NL80211_SUBCMD_TDLS_RANGE_START = 0x1300,
-    VENDOR_NL80211_SUBCMD_TDLS_RANGE_END   = 0x13FF,
+    VENDOR_NL80211_SUBCMD_TDLS_RANGE_END = 0x13FF,
 
     VENDOR_NL80211_SUBCMD_DEBUG_RANGE_START = 0x1400,
-    VENDOR_NL80211_SUBCMD_DEBUG_RANGE_END  = 0x14FF,
+    VENDOR_NL80211_SUBCMD_DEBUG_RANGE_END = 0x14FF,
 
     VENDOR_NL80211_SUBCMD_NBD_RANGE_START = 0x1500,
-    VENDOR_NL80211_SUBCMD_NBD_RANGE_END   = 0x15FF,
+    VENDOR_NL80211_SUBCMD_NBD_RANGE_END = 0x15FF,
 
     VENDOR_NL80211_SUBCMD_WIFI_OFFLOAD_RANGE_START = 0x1600,
-    VENDOR_NL80211_SUBCMD_WIFI_OFFLOAD_RANGE_END   = 0x16FF,
+    VENDOR_NL80211_SUBCMD_WIFI_OFFLOAD_RANGE_END = 0x16FF,
 
     /* define all packet filter related commands between 0x1800 and 0x18FF */
     VENDOR_NL80211_SUBCMD_PKT_FILTER_RANGE_START = 0x1800,
-    VENDOR_NL80211_SUBCMD_PKT_FILTER_RANGE_END   = 0x18FF,
+    VENDOR_NL80211_SUBCMD_PKT_FILTER_RANGE_END = 0x18FF,
 } wal_vendor_sub_command_enum;
-
 
 enum wal_vendor_subcmd {
     GSCAN_SUBCMD_GET_CAPABILITIES = VENDOR_NL80211_SUBCMD_GSCAN_RANGE_START,
@@ -255,13 +242,12 @@ enum wal_vendor_subcmd {
 };
 
 enum andr_wifi_attr {
-	ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
-	ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
-	ANDR_WIFI_ATTRIBUTE_RANDOM_MAC_OUI,
-	ANDR_WIFI_ATTRIBUTE_NODFS_SET,
-	ANDR_WIFI_ATTRIBUTE_COUNTRY
+    ANDR_WIFI_ATTRIBUTE_NUM_FEATURE_SET,
+    ANDR_WIFI_ATTRIBUTE_FEATURE_SET,
+    ANDR_WIFI_ATTRIBUTE_RANDOM_MAC_OUI,
+    ANDR_WIFI_ATTRIBUTE_NODFS_SET,
+    ANDR_WIFI_ATTRIBUTE_COUNTRY
 };
-
 
 typedef enum wal_vendor_event {
     HISI_VENDOR_EVENT_UNSPEC,
@@ -298,7 +284,7 @@ enum wal_vendor_debug_attributes {
 };
 
 #ifdef _PRE_WLAN_FEATURE_APF
-enum wal_apf_attributes{
+enum wal_apf_attributes {
     APF_ATTRIBUTE_VERSION,
     APF_ATTRIBUTE_MAX_LEN,
     APF_ATTRIBUTE_PROGRAM,
@@ -307,7 +293,7 @@ enum wal_apf_attributes{
 #endif
 
 enum {
-    DEBUG_RING_ID_INVALID	= 0,
+    DEBUG_RING_ID_INVALID = 0,
     FW_VERBOSE_RING_ID,
     FW_EVENT_RING_ID,
     DHD_EVENT_RING_ID,
@@ -331,13 +317,13 @@ typedef struct debug_ring_status_st {
 } debug_ring_status_st;
 
 typedef enum wifi_channel_width {
-    WIFI_CHAN_WIDTH_20    = 0,
-    WIFI_CHAN_WIDTH_40    = 1,
-    WIFI_CHAN_WIDTH_80    = 2,
-    WIFI_CHAN_WIDTH_160   = 3,
+    WIFI_CHAN_WIDTH_20 = 0,
+    WIFI_CHAN_WIDTH_40 = 1,
+    WIFI_CHAN_WIDTH_80 = 2,
+    WIFI_CHAN_WIDTH_160 = 3,
     WIFI_CHAN_WIDTH_80P80 = 4,
-    WIFI_CHAN_WIDTH_5     = 5,
-    WIFI_CHAN_WIDTH_10    = 6,
+    WIFI_CHAN_WIDTH_5 = 5,
+    WIFI_CHAN_WIDTH_10 = 6,
     WIFI_CHAN_WIDTH_INVALID = -1
 } wal_wifi_channel_width;
 
@@ -347,56 +333,53 @@ typedef enum wifi_channel_width {
 
 /* channel information */
 typedef struct {
-   wal_wifi_channel_width width;      /* channel width (20, 40, 80, 80+80, 160) */
-   int l_center_freq;      /* primary 20 MHz channel */
-   int l_center_freq0;     /* center frequency (MHz) first segment */
-   int l_center_freq1;     /* center frequency (MHz) second segment */
+    wal_wifi_channel_width width; /* channel width 20, 40, 80, 80+80, 160 */
+    int l_center_freq;            /* primary 20 MHz channel */
+    int l_center_freq0;           /* center frequency (MHz) first segment */
+    int l_center_freq1;           /* center frequency (MHz) second segment */
 } wal_wifi_channel_info_stru;
 
 /* channel statistics */
 typedef struct {
-   wal_wifi_channel_info_stru channel;
-   oal_uint32 ul_on_time;        /* msecs the radio is awake */
-   oal_uint32 ul_cca_busy_time;
+    wal_wifi_channel_info_stru channel;
+    oal_uint32 ul_on_time; /* msecs the radio is awake */
+    oal_uint32 ul_cca_busy_time;
 } wal_wifi_channel_stat_stru;
 
 /* radio statistics */
 typedef struct {
-   int        l_radio;
-   oal_uint32 ul_on_time;
-   oal_uint32 ul_tx_time;
-   oal_uint32 ul_rx_time;
-   oal_uint32 ul_on_time_scan;
-   oal_uint32 ul_on_time_nbd;
-   oal_uint32 ul_on_time_gscan;
-   oal_uint32 ul_on_time_roam_scan;
-   oal_uint32 ul_on_time_pno_scan;
-   oal_uint32 ul_on_time_hs20;
-   oal_uint32 ul_num_channels;
-   wal_wifi_channel_stat_stru channels[VENDOR_NUM_CHAN];
+    int l_radio;
+    oal_uint32 ul_on_time;
+    oal_uint32 ul_tx_time;
+    oal_uint32 ul_rx_time;
+    oal_uint32 ul_on_time_scan;
+    oal_uint32 ul_on_time_nbd;
+    oal_uint32 ul_on_time_gscan;
+    oal_uint32 ul_on_time_roam_scan;
+    oal_uint32 ul_on_time_pno_scan;
+    oal_uint32 ul_on_time_hs20;
+    oal_uint32 ul_num_channels;
+    wal_wifi_channel_stat_stru channels[VENDOR_NUM_CHAN];
 } wal_wifi_radio_stat_stru;
 
-typedef struct
-{
+typedef struct {
     oal_uint64 ull_wifi_on_time_stamp;
     oal_uint32 ul_wifi_on_time;
     oal_uint32 ul_wifi_tx_time;
     oal_uint32 ul_wifi_rx_time;
 } wal_cfgvendor_radio_stat_stru;
 
-
 /* access categories */
 typedef enum {
-   WAL_WIFI_AC_VO  = 0,
-   WAL_WIFI_AC_VI  = 1,
-   WAL_WIFI_AC_BE  = 2,
-   WAL_WIFI_AC_BK  = 3,
-   WAL_WIFI_AC_MAX = 4,
+    WAL_WIFI_AC_VO = 0,
+    WAL_WIFI_AC_VI = 1,
+    WAL_WIFI_AC_BE = 2,
+    WAL_WIFI_AC_BK = 3,
+    WAL_WIFI_AC_MAX = 4,
 } wal_wifi_traffic_ac;
 
 /* wifi peer type */
-typedef enum
-{
+typedef enum {
     WIFI_PEER_STA,
     WIFI_PEER_AP,
     WIFI_PEER_P2P_GO,
@@ -416,7 +399,6 @@ typedef enum {
     WIFI_INTERFACE_MESH = 6,
 } wal_wifi_interface_mode;
 
-
 typedef enum {
     WIFI_DISCONNECTED = 0,
     WIFI_AUTHENTICATING = 1,
@@ -426,7 +408,6 @@ typedef enum {
     WIFI_EAPOL_COMPLETED = 5,
 } wal_wifi_connection_state;
 
-
 typedef enum {
     VENDOR_WIFI_ROAMING_IDLE = 0,
     VENDOR_WIFI_ROAMING_ACTIVE = 1,
@@ -434,100 +415,93 @@ typedef enum {
 
 /* interface info */
 typedef struct {
-   wal_wifi_interface_mode mode;
-   oal_uint8 uc_mac_addr[6];        /* interface mac address (self) */
-   wal_wifi_connection_state state;  /* connection state (valid for STA, CLI only) */
-   wal_wifi_roam_state roaming;
-   oal_uint32 ul_capabilities;      /* WIFI_CAPABILITY_XXX (self) */
-   oal_uint8 uc_ssid[33];           /* null terminated SSID */
-   oal_uint8 uc_bssid[6];
-   oal_uint8 uc_ap_country_str[3];
-   oal_uint8 uc_country_str[3];
+    wal_wifi_interface_mode mode;
+    oal_uint8 uc_mac_addr[6];        /* interface mac address (self) */
+    wal_wifi_connection_state state; /* connection state (valid for STA, CLI only) */
+    wal_wifi_roam_state roaming;
+    oal_uint32 ul_capabilities; /* WIFI_CAPABILITY_XXX (self) */
+    oal_uint8 uc_ssid[33];      /* null terminated SSID */
+    oal_uint8 uc_bssid[6];
+    oal_uint8 uc_ap_country_str[3];
+    oal_uint8 uc_country_str[3];
 } wal_wifi_interface_info_stru;
 
 typedef wal_wifi_interface_info_stru *wifi_interface_handle;
 
-
 /* wifi rate */
 typedef struct {
-   oal_uint32 ul_preamble   :3;   /* 0: OFDM, 1:CCK, 2:HT 3:VHT 4..7 reserved */
-   oal_uint32 ul_nss        :2;   /* 0:1x1, 1:2x2, 3:3x3, 4:4x4  */
-   oal_uint32 ul_bw         :3;   /* 0:20MHz, 1:40Mhz, 2:80Mhz, 3:160Mhz */
-   oal_uint32 ul_rateMcsIdx :8;   /* OFDM/CCK rate code would be as per ieee std in the units of 0.5mbps */
-                               /* HT/VHT it would be mcs index */
-   oal_uint32 ul_reserved  :16;
-   oal_uint32 ul_bitrate;         /* units of 100 Kbps */
+    oal_uint32 ul_preamble : 3;   /* 0: OFDM, 1:CCK, 2:HT 3:VHT 4..7 reserved */
+    oal_uint32 ul_nss : 2;        /* 0:1x1, 1:2x2, 3:3x3, 4:4x4 */
+    oal_uint32 ul_bw : 3;         /* 0:20MHz, 1:40Mhz, 2:80Mhz, 3:160Mhz */
+    oal_uint32 ul_ratemcsidx : 8; /* OFDM/CCK rate code would be as per ieee std in the units of 0.5mbps */
+    /* HT/VHT it would be mcs index */
+    oal_uint32 ul_reserved : 16;
+    oal_uint32 ul_bitrate; /* units of 100 Kbps */
 } wal_wifi_rate_stru;
 
 /* per rate statistics */
 typedef struct {
-   wal_wifi_rate_stru  rate;
-   oal_uint32 ul_tx_mpdu;
-   oal_uint32 ul_rx_mpdu;
-   oal_uint32 ul_mpdu_lost;
-   oal_uint32 ul_retries;
-   oal_uint32 ul_retries_short;
-   oal_uint32 ul_retries_long;
+    wal_wifi_rate_stru rate;
+    oal_uint32 ul_tx_mpdu;
+    oal_uint32 ul_rx_mpdu;
+    oal_uint32 ul_mpdu_lost;
+    oal_uint32 ul_retries;
+    oal_uint32 ul_retries_short;
+    oal_uint32 ul_retries_long;
 } wal_wifi_rate_stat_stru;
 
 /* per peer statistics */
 typedef struct {
-   wal_wifi_peer_type type;   /* peer type (AP, TDLS, GO etc.) */
-   oal_uint8   uc_peer_mac_address[6];
-   oal_uint32  ul_capabilities;
-   oal_uint32  ul_num_rate;
-   wal_wifi_rate_stat_stru rate_stats[VENDOR_NUM_RATE];
+    wal_wifi_peer_type type; /* peer type AP, TDLS, GO etc. */
+    oal_uint8 uc_peer_mac_address[6];
+    oal_uint32 ul_capabilities;
+    oal_uint32 ul_num_rate;
+    wal_wifi_rate_stat_stru rate_stats[VENDOR_NUM_RATE];
 } wal_wifi_peer_info_stru;
 
 /* per access category statistics */
 typedef struct {
-   wal_wifi_traffic_ac ac;    /* access category (VI, VO, BE, BK) */
-   oal_uint32 ul_tx_mpdu;
-   oal_uint32 ul_rx_mpdu;
-   oal_uint32 ul_tx_mcast;    /* number of succesfully transmitted multicast data packets */
-   oal_uint32 ul_rx_mcast;
-   oal_uint32 ul_rx_ampdu;
-   oal_uint32 ul_tx_ampdu;
-   oal_uint32 ul_mpdu_lost;
-   oal_uint32 ul_retries;
-   oal_uint32 ul_retries_short;
-   oal_uint32 ul_retries_long;
-   oal_uint32 ul_contention_time_min;
-   oal_uint32 ul_contention_time_max;
-   oal_uint32 ul_contention_time_avg;
-   oal_uint32 ul_contention_num_samples;
+    wal_wifi_traffic_ac ac; /* access category VI, VO, BE, BK */
+    oal_uint32 ul_tx_mpdu;
+    oal_uint32 ul_rx_mpdu;
+    oal_uint32 ul_tx_mcast; /* number of succesfully transmitted multicast data packets */
+    oal_uint32 ul_rx_mcast;
+    oal_uint32 ul_rx_ampdu;
+    oal_uint32 ul_tx_ampdu;
+    oal_uint32 ul_mpdu_lost;
+    oal_uint32 ul_retries;
+    oal_uint32 ul_retries_short;
+    oal_uint32 ul_retries_long;
+    oal_uint32 ul_contention_time_min;
+    oal_uint32 ul_contention_time_max;
+    oal_uint32 ul_contention_time_avg;
+    oal_uint32 ul_contention_num_samples;
 } wal_wifi_wmm_ac_stat_stru;
-
 
 /* wifi interface statistics */
 typedef struct {
-   wifi_interface_handle iface;
-   wal_wifi_interface_info_stru info;
-   oal_uint32 ul_beacon_rx;
-   oal_uint64 ull_average_tsf_offset;    /* average beacon offset encountered (beacon_TSF - TBTT) */
-   oal_uint32 ul_leaky_ap_detected;    /* indicate that this AP typically leaks packets beyond the driver guard time. */
-   oal_uint32 ul_leaky_ap_avg_num_frames_leaked;    /* average number of frame leaked by AP after frame with PM bit set was ACK'ed by AP */
-   oal_uint32 ul_leaky_ap_guard_time;
-   oal_uint32 ul_mgmt_rx;
-   oal_uint32 ul_mgmt_action_rx;
-   oal_uint32 ul_mgmt_action_tx;
-   int  l_rssi_mgmt;
-   int  l_rssi_data;
-   int  l_rssi_ack;
-   wal_wifi_wmm_ac_stat_stru ac[WAL_WIFI_AC_MAX];
-   oal_uint32  ul_num_peers;
-   wal_wifi_peer_info_stru peer_info[VENDOR_NUM_PEER];
+    wifi_interface_handle iface;
+    wal_wifi_interface_info_stru info;
+    oal_uint32 ul_beacon_rx;
+    oal_uint64 ull_average_tsf_offset; /* average beacon offset encountered (beacon_TSF - TBTT) */
+    oal_uint32 ul_leaky_ap_detected; /* indicate that this AP typically leaks packets beyond the driver guard time. */
+    /* average number of frame leaked by AP after frame with PM bit set was ACK'ed by AP */
+    oal_uint32 ul_leaky_ap_avg_num_frames_leaked;
+    oal_uint32 ul_leaky_ap_guard_time;
+    oal_uint32 ul_mgmt_rx;
+    oal_uint32 ul_mgmt_action_rx;
+    oal_uint32 ul_mgmt_action_tx;
+    int l_rssi_mgmt;
+    int l_rssi_data;
+    int l_rssi_ack;
+    wal_wifi_wmm_ac_stat_stru ac[WAL_WIFI_AC_MAX];
+    oal_uint32 ul_num_peers;
+    wal_wifi_peer_info_stru peer_info[VENDOR_NUM_PEER];
 } wal_wifi_iface_stat_stru;
 
 extern wal_cfgvendor_radio_stat_stru g_st_wifi_radio_stat;
 
 extern oal_void wal_cfgvendor_init(oal_wiphy_stru *wiphy);
 extern oal_void wal_cfgvendor_deinit(oal_wiphy_stru *wiphy);
-
-#ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
-#endif
-
 #endif /* end of wal_linux_cfgvendor.h */
+

@@ -2,6 +2,11 @@
 
 #ifndef __FRW_EXT_IF_H__
 #define __FRW_EXT_IF_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "oal_ext_if.h"
@@ -10,17 +15,13 @@
 #undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_FRW_EXT_IF_H
 
-#define FRW_TIMER_RESTART_TIMER(_pst_timeout, _ul_timeout, _en_is_periodic) \
-    frw_timer_restart_timer(_pst_timeout, _ul_timeout, _en_is_periodic)
-#define FRW_TIMER_STOP_TIMER(_pst_timeout) \
-    frw_timer_stop_timer(_pst_timeout)
-#define FRW_TIMER_CREATE_TIMER(_pst_timeout, _p_timeout_func, _ul_timeout, \
-                               _p_timeout_arg, _en_is_periodic, _en_module_id, _ul_core_id) \
+#define frw_create_timer(_pst_timeout, _p_timeout_func, _ul_timeout, \
+                         _p_timeout_arg, _en_is_periodic, _en_module_id, _ul_core_id) \
     frw_timer_create_timer(THIS_FILE_ID, __LINE__, _pst_timeout, _p_timeout_func, _ul_timeout, \
                            _p_timeout_arg, _en_is_periodic, _en_module_id, _ul_core_id)
-#define FRW_TIMER_DESTROY_TIMER(_pst_timeout) \
+#define frw_timer_destroy_timer(_pst_timeout) \
     frw_timer_immediate_destroy_timer(THIS_FILE_ID, __LINE__, _pst_timeout)
-#define FRW_TIMER_IMMEDIATE_DESTROY_TIMER(_pst_timeout) \
+#define frw_immediate_destroy_timer(_pst_timeout) \
     frw_timer_immediate_destroy_timer(THIS_FILE_ID, __LINE__, _pst_timeout)
 
 #define FRW_TIMER_TRACK_NUM   256
@@ -129,7 +130,7 @@ typedef struct {
     oal_uint32 ul_line_num;
     oal_dlist_head_stru st_entry; /* 定期器链表索引 */
 } frw_timeout_stru;
-#if defined(_PRE_DEBUG_MODE) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
+#if defined(_PRE_DEBUG_MODE) && defined(_PRE_TIMEOUT_TRACK_DEBUG)
 
 typedef struct {
     oal_uint32 ul_file_id;
@@ -238,49 +239,49 @@ typedef struct {
 /* 事件队列最大个数 */
 #define FRW_EVENT_MAX_NUM_QUEUES (FRW_EVENT_TYPE_BUTT * WLAN_VAP_SUPPORT_MAX_NUM_LIMIT)
 
-#define FRW_FIELD_SETUP(_p, _m, _v) ((_p)->_m = (_v))
+#define frw_field_setup(_p, _m, _v) ((_p)->_m = (_v))
 
 /* 事件头修改宏(修改事件头中的pipeline和subtype) */
-#define FRW_EVENT_HDR_MODIFY_PIPELINE_AND_SUBTYPE(_pst_event_hdr, _uc_sub_type) \
+#define frw_event_hdr_modify_pipeline_and_subtype(_pst_event_hdr, _uc_sub_type) \
     do {                                                                        \
-        FRW_FIELD_SETUP((_pst_event_hdr), en_pipeline, 1);                      \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_sub_type, (_uc_sub_type));         \
+        frw_field_setup((_pst_event_hdr), en_pipeline, 1);                      \
+        frw_field_setup((_pst_event_hdr), uc_sub_type, (_uc_sub_type));         \
     } while (0)
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-#define FRW_EVENT_HDR_MODIFY_PIPELINE_AND_TYPE_AND_SUBTYPE(_pst_event_hdr, _en_type, _uc_sub_type) \
+#define frw_event_hdr_modify_pipeline_and_type_and_subtype(_pst_event_hdr, _en_type, _uc_sub_type) \
     do {                                                                                           \
-        FRW_FIELD_SETUP((_pst_event_hdr), en_pipeline, 1);                                         \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_sub_type, (_uc_sub_type));                            \
-        FRW_FIELD_SETUP((_pst_event_hdr), en_type, (_en_type));                                    \
+        frw_field_setup((_pst_event_hdr), en_pipeline, 1);                                         \
+        frw_field_setup((_pst_event_hdr), uc_sub_type, (_uc_sub_type));                            \
+        frw_field_setup((_pst_event_hdr), en_type, (_en_type));                                    \
     } while (0)
 #endif
 
 /* 获取事件内存payload */
-#define FRW_EVENT_ALLOC(_us_len) \
+#define frw_event_alloc_m(_us_len) \
     frw_event_alloc(THIS_FILE_ID, __LINE__, _us_len);
 
-#define FRW_EVENT_FREE(_pst_event_mem) \
+#define frw_event_free_m(_pst_event_mem) \
     frw_event_free(THIS_FILE_ID, __LINE__, _pst_event_mem)
 
 /* Hi10X共仓代码适配51，Hi10X为了编译时进行检查，后续可能会有调整 */
-#define FRW_EVENT_ALLOC_BIG(_us_len) \
+#define frw_event_alloc_big(_us_len) \
     frw_event_alloc(THIS_FILE_ID, __LINE__, _us_len);
 
-#define FRW_EVENT_ALLOC_LARGE(_us_len) \
+#define frw_event_alloc_large(_us_len) \
     frw_event_alloc(THIS_FILE_ID, __LINE__, _us_len);
 
 /* 事件头初始化宏 */
-#define FRW_EVENT_HDR_INIT(_pst_event_hdr, _en_type, _uc_sub_type, _us_length, \
+#define frw_event_hdr_init(_pst_event_hdr, _en_type, _uc_sub_type, _us_length, \
                            _en_pipeline, _uc_chip_id, _uc_device_id, _uc_vap_id) \
     do {                                                                                \
-        FRW_FIELD_SETUP((_pst_event_hdr), us_length, ((_us_length) + FRW_EVENT_HDR_LEN)); \
-        FRW_FIELD_SETUP((_pst_event_hdr), en_type, (_en_type));                         \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_sub_type, (_uc_sub_type));                 \
-        FRW_FIELD_SETUP((_pst_event_hdr), en_pipeline, (_en_pipeline));                 \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_chip_id, (_uc_chip_id));                   \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_device_id, (_uc_device_id));               \
-        FRW_FIELD_SETUP((_pst_event_hdr), uc_vap_id, (_uc_vap_id));                     \
+        frw_field_setup((_pst_event_hdr), us_length, ((_us_length) + FRW_EVENT_HDR_LEN)); \
+        frw_field_setup((_pst_event_hdr), en_type, (_en_type));                         \
+        frw_field_setup((_pst_event_hdr), uc_sub_type, (_uc_sub_type));                 \
+        frw_field_setup((_pst_event_hdr), en_pipeline, (_en_pipeline));                 \
+        frw_field_setup((_pst_event_hdr), uc_chip_id, (_uc_chip_id));                   \
+        frw_field_setup((_pst_event_hdr), uc_device_id, (_uc_device_id));               \
+        frw_field_setup((_pst_event_hdr), uc_vap_id, (_uc_vap_id));                     \
     } while (0)
 
 /* 为了hi110x和51共仓代码一致，这里保留该宏定义，使用时注意和frw_get_event_stru进行区分 */
@@ -308,7 +309,7 @@ OAL_STATIC OAL_INLINE frw_event_mem_stru *frw_event_alloc(oal_uint32 ul_file_id,
 
     pst_event_mem = oal_mem_alloc_enhanced(ul_file_id, ul_line_num, OAL_MEM_POOL_ID_EVENT,
                                            (us_payload_length + FRW_EVENT_HDR_LEN), OAL_TRUE);
-    if (OAL_UNLIKELY(pst_event_mem == OAL_PTR_NULL)) {
+    if (oal_unlikely(pst_event_mem == OAL_PTR_NULL)) {
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
         oal_mem_print_normal_pool_info(OAL_MEM_POOL_ID_EVENT);
 #endif
@@ -338,11 +339,11 @@ OAL_STATIC OAL_INLINE oal_uint32 frw_event_free(oal_uint32 ul_file_id,
                                                 frw_event_mem_stru *pst_event_mem)
 {
     oal_uint32 ul_ret;
-    frw_event_stru *pst_frw_event;
+    frw_event_stru *pst_frw_event = NULL;
 
     /* 中断上半部会申请事件，所以需要关中断 */
     ul_ret = oal_mem_free_enhanced(ul_file_id, ul_line_num, pst_event_mem, OAL_TRUE);
-    if (OAL_WARN_ON(ul_ret != OAL_SUCC)) {
+    if (oal_warn_on(ul_ret != OAL_SUCC)) {
         pst_frw_event = frw_get_event_stru(pst_event_mem);
         OAL_IO_PRINT("[E]frw event free failed!, ret:%d, type:%d, subtype:%d\r\n",
                      ul_ret, pst_frw_event->st_event_hdr.en_type,
@@ -354,8 +355,7 @@ OAL_STATIC OAL_INLINE oal_uint32 frw_event_free(oal_uint32 ul_file_id,
 
 /* 函数声明 */
 #ifdef _PRE_DEBUG_MODE
-extern oal_bool_enum_uint8 en_event_track_switch;
-extern oal_uint32 mac_process_event;
+extern oal_bool_enum_uint8 g_en_event_track_switch;
 #endif
 
 extern oal_int32 frw_main_init(oal_void);
@@ -407,9 +407,12 @@ extern oal_bool_enum_uint8 frw_is_vap_event_queue_empty(oal_uint32 ul_core_id, o
                                                         oal_uint8 event_type);
 extern oal_uint8 frw_task_thread_condition_check(oal_uint32 ul_core_id);
 
-#ifdef _PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL
 extern oal_void hcc_host_update_vi_flowctl_param(oal_uint32 be_cwmin, oal_uint32 vi_cwmin);
-#endif
 extern oal_void frw_timer_clean_timer(oam_module_id_enum_uint16 en_module_id);
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 
 #endif /* end of frw_ext_if.h */

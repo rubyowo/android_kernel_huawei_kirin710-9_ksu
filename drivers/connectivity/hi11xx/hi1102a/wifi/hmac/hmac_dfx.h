@@ -1,7 +1,13 @@
 
-
 #ifndef __HMAC_DFX_H__
 #define __HMAC_DFX_H__
+
+/* 1 其他头文件包含 */
+#ifdef _PRE_WLAN_1102A_CHR
+#include "mac_frame.h"
+#include "dmac_ext_if.h"
+#include "hmac_vap.h"
+#endif
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -9,66 +15,46 @@ extern "C" {
 #endif
 #endif
 
-#ifdef _PRE_WLAN_1102A_CHR
-#include "mac_frame.h"
-#include "dmac_ext_if.h"
-#include "hmac_vap.h"
-#endif
-
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_DFX_H
 
-/*****************************************************************************
-  1 其他头文件包含
-*****************************************************************************/
+/* 2 宏定义 */
+#define HMAC_CHR_NETBUF_ALLOC_SIZE 512
 
-/*****************************************************************************
-  2 宏定义
-*****************************************************************************/
-#define HMAC_CHR_NETBUF_ALLOC_SIZE          (512)
-
-/*****************************************************************************
-  3 枚举定义
-*****************************************************************************/
+/* 3 枚举定义 */
 #ifdef _PRE_WLAN_1102A_CHR
-typedef enum
-{
-    HMAC_CHR_ROAM_SUCCESS= 0,
+typedef enum {
+    HMAC_CHR_ROAM_SUCCESS = 0,
     HMAC_CHR_ROAM_SCAN_FAIL = 1,
     HMAC_CHR_ROAM_HANDSHAKE_FAIL = 2,
     HMAC_CHR_ROAM_CONNECT_FAIL = 3,
     HMAC_CHR_ROAM_TIMEOUT_FAIL = 4,
     HMAC_CHR_ROAM_START = 5,
     HMAC_CHR_ROAM_REASON_BUTT
-}hmac_chr_roam_fail_reason;
+} hmac_chr_roam_fail_reason;
 typedef oal_uint8 roam_fail_reason_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     HMAC_CHR_ROAM_NORMAL = 0,
     HMAC_CHR_OVER_DS = 1,
     HMAC_CHR_OVER_THE_AIR = 2,
 
     HMAC_CHR_ROAM_MODE_BUTT
-}hmac_chr_roam_mode;
+} hmac_chr_roam_mode;
 typedef oal_uint8 roam_mode_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     HMAC_CHR_NON_11K = 0,
     HMAC_CHR_11K = 1,
 
     HMAC_CHR_SCAN_MODE_BUTT
-}hmac_chr_scan_mode;
+} hmac_chr_scan_mode;
 typedef oal_uint8 scan_mode_enum_uint8;
 #endif
-/*****************************************************************************
-  4 全局变量声明
-*****************************************************************************/
-#ifdef _PRE_WLAN_1102A_CHR
 
-typedef struct
-{
+/* 4 全局变量声明 */
+#ifdef _PRE_WLAN_1102A_CHR
+typedef struct {
     oal_uint8 uc_vap_state;
     oal_uint8 uc_vap_num;
     oal_uint8 uc_protocol;
@@ -83,45 +69,39 @@ typedef struct
     oal_uint8 bit_ap_11ntxbf     : 1;
     oal_uint8 bit_ap_qos         : 1;
     oal_uint8 bit_ap_1024qam_cap : 1;
-}hmac_chr_vap_info_stru;
+} hmac_chr_vap_info_stru;
 
-typedef struct tag_hmac_chr_ba_info_stru
-{
+typedef struct tag_hmac_chr_ba_info_stru {
     oal_uint8 uc_ba_num;
     oal_uint8 uc_del_ba_tid;
     mac_reason_code_enum_uint16 en_del_ba_reason;
-}hmac_chr_del_ba_info_stru;
+} hmac_chr_del_ba_info_stru;
 
-typedef struct tag_hmac_chr_disasoc_reason_stru
-{
+typedef struct tag_hmac_chr_disasoc_reason_stru {
     oal_uint16 us_user_id;
     dmac_disasoc_misc_reason_enum_uint16 en_disasoc_reason;
-}hmac_chr_disasoc_reason_stru;
+} hmac_chr_disasoc_reason_stru;
 
-typedef struct
-{
-
+typedef struct {
     hmac_chr_disasoc_reason_stru st_disasoc_reason;
     hmac_chr_del_ba_info_stru    st_del_ba_info;
     hmac_chr_vap_info_stru       st_vap_info;
     oal_uint16                   us_connect_code;
     oal_uint8                    _resv[2];
-}hmac_chr_info;
+} hmac_chr_info;
 
-typedef struct tag_hmac_chr_connect_fail_report_stru
-{
+typedef struct tag_hmac_chr_connect_fail_report_stru {
     oal_int32    ul_snr;
-    oal_int32    ul_noise;           /* 底噪 */
-    oal_int32    ul_chload;          /* 信道繁忙程度*/
+    oal_int32    ul_noise;    /* 底噪 */
+    oal_int32    ul_chload;   /* 信道繁忙程度 */
     oal_int8     c_signal;
-    oal_uint8    uc_distance;        /*算法的tpc距离，对应dmac_alg_tpc_user_distance_enum*/
-    oal_uint8    uc_cca_intr;        /*算法的cca_intr干扰，对应alg_cca_opt_intf_enum*/
+    oal_uint8    uc_distance; /* 算法的tpc距离，对应dmac_alg_tpc_user_distance_enum */
+    oal_uint8    uc_cca_intr; /* 算法的cca_intr干扰，对应alg_cca_opt_intf_enum */
     oal_uint16   us_err_code;
     oal_uint8    _resv[2];
-}mac_chr_connect_fail_report_stru;
+} mac_chr_connect_fail_report_stru;
 
-typedef struct
-{
+typedef struct {
     oal_uint8 uc_trigger;
     oal_uint8 uc_roam_result;
     oal_uint8 uc_scan_mode;
@@ -129,40 +109,22 @@ typedef struct
     oal_uint32 uc_scan_time;
     oal_uint32 uc_connect_time;
     oal_uint8   _resv[4];
-}hmac_chr_roam_info_stru;
-
+} hmac_chr_roam_info_stru;
 #endif
-/*****************************************************************************
-  5 消息头定义
-*****************************************************************************/
 
-
-/*****************************************************************************
-  6 消息定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  7 STRUCT定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  8 UNION定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  9 OTHERS定义
-*****************************************************************************/
-
-
-/*****************************************************************************
-  10 函数声明
-*****************************************************************************/
+/* 5 消息头定义 */
+/* 6 消息定义 */
+/* 7 STRUCT定义 */
+/* 8 UNION定义 */
+/* 9 OTHERS定义 */
+/* 10 函数声明 */
+extern oal_uint32 hmac_get_wlan_vap_max_num_per_device(oal_void);
+extern oal_void hmac_set_wlan_vap_max_num_per_device(oal_uint32 ul_wlan_vap_max_num_per_device);
+extern oal_uint16 hmac_get_wlan_assoc_user_max_num(oal_void);
+extern oal_void hmac_set_wlan_assoc_user_max_num(oal_uint16 assoc_user_max_num);
 extern oal_uint32  hmac_dfx_init(void);
 extern oal_uint32  hmac_dfx_exit(void);
-extern oal_uint32  hmac_custom_init(oal_uint32 ul_psta_enable);
+extern oal_void hmac_custom_init(oal_uint32 ul_psta_enable);
 
 #ifdef _PRE_WLAN_1102A_CHR
 hmac_chr_disasoc_reason_stru* hmac_chr_disasoc_reason_get_pointer(void);
@@ -180,9 +142,9 @@ oal_uint32  hmac_get_chr_info_event_hander(oal_uint32 chr_event_id);
 oal_void hmac_chr_connect_fail_query_and_report(hmac_vap_stru *pst_hmac_vap, mac_status_code_enum_uint16 connet_code);
 #endif
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 
 #endif /* end of hmac_dfx.h */

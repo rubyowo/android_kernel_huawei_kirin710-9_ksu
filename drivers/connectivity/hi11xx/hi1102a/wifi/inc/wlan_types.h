@@ -3,31 +3,26 @@
 #ifndef __WLAN_TYPES_H__
 #define __WLAN_TYPES_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
-
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
 #include "wlan_spec.h"
 #include "oal_ext_if.h"
 
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-
 /*****************************************************************************
   2.1 基本宏定义
 *****************************************************************************/
-
 #define MAC_BYTE_ALIGN_VALUE                4           /* 4字节对齐 */
-/*MAC帧头长度放入平台*/
-
-
+/* MAC帧头长度放入平台 */
 /* 80211MAC帧头FC字段宏定义 */
 #define WLAN_PROTOCOL_VERSION               0x00        /* 协议版本 */
 #define WLAN_FC0_TYPE_MGT                   0x00        /* 管理帧 */
@@ -131,7 +126,7 @@ extern "C" {
 #define WLAN_UPC_DATA_REG_NUM       4
 
 #define WLAN_FIELD_TYPE_AID            0xC000
-#define WLAN_AID(AID)                  ((AID) &~ 0xc000)
+#define WLAN_AID(AID)                  ((AID) & ~0xc000)
 
 #define WLAN_MAX_VAP_NUM            2
 #define WLAN_2G_SUB_BAND_NUM        13
@@ -161,9 +156,6 @@ extern "C" {
         ((_ac) == WLAN_WME_AC_VI) ? 5 : \
         ((_ac) == WLAN_WME_AC_BK) ? 1 : \
         0)
-
-
-
 #define WLAN_WME_TID_TO_AC(_tid) (      \
         (((_tid) == 0) || ((_tid) == 3)) ? WLAN_WME_AC_BE : \
         (((_tid) == 1) || ((_tid) == 2)) ? WLAN_WME_AC_BK : \
@@ -173,18 +165,17 @@ extern "C" {
 /*****************************************************************************
   2.3 HT宏定义
 *****************************************************************************/
-/* 11n: Maximum A-MSDU Length Indicates maximum A-MSDU length.See 9.11. Set to 0 for 3839 octetsSet to 1 for 7935 octets */
+/* 11n: Max A-MSDU Length Indicates maximum A-MSDU length.See 9.11. Set to 0 for 3839 octetsSet to 1 for 7935 octets */
 /* 11AC(9.11): A VHT STA that sets the Maximum MPDU Length in the VHT Capabilities element to indicate 3895 octets
    shall set the Maximum A-MSDU Length in the HT Capabilities element to indicate 3839 octets. A VHT STA
    that sets the Maximum MPDU Length in the VHT Capabilities element to indicate 7991 octets or 11 454 oc-
    tets shall set the Maximum A-MSDU Length in the HT Capabilities element to indicate 7935 octets. */
-
 #define WLAN_AMSDU_FRAME_MAX_LEN_SHORT      3839
 #define WLAN_AMSDU_FRAME_MAX_LEN_LONG       7935
 
 /* Maximum A-MSDU Length Indicates maximum A-MSDU length.See 9.11. Set to 0 for 3839 octetsSet to 1 for 7935 octets */
 #define WLAN_HT_GET_AMSDU_MAX_LEN(_bit_amsdu_max_length)  \
-       ((0 == (_bit_amsdu_max_length)) ? WLAN_AMSDU_FRAME_MAX_LEN_SHORT : WLAN_AMSDU_FRAME_MAX_LEN_LONG)
+    (((_bit_amsdu_max_length) == 0) ? WLAN_AMSDU_FRAME_MAX_LEN_SHORT : WLAN_AMSDU_FRAME_MAX_LEN_LONG)
 
 /* RSSI统计滤波，RSSI范围是-128~127, 一般不会等于127这么大，所以将127设置为MARKER,即初始值 */
 #define WLAN_RSSI_DUMMY_MARKER              0x7F
@@ -192,7 +183,7 @@ extern "C" {
 /*****************************************************************************
   2.4 linkloss
 *****************************************************************************/
-#define WLAN_LINKLOSS_REPORT                10 /* linkloss每10次打印一次维测*/
+#define WLAN_LINKLOSS_REPORT                10 /* linkloss每10次打印一次维测 */
 #define WLAN_LINKLOSS_MIN_THRESHOLD         10 /* linkloss门限最小最低值 */
 
 /*****************************************************************************
@@ -258,8 +249,6 @@ extern "C" {
 #define WITP_WLAN_AKM_SUITE_WAPI_PSK     0x000FAC04
 #define WITP_WLAN_AKM_SUITE_WAPI_CERT    0x000FAC12
 
-
-
 #define WLAN_PMKID_LEN           16
 #define WLAN_PMKID_CACHE_SIZE    32
 #define WLAN_NONCE_LEN           32
@@ -267,7 +256,6 @@ extern "C" {
 #define WLAN_GTK_PREFIX_LEN      19
 #define WLAN_GTK_DATA_LEN        (NONCE_LEN + WLAN_MAC_ADDR_LEN)
 #define WLAN_PTK_DATA_LEN        (2 * NONCE_LEN + 2 * WLAN_MAC_ADDR_LEN)
-
 
 #define WLAN_KCK_LENGTH          16
 #define WLAN_KEK_LENGTH          16
@@ -309,9 +297,6 @@ extern "C" {
 #define WLAN_8021X_BIT          (1 << 2)
 
 #define WLAN_WITP_CAPABILITY_PRIVACY BIT4
-
-
-
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -319,8 +304,7 @@ extern "C" {
   3.1 基本枚举类型
 *****************************************************************************/
 /* 管理帧子类型 */
-typedef enum
-{
+typedef enum {
     WLAN_ASSOC_REQ              = 0,    /* 0000 */
     WLAN_ASSOC_RSP              = 1,    /* 0001 */
     WLAN_REASSOC_REQ            = 2,    /* 0010 */
@@ -341,16 +325,15 @@ typedef enum
     WLAN_MGMT_SUBTYPE_BUTT      = 16,   /* 一共16种管理帧子类型 */
 }wlan_frame_mgmt_subtype_enum;
 
-/*TBD，不应该BUTT后续存在枚举*/
-typedef enum
-{
+/* 不应该BUTT后续存在枚举 */
+typedef enum {
     WLAN_WME_AC_BE = 0,    /* best effort */
     WLAN_WME_AC_BK = 1,    /* background */
     WLAN_WME_AC_VI = 2,    /* video */
     WLAN_WME_AC_VO = 3,    /* voice */
 
     WLAN_WME_AC_BUTT = 4,
-    WLAN_WME_AC_MGMT = WLAN_WME_AC_BUTT   /* 管理AC，协议没有,对应硬件高优先级队列*/
+    WLAN_WME_AC_MGMT = WLAN_WME_AC_BUTT   /* 管理AC，协议没有,对应硬件高优先级队列 */
 }wlan_wme_ac_type_enum;
 typedef oal_uint8 wlan_wme_ac_type_enum_uint8;
 
@@ -358,8 +341,7 @@ typedef oal_uint8 wlan_wme_ac_type_enum_uint8;
 #define WLAN_TID_MAX_NUM                    WLAN_TIDNO_BUTT
 
 /* TID编号类别 */
-typedef enum
-{
+typedef enum {
     WLAN_TIDNO_BEST_EFFORT              = 0, /* BE业务 */
     WLAN_TIDNO_BACKGROUND               = 1, /* BK业务 */
     WLAN_TIDNO_UAPSD                    = 2, /* U-APSD */
@@ -374,10 +356,8 @@ typedef enum
 typedef oal_uint8 wlan_tidno_enum_uint8;
 
 /* TID编号类别放入平台 */
-
 /* VAP的工作模式 */
-typedef enum
-{
+typedef enum {
     WLAN_VAP_MODE_CONFIG,        /* 配置模式 */
     WLAN_VAP_MODE_BSS_STA,       /* BSS STA模式 */
     WLAN_VAP_MODE_BSS_AP,        /* BSS AP模式 */
@@ -387,8 +367,7 @@ typedef enum
 typedef oal_uint8 wlan_vap_mode_enum_uint8;
 
 /* 认证的transaction number */
-typedef enum
-{
+typedef enum {
     WLAN_AUTH_TRASACTION_NUM_ONE    = 0x0001,
     WLAN_AUTH_TRASACTION_NUM_TWO    = 0x0002,
     WLAN_AUTH_TRASACTION_NUM_THREE  = 0x0003,
@@ -397,8 +376,7 @@ typedef enum
     WLAN_AUTH_TRASACTION_NUM_BUTT
 }wlan_auth_transaction_number_enum;
 typedef oal_uint8 wlan_auth_transaction_number_enum_uint8;
-typedef enum
-{
+typedef enum {
     WLAN_BAND_2G,
     WLAN_BAND_5G,
 
@@ -407,8 +385,7 @@ typedef enum
 typedef oal_uint8 wlan_channel_band_enum_uint8;
 
 /* Protection mode for MAC */
-typedef enum
-{
+typedef enum {
     WLAN_PROT_NO,           /* Do not use any protection       */
     WLAN_PROT_ERP,          /* Protect all ERP frame exchanges */
     WLAN_PROT_HT,           /* Protect all HT frame exchanges  */
@@ -418,8 +395,7 @@ typedef enum
 }wlan_prot_mode_enum;
 typedef oal_uint8 wlan_prot_mode_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_RTS_RATE_SELECT_MODE_REG,  /* 0: RTS速率 = PROT_DATARATE的配置                           */
     WLAN_RTS_RATE_SELECT_MODE_DESC, /* 1: RTS速率 = 硬件根据TX描述符计算出的值                    */
     WLAN_RTS_RATE_SELECT_MODE_MIN,  /* 2: RTS速率 = min(PROT_DATARATE,硬件根据TX描述符计算出的值) */
@@ -429,8 +405,7 @@ typedef enum
 }wlan_rts_rate_select_mode_enum;
 
 #if IS_HOST
-typedef enum
-{
+typedef enum {
     WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
     WLAN_WITP_AUTH_SHARED_KEY,
     WLAN_WITP_AUTH_FT,
@@ -442,13 +417,13 @@ typedef enum
     WLAN_WITP_AUTH_FILS_SK_PFS,
     WLAN_WITP_AUTH_FILS_PK,
 #endif
+    WLAN_WITP_AUTH_TBPEKE,
     WLAN_WITP_AUTH_AUTOMATIC,
 
     WLAN_WITP_ALG_AUTH_BUTT
 }wlan_auth_alg_mode_enum;
 #else
-typedef enum
-{
+typedef enum {
     WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
     WLAN_WITP_AUTH_SHARED_KEY,
     WLAN_WITP_AUTH_FT,
@@ -461,8 +436,7 @@ typedef enum
 #endif
 typedef oal_uint8 wlan_auth_alg_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     /*
     *  注意: wlan_cipher_key_type_enum和hal_key_type_enum 值一致,
     *        如果硬件有改变，则应该在HAL 层封装
@@ -475,13 +449,11 @@ typedef enum
 } wlan_cipher_key_type_enum;
 typedef oal_uint8 wlan_cipher_key_type_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     /*
     *  注意: wlan_key_origin_enum_uint8和hal_key_origin_enum_uint8 值一致,
     *        如果硬件有改变，则应该在HAL 层封装
     */
-
     WLAN_AUTH_KEY = 0,      /* Indicates that for this key, this STA is the authenticator */
     WLAN_SUPP_KEY = 1,      /* Indicates that for this key, this STA is the supplicant */
 
@@ -489,8 +461,7 @@ typedef enum
 }wlan_key_origin_enum;
 typedef oal_uint8 wlan_key_origin_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     /* 按照80211-2012 协议 Table 8-99 Cipher suite selectors 定义 */
     WLAN_80211_CIPHER_SUITE_GROUP_CIPHER = 0,
     WLAN_80211_CIPHER_SUITE_WEP_40       = 1,
@@ -523,8 +494,7 @@ typedef oal_uint8 wlan_ciper_protocol_type_enum_uint8;
 #define WLAN_AUTH_SUITE_SAE_SHA256       8
 #define WLAN_AUTH_SUITE_FT_SHA256        9
 
-typedef enum
-{
+typedef enum {
     WITP_WPA_VERSION_1 = 1,
     WITP_WPA_VERSION_2 = 2,
 #ifdef _PRE_WLAN_FEATURE_WAPI
@@ -534,8 +504,7 @@ typedef enum
 typedef oal_uint8 witp_wpa_versions_enum_uint8;
 
 
-typedef struct
-{
+typedef struct {
     wlan_cipher_key_type_enum_uint8          en_cipher_key_type;      /* 密钥ID/类型 */
     wlan_ciper_protocol_type_enum_uint8      en_cipher_protocol_type;
     oal_uint8                                uc_cipher_key_id;
@@ -543,8 +512,7 @@ typedef struct
 }wlan_security_txop_params_stru;
 
 /* 协议能力枚举 */
-typedef enum
-{
+typedef enum {
     WLAN_PROTOCOL_CAP_LEGACY,
     WLAN_PROTOCOL_CAP_HT,
     WLAN_PROTOCOL_CAP_VHT,
@@ -554,8 +522,7 @@ typedef enum
 typedef oal_uint8 wlan_protocol_cap_enum_uint8;
 
 /* 频带能力枚举 */
-typedef enum
-{
+typedef enum {
     WLAN_BAND_CAP_2G,        /* 只支持2G */
     WLAN_BAND_CAP_5G,        /* 只支持5G */
     WLAN_BAND_CAP_2G_5G,     /* 支持2G 5G */
@@ -565,8 +532,7 @@ typedef enum
 typedef oal_uint8 wlan_band_cap_enum_uint8;
 
 /* 带宽能力枚举 */
-typedef enum
-{
+typedef enum {
     WLAN_BW_CAP_20M,
     WLAN_BW_CAP_40M,
     WLAN_BW_CAP_80M,
@@ -578,8 +544,7 @@ typedef oal_uint8 wlan_bw_cap_enum_uint8;
 
 
 /* 调制方式枚举 */
-typedef enum
-{
+typedef enum {
     WLAN_MOD_DSSS,
     WLAN_MOD_OFDM,
 
@@ -587,8 +552,7 @@ typedef enum
 }wlan_mod_enum;
 typedef oal_uint8 wlan_mod_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_CSA_MODE_TX_ENABLE = 0,
     WLAN_CSA_MODE_TX_DISABLE,
 
@@ -600,8 +564,7 @@ typedef oal_uint8 wlan_csa_mode_tx_enum_uint8;
   3.4 VHT枚举类型
 *****************************************************************************/
 #ifdef _PRE_WLAN_NARROW_BAND
-typedef enum
-{
+typedef enum {
     NARROW_BW_10M = 0x80,
     NARROW_BW_5M = 0x81,
     NARROW_BW_1M = 0x82,
@@ -610,8 +573,7 @@ typedef enum
 typedef oal_uint8 mac_narrow_bw_enum_uint8;
 #endif
 
-typedef enum
-{
+typedef enum {
     WLAN_VHT_MCS0,
     WLAN_VHT_MCS1,
     WLAN_VHT_MCS2,
@@ -631,8 +593,7 @@ typedef oal_uint8 wlan_vht_mcs_enum_uint8;
     复用1101定义的顺序
     TBD，和周赟讨论后，修正速率的先后顺序
 */
-typedef enum
-{
+typedef enum {
     WLAN_LEGACY_11b_RESERVED1       = 0,
     WLAN_SHORT_11b_2M_BPS           = 1,
     WLAN_SHORT_11b_5_HALF_M_BPS     = 2,
@@ -657,8 +618,7 @@ typedef enum
 typedef oal_uint8 wlan_legacy_rate_value_enum_uint8;
 
 /* WIFI协议类型定义 */
-typedef enum
-{
+typedef enum {
     WLAN_LEGACY_11A_MODE            = 0,    /* 11a, 5G, OFDM */
     WLAN_LEGACY_11B_MODE            = 1,    /* 11b, 2.4G */
     WLAN_LEGACY_11G_MODE            = 2,    /* 旧的11g only已废弃, 2.4G, OFDM */
@@ -668,23 +628,21 @@ typedef enum
     WLAN_VHT_MODE                   = 6,    /* 11ac */
     WLAN_HT_ONLY_MODE               = 7,    /* 11n only mode,只有带HT的设备才可以接入 */
     WLAN_VHT_ONLY_MODE              = 8,    /* 11ac only mode 只有带VHT的设备才可以接入 */
-    WLAN_HT_11G_MODE                = 9,    /* 11ng,不包括11b*/
+    WLAN_HT_11G_MODE                = 9,    /* 11ng,不包括11b */
 
     WLAN_PROTOCOL_BUTT
 }wlan_protocol_enum;
 typedef oal_uint8 wlan_protocol_enum_uint8;
 
 /* 重要:代表VAP的preamble协议能力的使用该枚举，0表示long preamble; 1表示short preamble */
-typedef enum
-{
+typedef enum {
     WLAN_LEGACY_11B_MIB_LONG_PREAMBLE    = 0,
     WLAN_LEGACY_11B_MIB_SHORT_PREAMBLE   = 1,
 }wlan_11b_mib_preamble_enum;
 typedef oal_uint8 wlan_11b_mib_preamble_enum_uint8;
 
 /* 重要:仅限描述符接口使用(表示发送该帧使用的pramble类型)，0表示short preamble; 1表示long preamble */
-typedef enum
-{
+typedef enum {
     WLAN_LEGACY_11B_DSCR_SHORT_PREAMBLE  = 0,
     WLAN_LEGACY_11B_DSCR_LONG_PREAMBLE   = 1,
 
@@ -695,8 +653,7 @@ typedef oal_uint8 wlan_11b_dscr_preamble_enum_uint8;
 /*****************************************************************************
   3.3 HT枚举类型
 *****************************************************************************/
-typedef enum
-{
+typedef enum {
     WLAN_BAND_WIDTH_20M                 = 0,
     WLAN_BAND_WIDTH_40PLUS              = 1,    /* 从20信道+1 */
     WLAN_BAND_WIDTH_40MINUS             = 2,    /* 从20信道-1 */
@@ -710,8 +667,7 @@ typedef enum
 }wlan_channel_bandwidth_enum;
 typedef oal_uint8 wlan_channel_bandwidth_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_CH_SWITCH_DONE     = 0,   /* 信道切换已经完成，AP在新信道运行 */
     WLAN_CH_SWITCH_STATUS_1 = 1,   /* AP还在当前信道，准备进行信道切换(发送CSA帧/IE) */
     WLAN_CH_SWITCH_STATUS_2 = 2,
@@ -720,8 +676,7 @@ typedef enum
 }wlan_ch_switch_status_enum;
 typedef oal_uint8 wlan_ch_switch_status_enum_uint8;
 
-typedef enum
-  {
+typedef enum {
     WLAN_AP_CHIP_OUI_NORMAL     = 0,
     WLAN_AP_CHIP_OUI_RALINK     = 1,   /* 芯片厂商为RALINK */
     WLAN_AP_CHIP_OUI_RALINK1    = 2,
@@ -734,21 +689,18 @@ typedef enum
 
 typedef oal_uint8 wlan_ap_chip_oui_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_BW_SWITCH_DONE     = 0,    /* 频宽切换已完成 */
     WLAN_BW_SWITCH_40_TO_20 = 1,    /* 从40MHz带宽切换至20MHz带宽 */
     WLAN_BW_SWITCH_20_TO_40 = 2,    /* 从20MHz带宽切换至40MHz带宽 */
 
     /* 后续添加 */
-
     WLAN_BW_SWITCH_BUTT
 }wlan_bw_switch_status_enum;
 typedef oal_uint8 wlan_bw_switch_status_enum_uint8;
 
 
-typedef enum
-{
+typedef enum {
     WLAN_BAND_ASSEMBLE_20M                   = 0,
 
     WLAN_BAND_ASSEMBLE_40M                   = 4,
@@ -769,8 +721,7 @@ typedef enum
 typedef oal_uint8 hal_channel_assemble_enum_uint8;
 
 
-typedef enum
-{
+typedef enum {
     WLAN_HT_MIXED_PREAMBLE          = 0,
     WLAN_HT_GF_PREAMBLE             = 1,
 
@@ -778,8 +729,7 @@ typedef enum
 }wlan_ht_preamble_enum;
 typedef oal_uint8 wlan_ht_preamble_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_HT_MCS0,
     WLAN_HT_MCS1,
     WLAN_HT_MCS2,
@@ -804,8 +754,7 @@ typedef oal_uint8 wlan_ht_mcs_enum_uint8;
 #define WLAN_MIN_MPDU_LEN_FOR_MCS32   12
 #define WLAN_MIN_MPDU_LEN_FOR_MCS32_SHORTGI   13
 
-typedef enum
-{
+typedef enum {
     WLAN_SINGLE_NSS                 = 0,
     WLAN_DOUBLE_NSS                 = 1,
     WLAN_TRIPLE_NSS                 = 2,
@@ -814,24 +763,7 @@ typedef enum
     WLAN_NSS_BUTT
 }wlan_nss_enum;
 typedef oal_uint8 wlan_nss_enum_uint8;
-
-/************************By DOTA**************************/
-/*
-typedef enum
-{
-    WLAN_FIRST_BLOOD            = 0,
-    WLAN_DOUBLE_KILL            = 1,
-    WLAN_TRIPLE_KILL            = 2,
-    WLAN_ULTRA_KILL             = 3,
-    WLAN_RAMPAGE                = 4,
-
-    WLAN_KILL_BUTT
-}wlan_kill_enum;
-typedef oal_uint8 wlan_kill_enum_uint8;
-*/
-
-typedef enum
-{
+typedef enum {
     WLAN_HT_NON_STBC                   = 0,
     WLAN_HT_ADD_ONE_NTS                = 1,
     WLAN_HT_ADD_TWO_NTS                = 2,
@@ -840,8 +772,7 @@ typedef enum
 }wlan_ht_stbc_enum;
 typedef oal_uint8 wlan_ht_stbc_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_NO_SOUNDING                = 0,
     WLAN_NDP_SOUNDING               = 1,
     WLAN_STAGGERED_SOUNDING         = 2,
@@ -851,8 +782,7 @@ typedef enum
 }wlan_sounding_enum;
 typedef oal_uint8 wlan_sounding_enum_uint8;
 
-typedef struct
-{
+typedef struct {
     oal_uint8                               uc_group_id;      /* group_id   */
     oal_uint8                               uc_txop_ps_not_allowed;
     oal_uint16                              us_partial_aid;   /* partial_aid */
@@ -861,8 +791,7 @@ typedef struct
 /*****************************************************************************
   3.4 TXBF枚举类型
 *****************************************************************************/
-typedef enum
-{
+typedef enum {
     WLAN_NON_TXBF                   = 0,
     WLAN_EXPLICIT_TXBF              = 1,
     WLAN_LEGACY_TXBF                = 2,
@@ -874,16 +803,13 @@ typedef oal_uint8 wlan_txbf_enum_uint8;
 /*****************************************************************************
   3.5 WME枚举类型
 *****************************************************************************/
-
-/*WMM枚举类型放入平台*/
-
+/* WMM枚举类型放入平台 */
 /* 帧类型 (2-bit) */
-typedef enum
-{
+typedef enum {
     WLAN_MANAGEMENT            = 0,
     WLAN_CONTROL               = 1,
     WLAN_DATA_BASICTYPE        = 2,
-    //WLAN_DATA_NULL             = 3, /*QOS NULL DATA && NULL DATA*/
+    // WLAN_DATA_NULL             = 3, /* QOS NULL DATA && NULL DATA */
     WLAN_RESERVED              = 3,
 
     WLAN_FRAME_TYPE_BUTT
@@ -892,10 +818,8 @@ typedef oal_uint8 wlan_frame_type_enum_uint8;
 
 /* 帧子类型 (4-bit) */
 /* 管理帧子类型放入平台SPEC */
-
 /* 控制帧帧子类型 */
-typedef enum
-{
+typedef enum {
     /* 0~6 reserved */
     WLAN_VHT_NDPA               = 5,     /* 0101 */
     WLAN_CONTROL_WRAPPER        = 7,
@@ -912,8 +836,7 @@ typedef enum
 }wlan_frame_control_subtype_enum;
 
 /* 数据帧子类型 */
-typedef enum
-{
+typedef enum {
     WLAN_DATA                   = 0,
     WLAN_DATA_CF_ACK            = 1,
     WLAN_DATA_CF_POLL           = 2,
@@ -935,8 +858,7 @@ typedef enum
 }wlan_frame_data_subtype_enum;
 
 /* ACK类型定义 */
-typedef enum
-{
+typedef enum {
     WLAN_TX_NORMAL_ACK = 0,
     WLAN_TX_NO_ACK,
     WLAN_TX_NO_EXPLICIT_ACK,
@@ -949,10 +871,8 @@ typedef oal_uint8   wlan_tx_ack_policy_enum_uint8;
 /*****************************************************************************
   3.6 信道枚举
 *****************************************************************************/
-
 /* 信道编码方式 */
-typedef enum
-{
+typedef enum {
     WLAN_BCC_CODE                   = 0,
     WLAN_LDPC_CODE                  = 1,
     WLAN_CHANNEL_CODE_BUTT
@@ -960,8 +880,7 @@ typedef enum
 typedef oal_uint8 wlan_channel_code_enum_uint8;
 
 /* 扫描类型 */
-typedef enum
-{
+typedef enum {
     WLAN_SCAN_TYPE_PASSIVE       = 0,
     WLAN_SCAN_TYPE_ACTIVE        = 1,
 
@@ -970,8 +889,7 @@ typedef enum
 typedef oal_uint8 wlan_scan_type_enum_uint8;
 
 /* 扫描模式 */
-typedef enum
-{
+typedef enum {
     WLAN_SCAN_MODE_FOREGROUND,          /* 前景扫描不分AP/STA(即初始扫描，连续式) */
     WLAN_SCAN_MODE_BACKGROUND_STA,      /* STA背景扫描 */
     WLAN_SCAN_MODE_BACKGROUND_AP,       /* AP背景扫描(间隔式) */
@@ -996,8 +914,7 @@ typedef enum
 typedef oal_uint8 wlan_scan_mode_enum_uint8;
 
 /* 扫描结果枚举 */
-typedef enum
-{
+typedef enum {
     WLAN_SCAN_EVENT_COMPLETE    = 0,
     WLAN_SCAN_EVENT_FAILED,
     WLAN_SCAN_EVENT_ABORT,  /* 强制终止，比如卸载 */
@@ -1006,8 +923,7 @@ typedef enum
 }dmac_scan_event_enum;
 typedef oal_uint8 wlan_scan_event_enum_uint8;
 
-typedef enum
-{
+typedef enum {
     WLAN_LEGACY_VAP_MODE     = 0,    /* 非P2P设备 */
     WLAN_P2P_GO_MODE         = 1,    /* P2P_GO */
     WLAN_P2P_DEV_MODE        = 2,    /* P2P_Device */
@@ -1020,10 +936,8 @@ typedef oal_uint8 wlan_p2p_mode_enum_uint8;
 /*****************************************************************************
   3.7 加密枚举
 *****************************************************************************/
-
 /* pmf的能力 */
-typedef enum
-{
+typedef enum {
     MAC_PMF_DISABLED  = 0, /* 不支持pmf能力 */
     MAC_PMF_ENABLED,       /* 支持pmf能力，且不强制 */
     MAC_PME_REQUIRED,       /* 严格执行pmf能力 */
@@ -1035,10 +949,8 @@ typedef oal_uint8 wlan_pmf_cap_status_uint8;
 /*****************************************************************************
   3.8 linkloss场景枚举
 *****************************************************************************/
-
-/*linkloss场景枚举*/
-typedef enum
-{
+/* linkloss场景枚举 */
+typedef enum {
     WLAN_LINKLOSS_MODE_BT = 0,
     WLAN_LINKLOSS_MODE_DBAC,
     WLAN_LINKLOSS_MODE_NORMAL,
@@ -1051,8 +963,7 @@ typedef oal_uint8 wlan_linkloss_mode_enum_uint8;
   3.9 extlna枚举
 *****************************************************************************/
 /* 动态bypass外置LNA状态 */
-typedef enum
-{
+typedef enum {
     WLAN_EXTLNA_BYPASS_EN_OFF      = 0, /* 动态bypass外置LNA功能关 */
     WLAN_EXTLNA_BYPASS_EN_ON       = 1, /* 动态bypass外置LNA功能开 */
     WLAN_EXTLNA_BYPASS_EN_FORCE    = 2, /* 低功耗场景强制关闭外置LNA */
@@ -1073,34 +984,27 @@ typedef oal_uint8 wlan_ieee80211_roc_type_uint8;
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-
-
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   6 消息定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-typedef struct
-{
-    oal_uint32                      ul_cipher;                      /*加密类型*/
-    oal_uint32                      ul_key_len;                     /*密钥长*/
-    oal_uint32                      ul_seq_len;                     /*sequnece长*/
-    oal_uint8                       auc_key[WLAN_WPA_KEY_LEN];      /*密钥*/
-    oal_uint8                       auc_seq[WLAN_WPA_SEQ_LEN];      /*sequence*/
+typedef struct {
+    oal_uint32                      ul_cipher;                      /* 加密类型 */
+    oal_uint32                      ul_key_len;                     /* 密钥长 */
+    oal_uint32                      ul_seq_len;                     /* sequnece长 */
+    oal_uint8                       auc_key[WLAN_WPA_KEY_LEN];      /* 密钥 */
+    oal_uint8                       auc_seq[WLAN_WPA_SEQ_LEN];      /* sequence */
 }wlan_priv_key_param_stru;
 
-/* uc_packet_check_num0表示当前查找到的特定广播帧全0x00的个数*/
-/* uc_packet_check_num1表示当前查找到的特定广播帧全0xFF的个数*/
-/* uc_packet_check_num2表示当前查找到的特定广播帧全0x5A的个数*/
-/* uc_packet_check_num3表示当前查找到的特定广播帧全0xA5的个数*/
+/* uc_packet_check_num0表示当前查找到的特定广播帧全0x00的个数 */
+/* uc_packet_check_num1表示当前查找到的特定广播帧全0xFF的个数 */
+/* uc_packet_check_num2表示当前查找到的特定广播帧全0x5A的个数 */
+/* uc_packet_check_num3表示当前查找到的特定广播帧全0xA5的个数 */
 typedef struct {
     oal_uint16 us_pkt_check_send_num;
     oal_uint8  uc_pkt_check_num0;
@@ -1108,31 +1012,27 @@ typedef struct {
     oal_uint8  uc_pkt_check_num2;
     oal_uint8  uc_pkt_check_num3;
     oal_uint8  resv[2];
-} wal_packet_check_rx_info_stru;
+} hmac_packet_check_rx_info_stru;
 
 
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
-
-
 /*****************************************************************************
   9 OTHERS定义
 *****************************************************************************/
 
 OAL_STATIC OAL_INLINE oal_uint8  wlan_hdr_get_frame_type(oal_uint8 *puc_header)
 {
-    return ((puc_header[0] & (0x0c)) >> 2);
+    return ((puc_header[0] & (0x0c)) >> 2); /* 获取puc_header[0]的2-3bit（get_frame_type） */
 }
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
-
-
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 
 #endif /* end of wlan_types.h */

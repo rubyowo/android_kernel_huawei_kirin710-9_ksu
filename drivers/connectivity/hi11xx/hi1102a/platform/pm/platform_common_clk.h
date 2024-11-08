@@ -6,11 +6,9 @@
 /* 其他头文件包含 */
 #include "oal_types.h"
 #include "plat_type.h"
-#undef THIS_FILE_ID
-#define THIS_FILE_ID OAM_FILE_ID_PLATFORM_COMMON_CLK_H
 
 /* 宏定义 */
-#define HI_STATIC_ASSERT(cond_, name_) typedef char assert_failed_##name_[(cond_) ? 1 : -1]
+#define hi_static_assert(cond_, name_) typedef char assert_failed_##name_[(cond_) ? 1 : -1]
 
 #define DCXO_DEVICE_MAX_BUF_LEN 64
 #define DCXO_CALI_DATA_BUF_LEN  (sizeof(dcxo_dl_para_stru))
@@ -81,6 +79,7 @@
 #define INI_PMU_CHIP_TYPE "pmu_version"
 #define INI_6555V300_STR  "Hi6555V300"
 #define INI_6421V700_STR  "Hi6421V700"
+#define INI_6555V200_STR  "Hi6555V200"
 
 // PMU 6555V300
 #define PMU_6555V300_CALI_END  0x3A0
@@ -104,6 +103,17 @@
 #define PMU_6421V700_LOW_BYTE  0x3AD
 #define PMU_6421V700_HIGH_BYTE 0x3AE
 
+// PMU 6555V200
+#define PMU_6555V200_CALI_END  0x254
+#define PMU_6555V200_CALI_AVE0 0x255
+#define PMU_6555V200_CALI_AVE1 0x256
+#define PMU_6555V200_CALI_AVE2 0x257
+#define PMU_6555V200_CALI_AVE3 0x258
+#define PMU_6555V200_ANA_EN    0x25E
+#define PMU_6555V200_STATE     0x260
+#define PMU_6555V200_LOW_BYTE  0x261
+#define PMU_6555V200_HIGH_BYTE 0x262
+
 /* STRUCT定义 */
 enum coeff_index_enum {
     COEFF_A0 = 0,
@@ -117,6 +127,7 @@ enum coeff_index_enum {
 enum pmu_type_enum {
     PMU_HI655V300 = 0,
     PMU_HI6421V700 = 1,
+    PMU_HI6555V200 = 2,
     PMU_TYPE_BUFF,
 };
 
@@ -172,7 +183,7 @@ typedef struct {
 } plat_chr_nv_rd_excep_stru;
 
 // 由于devcie划定的存储空间限制，这里需要做判断
-HI_STATIC_ASSERT(((sizeof(dcxo_dl_para_stru)) < DCXO_DEVICE_MAX_BUF_LEN), device_mem_must_big_than_host);
+hi_static_assert(((sizeof(dcxo_dl_para_stru)) < DCXO_DEVICE_MAX_BUF_LEN), device_mem_must_big_than_host);
 
 typedef struct {
     oal_uint32 use_part_id;
@@ -184,8 +195,8 @@ typedef struct {
 } dcxo_manage_stru;
 
 /* OTHERS定义 */
-extern oal_uint8 *pucDcxoDataBuf;
-extern dcxo_manage_stru dcxo_info;
+extern oal_uint8 *g_dcxo_data_buf;
+extern dcxo_manage_stru g_dcxo_info;
 
 /* 函数声明 */
 extern oal_int32 dcxo_data_buf_malloc(oal_void);

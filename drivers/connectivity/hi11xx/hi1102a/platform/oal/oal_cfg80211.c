@@ -13,7 +13,7 @@
 /* 全局变量定义 */
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-static oal_kobj_uevent_env_stru env;
+OAL_STATIC oal_kobj_uevent_env_stru g_env;
 #endif
 #endif
 
@@ -73,194 +73,13 @@ oal_void oal_cfg80211_mgmt_tx_status(struct wireless_dev *wdev, oal_uint64 cooki
 }
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)) && ((_PRE_TARGET_PRODUCT_TYPE_ONT == _PRE_CONFIG_TARGET_PRODUCT))
-struct genl_family *nl80211_fam = OAL_PTR_NULL;
-struct genl_multicast_group *nl80211_mlme_mcgrp = OAL_PTR_NULL;
-#define NL80211_FAM nl80211_fam
-#define NL80211_GID (nl80211_mlme_mcgrp->id)
-#else
-extern struct genl_family nl80211_fam;
-extern struct genl_multicast_group nl80211_mlme_mcgrp;
-#define NL80211_FAM (&nl80211_fam)
-#define NL80211_GID (nl80211_mlme_mcgrp.id)
-#endif
+extern struct genl_family g_nl80211_fam;
+extern struct genl_multicast_group g_nl80211_mlme_mcgrp;
+#define NL80211_FAM (&g_nl80211_fam)
+#define NL80211_GID (g_nl80211_mlme_mcgrp.id)
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
-#ifdef _PRE_WLAN_FEATURE_HILINK
-/*
- * 函 数 名  : oal_cfg80211_calculate_bitrate
- * 功能描述  : oal_cfg80211_new_sta上报new sta事件获取比特率值(参考内核实现)
- *             如果MCS大于等于32，就返回错误OAL_ERR_CODE_CFG80211_MCS_EXCEED
- * 输入参数  : pst_rate: 速率信息结构
- * 返 回 值  : l_bitrate: 比特率
- */
-OAL_STATIC oal_int32 oal_cfg80211_calculate_bitrate(oal_rate_info_stru *pst_rate)
-{
-    oal_int32 l_modulation;
-    oal_int32 l_streams;
-    oal_int32 l_bitrate;
-    const oal_uint32 ul_max_mcs = 32;
-
-    if ((pst_rate->flags & RATE_INFO_FLAGS_MCS) == 0) {
-        return pst_rate->legacy;
-    }
-
-    /* the formula below does only work for MCS values smaller than 32 */
-    if (pst_rate->mcs >= ul_max_mcs) {
-        return -OAL_ERR_CODE_CFG80211_MCS_EXCEED;
-    }
-    /* 根据MCS来获取对应的比特率 */
-    l_modulation = pst_rate->mcs & 7;
-    l_streams = (pst_rate->mcs >> 3) + 1;
-
-    l_bitrate = (pst_rate->flags & RATE_INFO_FLAGS_40_MHZ_WIDTH) ? 13500000 : 6500000;
-
-    if (l_modulation < 4) {
-        l_bitrate *= (l_modulation + 1);
-    } else if (l_modulation == 4) {
-        l_bitrate *= (l_modulation + 2);
-    } else {
-        l_bitrate *= (l_modulation + 3);
-    }
-    l_bitrate *= l_streams;
-
-    if (pst_rate->flags & RATE_INFO_FLAGS_SHORT_GI) {
-        l_bitrate = (l_bitrate / 9) * 10;
-    }
-    /* do NOT round down here */
-    return (l_bitrate + 50000) / 100000;
-}
-
-/*
- * 函 数 名  : oal_nl80211_send_find_station_msg
- * 功能描述  : netlink上报send new sta事件进行命令符号和属性值填充
- */
-OAL_STATIC oal_int32 oal_nl80211_send_find_station_msg(oal_netbuf_stru *pst_buf, oal_uint32 ul_pid, oal_uint32 ul_seq,
-                                                       oal_int32 l_flags, oal_net_device_stru *pst_net_dev,
-                                                       const oal_uint8 *puc_mac_addr,
-                                                       oal_station_info_stru *pst_station_info)
-{
-    oal_nlattr_stru *pst_sinfoattr;
-    oal_nlattr_stru *pst_txrate;
-    oal_void *p_hdr;
-    oal_int32 us_bitrate;
-    oal_uint8 auc_user_addr[OAL_MAC_ADDR_LEN];
-
-    /* Add generic netlink header to netlink message, returns pointer to user specific header */
-    p_hdr = oal_genlmsg_put(pst_buf, ul_pid, ul_seq, NL80211_FAM, l_flags, PRIV_NL80211_CMD_HI_DETECTED_STA);
-    if (p_hdr == OAL_PTR_NULL) {
-        return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
-    }
-
-    nla_put(pst_buf, PRIV_NL80211_ATTR_IFINDEX, OAL_SIZEOF(pst_net_dev->ifindex), &(pst_net_dev->ifindex));
-    nla_put(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_SIZEOF(auc_user_addr), puc_mac_addr);
-
-    nla_put(pst_buf, PRIV_NL80211_ATTR_GENERATION, OAL_SIZEOF(pst_station_info->generation),
-            &(pst_station_info->generation));
-
-    pst_sinfoattr = oal_nla_nest_start(pst_buf, PRIV_NL80211_ATTR_STA_INFO);
-    if (pst_sinfoattr == OAL_PTR_NULL) {
-        oal_genlmsg_cancel(pst_buf, p_hdr);
-        return OAL_ERR_CODE_CFG80211_EMSGSIZE;
-    }
-    if (pst_station_info->filled & STATION_INFO_INACTIVE_TIME) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_INACTIVE_TIME, OAL_SIZEOF(pst_station_info->inactive_time),
-                &(pst_station_info->inactive_time));
-    }
-    if (pst_station_info->filled & STATION_INFO_RX_BYTES) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_RX_BYTES, OAL_SIZEOF(pst_station_info->rx_bytes),
-                &(pst_station_info->rx_bytes));
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_BYTES) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_TX_BYTES, OAL_SIZEOF(pst_station_info->tx_bytes),
-                &(pst_station_info->tx_bytes));
-    }
-    if (pst_station_info->filled & STATION_INFO_LLID) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_LLID, OAL_SIZEOF(pst_station_info->llid), &(pst_station_info->llid));
-    }
-    if (pst_station_info->filled & STATION_INFO_PLID) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_PLID, OAL_SIZEOF(pst_station_info->plid), &(pst_station_info->plid));
-    }
-    if (pst_station_info->filled & STATION_INFO_PLINK_STATE) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_PLINK_STATE, OAL_SIZEOF(pst_station_info->plink_state),
-                &(pst_station_info->plink_state));
-    }
-    if (pst_station_info->filled & STATION_INFO_SIGNAL) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_SIGNAL, OAL_SIZEOF(pst_station_info->signal),
-                &(pst_station_info->signal));
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_BITRATE) {
-        pst_txrate = oal_nla_nest_start(pst_buf, PRIV_NL80211_STA_INFO_TX_BITRATE);
-        if (pst_txrate == OAL_PTR_NULL) {
-            oal_genlmsg_cancel(pst_buf, p_hdr);
-            return OAL_ERR_CODE_CFG80211_EMSGSIZE;
-        }
-
-        /* cfg80211_calculate_bitrate will return negative for mcs >= 32 */
-        us_bitrate = oal_cfg80211_calculate_bitrate(&pst_station_info->txrate);
-        if (us_bitrate > 0) {
-            nla_put(pst_buf, PRIV_NL80211_RATE_INFO_BITRATE, OAL_SIZEOF(us_bitrate), &(us_bitrate));
-        }
-
-        if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_MCS) {
-            nla_put(pst_buf, PRIV_NL80211_RATE_INFO_MCS, OAL_SIZEOF(pst_station_info->txrate.mcs),
-                    &(pst_station_info->txrate.mcs));
-        }
-        oal_nla_nest_end(pst_buf, pst_txrate);
-    }
-    if (pst_station_info->filled & STATION_INFO_RX_PACKETS) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_RX_PACKETS, OAL_SIZEOF(pst_station_info->rx_packets),
-                &(pst_station_info->rx_packets));
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_PACKETS) {
-        nla_put(pst_buf, PRIV_NL80211_STA_INFO_TX_PACKETS, OAL_SIZEOF(pst_station_info->tx_packets),
-                &(pst_station_info->tx_packets));
-    }
-
-    oal_nla_nest_end(pst_buf, pst_sinfoattr);
-
-    if (oal_genlmsg_end(pst_buf, p_hdr) < 0) {
-        return OAL_ERR_CODE_CFG80211_ENOBUFS;
-    }
-
-    return OAL_SUCC;
-}
-
-/*
- * 函 数 名  : oal_cfg80211_fbt_notify_find_sta
- * 功能描述  : hilink fbt 通知找到sta
- */
-oal_uint32 oal_cfg80211_fbt_notify_find_sta(oal_net_device_stru *pst_net_device,
-                                            const oal_uint8 *puc_mac_addr,
-                                            oal_station_info_stru *pst_station_info,
-                                            oal_gfp_enum_uint8 en_gfp)
-{
-    oal_netbuf_stru *pst_msg = OAL_PTR_NULL;
-    oal_int32 l_let;
-
-    /* 分配一个新的netlink消息 */
-    pst_msg = oal_nlmsg_new(OAL_NLMSG_GOODSIZE, en_gfp);
-    if (pst_msg == OAL_PTR_NULL) {
-        return OAL_ERR_CODE_CFG80211_ENOBUFS;
-    }
-
-    l_let = oal_nl80211_send_find_station_msg(pst_msg, 0, 0, 0, pst_net_device, puc_mac_addr, pst_station_info);
-    if (l_let != OAL_SUCC) {
-        oal_nlmsg_free(pst_msg);
-        return l_let;
-    }
-
-    /* 调用封装的内核netlink广播发送函数，发送成功返回0，失败为负值 */
-    l_let = oal_genlmsg_multicast(pst_msg, 0, NL80211_GID, en_gfp);
-    if (l_let < 0) {
-        return OAL_FAIL;
-    }
-
-    return OAL_SUCC;
-}
-
-#endif
-
+/* For ko compile */
 #else
 /*
  * 函 数 名  : oal_cfg80211_calculate_bitrate
@@ -325,8 +144,8 @@ OAL_STATIC oal_uint32 oal_nl80211_send_station(oal_netbuf_stru *pst_buf, oal_uin
         return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
     }
 
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_dev->ifindex);
-    OAL_NLA_PUT(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_mac_addr);
+    oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_dev->ifindex);
+    oal_nla_put_m(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_mac_addr);
 
     pst_sinfoattr = oal_nla_nest_start(pst_buf, PRIV_NL80211_ATTR_STA_INFO);
     if (pst_sinfoattr == OAL_PTR_NULL) {
@@ -334,25 +153,25 @@ OAL_STATIC oal_uint32 oal_nl80211_send_station(oal_netbuf_stru *pst_buf, oal_uin
         return OAL_ERR_CODE_CFG80211_EMSGSIZE;
     }
     if (pst_station_info->filled & STATION_INFO_INACTIVE_TIME) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_INACTIVE_TIME, pst_station_info->inactive_time);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_STA_INFO_INACTIVE_TIME, pst_station_info->inactive_time);
     }
     if (pst_station_info->filled & STATION_INFO_RX_BYTES) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_RX_BYTES, pst_station_info->rx_bytes);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_STA_INFO_RX_BYTES, pst_station_info->rx_bytes);
     }
     if (pst_station_info->filled & STATION_INFO_TX_BYTES) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_TX_BYTES, pst_station_info->tx_bytes);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_STA_INFO_TX_BYTES, pst_station_info->tx_bytes);
     }
     if (pst_station_info->filled & STATION_INFO_LLID) {
-        OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_STA_INFO_LLID, pst_station_info->llid);
+        oal_nla_put_u16_m(pst_buf, PRIV_NL80211_STA_INFO_LLID, pst_station_info->llid);
     }
     if (pst_station_info->filled & STATION_INFO_PLID) {
-        OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_STA_INFO_PLID, pst_station_info->plid);
+        oal_nla_put_u16_m(pst_buf, PRIV_NL80211_STA_INFO_PLID, pst_station_info->plid);
     }
     if (pst_station_info->filled & STATION_INFO_PLINK_STATE) {
-        OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_STA_INFO_PLINK_STATE, pst_station_info->plink_state);
+        oal_nla_put_u8(pst_buf, PRIV_NL80211_STA_INFO_PLINK_STATE, pst_station_info->plink_state);
     }
     if (pst_station_info->filled & STATION_INFO_SIGNAL) {
-        OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_STA_INFO_SIGNAL, pst_station_info->signal);
+        oal_nla_put_u8(pst_buf, PRIV_NL80211_STA_INFO_SIGNAL, pst_station_info->signal);
     }
     if (pst_station_info->filled & STATION_INFO_TX_BITRATE) {
         pst_txrate = oal_nla_nest_start(pst_buf, PRIV_NL80211_STA_INFO_TX_BITRATE);
@@ -364,25 +183,25 @@ OAL_STATIC oal_uint32 oal_nl80211_send_station(oal_netbuf_stru *pst_buf, oal_uin
         /* cfg80211_calculate_bitrate will return negative for mcs >= 32 */
         us_bitrate = oal_cfg80211_calculate_bitrate(&pst_station_info->txrate);
         if (us_bitrate > 0) {
-            OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_RATE_INFO_BITRATE, us_bitrate);
+            oal_nla_put_u16_m(pst_buf, PRIV_NL80211_RATE_INFO_BITRATE, us_bitrate);
         }
         if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_MCS) {
-            OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_RATE_INFO_MCS, pst_station_info->txrate.mcs);
+            oal_nla_put_u8(pst_buf, PRIV_NL80211_RATE_INFO_MCS, pst_station_info->txrate.mcs);
         }
         if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_40_MHZ_WIDTH) {
-            OAL_NLA_PUT_FLAG(pst_buf, PRIV_NL80211_RATE_INFO_40_MHZ_WIDTH);
+            oal_nla_put_flag(pst_buf, PRIV_NL80211_RATE_INFO_40_MHZ_WIDTH);
         }
         if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_SHORT_GI) {
-            OAL_NLA_PUT_FLAG(pst_buf, PRIV_NL80211_RATE_INFO_SHORT_GI);
+            oal_nla_put_flag(pst_buf, PRIV_NL80211_RATE_INFO_SHORT_GI);
         }
 
         oal_nla_nest_end(pst_buf, pst_txrate);
     }
     if (pst_station_info->filled & STATION_INFO_RX_PACKETS) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_RX_PACKETS, pst_station_info->rx_packets);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_STA_INFO_RX_PACKETS, pst_station_info->rx_packets);
     }
     if (pst_station_info->filled & STATION_INFO_TX_PACKETS) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_TX_PACKETS, pst_station_info->tx_packets);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_STA_INFO_TX_PACKETS, pst_station_info->tx_packets);
     }
 
     oal_nla_nest_end(pst_buf, pst_sinfoattr);
@@ -397,134 +216,6 @@ nla_put_failure:
     oal_genlmsg_cancel(pst_buf, p_hdr);
     return OAL_ERR_CODE_CFG80211_EMSGSIZE;
 }
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-/*
- * 函 数 名  : oal_nl80211_send_find_station_msg
- * 功能描述  : netlink上报send new sta事件进行命令符号和属性值填充
- */
-OAL_STATIC oal_int32 oal_nl80211_send_find_station_msg(oal_netbuf_stru *pst_buf, oal_uint32 ul_pid, oal_uint32 ul_seq,
-                                                       oal_int32 l_flags, oal_net_device_stru *pst_net_dev,
-                                                       const oal_uint8 *puc_mac_addr,
-                                                       oal_station_info_stru *pst_station_info)
-{
-    oal_nlattr_stru *pst_sinfoattr = OAL_PTR_NULL;
-    oal_nlattr_stru *pst_txrate = OAL_PTR_NULL;
-    oal_void *p_hdr = OAL_PTR_NULL;
-    oal_int32 us_bitrate;
-
-    /* Add generic netlink header to netlink message, returns pointer to user specific header */
-    p_hdr = oal_genlmsg_put(pst_buf, ul_pid, ul_seq, NL80211_FAM, l_flags, PRIV_NL80211_CMD_HI_DETECTED_STA);
-    if (p_hdr == OAL_PTR_NULL) {
-        return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
-    }
-
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_dev->ifindex);
-    OAL_NLA_PUT(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_mac_addr);
-
-    pst_sinfoattr = oal_nla_nest_start(pst_buf, PRIV_NL80211_ATTR_STA_INFO);
-    if (pst_sinfoattr == OAL_PTR_NULL) {
-        oal_genlmsg_cancel(pst_buf, p_hdr);
-        return OAL_ERR_CODE_CFG80211_EMSGSIZE;
-    }
-    if (pst_station_info->filled & STATION_INFO_INACTIVE_TIME) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_INACTIVE_TIME, pst_station_info->inactive_time);
-    }
-    if (pst_station_info->filled & STATION_INFO_RX_BYTES) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_RX_BYTES, pst_station_info->rx_bytes);
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_BYTES) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_TX_BYTES, pst_station_info->tx_bytes);
-    }
-    if (pst_station_info->filled & STATION_INFO_LLID) {
-        OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_STA_INFO_LLID, pst_station_info->llid);
-    }
-    if (pst_station_info->filled & STATION_INFO_PLID) {
-        OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_STA_INFO_PLID, pst_station_info->plid);
-    }
-    if (pst_station_info->filled & STATION_INFO_PLINK_STATE) {
-        OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_STA_INFO_PLINK_STATE, pst_station_info->plink_state);
-    }
-    if (pst_station_info->filled & STATION_INFO_SIGNAL) {
-        OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_STA_INFO_SIGNAL, pst_station_info->signal);
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_BITRATE) {
-        pst_txrate = oal_nla_nest_start(pst_buf, PRIV_NL80211_STA_INFO_TX_BITRATE);
-        if (pst_txrate == OAL_PTR_NULL) {
-            oal_genlmsg_cancel(pst_buf, p_hdr);
-            return OAL_ERR_CODE_CFG80211_EMSGSIZE;
-        }
-
-        /* cfg80211_calculate_bitrate will return negative for mcs >= 32 */
-        us_bitrate = oal_cfg80211_calculate_bitrate(&pst_station_info->txrate);
-        if (us_bitrate > 0) {
-            OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_RATE_INFO_BITRATE, us_bitrate);
-        }
-        if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_MCS) {
-            OAL_NLA_PUT_U8(pst_buf, PRIV_NL80211_RATE_INFO_MCS, pst_station_info->txrate.mcs);
-        }
-        if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_40_MHZ_WIDTH) {
-            OAL_NLA_PUT_FLAG(pst_buf, PRIV_NL80211_RATE_INFO_40_MHZ_WIDTH);
-        }
-        if (pst_station_info->txrate.flags & RATE_INFO_FLAGS_SHORT_GI) {
-            OAL_NLA_PUT_FLAG(pst_buf, PRIV_NL80211_RATE_INFO_SHORT_GI);
-        }
-
-        oal_nla_nest_end(pst_buf, pst_txrate);
-    }
-    if (pst_station_info->filled & STATION_INFO_RX_PACKETS) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_RX_PACKETS, pst_station_info->rx_packets);
-    }
-    if (pst_station_info->filled & STATION_INFO_TX_PACKETS) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_STA_INFO_TX_PACKETS, pst_station_info->tx_packets);
-    }
-
-    oal_nla_nest_end(pst_buf, pst_sinfoattr);
-
-    if (oal_genlmsg_end(pst_buf, p_hdr) < 0) {
-        return OAL_ERR_CODE_CFG80211_ENOBUFS;
-    }
-
-    return OAL_SUCC;
-
-nla_put_failure:
-    oal_genlmsg_cancel(pst_buf, p_hdr);
-    return OAL_ERR_CODE_CFG80211_EMSGSIZE;
-}
-
-/*
- * 函 数 名  : oal_cfg80211_fbt_notify_find_sta
- * 功能描述  : hilink fbt 通知找到sta
- */
-oal_uint32 oal_cfg80211_fbt_notify_find_sta(oal_net_device_stru *pst_net_device,
-                                            const oal_uint8 *puc_mac_addr,
-                                            oal_station_info_stru *pst_station_info,
-                                            oal_gfp_enum_uint8 en_gfp)
-{
-    oal_netbuf_stru *pst_msg = OAL_PTR_NULL;
-    oal_int32 l_let;
-
-    /* 分配一个新的netlink消息 */
-    pst_msg = oal_nlmsg_new(OAL_NLMSG_GOODSIZE, en_gfp);
-    if (pst_msg == OAL_PTR_NULL) {
-        return OAL_ERR_CODE_CFG80211_ENOBUFS;
-    }
-
-    l_let = oal_nl80211_send_find_station_msg(pst_msg, 0, 0, 0, pst_net_device, puc_mac_addr, pst_station_info);
-    if (l_let != OAL_SUCC) {
-        oal_nlmsg_free(pst_msg);
-        return l_let;
-    }
-
-    /* 调用封装的内核netlink广播发送函数，发送成功返回0，失败为负值 */
-    l_let = oal_genlmsg_multicast(pst_msg, 0, NL80211_GID, en_gfp);
-    if (l_let < 0) {
-        return OAL_FAIL;
-    }
-
-    return OAL_SUCC;
-}
-#endif
 
 /*
  * 函 数 名  : oal_nl80211_send_connect_result
@@ -549,16 +240,16 @@ OAL_STATIC oal_uint32 oal_nl80211_send_connect_result(oal_netbuf_stru *pst_buf,
         return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
     }
 
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
+    oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
     if (puc_bssid != OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_bssid);
+        oal_nla_put_m(pst_buf, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_bssid);
     }
-    OAL_NLA_PUT_U16(pst_buf, PRIV_NL80211_ATTR_STATUS_CODE, us_status);
+    oal_nla_put_u16_m(pst_buf, PRIV_NL80211_ATTR_STATUS_CODE, us_status);
     if (puc_req_ie != OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_buf, PRIV_NL80211_ATTR_REQ_IE, ul_req_ie_len, puc_req_ie);
+        oal_nla_put_m(pst_buf, PRIV_NL80211_ATTR_REQ_IE, ul_req_ie_len, puc_req_ie);
     }
     if (puc_resp_ie != OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_buf, PRIV_NL80211_ATTR_RESP_IE, ul_resp_ie_len, puc_resp_ie);
+        oal_nla_put_m(pst_buf, PRIV_NL80211_ATTR_RESP_IE, ul_resp_ie_len, puc_resp_ie);
     }
 
     if (oal_genlmsg_end(pst_buf, p_hdr) < 0) {
@@ -602,15 +293,15 @@ OAL_STATIC oal_uint32 oal_nl80211_send_disconnected(oal_net_device_stru *pst_net
         return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
     }
 
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
     if (from_ap && us_reason) {
-        OAL_NLA_PUT_U16(pst_msg, PRIV_NL80211_ATTR_REASON_CODE, us_reason);
+        oal_nla_put_u16_m(pst_msg, PRIV_NL80211_ATTR_REASON_CODE, us_reason);
     }
     if (from_ap) {
-        OAL_NLA_PUT_FLAG(pst_msg, PRIV_NL80211_ATTR_DISCONNECTED_BY_AP);
+        oal_nla_put_flag(pst_msg, PRIV_NL80211_ATTR_DISCONNECTED_BY_AP);
     }
     if (puc_ie == OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_msg, PRIV_NL80211_ATTR_IE, ul_ie_len, puc_ie);
+        oal_nla_put_m(pst_msg, PRIV_NL80211_ATTR_IE, ul_ie_len, puc_ie);
     }
 
     if (oal_genlmsg_end(pst_msg, p_hdr) < 0) {
@@ -659,11 +350,11 @@ OAL_STATIC oal_uint32 oal_nl80211_send_mgmt(oal_cfg80211_registered_device_stru 
         return OAL_ERR_CODE_CFG80211_SKB_MEM_FAIL;
     }
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 44))
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_WIPHY, pst_rdev->wiphy_idx);
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_netdev->ifindex);
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_WIPHY_FREQ, l_freq);
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_RX_SIGNAL_DBM, uc_rssi);  // report rssi to hostapd
-    OAL_NLA_PUT(pst_msg, PRIV_NL80211_ATTR_FRAME, ul_len, puc_buf);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_WIPHY, pst_rdev->wiphy_idx);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_netdev->ifindex);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_WIPHY_FREQ, l_freq);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_RX_SIGNAL_DBM, uc_rssi);  // report rssi to hostapd
+    oal_nla_put_m(pst_msg, PRIV_NL80211_ATTR_FRAME, ul_len, puc_buf);
 #else
     nla_put(pst_msg, PRIV_NL80211_ATTR_WIPHY, OAL_SIZEOF(pst_rdev->wiphy_idx), &(pst_rdev->wiphy_idx));
     nla_put(pst_msg, PRIV_NL80211_ATTR_IFINDEX, OAL_SIZEOF(pst_netdev->ifindex), &(pst_netdev->ifindex));
@@ -715,11 +406,11 @@ OAL_STATIC oal_int32 oal_nl80211_send_cac_msg(oal_netbuf_stru *pst_buf, oal_net_
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 44))
     if (pst_net_dev) {
-        OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_dev->ifindex);
+        oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_IFINDEX, pst_net_dev->ifindex);
     }
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_RADAR_EVENT, en_event);
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_WIPHY_FREQ, ul_freq);
-    OAL_NLA_PUT_U32(pst_buf, PRIV_NL80211_ATTR_CHANNEL_WIDTH, en_chan_width);
+    oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_RADAR_EVENT, en_event);
+    oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_WIPHY_FREQ, ul_freq);
+    oal_nla_put_u32_m(pst_buf, PRIV_NL80211_ATTR_CHANNEL_WIDTH, en_chan_width);
 #else
     if (pst_net_dev) {
         if (nla_put(pst_buf, PRIV_NL80211_ATTR_IFINDEX, OAL_SIZEOF(pst_net_dev->ifindex), &(pst_net_dev->ifindex))) {
@@ -815,29 +506,29 @@ oal_void oal_cfg80211_sched_scan_result(oal_wiphy_stru *pst_wiphy)
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 oal_void oal_kobject_uevent_env_sta_join(oal_net_device_stru *pst_net_device, const oal_uint8 *puc_mac_addr)
 {
-    memset_s(&env, sizeof(env), 0, sizeof(env));
+    memset_s(&g_env, sizeof(g_env), 0, sizeof(g_env));
     /* 上层需要STA_JOIN和mac地址，中间参数无效，但是必须是4个参数 */
-    add_uevent_var(&env, "SOFTAP=STA_JOIN wlan0 wlan0 %02x:%02x:%02x:%02x:%02x:%02x",
+    add_uevent_var(&g_env, "SOFTAP=STA_JOIN wlan0 wlan0 %02x:%02x:%02x:%02x:%02x:%02x",
                    puc_mac_addr[0], puc_mac_addr[1], puc_mac_addr[2],
                    puc_mac_addr[3], puc_mac_addr[4], puc_mac_addr[5]);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
-    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, env.envp);
+    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, g_env.envp);
 #else
-    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, (char **)&env);
+    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, (char **)&g_env);
 #endif
 }
 
 oal_void oal_kobject_uevent_env_sta_leave(oal_net_device_stru *pst_net_device, const oal_uint8 *puc_mac_addr)
 {
-    memset_s(&env, sizeof(env), 0, sizeof(env));
+    memset_s(&g_env, sizeof(g_env), 0, sizeof(g_env));
     /* 上层需要STA_LEAVE和mac地址，中间参数无效，但是必须是4个参数 */
-    add_uevent_var(&env, "SOFTAP=STA_LEAVE wlan0 wlan0 %02x:%02x:%02x:%02x:%02x:%02x",
+    add_uevent_var(&g_env, "SOFTAP=STA_LEAVE wlan0 wlan0 %02x:%02x:%02x:%02x:%02x:%02x",
                    puc_mac_addr[0], puc_mac_addr[1], puc_mac_addr[2],
                    puc_mac_addr[3], puc_mac_addr[4], puc_mac_addr[5]);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
-    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, env.envp);
+    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, g_env.envp);
 #else
-    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, (char **)&env);
+    kobject_uevent_env(&(pst_net_device->dev.kobj), KOBJ_CHANGE, (char **)&g_env);
 #endif
 }
 #endif
@@ -1089,24 +780,6 @@ oal_uint32 oal_cfg80211_new_sta(oal_net_device_stru *pst_net_device,
     return OAL_SUCC;
 #endif
 }
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-/*
- * 函 数 名  : oal_cfg80211_send_rx_auth
- * 功能描述  : AP上报auth
- */
-oal_void oal_cfg80211_send_rx_auth(oal_net_device_stru *pst_dev,
-                                   const oal_uint8 *puc_buf,
-                                   oal_uint32 ul_len)
-{
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34))
-    cfg80211_send_rx_auth(pst_dev, puc_buf, ul_len);
-    return;
-#else
-    return;
-#endif
-}
-#endif
-
 /*
  * 函 数 名  : oal_cfg80211_mic_failure
  * 功能描述  : 上报mic攻击
@@ -1149,16 +822,16 @@ oal_void oal_cfg80211_mic_failure(oal_net_device_stru *pst_net_device,
     }
 
     /* rdev对应内核core.h中的cfg80211_registered_device结构体，这个属性在上层没有处理 */
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_WIPHY, pst_rdev->wiphy_idx);
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_WIPHY, pst_rdev->wiphy_idx);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_IFINDEX, pst_net_device->ifindex);
 
     if (puc_mac_addr != OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_msg, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_mac_addr);
+        oal_nla_put_m(pst_msg, PRIV_NL80211_ATTR_MAC, OAL_ETH_ALEN_SIZE, puc_mac_addr);
     }
-    OAL_NLA_PUT_U32(pst_msg, PRIV_NL80211_ATTR_KEY_TYPE, key_type);
-    OAL_NLA_PUT_U8(pst_msg, PRIV_NL80211_ATTR_KEY_IDX, key_id);
+    oal_nla_put_u32_m(pst_msg, PRIV_NL80211_ATTR_KEY_TYPE, key_type);
+    oal_nla_put_u8(pst_msg, PRIV_NL80211_ATTR_KEY_IDX, key_id);
     if (puc_tsc != OAL_PTR_NULL) {
-        OAL_NLA_PUT(pst_msg, PRIV_NL80211_ATTR_KEY_SEQ, 6, puc_tsc); /* 6为附加的长度 */
+        oal_nla_put_m(pst_msg, PRIV_NL80211_ATTR_KEY_SEQ, 6, puc_tsc); /* 6为附加的长度 */
     }
 
     if (oal_genlmsg_end(pst_msg, p_hdr) < 0) {
@@ -1343,6 +1016,17 @@ oal_int oal_cfg80211_external_auth_request(oal_net_device_stru *pst_netdev,
     return cfg80211_external_auth_request(pst_netdev, pst_params, en_gfp);
 #else
     return -OAL_EFAIL;
+#endif
+}
+/*
+ * 函 数 名  : oal_cfg80211_tas_rssi_access_report
+ * 功能描述  : 上报linux 内核TAS天线测量结果
+ */
+oal_void oal_cfg80211_tas_rssi_access_report(oal_net_device_stru *pst_netdev, oal_gfp_enum_uint8 en_gfp,
+                                             oal_uint8 *puc_buf, oal_uint32 ul_len)
+{
+#ifdef CONFIG_HW_WIFI_RSSI
+    cfg80211_drv_tas_result(pst_netdev, en_gfp, puc_buf, ul_len);
 #endif
 }
 
@@ -1544,27 +1228,25 @@ oal_int32 oal_cfg80211_vendor_cmd_reply(oal_netbuf_stru *pst_skb)
 {
     return OAL_SUCC;
 }
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-/*
- * 函 数 名  : oal_cfg80211_send_rx_auth
- * 功能描述  : AP上报auth
- */
-oal_void oal_cfg80211_send_rx_auth(oal_net_device_stru *pst_dev,
-                                   const oal_uint8 *puc_buf,
-                                   oal_uint32 ul_len)
-{
-    return;
-}
-#endif
 
 /*
  * 函 数 名  : oal_cfg80211_external_auth_request
  * 功能描述  : 上报内核external_auth 事件
  */
-
 oal_int oal_cfg80211_external_auth_request(oal_net_device_stru *pst_netdev,
                                            oal_cfg80211_external_auth_stru *pst_params,
                                            oal_gfp_enum_uint8 en_gfp)
+{
+    /* for windows */
+    return OAL_SUCC;
+}
+
+/*
+ * 函 数 名  : oal_cfg80211_tas_rssi_access_report
+ * 功能描述  : 上报linux 内核TAS天线测量结果
+ */
+oal_void oal_cfg80211_tas_rssi_access_report(oal_net_device_stru *pst_netdev, oal_gfp_enum_uint8 en_gfp,
+                                             oal_uint8 *puc_buf, oal_uint32 ul_len)
 {
     /* for windows */
     return OAL_SUCC;
@@ -1588,12 +1270,6 @@ oal_module_symbol(oal_cfg80211_roamed);
 oal_module_symbol(oal_cfg80211_ft_event);
 oal_module_symbol(oal_cfg80211_disconnected);
 oal_module_symbol(oal_cfg80211_new_sta);
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-oal_module_symbol(oal_cfg80211_send_rx_auth);
-#endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-oal_module_symbol(oal_cfg80211_fbt_notify_find_sta);
-#endif
 oal_module_symbol(oal_cfg80211_mic_failure);
 oal_module_symbol(oal_cfg80211_del_sta);
 oal_module_symbol(oal_cfg80211_rx_mgmt);
@@ -1615,4 +1291,6 @@ oal_module_symbol(oal_cfg80211_vowifi_report);
 oal_module_symbol(oal_cfg80211_m2s_status_report);
 
 oal_module_symbol(oal_cfg80211_external_auth_request);
+oal_module_symbol(oal_cfg80211_tas_rssi_access_report);
+
 

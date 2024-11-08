@@ -2,6 +2,11 @@
 
 #ifndef __PLAT_MAIN_H__
 #define __PLAT_MAIN_H__
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
 
 /* 其他头文件包含 */
 #include "oal_ext_if.h"
@@ -20,5 +25,9 @@ extern oal_void plat_exit(oal_void);
 extern int hi_gps_plat_init(void);
 extern void hi_gps_plat_exit(void);
 #endif
-
+#ifdef __cplusplus
+#if __cplusplus
+    }
+#endif
+#endif
 #endif

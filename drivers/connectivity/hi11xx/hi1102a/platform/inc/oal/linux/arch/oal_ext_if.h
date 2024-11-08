@@ -14,13 +14,21 @@
 #endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
-#define INIT_COMPLETION(x) reinit_completion(&x)
+#define oal_reinit_completion(x) reinit_completion(&x)
 #define IRQF_DISABLED      0
+#ifdef _PRE_HI375X_LDISC
+#define N_HW_BFG           29
+#else
+#if defined(_PRE_NON_OCTTY) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+#define N_HW_BFG           (NR_LDISCS - 1)
+#else
 #define N_HW_BFG           35
+#endif
+#endif
 #endif
 
 /* 全局变量声明 */
-extern oal_mempool_info_to_sdt_stru mempool_info;
+extern oal_mempool_info_to_sdt_stru g_mempool_info;
 
 /* OTHERS定义 */
 typedef oal_uint32 (*oal_stats_info_up_to_sdt)(oal_uint8 en_pool_id,

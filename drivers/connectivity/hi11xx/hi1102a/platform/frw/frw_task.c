@@ -3,7 +3,6 @@
 /* 头文件包含 */
 #include "frw_task.h"
 
-#include "platform_spec.h"
 #include "frw_main.h"
 #include "frw_event_main.h"
 #include "hal_ext_if.h"
@@ -17,10 +16,9 @@
 
 /* 全局变量定义 */
 /* 事件处理全局变量 */
-frw_task_stru event_task[WLAN_FRW_MAX_NUM_CORES];
+frw_task_stru g_event_task[WLAN_FRW_MAX_NUM_CORES];
 
 /* 函数实现 */
-
 #if (_PRE_FRW_FEATURE_PROCCESS_ENTITY_TYPE == _PRE_FRW_FEATURE_PROCCESS_ENTITY_THREAD)
 
 /*
@@ -79,29 +77,29 @@ OAL_STATIC oal_int32 frw_task_thread(oal_void *arg)
 #ifdef _PRE_FRW_EVENT_PROCESS_TRACE_DEBUG
         frw_event_last_pc_trace(__FUNCTION__, __LINE__, ul_bind_cpu);
 #endif
-        ret = OAL_WAIT_EVENT_INTERRUPTIBLE(event_task[ul_bind_cpu].frw_wq,
+        ret = oal_wait_event_interruptible(g_event_task[ul_bind_cpu].frw_wq,
                                            frw_task_thread_condition_check((oal_uint)ul_bind_cpu) == OAL_TRUE);
         /*lint +e730*/
-        if (OAL_UNLIKELY(ret == -ERESTARTSYS)) {
+        if (oal_unlikely(ret == -ERESTARTSYS)) {
             OAL_IO_PRINT("wifi task %s was interrupted by a signal\n", oal_get_current_task_name());
             break;
         }
 #if (_PRE_FRW_FEATURE_PROCCESS_ENTITY_TYPE == _PRE_FRW_FEATURE_PROCCESS_ENTITY_THREAD)
-        event_task[ul_bind_cpu].ul_total_loop_cnt++;
+        g_event_task[ul_bind_cpu].ul_total_loop_cnt++;
 
-        ul_event_count = event_task[ul_bind_cpu].ul_total_event_cnt;
+        ul_event_count = g_event_task[ul_bind_cpu].ul_total_event_cnt;
 #endif
         frw_event_process_all_event((oal_uint)ul_bind_cpu);
 #if (_PRE_FRW_FEATURE_PROCCESS_ENTITY_TYPE == _PRE_FRW_FEATURE_PROCCESS_ENTITY_THREAD)
-        if (ul_event_count == event_task[ul_bind_cpu].ul_total_event_cnt) {
+        if (ul_event_count == g_event_task[ul_bind_cpu].ul_total_event_cnt) {
             /* 空转 */
             ul_empty_count++;
             if (ul_empty_count == ul_count_loop_time) {
-                DECLARE_DFT_TRACE_KEY_INFO("frw_sched_too_much", OAL_DFT_TRACE_EXCEP);
+                declare_dft_trace_key_info("frw_sched_too_much", OAL_DFT_TRACE_EXCEP);
             }
         } else {
-            if (ul_empty_count > event_task[ul_bind_cpu].ul_max_empty_count) {
-                event_task[ul_bind_cpu].ul_max_empty_count = ul_empty_count;
+            if (ul_empty_count > g_event_task[ul_bind_cpu].ul_max_empty_count) {
+                g_event_task[ul_bind_cpu].ul_max_empty_count = ul_empty_count;
             }
             ul_empty_count = 0;
         }
@@ -120,29 +118,29 @@ OAL_STATIC oal_int32 frw_task_thread(oal_void *arg)
  */
 oal_uint32 frw_task_init(oal_void)
 {
-    oal_uint ul_core_id;
-    oal_task_stru *pst_task;
+    oal_uint core_id;
+    oal_task_stru *pst_task = NULL;
     struct sched_param param = {0};
 
-    memset_s(event_task, OAL_SIZEOF(event_task), 0, OAL_SIZEOF(event_task));
+    memset_s(g_event_task, OAL_SIZEOF(g_event_task), 0, OAL_SIZEOF(g_event_task));
 
-    for (ul_core_id = 0; ul_core_id < WLAN_FRW_MAX_NUM_CORES; ul_core_id++) {
-        OAL_WAIT_QUEUE_INIT_HEAD(&event_task[ul_core_id].frw_wq);
+    for (core_id = 0; core_id < WLAN_FRW_MAX_NUM_CORES; core_id++) {
+        oal_wait_queue_init_head(&g_event_task[core_id].frw_wq);
 
-        pst_task = oal_kthread_create(frw_task_thread, (oal_void *)(uintptr_t) ul_core_id, "hisi_frw/%lu", ul_core_id);
+        pst_task = oal_kthread_create(frw_task_thread, (oal_void *)(uintptr_t) core_id, "hisi_frw/%lu", core_id);
         if (OAL_IS_ERR_OR_NULL(pst_task)) {
             return OAL_FAIL;
         }
 
-        oal_kthread_bind(pst_task, ul_core_id);
+        oal_kthread_bind(pst_task, core_id);
 
-        event_task[ul_core_id].pst_event_kthread = pst_task;
-        event_task[ul_core_id].uc_task_state = FRW_TASK_STATE_IRQ_UNBIND;
+        g_event_task[core_id].pst_event_kthread = pst_task;
+        g_event_task[core_id].uc_task_state = FRW_TASK_STATE_IRQ_UNBIND;
 
         param.sched_priority = 1;
         frw_set_thread_property(pst_task, SCHED_FIFO, &param, 0);
 
-        oal_wake_up_process(event_task[ul_core_id].pst_event_kthread);
+        oal_wake_up_process(g_event_task[core_id].pst_event_kthread);
     }
 
     return OAL_SUCC;
@@ -157,9 +155,9 @@ oal_void frw_task_exit(oal_void)
     oal_uint32 ul_core_id;
 
     for (ul_core_id = 0; ul_core_id < WLAN_FRW_MAX_NUM_CORES; ul_core_id++) {
-        if (event_task[ul_core_id].pst_event_kthread) {
-            oal_kthread_stop(event_task[ul_core_id].pst_event_kthread);
-            event_task[ul_core_id].pst_event_kthread = OAL_PTR_NULL;
+        if (g_event_task[ul_core_id].pst_event_kthread) {
+            oal_kthread_stop(g_event_task[ul_core_id].pst_event_kthread);
+            g_event_task[ul_core_id].pst_event_kthread = OAL_PTR_NULL;
         }
     }
 }
@@ -177,7 +175,7 @@ oal_void frw_task_event_handler_register(oal_void (*p_func)(oal_uint))
  */
 oal_void frw_task_sched(oal_uint32 ul_core_id)
 {
-    OAL_WAIT_QUEUE_WAKE_UP_INTERRUPT(&event_task[ul_core_id].frw_wq);
+    oal_wait_queue_wake_up_interrupt(&g_event_task[ul_core_id].frw_wq);
 }
 
 /*
@@ -186,7 +184,7 @@ oal_void frw_task_sched(oal_uint32 ul_core_id)
  */
 oal_void frw_task_set_state(oal_uint32 ul_core_id, oal_uint8 uc_task_state)
 {
-    event_task[ul_core_id].uc_task_state = uc_task_state;
+    g_event_task[ul_core_id].uc_task_state = uc_task_state;
 }
 
 /*
@@ -195,18 +193,18 @@ oal_void frw_task_set_state(oal_uint32 ul_core_id, oal_uint8 uc_task_state)
  */
 oal_uint8 frw_task_get_state(oal_uint32 ul_core_id)
 {
-    return event_task[ul_core_id].uc_task_state;
+    return g_event_task[ul_core_id].uc_task_state;
 }
 
 #elif (_PRE_FRW_FEATURE_PROCCESS_ENTITY_TYPE == _PRE_FRW_FEATURE_PROCCESS_ENTITY_TASKLET)
 
 // 使用tasklet进行核间通信，tasklet初始化时指定核间通信方向
 #if WLAN_FRW_MAX_NUM_CORES == 1
-#define FRW_DST_CORE(this_core) 0
+#define frw_dst_core(this_core) 0
 #elif WLAN_FRW_MAX_NUM_CORES == 2
-#define FRW_DST_CORE(this_core) (this_core == 0 ? 1 : 0)
+#define frw_dst_core(this_core) (this_core == 0 ? 1 : 0)
 #else
-#define FRW_DST_CORE(this_core) 0
+#define frw_dst_core(this_core) 0
 #error enhance ipi to support more cores!
 #endif
 
@@ -221,10 +219,10 @@ oal_uint32 frw_task_init(oal_void)
     oal_uint32 ul_core_id;
 
     for (ul_core_id = 0; ul_core_id < WLAN_FRW_MAX_NUM_CORES; ul_core_id++) {
-        oal_task_init(&event_task[ul_core_id].st_event_tasklet,
-                      event_task[ul_core_id].p_event_handler_func, 0);
-        oal_task_init(&event_task[ul_core_id].st_ipi_tasklet,
-                      frw_task_ipi_handler, FRW_DST_CORE(ul_core_id));
+        oal_task_init(&g_event_task[ul_core_id].st_event_tasklet,
+                      g_event_task[ul_core_id].p_event_handler_func, 0);
+        oal_task_init(&g_event_task[ul_core_id].st_ipi_tasklet,
+                      frw_task_ipi_handler, frw_dst_core(ul_core_id));
     }
     return OAL_SUCC;
 }
@@ -238,8 +236,8 @@ oal_void frw_task_exit(oal_void)
     oal_uint32 ul_core_id;
 
     for (ul_core_id = 0; ul_core_id < WLAN_FRW_MAX_NUM_CORES; ul_core_id++) {
-        oal_task_kill(&event_task[ul_core_id].st_event_tasklet);
-        oal_task_kill(&event_task[ul_core_id].st_ipi_tasklet);
+        oal_task_kill(&g_event_task[ul_core_id].st_event_tasklet);
+        oal_task_kill(&g_event_task[ul_core_id].st_ipi_tasklet);
     }
 }
 
@@ -251,13 +249,13 @@ oal_void frw_task_event_handler_register(oal_void (*p_func)(oal_uint))
 {
     oal_uint32 ul_core_id;
 
-    if (OAL_UNLIKELY(p_func == OAL_PTR_NULL)) {
+    if (oal_unlikely(p_func == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_FRW, "{frw_task_event_handler_register:: p_func is null ptr}");
         return;
     }
 
     for (ul_core_id = 0; ul_core_id < WLAN_FRW_MAX_NUM_CORES; ul_core_id++) {
-        event_task[ul_core_id].p_event_handler_func = p_func;
+        g_event_task[ul_core_id].p_event_handler_func = p_func;
     }
 }
 
@@ -277,7 +275,7 @@ OAL_STATIC oal_void frw_remote_task_receive(void *info)
  */
 OAL_STATIC oal_void frw_task_ipi_handler(oal_uint ui_arg)
 {
-    oal_uint32 ul_this_id   = OAL_GET_CORE_ID();
+    oal_uint32 ul_this_id   = oal_get_core_id();
     oal_uint32 ul_remote_id = (oal_uint32)ui_arg;
 
     if (ul_this_id == ul_remote_id) {
@@ -286,7 +284,7 @@ OAL_STATIC oal_void frw_task_ipi_handler(oal_uint ui_arg)
     }
 
     oal_smp_call_function_single(ul_remote_id, frw_remote_task_receive,
-                                 &event_task[ul_remote_id].st_event_tasklet, 0);
+                                 &g_event_task[ul_remote_id].st_event_tasklet, 0);
 }
 
 /*
@@ -295,19 +293,19 @@ OAL_STATIC oal_void frw_task_ipi_handler(oal_uint ui_arg)
  */
 oal_void frw_task_sched(oal_uint32 ul_core_id)
 {
-    oal_uint32 ul_this_cpu = OAL_GET_CORE_ID();
+    oal_uint32 ul_this_cpu = oal_get_core_id();
 
-    if (oal_task_is_scheduled(&event_task[ul_core_id].st_event_tasklet)) {
+    if (oal_task_is_scheduled(&g_event_task[ul_core_id].st_event_tasklet)) {
         return;
     }
 
     if (ul_this_cpu == ul_core_id) {
-        oal_task_sched(&event_task[ul_core_id].st_event_tasklet);
+        oal_task_sched(&g_event_task[ul_core_id].st_event_tasklet);
     } else {
-        if (oal_task_is_scheduled(&event_task[ul_this_cpu].st_ipi_tasklet)) {
+        if (oal_task_is_scheduled(&g_event_task[ul_this_cpu].st_ipi_tasklet)) {
             return;
         }
-        oal_task_sched(&event_task[ul_this_cpu].st_ipi_tasklet);
+        oal_task_sched(&g_event_task[ul_this_cpu].st_ipi_tasklet);
     }
 }
 

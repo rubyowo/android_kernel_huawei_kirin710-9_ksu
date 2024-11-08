@@ -15,11 +15,11 @@
 #define OAL_NLMSG_DEFAULT_SIZE        NLMSG_DEFAULT_SIZE
 #define OAL_IEEE80211_MIN_ACTION_SIZE IEEE80211_MIN_ACTION_SIZE
 
-#define OAL_NLA_PUT_U32(skb, attrtype, value)     NLA_PUT_U32(skb, attrtype, value)
-#define OAL_NLA_PUT(skb, attrtype, attrlen, data) NLA_PUT(skb, attrtype, attrlen, data)
-#define OAL_NLA_PUT_U16(skb, attrtype, value)     NLA_PUT_U16(skb, attrtype, value)
-#define OAL_NLA_PUT_U8(skb, attrtype, value)      NLA_PUT_U8(skb, attrtype, value)
-#define OAL_NLA_PUT_FLAG(skb, attrtype)           NLA_PUT_FLAG(skb, attrtype)
+#define oal_nla_put_u32_m(skb, attrtype, value)     NLA_PUT_U32(skb, attrtype, value)
+#define oal_nla_put_m(skb, attrtype, attrlen, data) NLA_PUT(skb, attrtype, attrlen, data)
+#define oal_nla_put_u16_m(skb, attrtype, value)     NLA_PUT_U16(skb, attrtype, value)
+#define oal_nla_put_u8(skb, attrtype, value)      NLA_PUT_U8(skb, attrtype, value)
+#define oal_nla_put_flag(skb, attrtype)           NLA_PUT_FLAG(skb, attrtype)
 
 typedef enum rate_info_flags oal_rate_info_flags;
 
@@ -43,5 +43,6 @@ struct cfg80211_external_auth_params {
 typedef struct cfg80211_external_auth_params oal_cfg80211_external_auth_stru;
 
 extern void cfg80211_drv_mss_result(struct net_device *dev, gfp_t gfp, const u8 *buf, size_t len);
+extern void cfg80211_drv_tas_result(struct net_device *dev, gfp_t gfp, const u8 *buf, size_t len);
 
 #endif /* end of oal_cfg80211.h */
