@@ -59,11 +59,11 @@ oal_uint32 hmac_reset_sys_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal
                 pst_mac_dev->us_device_reset_num++;
             }
 
-#if 0
-            pst_mac_dev->uc_device_reset_in_progress = pst_reset_sys->uc_value;
-#else
+
+
+
             hmac_config_set_reset_state(pst_mac_vap, uc_len, puc_param);
-#endif
+
 
             break;
         case MAC_RESET_SWITCH_SYS_TYPE:
@@ -79,11 +79,43 @@ oal_uint32 hmac_reset_sys_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal
 #endif
 
 
+
+oal_uint32  hmac_config_query_chr_ext_info_rsp_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param)
+{
+    hmac_vap_stru               *pst_hmac_vap = OAL_PTR_NULL;
+    chr_wifi_ext_info_stru      *pst_query_chr_ext_info = OAL_PTR_NULL;
+    oal_uint8                   uc_idx;
+
+    pst_hmac_vap = mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
+    if (pst_hmac_vap == OAL_PTR_NULL || puc_param == OAL_PTR_NULL) {
+        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,
+                    "{hmac_config_query_chr_ext_info_rsp_event::pst_hmac_vap or puc_param is null.}");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    /* 用全局变量保存通过device侧查询上报的chr info */
+    pst_query_chr_ext_info = (chr_wifi_ext_info_stru*)puc_param;
+    pst_hmac_vap->st_chr_wifi_ext_info_query.st_chr_wifi_ext_info.ul_tbtt_cnt = pst_query_chr_ext_info->ul_tbtt_cnt;
+    pst_hmac_vap->st_chr_wifi_ext_info_query.st_chr_wifi_ext_info.ul_rx_beacon_cnt = pst_query_chr_ext_info->ul_rx_beacon_cnt;
+    pst_hmac_vap->st_chr_wifi_ext_info_query.st_chr_wifi_ext_info.en_distance_id = pst_query_chr_ext_info->en_distance_id;
+    pst_hmac_vap->st_chr_wifi_ext_info_query.st_chr_wifi_ext_info.ul_upc1_01_data = pst_query_chr_ext_info->ul_upc1_01_data;
+    for (uc_idx = 0; uc_idx < WLAN_TID_MAX_NUM; uc_idx++) {
+        pst_hmac_vap->st_chr_wifi_ext_info_query.st_chr_wifi_ext_info.auc_is_paused[uc_idx] = pst_query_chr_ext_info->auc_is_paused[uc_idx];
+    }
+
+    /* 唤醒wal_sdt_recv_reg_cmd等待的进程 */
+    pst_hmac_vap->st_chr_wifi_ext_info_query.en_chr_info_ext_query_completed_flag = OAL_TRUE;
+    OAL_WAIT_QUEUE_WAKE_UP_INTERRUPT(&(pst_hmac_vap->st_chr_wifi_ext_info_query.st_query_chr_wait_q));
+
+    return OAL_SUCC;
+}
+
+
 oal_uint32  hmac_proc_query_response_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param)
 {
     hmac_vap_stru       *pst_hmac_vap;
     oal_uint8            uc_flag = 0;
-    dmac_query_station_info_response_event  *pst_query_station_reponse_event;
+    dmac_query_station_info_response_event  *pst_query_station_reponse_event = OAL_PTR_NULL;
 
     pst_hmac_vap = mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
     if (OAL_PTR_NULL == pst_hmac_vap)
@@ -175,13 +207,22 @@ oal_uint32  hmac_proc_query_response_event(mac_vap_stru *pst_mac_vap, oal_uint8 
         }
 #endif
         pst_hmac_vap->station_info.txrate.flags = uc_flag;
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+        pst_hmac_vap->center_freq  = oal_ieee80211_channel_to_frequency(pst_mac_vap->st_channel.uc_chan_number,(enum nl80211_band)pst_mac_vap->st_channel.en_band);
+#else
         pst_hmac_vap->center_freq  = oal_ieee80211_channel_to_frequency(pst_mac_vap->st_channel.uc_chan_number,(enum ieee80211_band)pst_mac_vap->st_channel.en_band);
+#endif
         pst_hmac_vap->s_free_power = pst_query_station_reponse_event->s_free_power;
         pst_hmac_vap->st_station_info_extend.uc_distance = pst_query_station_reponse_event->st_station_info_extend.uc_distance;
         pst_hmac_vap->st_station_info_extend.uc_cca_intr = pst_query_station_reponse_event->st_station_info_extend.uc_cca_intr;
         pst_hmac_vap->st_station_info_extend.ul_bcn_cnt = pst_query_station_reponse_event->st_station_info_extend.ul_bcn_cnt;
-        pst_hmac_vap->st_station_info_extend.ul_bcn_tout_cnt = pst_query_station_reponse_event->st_station_info_extend.ul_bcn_tout_cnt;
+        pst_hmac_vap->st_station_info_extend.ul_tbtt_cnt = pst_query_station_reponse_event->st_station_info_extend.ul_tbtt_cnt;
+        pst_hmac_vap->st_station_info_extend.us_chload = pst_query_station_reponse_event->st_station_info_extend.us_chload;
+#ifdef _PRE_WLAN_DFT_STAT
+        pst_hmac_vap->uc_device_distance = pst_query_station_reponse_event->st_station_info_extend.uc_distance;
+        pst_hmac_vap->uc_intf_state_cca = pst_query_station_reponse_event->st_station_info_extend.uc_cca_intr;
+        pst_hmac_vap->uc_intf_state_co = pst_query_station_reponse_event->st_txrate.en_co_intf_state;
+#endif
     }
 
    /* 唤醒wal_sdt_recv_reg_cmd等待的进程 */
@@ -199,9 +240,9 @@ oal_uint32 hmac_config_reset_operate(mac_vap_stru *pst_mac_vap, oal_uint16 us_le
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint32            ul_ret;
 #endif
-    oal_int8             *pc_token;
-    oal_int8             *pc_end;
-    oal_int8             *pc_ctx;
+    oal_int8             *pc_token = OAL_PTR_NULL;
+    oal_int8             *pc_end = OAL_PTR_NULL;
+    oal_int8             *pc_ctx = OAL_PTR_NULL;
     oal_int8             *pc_sep = " ";
 
     pst_mac_dev = mac_res_get_dev(pst_mac_vap->uc_device_id);

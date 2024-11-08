@@ -12,7 +12,8 @@ extern "C" {
   1 头文件包含
 *****************************************************************************/
 #include "hmac_resource.h"
-
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_RESOURCE_C
@@ -62,7 +63,7 @@ oal_uint32  hmac_res_free_mac_dev(oal_uint32 ul_dev_idx)
     }
 
     /* 入队索引值需要加1操作 */
-    oal_queue_enqueue(&(g_st_hmac_res.st_hmac_dev_res.st_queue), (oal_void *)((oal_uint)ul_dev_idx + 1));
+    oal_queue_enqueue(&(g_st_hmac_res.st_hmac_dev_res.st_queue), (oal_void *)(uintptr_t)((oal_uint)ul_dev_idx + 1));
 
     return OAL_SUCC;
 }
@@ -85,7 +86,7 @@ oal_uint32  hmac_res_init(oal_void)
 {
     oal_uint32      ul_loop;
 
-    OAL_MEMZERO(&g_st_hmac_res, OAL_SIZEOF(g_st_hmac_res));
+    memset_s(&g_st_hmac_res, OAL_SIZEOF(g_st_hmac_res), 0, OAL_SIZEOF(g_st_hmac_res));
 
     /***************************************************************************
             初始化HMAC DEV的资源管理内容
@@ -97,7 +98,7 @@ oal_uint32  hmac_res_init(oal_void)
     for (ul_loop = 0; ul_loop < MAC_RES_MAX_DEV_NUM; ul_loop++)
     {
         /* 初始值保存的是对应数组下标值加1 */
-        oal_queue_enqueue(&(g_st_hmac_res.st_hmac_dev_res.st_queue), (oal_void *)((oal_uint)ul_loop + 1));
+        oal_queue_enqueue(&(g_st_hmac_res.st_hmac_dev_res.st_queue), (oal_void *)(uintptr_t)((oal_uint)ul_loop + 1));
 
         /* 初始化对应的引用计数值为0 */
         g_st_hmac_res.st_hmac_dev_res.auc_user_cnt[ul_loop] = 0;
@@ -113,7 +114,7 @@ oal_uint32  hmac_res_exit(mac_board_stru *pst_hmac_board)
     oal_uint8           uc_device_max;
     oal_uint8           uc_device;
     oal_uint16          ul_chip_max_num;
-    mac_chip_stru       *pst_chip;
+    mac_chip_stru       *pst_chip = OAL_PTR_NULL;
 
     /* chip支持的最大数由PCIe总线处理提供; */
     ul_chip_max_num = oal_bus_get_chip_num();

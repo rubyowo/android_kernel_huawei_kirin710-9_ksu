@@ -45,6 +45,13 @@ extern "C" {
 
 #define   HMAC_USER_STATS_PKT_INCR(_member, _cnt)            ((_member) += (_cnt))
 
+#if defined (_PRE_PRODUCT_ID_HI110X_HOST) || defined (_PRE_PRODUCT_ID_HI110X_DEV)
+#define DMAC_UCAST_FRAME_TX_COMP_TIMES      10
+/*ax PF-认证测试要求HE SU帧为AMPDU*/
+#define DMAC_UCAST_FRAME_TX_COMP_TIMES_HE   0
+#else
+#define DMAC_UCAST_FRAME_TX_COMP_TIMES      5           /* 建立BA会话前，需要产生单播帧的发送完成中断 */
+#endif /* _PRE_PRODUCT_ID_HI110X_DEV */
 
 /*****************************************************************************
   3 枚举定义
@@ -179,7 +186,8 @@ typedef struct
                 bit_erp                 : 1,        /* AP保存STA能力使用,指示user是否有ERP能力， 0=不支持，1=支持*/
                 bit_short_slot_time     : 1,        /* 短时隙: 0=不支持, 1=支持 */
                 bit_11ac2g              : 1,
-                bit_resv                : 28;
+                bit_owe                 : 1,
+                bit_resv                : 27;
 }hmac_user_cap_info_stru;
 typedef struct
 {
@@ -277,7 +285,7 @@ typedef struct
 
     oal_uint8                           uc_rtpver;                     /* RTP version */
     oal_uint32                          ul_rtpssrc;                    /* RTP SSRC */
-    oal_uint32                          ul_payload_type;               /* RTP:标记1bit、有效载荷类型(PT)7bit */
+    oal_uint32                          ul_payload_type;               /* RTP:标记1bit不计入，仅记录有效载荷类型(PT)7bit */
 
 }hmac_tx_judge_info_stru;
 
@@ -294,7 +302,7 @@ typedef struct
 
     oal_uint8                           uc_rtpver;                     /* RTP version */
     oal_uint32                          ul_rtpssrc;                    /* RTP SSRC */
-    oal_uint32                          ul_payload_type;               /* 标记1bit、有效载荷类型(PT)7bit */
+    oal_uint32                          ul_payload_type;               /* 标记1bit不计入，仅记录有效载荷类型(PT)7bit */
 
     oal_uint32                          ul_wait_check_num;             /* 待检测列表中此业务包个数 */
 
@@ -425,6 +433,8 @@ typedef struct
     oal_bool_enum_uint8             en_user_vendor_novht_capable;
     oal_bool_enum_uint8             en_report_kernel;
     oal_uint8                       auc_resv5[1];
+    oal_uint16                      aus_tid_baw_size[WLAN_TID_MAX_NUM];             /* 保存与TID相关的信息 */
+
 #ifdef _PRE_WLAN_FEATURE_EDCA_OPT_AP
     oal_uint32                      aaul_txrx_data_stat[WLAN_WME_AC_BUTT][WLAN_TXRX_DATA_BUTT];       /* 发送/接收 tcp/udp be,bk,vi,vo报文 */
 #endif
@@ -458,7 +468,7 @@ typedef struct
     oal_int8                        c_rssi;
     oal_uint8                       uc_ps_st;
     oal_int8                        c_free_power;
-    oal_uint8                       auc_resv3[1];
+    oal_uint8                       uc_tx_ba_limit;
 #ifdef _PRE_WLAN_DFT_STAT
     oal_uint8                       uc_cur_per;
     oal_uint8                       uc_bestrate_per;
@@ -474,7 +484,6 @@ typedef struct
     oal_uint32                      aul_tx_delay[3];                    /*0 1 2分别为最大发送延时,最小发送延时,平均发送延时*/
     mac_ap_type_enum_uint16         en_user_ap_type;                    /* 用户的AP类型，兼容性问题使用 */
     oal_uint8                       auc_mimo_blacklist_mac[WLAN_MAC_ADDR_LEN];
-    //oal_uint8                       auc_resv6[2];
 
 #ifdef _PRE_WLAN_FEATURE_CAR
     hmac_car_limit_stru             st_car_user_cfg[HMAC_CAR_BUTT];    /* user限速结构体,0-up 1-down */
@@ -486,11 +495,6 @@ typedef struct
 
 #ifdef _PRE_WLAN_FEATURE_11V_ENABLE
     hmac_user_11v_ctrl_stru         st_11v_ctrl_info;                /* 11v控制信息结构体 */
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-    oal_uint8                       auc_ie_oui[3];
-    oal_uint8                       uc_resv5;
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_WMMAC
@@ -563,6 +567,7 @@ extern oal_uint32  hmac_user_free_etc(oal_uint16 us_idx);
 extern oal_uint32  hmac_user_init_etc(hmac_user_stru *pst_hmac_user);
 extern oal_uint32  hmac_user_set_avail_num_space_stream_etc(mac_user_stru *pst_mac_user, wlan_nss_enum_uint8 en_vap_nss);
 extern oal_void    hmac_sdio_to_pcie_switch(mac_vap_stru *pst_mac_vap);
+extern oal_void hmac_user_set_num_spatial_stream_160M(mac_user_stru *pst_mac_user);
 extern oal_uint32  hmac_user_del_etc(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_user);
 extern oal_uint32  hmac_user_add_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac_addr, oal_uint16 *pus_user_index);
 extern oal_uint32  hmac_user_add_multi_user_etc(mac_vap_stru *pst_mac_vap, oal_uint16 *us_user_index);
@@ -573,6 +578,7 @@ extern oal_void hmac_tid_clear_etc(mac_vap_stru *pst_mac_vap, hmac_user_stru *ps
 extern hmac_user_stru*  mac_res_get_hmac_user_alloc_etc(oal_uint16 us_idx);
 extern hmac_user_stru*  mac_res_get_hmac_user_etc(oal_uint16 us_idx);
 extern hmac_user_stru  *mac_vap_get_hmac_user_by_addr_etc(mac_vap_stru *pst_mac_vap, oal_uint8  *puc_mac_addr);
+extern mac_ap_type_enum_uint16 hmac_compability_ap_tpye_identify_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac_addr);
 
 #ifdef _PRE_WLAN_FEATURE_WAPI
 extern hmac_wapi_stru *hmac_user_get_wapi_ptr_etc(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_pairwise, oal_uint16 us_pairwise_idx);

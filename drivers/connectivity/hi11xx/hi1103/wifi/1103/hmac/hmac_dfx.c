@@ -24,6 +24,9 @@ extern "C" {
 #include "chr_errno.h"
 #endif
 
+#include "securec.h"
+#include "securectype.h"
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_DFX_C
 /*****************************************************************************
@@ -41,8 +44,6 @@ OAL_STATIC oam_cfg_data_stru  g_ast_cfg_data[OAM_CFG_TYPE_BUTT] =
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 /* 由于WL_L2_DRAM大小限制，目前暂时开放2个业务vap，整体规格开放待后续优化 TBD */
-oal_uint32   g_ul_wlan_vap_max_num_per_device_etc = 4 + 1;  /* 4个AP + 1个配置vap */
-#else
 oal_uint32   g_ul_wlan_vap_max_num_per_device_etc = 4 + 1;  /* 4个AP + 1个配置vap */
 #endif
 
@@ -76,11 +77,11 @@ oal_int32  oam_cfg_get_item_by_id_etc(oam_cfg_type_enum_uint16  en_cfg_type)
 }
 
 
-OAL_STATIC oal_uint32  oam_cfg_restore_all_item(oal_int32 al_default_cfg_data[])
+OAL_STATIC oal_uint32  oam_cfg_restore_all_item(oal_int32 al_default_cfg_data[], oal_uint32 u_cfg_data_len)
 {
     oal_uint32          ul_loop;
 
-    for (ul_loop = 0; ul_loop < OAM_CFG_TYPE_BUTT; ul_loop++)
+    for (ul_loop = 0; ul_loop < u_cfg_data_len/sizeof(oal_int32); ul_loop++)
     {
         g_ast_cfg_data[ul_loop].l_val = al_default_cfg_data[ul_loop];
     }
@@ -93,8 +94,8 @@ OAL_STATIC oal_uint32  oam_cfg_restore_all_item(oal_int32 al_default_cfg_data[])
 oal_int32  oam_cfg_get_all_item_etc(oal_void)
 {
     oal_int32     al_default_cfg_data[OAM_CFG_TYPE_BUTT] = {0};
-    oal_uint8    *puc_plaintext;
-    oal_uint8    *puc_ciphertext;
+    oal_uint8    *puc_plaintext = OAL_PTR_NULL;
+    oal_uint8    *puc_ciphertext = OAL_PTR_NULL;
     oal_uint32    ul_file_size = 0;
     oal_uint32    ul_loop;
     oal_int32     l_ret;
@@ -128,7 +129,7 @@ oal_int32  oam_cfg_get_all_item_etc(oal_void)
         OAL_IO_PRINT("oam_cfg_get_all_item_etc::alloc ciphertext buf failed! load ko with default cfg!\n");
         return OAL_ERR_CODE_PTR_NULL;
     }
-    OAL_MEMZERO(puc_ciphertext, ul_file_size + OAM_CFG_STR_END_SIGN_LEN);
+    memset_s(puc_ciphertext, ul_file_size + OAM_CFG_STR_END_SIGN_LEN, 0, ul_file_size + OAM_CFG_STR_END_SIGN_LEN);
 
     l_ret = oam_cfg_read_file_to_buf_etc((oal_int8 *)puc_ciphertext, ul_file_size);
     if (OAL_SUCC != l_ret)
@@ -147,7 +148,7 @@ oal_int32  oam_cfg_get_all_item_etc(oal_void)
 
         return OAL_ERR_CODE_PTR_NULL;
     }
-    OAL_MEMZERO(puc_plaintext, ul_file_size + OAM_CFG_STR_END_SIGN_LEN);
+    memset_s(puc_plaintext, ul_file_size + OAM_CFG_STR_END_SIGN_LEN, 0, ul_file_size + OAM_CFG_STR_END_SIGN_LEN);
 
     /* 解密 */
     l_ret = (oal_int32)oal_aes_expand_key_etc(&st_aes_key,(oal_uint8 *)i_key,OAL_AES_KEYSIZE_256);
@@ -175,7 +176,7 @@ oal_int32  oam_cfg_get_all_item_etc(oal_void)
         {
             OAL_IO_PRINT("oam_cfg_get_all_item_etc::get cfg item fail! ul_loop=%d\n", ul_loop);
 
-            oam_cfg_restore_all_item(al_default_cfg_data);
+            oam_cfg_restore_all_item(al_default_cfg_data, sizeof(al_default_cfg_data));
             oal_free(puc_plaintext);
             oal_free(puc_ciphertext);
 
@@ -338,7 +339,7 @@ oal_void hmac_chr_get_connect_code(oal_uint16 *pus_connect_code)
 
 oal_void hmac_chr_get_vap_info(mac_vap_stru *pst_mac_vap, hmac_chr_vap_info_stru *pst_vap_info)
 {
-    mac_user_stru     *pst_mac_user;
+    mac_user_stru     *pst_mac_user = OAL_PTR_NULL;
     mac_device_stru   *pst_mac_device;
 
     pst_mac_device = mac_res_get_dev_etc(0);
@@ -359,8 +360,9 @@ oal_void hmac_chr_get_vap_info(mac_vap_stru *pst_mac_vap, hmac_chr_vap_info_stru
         pst_vap_info->uc_ap_protocol_mode      = pst_mac_user->en_protocol_mode;
     }
 
-    pst_vap_info->bit_ampdu_active    = mac_mib_get_CfgAmpduTxAtive(pst_mac_vap);
-    pst_vap_info->bit_amsdu_active    = mac_mib_get_AmsduAggregateAtive(pst_mac_vap);
+    
+    pst_vap_info->bit_ampdu_active    = OAL_TRUE;
+    pst_vap_info->bit_amsdu_active    = OAL_TRUE;
     pst_vap_info->bit_sta_11ntxbf     = pst_mac_vap->st_cap_flag.bit_11ntxbf;
     pst_vap_info->bit_is_dbac_running = mac_is_dbac_running(pst_mac_device);
     pst_vap_info->bit_is_dbdc_running = mac_is_dbdc_running(pst_mac_device);
@@ -373,19 +375,7 @@ oal_uint32  hmac_chr_get_chip_info(oal_uint32 chr_event_id)
     oal_uint8                uc_vap_index;
     mac_vap_stru             *pst_mac_vap = OAL_PTR_NULL;
     mac_device_stru          *pst_mac_device = OAL_PTR_NULL;
-    hmac_chr_info            *pst_hmac_chr_info = OAL_PTR_NULL;
-    oal_netbuf_stru          *pst_buf = OAL_PTR_NULL;
-
-    pst_buf = OAL_MEM_NETBUF_ALLOC(OAL_NORMAL_NETBUF, HMAC_CHR_NETBUF_ALLOC_SIZE, OAL_NETBUF_PRIORITY_MID);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_buf))
-    {
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    /*OAL_SIZEOF(dmac_chr_info) 实测大小252*/
-    oal_netbuf_put(pst_buf, OAL_SIZEOF(hmac_chr_info));
-    pst_hmac_chr_info = (hmac_chr_info*)OAL_NETBUF_DATA(pst_buf);
-    oal_memset(pst_hmac_chr_info, 0, OAL_SIZEOF(hmac_chr_info));
+    hmac_chr_info            st_hmac_chr_info;
 
     pst_mac_device = mac_res_get_dev_etc(0);
     if (OAL_PTR_NULL == pst_mac_device)
@@ -409,13 +399,14 @@ oal_uint32  hmac_chr_get_chip_info(oal_uint32 chr_event_id)
 
         if(IS_LEGACY_STA(pst_mac_vap))
         {
-            /*原子接口*/
-            hmac_chr_get_disasoc_reason(&pst_hmac_chr_info->st_disasoc_reason);
-            hmac_chr_get_del_ba_info(pst_mac_vap, &pst_hmac_chr_info->st_del_ba_info);
-            hmac_chr_get_connect_code(&pst_hmac_chr_info->us_connect_code);
-            hmac_chr_get_vap_info(pst_mac_vap, &pst_hmac_chr_info->st_vap_info);
+            memset_s(&st_hmac_chr_info, OAL_SIZEOF(hmac_chr_info), 0, OAL_SIZEOF(hmac_chr_info));
 
-            CHR_EXCEPTION_P(chr_event_id, (oal_uint8 *)(pst_hmac_chr_info), OAL_SIZEOF(hmac_chr_info));
+            hmac_chr_get_disasoc_reason(&st_hmac_chr_info.st_disasoc_reason);
+            hmac_chr_get_del_ba_info(pst_mac_vap, &st_hmac_chr_info.st_del_ba_info);
+            hmac_chr_get_connect_code(&st_hmac_chr_info.us_connect_code);
+            hmac_chr_get_vap_info(pst_mac_vap, &st_hmac_chr_info.st_vap_info);
+
+            CHR_EXCEPTION_P(chr_event_id, (oal_uint8 *)(&st_hmac_chr_info), OAL_SIZEOF(hmac_chr_info));
         }
     }
 

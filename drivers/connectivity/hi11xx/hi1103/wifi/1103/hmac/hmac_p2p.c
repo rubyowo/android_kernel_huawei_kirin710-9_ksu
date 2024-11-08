@@ -25,6 +25,8 @@ extern "C" {
 #include "hmac_p2p.h"
 #include "hmac_user.h"
 #include "hmac_mgmt_ap.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_P2P_C
@@ -318,7 +320,10 @@ oal_uint32  hmac_add_p2p_cl_vap_etc(mac_vap_stru *pst_vap, oal_uint16 us_len, oa
     pst_hmac_vap->pst_net_device = pst_param->pst_net_dev;
 
     /* 包括'\0' */
-    oal_memcopy(pst_hmac_vap->auc_name, pst_param->pst_net_dev->name,OAL_IF_NAME_SIZE);
+    if (EOK != memcpy_s(pst_hmac_vap->auc_name, OAL_IF_NAME_SIZE, pst_param->pst_net_dev->name, OAL_IF_NAME_SIZE)) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "hmac_add_p2p_cl_vap_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /* 将申请到的mac_vap空间挂到net_device priv指针上去 */
     OAL_NET_DEV_PRIV(pst_param->pst_net_dev) = &pst_hmac_vap->st_vap_base_info;
@@ -364,9 +369,9 @@ oal_uint32  hmac_del_p2p_cl_vap_etc(mac_vap_stru *pst_vap, oal_uint16 us_len, oa
     oal_uint8                      uc_vap_id;
     mac_cfg_del_vap_param_stru    *pst_del_vap_param;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{hmac_config_del_vap_etc::param null,pst_vap=%d puc_param=%d.}", pst_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{hmac_config_del_vap_etc::param null,pst_vap=%d puc_param=%d.}", (uintptr_t)pst_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -391,10 +396,13 @@ oal_uint32  hmac_del_p2p_cl_vap_etc(mac_vap_stru *pst_vap, oal_uint16 us_len, oa
 
     mac_dec_p2p_num_etc(&pst_hmac_vap->st_vap_base_info);
     mac_vap_set_p2p_mode_etc(&pst_hmac_vap->st_vap_base_info, WLAN_P2P_DEV_MODE);
-    //pst_hmac_vap->st_vap_base_info.uc_p2p_gocl_hal_vap_id = pst_hmac_vap->st_vap_base_info.uc_p2p0_hal_vap_id;
-    oal_memcopy(mac_mib_get_StationID(&pst_hmac_vap->st_vap_base_info),
-                mac_mib_get_p2p0_dot11StationID(&pst_hmac_vap->st_vap_base_info),
-                WLAN_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(mac_mib_get_StationID(&pst_hmac_vap->st_vap_base_info),
+                        WLAN_MAC_ADDR_LEN,
+                        mac_mib_get_p2p0_dot11StationID(&pst_hmac_vap->st_vap_base_info),
+                        WLAN_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "hmac_del_p2p_cl_vap_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /***************************************************************************
                           抛事件到DMAC层, 同步DMAC数据
@@ -543,14 +551,14 @@ oal_void hmac_disable_p2p_pm_etc(hmac_vap_stru *pst_hmac_vap)
 
     pst_mac_vap  =  &(pst_hmac_vap->st_vap_base_info);
 
-    OAL_MEMZERO(&st_p2p_noa, OAL_SIZEOF(st_p2p_noa));
+    memset_s(&st_p2p_noa, OAL_SIZEOF(st_p2p_noa), 0, OAL_SIZEOF(st_p2p_noa));
     ul_ret = hmac_config_set_p2p_ps_noa_etc(pst_mac_vap, OAL_SIZEOF(mac_cfg_p2p_noa_param_stru), (oal_uint8 *)&st_p2p_noa);
     if (ul_ret != OAL_SUCC)
     {
         OAM_ERROR_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_P2P,
         "{hmac_disable_p2p_pm_etc::hmac_config_set_p2p_ps_noa_etc disable p2p NoA fail.}");
     }
-    OAL_MEMZERO(&st_p2p_ops, OAL_SIZEOF(st_p2p_ops));
+    memset_s(&st_p2p_ops, OAL_SIZEOF(st_p2p_ops), 0, OAL_SIZEOF(st_p2p_ops));
     ul_ret = hmac_config_set_p2p_ps_ops_etc(pst_mac_vap, OAL_SIZEOF(mac_cfg_p2p_ops_param_stru), (oal_uint8 *)&st_p2p_ops);
     if (ul_ret != OAL_SUCC)
     {

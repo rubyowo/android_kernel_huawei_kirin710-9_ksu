@@ -58,6 +58,10 @@ typedef enum
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
+extern oal_bool_enum_uint8  g_en_force_pass_filter;
+#ifdef _PRE_WLAN_FEATURE_APF
+extern oal_uint16           g_us_apf_program_len;
+#endif
 
 /*****************************************************************************
   5 消息头定义
@@ -134,6 +138,7 @@ extern oal_void  hmac_tx_tcp_ack_buf_switch(oal_uint32 ul_rx_throughput_mbps);
 extern oal_void  hmac_rx_dyn_bypass_extlna_switch(oal_uint32 ul_tx_throughput_mbps, oal_uint32 ul_rx_throughput_mbps);
 extern oal_void  hmac_tx_small_amsdu_switch(oal_uint32 ul_rx_throughput_mbps,oal_uint32 ul_tx_pps);
 extern oal_void  hmac_set_psm_activity_timer(oal_uint32 ul_total_pps);
+extern oal_void hmac_auto_set_apf_switch_in_suspend(oal_uint32 ul_total_pps);
 
 /*****************************************************************************
   9 OTHERS定义
@@ -147,7 +152,7 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hmac_tx_get_next_mpdu(oal_netbuf_stru *ps
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_buf))
     {
-      //  OAM_ERROR_LOG0(0, OAM_SF_TX, "{hmac_tx_get_next_mpdu::pst_buf null}");
+
         return OAL_PTR_NULL;
     }
 
@@ -164,11 +169,11 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hmac_tx_get_next_mpdu(oal_netbuf_stru *ps
 OAL_STATIC OAL_INLINE oal_void hmac_tx_netbuf_list_enqueue(oal_netbuf_head_stru *pst_head, oal_netbuf_stru *pst_buf, oal_uint8 uc_netbuf_num)
 {
     oal_uint32             ul_netbuf_index;
-    oal_netbuf_stru       *pst_buf_next;
+    oal_netbuf_stru       *pst_buf_next = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_head) || (OAL_PTR_NULL == pst_buf)))
     {
-      //  OAM_ERROR_LOG2(0, OAM_SF_TX, "{hmac_tx_get_next_mpdu::input null %x %x}", pst_head, pst_buf);
+
         return;
     }
 
@@ -404,7 +409,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_vap_ba_is_setup(hmac_user_stru *p
    {
        return OAL_FALSE;
    }
-   return (DMAC_BA_COMPLETE == pst_hmac_user->ast_tid_info[uc_tidno].st_ba_tx_info.en_ba_status) ? OAL_TRUE : OAL_FALSE;/* [false alarm]:返回值是布尔值和函数类型一致*/
+   return (DMAC_BA_COMPLETE == pst_hmac_user->ast_tid_info[uc_tidno].st_ba_tx_info.en_ba_status) ? OAL_TRUE : OAL_FALSE;
 }
 
 
@@ -414,8 +419,8 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_tid_need_ba_session(
                                     oal_uint8        uc_tidno,
                                     oal_netbuf_stru *pst_buf)
 {
-    mac_device_stru       *pst_mac_device;
-    hmac_tid_stru         *pst_hmac_tid_info;
+    mac_device_stru       *pst_mac_device = OAL_PTR_NULL;
+    hmac_tid_stru         *pst_hmac_tid_info = OAL_PTR_NULL;
     mac_action_mgmt_args_stru       st_action_args;   /* 用于填写ACTION帧的参数 */
 
     if(OAL_TRUE == hmac_vap_ba_is_setup(pst_hmac_user, uc_tidno))
@@ -440,7 +445,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_tid_need_ba_session(
     }
 
 #ifdef _PRE_WLAN_NARROW_BAND
-    if(g_uc_hitalk_status & NARROW_BAND_ON_MASK)
+    if(hitalk_status & NARROW_BAND_ON_MASK)
     {
         return OAL_FALSE;
     }

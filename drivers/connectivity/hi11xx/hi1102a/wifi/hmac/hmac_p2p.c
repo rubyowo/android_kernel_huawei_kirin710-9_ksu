@@ -24,6 +24,8 @@ extern "C" {
 #include "hmac_mgmt_ap.h"
 #include "mac_frame.h"
 #include "hmac_p2p.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_P2P_C
@@ -344,7 +346,7 @@ oal_uint32  hmac_add_p2p_cl_vap(mac_vap_stru *pst_vap, oal_uint16 us_len, oal_ui
     }
     mac_vap_set_p2p_mode(&pst_hmac_vap->st_vap_base_info, pst_param->en_p2p_mode);
     mac_inc_p2p_num(&pst_hmac_vap->st_vap_base_info);
-
+    hmac_config_set_event_netbuf_num(&pst_hmac_vap->st_vap_base_info, OAL_TRUE);
     /* 设置帧过滤 */
     hmac_set_rx_filter_value(&pst_hmac_vap->st_vap_base_info);
 
@@ -366,7 +368,7 @@ oal_uint32  hmac_del_p2p_cl_vap(mac_vap_stru *pst_vap, oal_uint16 us_len, oal_ui
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_vap) || (OAL_PTR_NULL == puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{hmac_config_del_vap::param null,pst_vap=%d puc_param=%d.}", pst_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{hmac_config_del_vap::param null,pst_vap=%x puc_param=%x.}", (uintptr_t)pst_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -391,7 +393,7 @@ oal_uint32  hmac_del_p2p_cl_vap(mac_vap_stru *pst_vap, oal_uint16 us_len, oal_ui
 
     mac_dec_p2p_num(&pst_hmac_vap->st_vap_base_info);
     mac_vap_set_p2p_mode(&pst_hmac_vap->st_vap_base_info, WLAN_P2P_DEV_MODE);
-    //pst_hmac_vap->st_vap_base_info.uc_p2p_gocl_hal_vap_id = pst_hmac_vap->st_vap_base_info.uc_p2p0_hal_vap_id;
+
     oal_memcopy(pst_hmac_vap->st_vap_base_info.pst_mib_info->st_wlan_mib_sta_config.auc_dot11StationID,
                 pst_hmac_vap->st_vap_base_info.pst_mib_info->st_wlan_mib_sta_config.auc_p2p0_dot11StationID,
                 WLAN_MAC_ADDR_LEN);
@@ -440,6 +442,21 @@ oal_uint32 hmac_p2p_send_listen_expired_to_host(hmac_vap_stru *pst_hmac_vap)
     }
     pst_p2p_info = &pst_mac_device->st_p2p_info;
 
+    /* 填写上报监听超时, 上报的网络设备应该采用p2p0 */
+    if (pst_hmac_vap->pst_p2p0_net_device && pst_hmac_vap->pst_p2p0_net_device->ieee80211_ptr)
+    {
+        pst_wdev = pst_hmac_vap->pst_p2p0_net_device->ieee80211_ptr;
+    }
+    else if(pst_hmac_vap->pst_net_device && pst_hmac_vap->pst_net_device->ieee80211_ptr)
+    {
+        pst_wdev = pst_hmac_vap->pst_net_device->ieee80211_ptr;
+    }
+    else
+    {
+        OAM_WARNING_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_P2P, "{hmac_send_mgmt_to_host::vap has deleted.}");
+        return OAL_FAIL;
+    }
+
     /* 组装事件到WAL ，上报监听结束 */
     pst_event_mem = FRW_EVENT_ALLOC(OAL_SIZEOF(hmac_p2p_listen_expired_stru));
     if (OAL_PTR_NULL == pst_event_mem)
@@ -460,15 +477,6 @@ oal_uint32 hmac_p2p_send_listen_expired_to_host(hmac_vap_stru *pst_hmac_vap)
                        pst_hmac_vap->st_vap_base_info.uc_device_id,
                        pst_hmac_vap->st_vap_base_info.uc_vap_id);
 
-    /* 填写上报监听超时, 上报的网络设备应该采用p2p0 */
-    if (pst_hmac_vap->pst_p2p0_net_device && pst_hmac_vap->pst_p2p0_net_device->ieee80211_ptr)
-    {
-        pst_wdev = pst_hmac_vap->pst_p2p0_net_device->ieee80211_ptr;
-    }
-    else
-    {
-        pst_wdev = pst_hmac_vap->pst_net_device->ieee80211_ptr;
-    }
     pst_p2p_listen_expired = (hmac_p2p_listen_expired_stru *)(pst_event->auc_event_data);
     pst_p2p_listen_expired->st_listen_channel = pst_p2p_info->st_listen_channel;
     pst_p2p_listen_expired->pst_wdev          = pst_wdev;
@@ -543,14 +551,14 @@ oal_void hmac_disable_p2p_pm(hmac_vap_stru *pst_hmac_vap)
 
     pst_mac_vap  =  &(pst_hmac_vap->st_vap_base_info);
 
-    OAL_MEMZERO(&st_p2p_noa, OAL_SIZEOF(st_p2p_noa));
+    memset_s(&st_p2p_noa, OAL_SIZEOF(st_p2p_noa), 0, OAL_SIZEOF(st_p2p_noa));
     ul_ret = hmac_config_set_p2p_ps_noa(pst_mac_vap, OAL_SIZEOF(mac_cfg_p2p_noa_param_stru), (oal_uint8 *)&st_p2p_noa);
     if (ul_ret != OAL_SUCC)
     {
         OAM_ERROR_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_P2P,
         "{hmac_disable_p2p_pm::hmac_config_set_p2p_ps_noa disable p2p NoA fail.}");
     }
-    OAL_MEMZERO(&st_p2p_ops, OAL_SIZEOF(st_p2p_ops));
+    memset_s(&st_p2p_ops, OAL_SIZEOF(st_p2p_ops), 0, OAL_SIZEOF(st_p2p_ops));
     ul_ret = hmac_config_set_p2p_ps_ops(pst_mac_vap, OAL_SIZEOF(mac_cfg_p2p_ops_param_stru), (oal_uint8 *)&st_p2p_ops);
     if (ul_ret != OAL_SUCC)
     {

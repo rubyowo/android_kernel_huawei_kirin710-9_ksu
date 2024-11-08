@@ -65,9 +65,10 @@ extern "C" {
 #define MAC_INFO_VAR(_uc_vap_id, _c_fmt, ...)
 
 #ifdef _PRE_WLAN_DFT_EVENT
-#define MAC_EVENT_STATE_CHANGE(_puc_macaddr, _uc_vap_id, en_event_type, _puc_string)    oam_event_report(_puc_macaddr, _uc_vap_id, OAM_MODULE_ID_MAC, en_event_type, _puc_string)
+#define MAC_EVENT_STATE_CHANGE(_puc_macaddr, _uc_vap_id, en_event_type, output_data, data_len) \
+            oam_event_report(_puc_macaddr, _uc_vap_id, OAM_MODULE_ID_MAC, en_event_type, output_data, data_len)
 #else
-#define MAC_EVENT_STATE_CHANGE(_puc_macaddr, _uc_vap_id, en_event_type, _puc_string)    ((void)_puc_string)
+#define MAC_EVENT_STATE_CHANGE(_puc_macaddr, _uc_vap_id, en_event_type, output_data, data_len)
 #endif
 
 /* 获取设备的算法私有结构体 */
@@ -205,6 +206,7 @@ typedef oal_uint8 mac_one_packet_index_enum_uint8;
 #define     MAC_FCS_DEFAULT_PROTECT_TIME_OUT2   1024    /* us */
 #define     MAC_FCS_DEFAULT_PROTECT_TIME_OUT3   15000   /* us */
 #define     MAC_FCS_DEFAULT_PROTECT_TIME_OUT4   16000   /* us */
+#define     MAC_FCS_DEFAULT_PROTECT_TIME_OUT5   9000    /* us 单VAP场景下增加扫描发送null帧的超时时间提升null帧的发送成功率 */ 
 
 #define     MAC_ONE_PACKET_TIME_OUT             1000
 #define     MAC_ONE_PACKET_TIME_OUT3            2000
@@ -562,8 +564,15 @@ typedef struct
 typedef struct
 {
     pno_match_ssid_stru   ast_match_ssid_set[MAX_PNO_SSID_COUNT];
-    oal_int32             l_ssid_count;                           /* 下发的需要匹配的ssid集的个数 */
-    oal_int32             l_rssi_thold;                           /* 可上报的rssi门限 */
+    union{
+        oal_int32             l_ssid_count;                           /* 下发的需要匹配的ssid集的个数 */
+        oal_uint32            ul_work_time_ms;                        /* 窄带固件下因为ROM化,复用为work_time */
+    };
+    union{
+        oal_int32             l_rssi_thold;                           /* 可上报的rssi门限 */
+        oal_uint32            ul_listen_interval_ms;                  /* 窄带固件下因为ROM化,复用为周期 */
+    };
+
     oal_uint32            ul_pno_scan_interval;                   /* pno扫描间隔 */
     oal_uint8             auc_sour_mac_addr[WLAN_MAC_ADDR_LEN];   /* probe req帧中携带的发送端地址 */
     oal_uint8             uc_pno_scan_repeat;                     /* pno扫描重复次数 */
@@ -918,6 +927,7 @@ typedef enum
     MAC_SCAN_TIMEOUT = 2,       /* 扫描超时 */
     MAC_SCAN_REFUSED = 3,       /* 扫描被拒绝 */
     MAC_SCAN_ABORT   = 4,       /* 终止扫描 */
+    MAC_SCAN_ABORT_SYNC = 5,    /* 扫描被终止同步状态，用于上层去关联命令时强制abort，不直接往内核上报scan abort结果，等dmac响应abort完成后再往上报 */
     MAC_SCAN_STATUS_BUTT,       /* 无效状态码，初始化时使用此状态码 */
 }mac_scan_status_enum;
 typedef oal_uint8   mac_scan_status_enum_uint8;
@@ -940,7 +950,7 @@ typedef struct
     oal_uint8                           uc_dtim_cnt;                        /* dtime cnt */
     oal_bool_enum_uint8                 en_11ntxbf;                         /* 11n txbf */
     oal_bool_enum_uint8                 en_new_scan_bss;                    /* 是否是新扫描到的BSS */
-    oal_uint8                           auc_resv1[1];
+    wlan_ap_chip_oui_enum_uint8         en_is_tplink_oui;
     oal_int8                            c_rssi;                             /* bss的信号强度 */
     oal_int8                            ac_ssid[WLAN_SSID_MAX_LEN];         /* 网络ssid */
     oal_uint16                          us_beacon_period;                   /* beacon周期 */
@@ -981,13 +991,21 @@ typedef struct
 
 #ifdef _PRE_WLAN_NARROW_BAND
     oal_bool_enum_uint8                 en_nb_capable;                      /* 是否支持nb */
-    oal_uint8                           auc_resv3[3];
 #endif
+    oal_uint8                           auc_resv3[1];
+    oal_bool_enum_uint8                 en_11k_capable;                     /* 是否支持11k */
+    oal_bool_enum_uint8                 en_11v_capable;                     /* 是否支持11v */
 
 #if defined(_PRE_WLAN_FEATURE_11K)|| defined(_PRE_WLAN_FEATURE_FTM)
-    oal_bool_enum_uint8                 en_support_rrm;                     /*是否支持RRM*/
-    oal_uint8                           auc_reserve[3];
+    oal_bool_enum_uint8                 en_support_rrm;  /*是否支持RRM*/
 #endif
+    wlan_nss_enum_uint8                 en_support_max_nss;                 /* 该AP支持的最大空间流数 */
+    oal_uint8                           uc_num_sounding_dim;                /* 该AP发送txbf的天线数 */
+
+#ifdef _PRE_WLAN_FEATURE_ROAM
+    oal_bool_enum_uint8                 en_roam_blacklist_chip_oui;         /* 不支持roam */
+#endif
+
 
     /* 管理帧信息 */
     oal_uint32                          ul_mgmt_len;                        /* 管理帧的长度 */
@@ -1245,8 +1263,9 @@ typedef struct
     oal_uint8                           uc_wapi;
     oal_uint8                           uc_reserve;
     oal_bool_enum_uint8                 en_is_random_mac_addr_scan;            /* 随机mac扫描开关,从hmac下发 */
-    oal_uint8                           auc_mac_oui[WLAN_RANDOM_MAC_OUI_LEN];  /* 随机mac地址OUI,由Android下发 */
-    oal_uint8                           auc_rsv[2];
+    oal_uint8                           auc_mac_oui[WLAN_RANDOM_MAC_OUI_LEN];  /* 随机mac地址OUI,由系统下发 */
+    oal_bool_enum_uint8                 en_apf_switch;
+    oal_uint8                           auc_rsv[1];
 
 #ifdef _PRE_WLAN_FEATURE_DFS
     mac_dfs_core_stru                   st_dfs;
@@ -1376,7 +1395,8 @@ typedef struct
 #endif
     mac_ap_ch_info_stru                 st_ap_channel_list[MAC_MAX_SUPP_CHANNEL];
     oal_uint8                           uc_ap_chan_idx;                        /* 当前扫描信道索引 */
-    oal_uint8                           auc_resv21[3];
+    oal_bool_enum_uint8                 en_fft_window_offset_enable;           /* 是否已经配置FFT窗口 */
+    oal_uint8                           auc_resv21[2];
 
     oal_bool_enum_uint8                 en_40MHz_intol_bit_recd;
 #endif /* IS_HOST */
@@ -1624,7 +1644,7 @@ extern mac_device_voe_custom_stru   g_st_mac_voe_custom_param;
 /*****************************************************************************
   10.3 杂项，待归类
 *****************************************************************************/
-
+extern oal_uint32  mac_device_find_legacy_sta(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap);
 extern oal_uint32  mac_device_find_up_vap(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap);
 extern mac_vap_stru * mac_device_find_another_up_vap(mac_device_stru *pst_mac_device, oal_uint8 uc_vap_id_self);
 extern oal_uint32  mac_device_find_up_ap(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap);
@@ -1679,7 +1699,7 @@ OAL_STATIC OAL_INLINE oal_void  mac_dfs_set_offchan_cac_enable(mac_device_stru *
 
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_dfs_get_offchan_cac_enable(mac_device_stru *pst_mac_device)
 {
-    mac_regdomain_info_stru   *pst_rd_info;
+    mac_regdomain_info_stru   *pst_rd_info = OAL_PTR_NULL;
 
     mac_get_regdomain_info(&pst_rd_info);
     if(MAC_DFS_DOMAIN_ETSI == pst_rd_info->en_dfs_domain)

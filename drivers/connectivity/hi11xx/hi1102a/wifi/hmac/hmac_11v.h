@@ -180,9 +180,11 @@ extern oal_uint16  hmac_encap_bsst_rsp_action(hmac_vap_stru *pst_hmac_vap,
                                               hmac_bsst_rsp_info_stru *pst_bsst_rsp_info,
                                               oal_netbuf_stru *pst_buffer);
 /* STA ·¢ËÍbss transition response frame */
-//extern oal_uint32  hmac_tx_bsst_rsp_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, hmac_bsst_rsp_info_stru *pst_bsst_rsp_info);
+
 extern oal_uint32 hmac_tx_bsst_rsp_action(void *pst_void1, void *pst_void2, void *pst_void3);
 extern oal_uint32 hmac_11v_roam_scan_check(hmac_vap_stru *pst_hmac_vap);
+extern oal_void hmac_11v_bsst_req_filter(hmac_vap_stru *pst_hmac_vap,hmac_user_11v_ctrl_stru        *pst_11v_ctrl_info);
+
 #endif /*_PRE_WLAN_FEATURE_11V_ENABLE*/
 
 #ifdef __cplusplus

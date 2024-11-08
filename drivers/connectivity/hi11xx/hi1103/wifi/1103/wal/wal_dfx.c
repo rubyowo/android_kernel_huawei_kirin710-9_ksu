@@ -37,6 +37,8 @@ extern "C" {
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #include "plat_pm_wlan.h"
 #endif
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_DFX_C
@@ -70,23 +72,7 @@ typedef enum
 typedef oal_uint8 wal_dfr_error_type_enum_uint8;
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-extern struct st_exception_info *g_pst_exception_info_etc;
-#else
-struct st_exception_info
-{
-    /* wifi异常触发 */
-    oal_work_stru               wifi_excp_worker;
-    oal_workqueue_stru         *wifi_exception_workqueue;
-	oal_work_stru               wifi_excp_recovery_worker;
-    oal_uint32                  wifi_excp_type;
-}g_st_exception_info;
-struct st_exception_info *g_pst_exception_info_etc = &g_st_exception_info;
-
-struct st_wifi_dfr_callback
-{
-    void  (*wifi_recovery_complete)(void);
-    void  (*notify_wifi_to_recovery)(void);
-};
+extern struct st_exception_info *exception_info_etc;
 #endif
 
 struct st_wifi_dfr_callback *g_st_wifi_callback_etc = OAL_PTR_NULL;
@@ -108,7 +94,7 @@ OAL_STATIC oal_int32  wal_dfr_kick_all_user(hmac_vap_stru *pst_hmac_vap)
     wal_msg_stru                   *pst_rsp_msg = OAL_PTR_NULL;
     oal_uint32                      ul_err_code;
     oal_int32                       l_ret;
-    mac_cfg_kick_user_param_stru   *pst_kick_user_param;
+    mac_cfg_kick_user_param_stru   *pst_kick_user_param = OAL_PTR_NULL;
 
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_KICK_USER, OAL_SIZEOF(mac_cfg_kick_user_param_stru));
 
@@ -154,7 +140,7 @@ OAL_STATIC oal_int32  wal_dfr_kick_all_user(hmac_vap_stru *pst_hmac_vap)
 oal_uint32  wal_process_p2p_excp_etc(hmac_vap_stru *pst_hmac_vap)
 {
     mac_vap_stru     *pst_mac_vap;
-    hmac_device_stru *pst_hmac_dev;
+    hmac_device_stru *pst_hmac_dev = OAL_PTR_NULL;
 
     pst_mac_vap = &(pst_hmac_vap->st_vap_base_info);
     OAM_WARNING_LOG4(pst_mac_vap->uc_vap_id, OAM_SF_DFR,
@@ -171,7 +157,7 @@ oal_uint32  wal_process_p2p_excp_etc(hmac_vap_stru *pst_hmac_vap)
     if (IS_AP(pst_mac_vap))
     {
         /* vap信息初始化 */
-        //hmac_dfr_reinit_ap(pst_hmac_vap);
+
     }
     else if (IS_STA(pst_mac_vap))
     {
@@ -277,8 +263,24 @@ OAL_STATIC oal_int32  wal_dfr_destroy_vap(oal_net_device_stru *pst_netdev)
     }
 
     OAL_NET_DEV_PRIV(pst_netdev) = OAL_PTR_NULL;
+    OAM_WARNING_LOG0(0, OAM_SF_DFR, "{wal_dfr_destroy_vap::finish!}\r\n");
 
     return OAL_SUCC;
+}
+
+
+OAL_STATIC oal_void wal_dfr_recovery_dev_timer(oal_void)
+{
+    struct wlan_pm_s *pst_wlan_pm = wlan_pm_get_drv_etc();
+
+    /* WIFI DFR成功后调用hmac_wifi_state_notify重启device侧pps统计定时器 */
+    if (pst_wlan_pm == OAL_PTR_NULL ||
+        pst_wlan_pm->st_wifi_srv_handler.p_wifi_srv_open_notify == OAL_PTR_NULL) {
+        OAM_WARNING_LOG0(0, OAM_SF_DFR, "{wal_dfr_recovery_dev_timer:: Reinit device pps timer failed!}");
+        return;
+    }
+
+    pst_wlan_pm->st_wifi_srv_handler.p_wifi_srv_open_notify(OAL_TRUE);
 }
 
 
@@ -303,7 +305,6 @@ OAL_STATIC oal_uint32  wal_dfr_recovery_env(void)
     if (!ul_timeleft)
     {
         OAM_ERROR_LOG1(0 , OAM_SF_DFR, "wal_dfr_recovery_env:wait dev reset timeout[%d]", DFR_WAIT_PLAT_FINISH_TIME);
-        //return OAL_FAIL;
     }
 
     OAM_WARNING_LOG2(0, OAM_SF_ANY, "wal_dfr_recovery_env: get plat_process_comp signal after[%u]ms, netdev_num=%d!",
@@ -377,6 +378,7 @@ OAL_STATIC oal_uint32  wal_dfr_recovery_env(void)
     }
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     wlan_pm_enable_etc();
+    wal_dfr_recovery_dev_timer();
 #endif
 
     g_st_dfr_info_etc.bit_device_reset_process_flag = OAL_FALSE;
@@ -394,8 +396,8 @@ OAL_STATIC oal_uint32  wal_dfr_recovery_env(void)
 extern oal_int32 plat_exception_handler_etc(oal_uint32 subsys_type, oal_uint32 thread_type, oal_uint32 exception_type);
 oal_uint32  wal_dfr_excp_process_etc(mac_device_stru *pst_mac_device, oal_uint32 ul_exception_type)
 {
-    hmac_vap_stru               *pst_hmac_vap;
-    mac_vap_stru                *pst_mac_vap;
+    hmac_vap_stru               *pst_hmac_vap = OAL_PTR_NULL;
+    mac_vap_stru                *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                    uc_vap_idx;
     oal_int32                    l_ret;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -413,7 +415,6 @@ oal_uint32  wal_dfr_excp_process_etc(mac_device_stru *pst_mac_device, oal_uint32
     }
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    //wlan_pm_disable_etc();
     wlan_pm_disable_check_wakeup_etc(OAL_FALSE);
 #endif
 
@@ -513,7 +514,7 @@ oal_uint32  wal_dfr_excp_process_etc(mac_device_stru *pst_mac_device, oal_uint32
 
     //开始dfr恢复动作: wal_dfr_recovery_env();
     g_st_dfr_info_etc.bit_ready_to_recovery_flag = OAL_TRUE;
-    oal_queue_work(g_pst_exception_info_etc->wifi_exception_workqueue, &g_pst_exception_info_etc->wifi_excp_recovery_worker);
+    oal_queue_work(exception_info_etc->wifi_exception_workqueue, &exception_info_etc->wifi_excp_recovery_worker);
 
     return OAL_SUCC;
 
@@ -593,14 +594,13 @@ oal_uint32 wal_dfr_excp_rx_etc(oal_uint8 uc_device_id, oal_uint32 ul_exception_t
     CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_WIFI, CHR_LAYER_DRV, CHR_WIFI_DRV_EVENT_PLAT, CHR_PLAT_DRV_ERROR_WIFI_RECOVERY);
 
     return wal_dfr_excp_process_etc(pst_mac_dev, ul_exception_type);
-#else
-    return OAL_SUCC;
+
 #endif
 }
 
 oal_uint32 wal_dfr_get_excp_type_etc(oal_void)
 {
-    return g_pst_exception_info_etc->wifi_excp_type;
+    return exception_info_etc->wifi_excp_type;
 }
 
 
@@ -627,7 +627,9 @@ void  wal_dfr_excp_work_etc(oal_work_stru *work)
     }
 
     g_st_dfr_info_etc.ul_netdev_num = 0;
-    OAL_MEMZERO((oal_uint8 *)(g_st_dfr_info_etc.past_netdev), OAL_SIZEOF(g_st_dfr_info_etc.past_netdev[0]) * WLAN_VAP_SUPPORT_MAX_NUM_LIMIT);
+    memset_s((oal_uint8 *)(g_st_dfr_info_etc.past_netdev),
+             OAL_SIZEOF(g_st_dfr_info_etc.past_netdev[0]) * WLAN_VAP_SUPPORT_MAX_NUM_LIMIT, 0,
+             OAL_SIZEOF(g_st_dfr_info_etc.past_netdev[0]) * WLAN_VAP_SUPPORT_MAX_NUM_LIMIT);
 
     for (uc_device_index = 0; uc_device_index < MAC_RES_MAX_DEV_NUM; uc_device_index++)
     {
@@ -645,7 +647,7 @@ void  wal_dfr_recovery_work_etc(oal_work_stru *work)
 
 oal_void wal_dfr_init_param_etc(oal_void)
 {
-    OAL_MEMZERO((oal_uint8 *)&g_st_dfr_info_etc, OAL_SIZEOF(hmac_dfr_info_stru));
+    memset_s((oal_uint8 *)&g_st_dfr_info_etc, OAL_SIZEOF(hmac_dfr_info_stru), 0, OAL_SIZEOF(hmac_dfr_info_stru));
 
     g_st_dfr_info_etc.bit_device_reset_enable        = OAL_TRUE;
     g_st_dfr_info_etc.bit_hw_reset_enable            = OAL_FALSE;
@@ -683,11 +685,11 @@ OAL_STATIC oal_uint32 wal_dfr_excp_init_handler(oal_void)
     wal_dfr_init_param_etc();
 
     /* 挂接调用钩子 */
-    if (OAL_PTR_NULL != g_pst_exception_info_etc)
+    if (OAL_PTR_NULL != exception_info_etc)
     {
-        OAL_INIT_WORK(&g_pst_exception_info_etc->wifi_excp_worker, wal_dfr_excp_work_etc);
-        OAL_INIT_WORK(&g_pst_exception_info_etc->wifi_excp_recovery_worker, wal_dfr_recovery_work_etc);
-        g_pst_exception_info_etc->wifi_exception_workqueue= OAL_CREATE_SINGLETHREAD_WORKQUEUE("wifi_exception_queue");
+        OAL_INIT_WORK(&exception_info_etc->wifi_excp_worker, wal_dfr_excp_work_etc);
+        OAL_INIT_WORK(&exception_info_etc->wifi_excp_recovery_worker, wal_dfr_recovery_work_etc);
+        exception_info_etc->wifi_exception_workqueue= OAL_CREATE_SINGLETHREAD_WORKQUEUE("wifi_exception_queue");
     }
 
     pst_wifi_callback = (struct st_wifi_dfr_callback *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(struct st_wifi_dfr_callback), OAL_TRUE);
@@ -712,11 +714,11 @@ OAL_STATIC oal_uint32 wal_dfr_excp_init_handler(oal_void)
 
 OAL_STATIC oal_void wal_dfr_excp_exit_handler(oal_void)
 {
-    if (OAL_PTR_NULL != g_pst_exception_info_etc)
+    if (OAL_PTR_NULL != exception_info_etc)
     {
-        oal_cancel_work_sync(&g_pst_exception_info_etc->wifi_excp_worker);
-        oal_cancel_work_sync(&g_pst_exception_info_etc->wifi_excp_recovery_worker);
-        oal_destroy_workqueue(g_pst_exception_info_etc->wifi_exception_workqueue);
+        oal_cancel_work_sync(&exception_info_etc->wifi_excp_worker);
+        oal_cancel_work_sync(&exception_info_etc->wifi_excp_recovery_worker);
+        oal_destroy_workqueue(exception_info_etc->wifi_exception_workqueue);
     }
     OAL_MEM_FREE(g_st_wifi_callback_etc, OAL_TRUE);
 
@@ -740,7 +742,6 @@ oal_uint32 wal_dfx_init_etc(oal_void)
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 #ifdef _PRE_WLAN_FEATURE_DFR
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    //genKernel_init();
     l_ret = init_dev_excp_handler_etc();
     if (OAL_SUCC != l_ret)
     {
@@ -762,7 +763,6 @@ oal_void wal_dfx_exit_etc(oal_void)
     wal_dfr_excp_exit_handler();
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    //genKernel_exit();
     deinit_dev_excp_handler_etc();
 #endif
 #endif //_PRE_WLAN_FEATURE_DFR

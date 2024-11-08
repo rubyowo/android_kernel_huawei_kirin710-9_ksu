@@ -34,7 +34,7 @@ extern "C" {
 
 oal_bool_enum_uint8 hmac_find_is_sta_up_etc(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru                  *pst_vap;
+    mac_vap_stru                  *pst_vap = OAL_PTR_NULL;
     oal_uint8                      uc_vap_idx;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
@@ -59,7 +59,7 @@ oal_bool_enum_uint8 hmac_find_is_sta_up_etc(mac_device_stru *pst_mac_device)
 
 oal_bool_enum_uint8 hmac_find_is_ap_up_etc(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru                  *pst_vap;
+    mac_vap_stru                  *pst_vap = OAL_PTR_NULL;
     oal_uint8                      uc_vap_idx;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
@@ -84,7 +84,7 @@ oal_bool_enum_uint8 hmac_find_is_ap_up_etc(mac_device_stru *pst_mac_device)
 
 oal_uint32 hmac_calc_up_ap_num_etc(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru                  *pst_vap;
+    mac_vap_stru                  *pst_vap = OAL_PTR_NULL;
     oal_uint8                      uc_vap_idx;
     oal_uint8                      ul_up_ap_num = 0;
 
@@ -115,7 +115,7 @@ oal_uint32 hmac_calc_up_ap_num_etc(mac_device_stru *pst_mac_device)
 oal_uint32 hmac_find_up_vap_etc(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
 {
     oal_uint32                     ul_ret;
-    mac_vap_stru                  *pst_vap_up;     /* 处在UP状态的VAP */
+    mac_vap_stru                  *pst_vap_up = OAL_PTR_NULL;     /* 处在UP状态的VAP */
 
     /* find up VAP */
     ul_ret = mac_device_find_up_vap_etc(pst_mac_device, &pst_vap_up);
@@ -137,12 +137,6 @@ oal_uint32 hmac_find_up_vap_etc(mac_device_stru *pst_mac_device, mac_vap_stru **
         return OAL_FALSE;
     }
 }
-
-/*lint -e19*/
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-oal_module_symbol(hmac_calc_up_ap_num_etc);
-#endif
-/*lint +e19*/
 
 #ifdef __cplusplus
     #if __cplusplus

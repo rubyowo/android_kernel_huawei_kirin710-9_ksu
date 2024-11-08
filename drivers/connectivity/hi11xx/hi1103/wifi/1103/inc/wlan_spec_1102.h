@@ -406,7 +406,7 @@ extern "C" {
 #define WLAN_AMSDU_FRAME_MAX_LEN            7935
 
 /* >= WLAN_AMSDU_MAX_NUM/2  */
-#define WLAN_DSCR_SUBTABEL_MAX_NUM          1
+#define WLAN_DSCR_SUB_MSDU_MAX_NUM          1
 
 /*****************************************************************************
   2.5.6 小包优化
@@ -566,7 +566,7 @@ extern "C" {
 #define WLAN_HAL0_1024QAM_IS_EN     OAL_FALSE
 
 /* HAL DEV0的SU_BFEE能力 */
-#define WLAN_HAL0_SU_BFEE_NUM       2
+#define WLAN_HAL0_SU_BFEE_ANT_SUPPORT_NUM       2
 
 /* HAL DEV0是否支持11MC */
 #define WLAN_HAL0_11MC_IS_EN        OAL_FALSE
@@ -634,15 +634,11 @@ extern "C" {
 /*****************************************************************************
   2.8.2 STA AP规格
 *****************************************************************************/
-#if 0
-#define WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE     2
-#endif
  /* AP VAP的规格、STA VAP的规格、STA P2P共存的规格放入平台*/
 /* PROXY STA模式下VAP规格宏定义放入平台 */
 
 /* 每个device支持vap的最大个数已放入平台
 */
-//#define WLAN_VAP_MAX_NUM_PER_DEVICE         (WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE + 1)
 
 #define WLAN_HAL_OHTER_BSS_ID                   14   /* 其他BSS的ID */
 #define WLAN_HAL_OTHER_BSS_UCAST_ID             7    /* 来自其他bss的单播管理帧和数据帧，维测用 */

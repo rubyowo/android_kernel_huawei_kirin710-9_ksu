@@ -32,7 +32,7 @@ include $(PLAT_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE)
 
 $(warning defconfig: $(PLAT_DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE))
 
-oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_sdio_host.o oal_profiling.o oal_hcc_host.o oal_hcc_bus.o oal_hcc_test.o oal_softwdt.o oal_dft.o oal_workqueue.o oal_pcie_host.o oal_pcie_linux.o oal_pcie_pm.o oal_fsm.o oal_pcie_firmware.o
+oal-objs := oal_bus_if.o oal_main.o oal_mem.o oal_net.o oal_hardware.o oal_schedule.o oal_pci_if.o oal_aes.o oal_kernel_file.o oal_cfg80211.o oal_sdio_host.o oal_profiling.o oal_hcc_host.o oal_hcc_bus.o oal_hcc_test.o oal_softwdt.o oal_dft.o oal_workqueue.o oal_fsm.o oal_crc16.o
 
 oal-objs := $(addprefix oal/,$(oal-objs))
 
@@ -66,12 +66,6 @@ pm-objs += wireless_patch.o
 endif
 
 ifeq ($(CONFIG_HI110X_GPS_REFCLK),y)
-ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_1),y)
-pm-objs += gps_refclk_src_1.o
-endif
-ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_2),y)
-pm-objs += gps_refclk_src_2.o
-endif
 ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_3),y)
 pm-objs += gps_refclk_src_3.o
 endif
@@ -82,10 +76,10 @@ pm-objs := $(addprefix pm/,$(pm-objs))
 driver-objs :=  plat_sdio.o plat_uart.o
 driver-objs := $(addprefix driver/,$(driver-objs))
 
-bfgx-objs := bfgx_low_power.o bfgx_exception_rst.o bfgx_data_parse.o bfgx_dev.o bfgx_user_ctrl.o
+bfgx-objs := bfgx_exception_rst.o bfgx_data_parse.o bfgx_dev.o bfgx_user_ctrl.o
 bfgx-objs := $(addprefix ../bfgx/,$(bfgx-objs))
 
-board-objs := board.o board-hi1102.o board-hi1103.o board_hi1102a.o
+board-objs := board.o board_hi1102.o board_hi1103.o board_hi1102a.o
 board-objs := $(addprefix board/,$(board-objs))
 
 oneimage-objs := oneimage.o
@@ -162,6 +156,14 @@ KBUILD_CFLAGS += -DPLATFORM_DEBUG_ENABLE
 KBUILD_CFLAGS += -DPLATFORM_SSI_FULL_LOG
 endif
 
+KBUILD_CFLAGS += -DHI1XX_OS_BUILD_VARIANT_ROOT=1
+KBUILD_CFLAGS += -DHI1XX_OS_BUILD_VARIANT_USER=2
+ifneq ($(TARGET_BUILD_VARIANT),user)
+KBUILD_CFLAGS += -DOS_HI1XX_BUILD_VERSION=HI1XX_OS_BUILD_VARIANT_ROOT
+else
+KBUILD_CFLAGS += -DOS_HI1XX_BUILD_VERSION=HI1XX_OS_BUILD_VARIANT_USER
+endif
+
 ifneq ($(HAVE_HISI_FEATURE_BT),false)
 KBUILD_CFLAGS += -DHAVE_HISI_BT
 endif
@@ -206,6 +208,9 @@ else
 EXTRA_CFLAGS += -Werror -Wuninitialized -Wempty-body -Wclobbered -Wmissing-parameter-type -Wold-style-declaration -Woverride-init -Wtype-limits
 endif
 
+#ignore some option is not support by calng
+EXTRA_CFLAGS += -Wno-unknown-warning-option
+
 EXTRA_CFLAGS +=  -fno-pic
 MODFLAGS = -fno-pic
 else
@@ -238,5 +243,5 @@ clean:
 	-find ../bfgx/ -type f -name "*.o.cmd" -exec rm -f {} \;
 	-find ../common/ -type f -name "*.o" -exec rm -f {} \;
 	-find ../common/ -type f -name "*.o.cmd" -exec rm -f {} \;
-	
+
 endif

@@ -19,6 +19,8 @@ extern "C" {
 #include "hmac_mgmt_bss_comm.h"
 #include "hmac_rx_data.h"
 #include "hmac_uapsd.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_UAPSD_C
@@ -48,6 +50,7 @@ oal_void hmac_uapsd_update_user_para_etc (oal_uint8  *puc_payload,oal_uint8  uc_
     oal_uint16          us_len_total;
     oal_uint8          *puc_param;
     oal_uint8          *puc_wmm_ie = OAL_PTR_NULL;
+    oal_int32           l_ret;
 
     puc_wmm_ie = mac_get_wmm_ie_etc(puc_payload, (oal_uint16)ul_msg_len);
     if (OAL_PTR_NULL != puc_wmm_ie)
@@ -62,7 +65,7 @@ oal_void hmac_uapsd_update_user_para_etc (oal_uint8  *puc_payload,oal_uint8  uc_
         return;
     }
 
-    OAL_MEMZERO(&st_uapsd_status,  OAL_SIZEOF(mac_user_uapsd_status_stru));
+    memset_s(&st_uapsd_status,  OAL_SIZEOF(mac_user_uapsd_status_stru), 0, OAL_SIZEOF(mac_user_uapsd_status_stru));
     st_uapsd_status.uc_qos_info = puc_wmm_ie[HMAC_UAPSD_WME_LEN];
 
     /* 8为WMM IE长度 */
@@ -101,22 +104,9 @@ oal_void hmac_uapsd_update_user_para_etc (oal_uint8  *puc_payload,oal_uint8  uc_
 
     /* 设置max SP长度 */
     uc_max_sp = (puc_wmm_ie[HMAC_UAPSD_WME_LEN] >> 5) & 0x3;
-    switch(uc_max_sp)
-    {
-       case 1:
-        st_uapsd_status.uc_max_sp_len = 2;
-        break;
-       case 2:
-        st_uapsd_status.uc_max_sp_len = 4;
-        break;
-       case 3:
-        st_uapsd_status.uc_max_sp_len = 6;
-        break;
-       default:
-        st_uapsd_status.uc_max_sp_len = HMAC_UAPSD_SEND_ALL;
-        break;
 
-    }
+    st_uapsd_status.uc_max_sp_len = (OAL_VALUE_NOT_IN_VALID_RANGE(uc_max_sp, 1, 3)) ? HMAC_UAPSD_SEND_ALL : uc_max_sp * 2;
+
     /* Send uapsd_flag & uapsd_status syn to dmac */
     pst_mac_vap = (mac_vap_stru *)mac_res_get_mac_vap(pst_hmac_user->st_user_base_info.uc_vap_id);
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap)) {
@@ -131,12 +121,18 @@ oal_void hmac_uapsd_update_user_para_etc (oal_uint8  *puc_payload,oal_uint8  uc_
         return;
     }
     // uc_user_index
-    oal_memcopy(puc_param, &pst_hmac_user->st_user_base_info.us_assoc_id, us_len);
+    l_ret = memcpy_s(puc_param, us_len_total, &pst_hmac_user->st_user_base_info.us_assoc_id, us_len);
     // uc_uapsd_flag
-    oal_memcopy(puc_param + us_len, &uc_uapsd_flag, OAL_SIZEOF(oal_uint8));
+    l_ret += memcpy_s(puc_param + us_len, us_len_total - us_len, &uc_uapsd_flag, OAL_SIZEOF(oal_uint8));
     us_len += OAL_SIZEOF(oal_uint8);
     // st_uapsd_status
-    oal_memcopy(puc_param + us_len, &st_uapsd_status, OAL_SIZEOF(mac_user_uapsd_status_stru));
+    l_ret += memcpy_s(puc_param + us_len, us_len_total - us_len, &st_uapsd_status, OAL_SIZEOF(mac_user_uapsd_status_stru));
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "hmac_uapsd_update_user_para_etc::memcpy fail!");
+        OAL_MEM_FREE(puc_param, OAL_TRUE);
+        return;
+    }
+
     us_len += OAL_SIZEOF(mac_user_uapsd_status_stru);
 
     ul_ret = hmac_config_send_event_etc(pst_mac_vap, WLAN_CFGID_UAPSD_UPDATE, us_len, puc_param);

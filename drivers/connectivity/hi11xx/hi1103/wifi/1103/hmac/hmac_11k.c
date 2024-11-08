@@ -30,6 +30,8 @@ extern "C" {
 #include "mac_vap.h"
 #include "hmac_scan.h"
 #include "hmac_config.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_11k_C
@@ -87,7 +89,7 @@ oal_void hmac_11k_init_vap(hmac_vap_stru *pst_hmac_vap)
             OAM_ERROR_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_ANY, "{hmac_11k_init_vap::pst_rrm_info null.}");
             return;
         }
-        OAL_MEMZERO(pst_hmac_vap->pst_rrm_info, OAL_SIZEOF(mac_vap_rrm_info_stru));
+        memset_s(pst_hmac_vap->pst_rrm_info, OAL_SIZEOF(mac_vap_rrm_info_stru), 0, OAL_SIZEOF(mac_vap_rrm_info_stru));
     }
 
     OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_11k_init_vap!}");
@@ -137,7 +139,7 @@ oal_void hmac_11k_init_user(hmac_user_stru *pst_hmac_user)
             return;
         }
 
-        OAL_MEMZERO(pst_hmac_user->pst_user_rrm_info, OAL_SIZEOF(mac_user_rrm_info_stru));
+        memset_s(pst_hmac_user->pst_user_rrm_info, OAL_SIZEOF(mac_user_rrm_info_stru), 0, OAL_SIZEOF(mac_user_rrm_info_stru));
         oal_dlist_init_head(&(pst_hmac_user->pst_user_rrm_info->st_meas_rpt_list));
     }
 
@@ -242,12 +244,12 @@ oal_uint32 hmac_rrm_proc_rm_request(hmac_vap_stru* pst_hmac_vap, hmac_user_stru 
     mac_vap_rrm_info_stru           *pst_rrm_info;
     mac_meas_rpt_mode_stru          st_rptmode;
 
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
 
-    if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == pst_hmac_user || OAL_PTR_NULL == pst_netbuf)
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
         OAM_ERROR_LOG3(0, OAM_SF_RRM, "{hmac_rrm_proc_rm_request::input is NULL, pst_hmac_vap[%p],pst_hmac_user[%p],pst_netbuf[%p]!}",
-            pst_hmac_vap, pst_hmac_user, pst_netbuf);
+            (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -423,10 +425,10 @@ oal_uint32 hmac_rrm_proc_rm_report(hmac_vap_stru* pst_hmac_vap,  hmac_user_stru 
     mac_user_rrm_info_stru          *pst_rrm_info;
     oal_uint8                       uc_rpttype = RM_RADIO_MEAS_BCN;
 
-    if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == pst_hmac_user || OAL_PTR_NULL == pst_netbuf)
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
         OAM_ERROR_LOG3(0, OAM_SF_RRM, "{hmac_rrm_proc_rm_report::input is NULL, pst_hmac_vap[%p],pst_hmac_user[%p],pst_netbuf[%p]!}",
-            pst_hmac_vap, pst_hmac_user, pst_netbuf);
+            (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -514,7 +516,8 @@ oal_uint32 hmac_rrm_proc_rm_report(hmac_vap_stru* pst_hmac_vap,  hmac_user_stru 
                 s_framebody_len -= pst_meas_rpt_ie->uc_len + MAC_IE_HDR_LEN;
 
                 /*record Measurement Report field*/
-                oal_memcopy(&(pst_rrm_info->st_rptmode), &(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
+                memcpy_s(&(pst_rrm_info->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru),
+                         &(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
 
                 break;
             }
@@ -593,10 +596,10 @@ oal_uint32 hmac_rrm_proc_neighbor_request(hmac_vap_stru* pst_hmac_vap, hmac_user
     oal_uint8                       *puc_ssid_search_addr;
     oal_uint8                       *puc_ssid_sub_element;
 
-    if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == pst_hmac_user || OAL_PTR_NULL == pst_netbuf)
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
         OAM_ERROR_LOG3(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::input is NULL, pst_hmac_vap[%p],pst_hmac_user[%p],pst_netbuf[%p]!}",
-            pst_hmac_vap, pst_hmac_user, pst_netbuf);
+            (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -615,7 +618,7 @@ oal_uint32 hmac_rrm_proc_neighbor_request(hmac_vap_stru* pst_hmac_vap, hmac_user
     }
 
     /*判断VAP是否正在进行测量*/
-    if ( OAL_TRUE == pst_rrm_info->en_is_measuring)
+    if (OAL_TRUE == pst_rrm_info->en_is_measuring)
     {
         OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::vap is handling one request now.}");
         return OAL_FAIL;
@@ -648,42 +651,47 @@ oal_uint32 hmac_rrm_proc_neighbor_request(hmac_vap_stru* pst_hmac_vap, hmac_user
     pst_rrm_info->us_req_user_id  = pst_hmac_user->st_user_base_info.us_assoc_id;
 
     /* 获取SSID, Optional Subelement ID */
-    OAL_MEMZERO(&(pst_rrm_info->st_neighbor_req_info), OAL_SIZEOF(mac_neighbor_req_info_stru));
-    if(us_framebody_len > MAC_NEIGHBOR_REPORT_ACTION_REQ_FIX_LEN)
+    memset_s(&(pst_rrm_info->st_neighbor_req_info), OAL_SIZEOF(mac_neighbor_req_info_stru), 0, OAL_SIZEOF(mac_neighbor_req_info_stru));
+    if (us_framebody_len > MAC_NEIGHBOR_REPORT_ACTION_REQ_FIX_LEN)
     {
         puc_ssid_search_addr = pst_neighbor_req->auc_subelm;
         puc_ssid_sub_element = mac_find_ie_etc(MAC_EID_SSID, puc_ssid_search_addr, us_framebody_len - MAC_NEIGHBOR_REPORT_ACTION_REQ_FIX_LEN);
         if (OAL_PTR_NULL != puc_ssid_sub_element)
         {
-            pst_rrm_info->st_neighbor_req_info.uc_ssid_len = *(puc_ssid_sub_element + 1);
-            OAM_WARNING_LOG1(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::ssid_len[%d]}",
-                pst_rrm_info->st_neighbor_req_info.uc_ssid_len);
-            //OAL_IO_PRINT("hmac_rrm_proc_neighbor_request::ssid_len[%d]\n", pst_rrm_info->st_neighbor_req_info.uc_ssid_len);
-
-            if (0 != pst_rrm_info->st_neighbor_req_info.uc_ssid_len)
+            /* check ssid len */
+            if (puc_ssid_sub_element[1] >= WLAN_SSID_MAX_LEN || 0 == puc_ssid_sub_element[1])
             {
-                pst_rrm_info->st_neighbor_req_info.puc_ssid = OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, pst_rrm_info->st_neighbor_req_info.uc_ssid_len, OAL_TRUE);
-                if (OAL_PTR_NULL == pst_rrm_info->st_neighbor_req_info.puc_ssid)
-                {
-                    pst_rrm_info->st_neighbor_req_info.uc_ssid_len = 0;
-                    OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::memalloc ssid fail}");
-                }
-                else
-                {
-                    oal_memcopy(pst_rrm_info->st_neighbor_req_info.puc_ssid, (puc_ssid_sub_element + MAC_IE_HDR_LEN), pst_rrm_info->st_neighbor_req_info.uc_ssid_len);
+                OAM_ERROR_LOG1(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::neighbor req ssid_len[%d] invalid.}", puc_ssid_sub_element[1]);
+                return OAL_FAIL;
+            }
 
-                    /*判断ssid信息是否与本AP一致*/
-                    if(WLAN_VAP_MODE_BSS_AP == pst_hmac_vap->st_vap_base_info.en_vap_mode &&
-                        !OAL_MEMCMP(pst_rrm_info->st_neighbor_req_info.puc_ssid,
-                        mac_mib_get_DesiredSSID(&(pst_hmac_vap->st_vap_base_info)), pst_rrm_info->st_neighbor_req_info.uc_ssid_len))
-                    {
-                        OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::sta ask ap report local info.}");
-                        OAL_MEM_FREE(pst_hmac_vap->pst_rrm_info->st_neighbor_req_info.puc_ssid, OAL_TRUE);
-                        pst_hmac_vap->pst_rrm_info->st_neighbor_req_info.puc_ssid = OAL_PTR_NULL;
-                        /*一致则上报本vap信息*/
-                        hmac_rrm_encap_local_bssid_rpt(pst_hmac_vap);
-                        return OAL_SUCC;
-                    }
+            pst_rrm_info->st_neighbor_req_info.uc_ssid_len = *(puc_ssid_sub_element + 1);
+            pst_rrm_info->st_neighbor_req_info.puc_ssid = OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, pst_rrm_info->st_neighbor_req_info.uc_ssid_len, OAL_TRUE);
+            if (OAL_PTR_NULL == pst_rrm_info->st_neighbor_req_info.puc_ssid)
+            {
+                pst_rrm_info->st_neighbor_req_info.uc_ssid_len = 0;
+                OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::memalloc ssid fail}");
+
+                return OAL_ERR_CODE_PTR_NULL;
+            }
+            else
+            {
+                memcpy_s(pst_rrm_info->st_neighbor_req_info.puc_ssid,
+                         pst_rrm_info->st_neighbor_req_info.uc_ssid_len,
+                         (puc_ssid_sub_element + MAC_IE_HDR_LEN),
+                         pst_rrm_info->st_neighbor_req_info.uc_ssid_len);
+
+                /*判断ssid信息是否与本AP一致*/
+                if(WLAN_VAP_MODE_BSS_AP == pst_hmac_vap->st_vap_base_info.en_vap_mode &&
+                    !OAL_MEMCMP(pst_rrm_info->st_neighbor_req_info.puc_ssid,
+                    mac_mib_get_DesiredSSID(&(pst_hmac_vap->st_vap_base_info)), pst_rrm_info->st_neighbor_req_info.uc_ssid_len))
+                {
+                    OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_request::sta ask ap report local info.}");
+                    OAL_MEM_FREE(pst_hmac_vap->pst_rrm_info->st_neighbor_req_info.puc_ssid, OAL_TRUE);
+                    pst_hmac_vap->pst_rrm_info->st_neighbor_req_info.puc_ssid = OAL_PTR_NULL;
+                    /*一致则上报本vap信息*/
+                    hmac_rrm_encap_local_bssid_rpt(pst_hmac_vap);
+                    return OAL_SUCC;
                 }
             }
         }
@@ -704,10 +712,10 @@ oal_uint32 hmac_rrm_proc_neighbor_report(hmac_vap_stru* pst_hmac_vap,  hmac_user
     oal_int16                       s_framebody_len;
     mac_user_rrm_info_stru          *pst_rrm_info;
 
-    if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == pst_hmac_user || OAL_PTR_NULL == pst_netbuf)
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
         OAM_ERROR_LOG3(0, OAM_SF_RRM, "{hmac_rrm_proc_neighbor_report::input is NULL, pst_hmac_vap[%p],pst_hmac_user[%p],pst_netbuf[%p]!}",
-            pst_hmac_vap, pst_hmac_user, pst_netbuf);
+            (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -820,7 +828,7 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
     }
 
     /*检测用户是否支持11K*/
-    if ( OAL_FALSE == pst_hmac_user->st_user_base_info.st_cap_info.bit_11k_enable)
+    if (OAL_FALSE == pst_hmac_user->st_user_base_info.st_cap_info.bit_11k_enable)
     {
         OAM_WARNING_LOG0(pst_mac_user->uc_vap_id, OAM_SF_RRM, "{hmac_config_send_meas_req::user not support 11k.}");
         return OAL_SUCC;
@@ -833,11 +841,11 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
     }
 
     /*清除rpt mode记录*/
-    OAL_MEMZERO(&(pst_hmac_user->pst_user_rrm_info->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&(pst_hmac_user->pst_user_rrm_info->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
 
     /*检查用户11k具体能力*/
     ul_ret = hmac_rrm_check_user_cap(&(pst_hmac_user->st_user_base_info.st_rrm_enabled_cap), pst_req_cfg);
-    if ( OAL_SUCC != ul_ret )
+    if (OAL_SUCC != ul_ret )
     {
         return ul_ret;
     }
@@ -847,7 +855,7 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
     pst_hmac_user->pst_user_rrm_info->en_rpt_notify_id = pst_req_cfg->en_rpt_notify_id;
 
     /*检查该用户是否正在进行测量*/
-    if ( MAC_RRM_STATE_INIT != pst_hmac_user->pst_user_rrm_info->en_meas_status )
+    if (MAC_RRM_STATE_INIT != pst_hmac_user->pst_user_rrm_info->en_meas_status )
     {
        OAM_WARNING_LOG1(pst_mac_user->uc_vap_id, OAM_SF_RRM, "{hmac_config_send_meas_req::en_meas_status[%d] not allow new req.}",
                 pst_hmac_user->pst_user_rrm_info->en_meas_status);
@@ -859,13 +867,13 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
 
     /*申请管理帧BUF*/
     pst_mgmt_buf = (oal_netbuf_stru *)OAL_MEM_NETBUF_ALLOC(OAL_NORMAL_NETBUF, WLAN_MEM_NETBUF_SIZE2, OAL_NETBUF_PRIORITY_MID);
-    if(OAL_PTR_NULL == pst_mgmt_buf)
+    if (OAL_PTR_NULL == pst_mgmt_buf)
     {
         OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_RRM, "{hmac_config_send_meas_req::pst_mgmt_buf null.}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_mgmt_buf), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_mgmt_buf), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     puc_buffer = (oal_uint8 *)oal_netbuf_header(pst_mgmt_buf);
 
@@ -916,7 +924,7 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
     pst_hmac_user->pst_user_rrm_info->uc_meas_token     = guc_meas_token;
 
     /*Radio Measurement Request*/
-    if(pst_req_cfg->en_reqtype <= MAC_RRM_TYPE_BCN)
+    if (pst_req_cfg->en_reqtype <= MAC_RRM_TYPE_BCN)
     {
         if ( OAL_PTR_NULL == pst_req_cfg->p_arg )
         {
@@ -946,11 +954,12 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
         puc_req_mode = (oal_uint8*)(&(pst_meas_req_ie->st_reqmode));
         *puc_req_mode = pst_req_cfg->uc_req_mode;
 
-        if ( MAC_RRM_TYPE_BCN == pst_req_cfg->en_reqtype )
+        if (MAC_RRM_TYPE_BCN == pst_req_cfg->en_reqtype )
         {
             pst_meas_req_ie->uc_len     = 16;
             pst_meas_req_ie->uc_reqtype = RM_RADIO_MEAS_BCN;
-            oal_memcopy(pst_meas_req_ie->auc_meas_req, (mac_bcn_req_stru*)(pst_req_cfg->p_arg), OAL_SIZEOF(mac_bcn_req_stru));
+            memcpy_s(pst_meas_req_ie->auc_meas_req, OAL_SIZEOF(mac_bcn_req_stru),
+                     (mac_bcn_req_stru*)(pst_req_cfg->p_arg), OAL_SIZEOF(mac_bcn_req_stru));
 
             /*optional subelement*/
             pst_bcn_req = (mac_bcn_req_stru*)pst_meas_req_ie->auc_meas_req;
@@ -961,11 +970,12 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
             *(puc_reporting_detail + 2)                 = MAC_BCN_REPORTING_DETAIL_FIXED_FILELD_AND_ANY_ELEM;
             pst_meas_req_ie->uc_len += MAC_IE_HDR_LEN + MAC_RRM_BCN_REPORTING_DETAIL_LEN;
         }
-        else if ( MAC_RRM_TYPE_CHANNEL_LOAD == pst_req_cfg->en_reqtype )
+        else if (MAC_RRM_TYPE_CHANNEL_LOAD == pst_req_cfg->en_reqtype )
         {
             pst_meas_req_ie->uc_len     = 9;
             pst_meas_req_ie->uc_reqtype = RM_RADIO_MEAS_CHANNEL_LOAD;
-            oal_memcopy(pst_meas_req_ie->auc_meas_req, (mac_chn_load_req_stru*)(pst_req_cfg->p_arg), OAL_SIZEOF(mac_chn_load_req_stru));
+            memcpy_s(pst_meas_req_ie->auc_meas_req, OAL_SIZEOF(mac_chn_load_req_stru),
+                     (mac_chn_load_req_stru*)(pst_req_cfg->p_arg), OAL_SIZEOF(mac_chn_load_req_stru));
         }
 
         us_radio_meas_req_frm_len = MAC_80211_FRAME_LEN + 5 + MAC_IE_HDR_LEN + pst_meas_req_ie->uc_len;
@@ -1016,7 +1026,7 @@ oal_uint32  hmac_config_send_meas_req(mac_vap_stru *pst_mac_vap, mac_user_stru *
     }
 
     /* Radio Measurement Req中不允许对端发送report，则不起定时器 */
-    if ( OAL_FALSE == en_timer_flag )
+    if (OAL_FALSE == en_timer_flag )
     {
         return OAL_SUCC;
     }
@@ -1302,9 +1312,9 @@ oal_uint32  hmac_rrm_get_meas_start_time(mac_vap_stru *pst_mac_vap, oal_uint8 uc
 {
     hmac_vap_stru       *pst_hmac_vap;
     /* 入参检查 */
-    if((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param))
+    if(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_param))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_RRM, "{hmac_rrm_get_meas_start_time:: null param vap:0x%x puc_param:0x%x.}", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_RRM, "{hmac_rrm_get_meas_start_time:: null param vap:0x%x puc_param:0x%x.}", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1318,7 +1328,8 @@ oal_uint32  hmac_rrm_get_meas_start_time(mac_vap_stru *pst_mac_vap, oal_uint8 uc
     if ( pst_hmac_vap->bit_11k_enable && OAL_PTR_NULL != pst_hmac_vap->pst_rrm_info)
     {
         /* Actual Meas Start Time */
-        oal_memcopy(pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time, puc_param, OAL_SIZEOF(oal_uint32)*2);
+        memcpy_s(pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time, OAL_SIZEOF(oal_uint32)*2,
+                    puc_param, OAL_SIZEOF(oal_uint32)*2);
     }
 
    return OAL_SUCC;
@@ -1350,7 +1361,6 @@ OAL_STATIC oal_uint32 hmac_rrm_fill_basic_rm_rpt_action(hmac_vap_stru *pst_hmac_
         oal_netbuf_free(pst_rrm_info->pst_rm_rpt_mgmt_buf);
         pst_hmac_vap->pst_rrm_info->pst_rm_rpt_mgmt_buf = OAL_PTR_NULL;
         OAM_WARNING_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_RRM, "{hmac_rrm_fill_basic_rm_rpt_action::pst_mgmt_buf not be freed in history.}");
-        //return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 申请管理帧内存 */
@@ -1469,7 +1479,7 @@ OAL_STATIC oal_uint32 hmac_rrm_send_rm_rpt_action(hmac_vap_stru* pst_hmac_vap)
 
     /* 填写netbuf的cb字段，供发送管理帧和发送完成接口使用 */
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_mgmt_buf);
-    OAL_MEMZERO(pst_tx_ctl, sizeof(mac_tx_ctl_stru));
+    memset_s(pst_tx_ctl, sizeof(mac_tx_ctl_stru), 0, sizeof(mac_tx_ctl_stru));
 
     MAC_GET_CB_TX_USER_IDX(pst_tx_ctl)   = pst_mac_user->us_assoc_id;
     MAC_GET_CB_WME_AC_TYPE(pst_tx_ctl)   = WLAN_WME_AC_MGMT;
@@ -1497,7 +1507,7 @@ OAL_STATIC oal_uint32 hmac_rrm_send_rm_rpt_action(hmac_vap_stru* pst_hmac_vap)
     {
         OAL_MEM_FREE(pst_hmac_vap->pst_rrm_info->st_bcn_req_info.puc_reqinfo_ieid, OAL_TRUE);
     }
-    OAL_MEMZERO(pst_hmac_vap->pst_rrm_info, OAL_SIZEOF(mac_vap_rrm_info_stru));
+    memset_s(pst_hmac_vap->pst_rrm_info, OAL_SIZEOF(mac_vap_rrm_info_stru), 0, OAL_SIZEOF(mac_vap_rrm_info_stru));
 
     return ul_ret;
 }
@@ -1508,9 +1518,9 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_reject(hmac_vap_stru *pst_hmac_vap, 
     mac_vap_rrm_info_stru               *pst_rrm_info       = OAL_PTR_NULL;
     mac_meas_rpt_ie_stru                *pst_meas_rpt_ie;
 
-    if((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_rptmode))
+    if(OAL_ANY_NULL_PTR2(pst_hmac_vap,pst_rptmode))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_RRM, "{hmac_rrm_encap_meas_rpt_reject:: null param, vap:0x%x rptmode:0x%x!}", pst_hmac_vap, pst_rptmode);
+        OAM_ERROR_LOG2(0, OAM_SF_RRM, "{hmac_rrm_encap_meas_rpt_reject:: null param, vap:0x%x rptmode:0x%x!}", (uintptr_t)pst_hmac_vap, (uintptr_t)pst_rptmode);
         return ;
     }
     if(OAL_PTR_NULL == pst_hmac_vap->pst_rrm_info)
@@ -1547,7 +1557,8 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_reject(hmac_vap_stru *pst_hmac_vap, 
     pst_meas_rpt_ie->uc_eid       = MAC_EID_MEASREP;
     pst_meas_rpt_ie->uc_token     = pst_rrm_info->pst_meas_req_ie->uc_token;
     pst_meas_rpt_ie->uc_rpttype   = pst_rrm_info->pst_meas_req_ie->uc_reqtype;
-    oal_memcopy(&(pst_meas_rpt_ie->st_rptmode), pst_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memcpy_s(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru),
+                pst_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     pst_meas_rpt_ie->uc_len       = MAC_MEASUREMENT_RPT_FIX_LEN - MAC_IE_HDR_LEN;
 
     pst_rrm_info->us_rm_rpt_action_len          += MAC_MEASUREMENT_RPT_FIX_LEN;
@@ -1570,7 +1581,7 @@ OAL_STATIC oal_uint32 hmac_rrm_encap_meas_rpt_refuse_new_req(hmac_vap_stru *pst_
     oal_uint32                          ul_ret = OAL_SUCC;
     mac_meas_req_ie_stru                *pst_meas_req_ie;
 
-    if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == pst_hmac_user || OAL_PTR_NULL == pst_rm_req )
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_rm_req))
     {
         OAM_ERROR_LOG0(0, OAM_SF_RRM, "{hmac_rrm_encap_meas_rpt_refuse_new_req::input is NULL!}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1593,7 +1604,7 @@ OAL_STATIC oal_uint32 hmac_rrm_encap_meas_rpt_refuse_new_req(hmac_vap_stru *pst_
        return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_mgmt_buf), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_mgmt_buf), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     /*************************************************************************/
     /*                        Management Frame Format                        */
@@ -1664,7 +1675,7 @@ OAL_STATIC oal_uint32 hmac_rrm_encap_meas_rpt_refuse_new_req(hmac_vap_stru *pst_
 
     /* 填写netbuf的cb字段，供发送管理帧和发送完成接口使用 */
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_mgmt_buf);
-    OAL_MEMZERO(pst_tx_ctl, sizeof(mac_tx_ctl_stru));
+    memset_s(pst_tx_ctl, sizeof(mac_tx_ctl_stru), 0, sizeof(mac_tx_ctl_stru));
 
     MAC_GET_CB_TX_USER_IDX(pst_tx_ctl)   = pst_mac_user->us_assoc_id;
     MAC_GET_CB_WME_AC_TYPE(pst_tx_ctl)   = WLAN_WME_AC_MGMT;
@@ -1692,7 +1703,7 @@ OAL_STATIC oal_uint32  hmac_rrm_chn_load_scan_do(hmac_vap_stru *pst_hmac_vap, ma
 
     en_chan_band = mac_get_band_by_channel_num(pst_chn_load_req->uc_channum);
 
-    OAL_MEMZERO(&st_scan_req, OAL_SIZEOF(st_scan_req));
+    memset_s(&st_scan_req, OAL_SIZEOF(st_scan_req), 0, OAL_SIZEOF(st_scan_req));
 
     /*设置扫描参数*/
     st_scan_req.uc_vap_id               = pst_hmac_vap->st_vap_base_info.uc_vap_id;
@@ -1715,7 +1726,7 @@ OAL_STATIC oal_uint32  hmac_rrm_chn_load_scan_do(hmac_vap_stru *pst_hmac_vap, ma
     {
         OAM_WARNING_LOG1(0, OAM_SF_RRM, "{hmac_rrm_chn_load_scan_do::chn num invalid[%d]}", pst_chn_load_req->uc_channum);
         /*无效信道回复refuse bit*/
-        OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+        memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
         st_rptmode.bit_refused = 1;
         hmac_rrm_encap_meas_rpt_reject(pst_hmac_vap, &st_rptmode);
         return ul_ret;
@@ -1733,7 +1744,7 @@ OAL_STATIC oal_uint32  hmac_rrm_chn_load_scan_do(hmac_vap_stru *pst_hmac_vap, ma
     {
         OAM_WARNING_LOG1(0, OAM_SF_RRM, "hmac_rrm_chn_load_scan_do:hmac_scan_proc_scan_req_event_etc failed, ret=%d", ul_ret);
         /*扫描失败回复refuse bit*/
-        OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+        memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
         st_rptmode.bit_refused = 1;
         hmac_rrm_encap_meas_rpt_reject(pst_hmac_vap, &st_rptmode);
     }
@@ -1785,7 +1796,7 @@ OAL_STATIC oal_void hmac_rrm_chn_load_scan_cb(void *p_scan_record)
         return;
     }
 
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     /*判断扫描状态是否成功*/
     if (MAC_SCAN_SUCCESS != pst_scan_record->en_scan_rsp_status )
     {
@@ -1832,7 +1843,7 @@ OAL_STATIC oal_void hmac_rrm_chn_load_scan_cb(void *p_scan_record)
     /*Measurement Report IE*/
     pst_meas_rpt_ie->uc_eid       = MAC_EID_MEASREP;
     pst_meas_rpt_ie->uc_token     = pst_rrm_info->pst_meas_req_ie->uc_token;
-    OAL_MEMZERO(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     pst_meas_rpt_ie->uc_rpttype   = pst_rrm_info->pst_meas_req_ie->uc_reqtype;
 
     /*************************************************************************/
@@ -1854,7 +1865,9 @@ OAL_STATIC oal_void hmac_rrm_chn_load_scan_cb(void *p_scan_record)
     /*计算channel Load*/
     uc_chn_load = HMAC_RRM_CAL_CHN_LOAD(&(pst_scan_record->ast_chan_results[0]));
 
-    oal_memcopy(pst_chn_load_rpt->aul_act_meas_start_time, pst_rrm_info->aul_act_meas_start_time,
+    memcpy_s(pst_chn_load_rpt->aul_act_meas_start_time,
+                OAL_SIZEOF(pst_chn_load_rpt->aul_act_meas_start_time),
+                pst_rrm_info->aul_act_meas_start_time,
                 OAL_SIZEOF(pst_rrm_info->aul_act_meas_start_time));
 
     /*fill duration*/
@@ -1880,7 +1893,7 @@ OAL_STATIC oal_void hmac_rrm_parse_chn_load_req(hmac_vap_stru *pst_hmac_vap, mac
     mac_chn_load_req_stru          *pst_chn_load_req;
 
     /*判断是否支持channel load测量*/
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     if (OAL_FALSE == mac_mib_get_dot11RMChannelLoadMeasurementActivated(&pst_hmac_vap->st_vap_base_info))
     {
         st_rptmode.bit_incapable = 1;
@@ -1931,7 +1944,7 @@ OAL_STATIC oal_void hmac_rrm_get_chn_load_info_from_rpt(hmac_user_stru *pst_hmac
         return;
     }
 
-    OAL_MEMZERO(pst_meas_rpt_chn_load, OAL_SIZEOF(mac_meas_rpt_chn_load_stru));
+    memset_s(pst_meas_rpt_chn_load, OAL_SIZEOF(mac_meas_rpt_chn_load_stru), 0, OAL_SIZEOF(mac_meas_rpt_chn_load_stru));
 
     pst_meas_rpt_chn_load_item = (mac_meas_rpt_chn_load_item_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(mac_meas_rpt_chn_load_item_stru), OAL_TRUE);
     if (OAL_PTR_NULL == pst_meas_rpt_chn_load_item)
@@ -1948,15 +1961,19 @@ OAL_STATIC oal_void hmac_rrm_get_chn_load_info_from_rpt(hmac_user_stru *pst_hmac
     pst_meas_rpt_chn_load_item->uc_eid       = pst_meas_rpt_ie->uc_eid;
     pst_meas_rpt_chn_load_item->uc_len       = pst_meas_rpt_ie->uc_len;
     pst_meas_rpt_chn_load_item->uc_token     = pst_meas_rpt_ie->uc_token;
-    oal_memcopy(&(pst_meas_rpt_chn_load_item->st_rptmode), &(pst_meas_rpt_ie->st_rptmode),
-                    OAL_SIZEOF(pst_meas_rpt_ie->st_rptmode));
+    memcpy_s(&(pst_meas_rpt_chn_load_item->st_rptmode),
+             OAL_SIZEOF(pst_meas_rpt_chn_load_item->st_rptmode),
+             &(pst_meas_rpt_ie->st_rptmode),
+             OAL_SIZEOF(pst_meas_rpt_ie->st_rptmode));
 
     pst_chn_load_rpt = (mac_chn_load_rpt_stru*)pst_meas_rpt_ie->auc_meas_rpt;
 
     pst_meas_rpt_chn_load_item->uc_optclass  = pst_chn_load_rpt->uc_optclass;
     pst_meas_rpt_chn_load_item->uc_channum   = pst_chn_load_rpt->uc_channum;
-    oal_memcopy(pst_meas_rpt_chn_load_item->aul_act_meas_start_time, pst_chn_load_rpt->aul_act_meas_start_time,
-                OAL_SIZEOF(pst_chn_load_rpt->aul_act_meas_start_time));
+    memcpy_s(pst_meas_rpt_chn_load_item->aul_act_meas_start_time,
+             OAL_SIZEOF(pst_meas_rpt_chn_load_item->aul_act_meas_start_time),
+             pst_chn_load_rpt->aul_act_meas_start_time,
+             OAL_SIZEOF(pst_chn_load_rpt->aul_act_meas_start_time));
     pst_meas_rpt_chn_load_item->us_duration  = pst_chn_load_rpt->us_duration;
     pst_meas_rpt_chn_load_item->uc_chn_load  = pst_chn_load_rpt->uc_channel_load;
     /*fill node end*/
@@ -2080,7 +2097,7 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_bcn(hmac_vap_stru *pst_hmac_vap, oal
         pst_meas_rpt_ie->uc_eid       = MAC_EID_MEASREP;
         pst_meas_rpt_ie->uc_token     = pst_rrm_info->st_bcn_req_info.uc_meas_token;
         pst_meas_rpt_ie->uc_rpttype   = pst_rrm_info->st_bcn_req_info.uc_meas_type;
-        OAL_MEMZERO(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
+        memset_s(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
 
         /*************************************************************************/
         /*                   Beacon Report - Frame Body                          */
@@ -2101,8 +2118,10 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_bcn(hmac_vap_stru *pst_hmac_vap, oal
         pst_bcn_rpt_item = (mac_bcn_rpt_stru *)(pst_meas_rpt_ie->auc_meas_rpt);
         pst_bcn_rpt_item->uc_optclass               = pst_rrm_info->st_bcn_req_info.uc_opt_class;
         pst_bcn_rpt_item->uc_channum                = pst_bss_dscr->st_channel.uc_chan_number;
-        oal_memcopy(pst_bcn_rpt_item->aul_act_meas_start_time, pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time,
-            OAL_SIZEOF(pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time));
+        memcpy_s(pst_bcn_rpt_item->aul_act_meas_start_time,
+                 OAL_SIZEOF(pst_bcn_rpt_item->aul_act_meas_start_time),
+                 pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time,
+                 OAL_SIZEOF(pst_hmac_vap->pst_rrm_info->aul_act_meas_start_time));
 
         /* Meas Duration,参考商用设备, bcn report与req duration填写一致 */
         pst_bcn_rpt_item->us_duration = pst_rrm_info->st_bcn_req_info.us_meas_duration;
@@ -2113,7 +2132,8 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_bcn(hmac_vap_stru *pst_hmac_vap, oal
         pst_bcn_rpt_item->bit_rpt_frm_type          = 0; /* Beacon/Probe rsp */
         pst_bcn_rpt_item->uc_rcpi                   = HMAC_RRM_CAL_RCPI(pst_bss_dscr->c_rssi);
         pst_bcn_rpt_item->uc_rsni                   = (oal_uint8)((pst_bss_dscr->ac_rsni[0] + pst_bss_dscr->ac_rsni[1])/2);
-        oal_memcopy(pst_bcn_rpt_item->auc_bssid, pst_bss_dscr->auc_bssid, OAL_SIZEOF(pst_bss_dscr->auc_bssid));
+        memcpy_s(pst_bcn_rpt_item->auc_bssid, OAL_SIZEOF(pst_bcn_rpt_item->auc_bssid),
+                 pst_bss_dscr->auc_bssid, OAL_SIZEOF(pst_bss_dscr->auc_bssid));
         pst_bcn_rpt_item->uc_antenna_id             = 0;//unknown
         pst_bcn_rpt_item->ul_parent_tsf             = pst_bss_dscr->ul_parent_tsf;
 
@@ -2144,7 +2164,7 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_bcn(hmac_vap_stru *pst_hmac_vap, oal
         pst_meas_rpt_ie->uc_eid       = MAC_EID_MEASREP;
         pst_meas_rpt_ie->uc_token     = pst_rrm_info->st_bcn_req_info.uc_meas_token;
         pst_meas_rpt_ie->uc_rpttype   = pst_rrm_info->st_bcn_req_info.uc_meas_type;
-        OAL_MEMZERO(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru));
+        memset_s(&(pst_meas_rpt_ie->st_rptmode), OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
         pst_meas_rpt_ie->st_rptmode.bit_refused = 1;
 
         pst_meas_rpt_ie->uc_len = MAC_MEASUREMENT_RPT_FIX_LEN - MAC_IE_HDR_LEN;
@@ -2170,9 +2190,13 @@ OAL_STATIC oal_uint32 hmac_rrm_bcn_scan_do(hmac_vap_stru *pst_hmac_vap, mac_bcn_
     pst_scan_req->uc_max_send_probe_req_count_per_channel = WLAN_DEFAULT_SEND_PROBE_REQ_COUNT_PER_CHANNEL;
     oal_set_mac_addr(pst_scan_req->auc_sour_mac_addr, mac_mib_get_StationID(&pst_hmac_vap->st_vap_base_info));
     /*SSID过滤*/
-    oal_memcopy(pst_scan_req->ast_mac_ssid_set[0].auc_ssid,
-                pst_hmac_vap->pst_rrm_info->st_bcn_req_info.puc_ssid,
-                pst_hmac_vap->pst_rrm_info->st_bcn_req_info.uc_ssid_len);
+    if (EOK != memcpy_s(pst_scan_req->ast_mac_ssid_set[0].auc_ssid,
+                        WLAN_SSID_MAX_LEN,
+                        pst_hmac_vap->pst_rrm_info->st_bcn_req_info.puc_ssid,
+                        pst_hmac_vap->pst_rrm_info->st_bcn_req_info.uc_ssid_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_RRM, "hmac_rrm_bcn_scan_do::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /*回调函数指针*/
     pst_scan_req->p_fn_cb                  = hmac_rrm_bcn_scan_cb;
@@ -2183,7 +2207,7 @@ OAL_STATIC oal_uint32 hmac_rrm_bcn_scan_do(hmac_vap_stru *pst_hmac_vap, mac_bcn_
     {
         OAM_WARNING_LOG1(0, OAM_SF_RRM, "hmac_rrm_bcn_scan_do:hmac_scan_add_req failed, ret=%d", ul_ret);
         /*扫描失败回复refuse bit*/
-        OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+        memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
         st_rptmode.bit_refused = 1;
         hmac_rrm_encap_meas_rpt_reject(pst_hmac_vap, &st_rptmode);
     }
@@ -2232,7 +2256,7 @@ OAL_STATIC oal_void hmac_rrm_bcn_scan_cb(void *p_scan_record)
         return;
     }
 
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     /*判断扫描状态是否成功*/
     if (MAC_SCAN_SUCCESS != pst_scan_record->en_scan_rsp_status )
     {
@@ -2279,74 +2303,6 @@ OAL_STATIC void hmac_scan_update_bcn_rpt_detail(hmac_vap_stru *pst_hmac_vap,
                                                 oal_uint8 *puc_rpt_detail_data,
                                                 oal_uint32 *pul_rpt_detail_act_len)
 {
-#if 0
-    oal_int32                   l_tmp_len;
-    oal_uint8                   uc_fix_len;
-    mac_vap_rrm_info_stru       *pst_rrm_info;
-    oal_uint8                   uc_element_num;
-    oal_uint8                   *puc_req_elements;
-    oal_uint8                   uc_element_idx;
-    oal_uint8                   *puc_rx_frame;
-    oal_bool_enum_uint8         en_found_ie = OAL_FALSE;
-    oal_uint8                   *puc_frame_body;
-    oal_uint16                  us_frame_len;
-    oal_uint8                   uc_subelm_len = 0;
-
-    pst_rrm_info = pst_hmac_vap->pst_rrm_info;
-
-    puc_frame_body  = pst_bss_dscr->auc_mgmt_buff + MAC_80211_FRAME_LEN;
-    us_frame_len    = (oal_uint16)pst_bss_dscr->ul_mgmt_len;
-
-    /* 定长field拷贝 */
-    uc_fix_len = MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
-    oal_memcopy(puc_rpt_detail_data, puc_frame_body, uc_fix_len);
-    puc_rpt_detail_data += uc_fix_len;
-    *pul_rpt_detail_act_len = uc_fix_len;
-
-    /* 要寻找的IE个数及IEID */
-    puc_req_elements = pst_rrm_info->st_bcn_req_info.puc_reqinfo_ieid;
-    uc_element_num = pst_rrm_info->st_bcn_req_info.uc_req_ie_num;
-
-    puc_rx_frame = puc_frame_body + uc_fix_len;
-
-    l_tmp_len = us_frame_len - MAC_80211_FRAME_LEN - uc_fix_len;
-
-    /* 存在有多个相同IE的场景，要找全 */
-    while (l_tmp_len > MAC_IE_HDR_LEN )
-    {
-        /* 沿着被搜索对象，依次核对是否有被搜索EID */
-        for (uc_element_idx = 0; uc_element_idx < uc_element_num; uc_element_idx++)
-        {
-            if (puc_rx_frame[0] == puc_req_elements[uc_element_idx])
-            {
-                en_found_ie = OAL_TRUE;
-                break;
-            }
-        }
-
-        if (OAL_TRUE == en_found_ie)
-        {
-            uc_subelm_len = *(puc_rx_frame + 1);
-            if (*pul_rpt_detail_act_len + MAC_IE_HDR_LEN + uc_subelm_len > MAC_MAX_RPT_DETAIL_LEN)
-            {
-                OAM_WARNING_LOG1(0, OAM_SF_RRM, "{hmac_scan_update_bcn_rpt_detail::rpt detail over len[%d]}", *pul_rpt_detail_act_len + MAC_IE_HDR_LEN + uc_subelm_len);
-                break;
-            }
-            oal_memcopy(puc_rpt_detail_data, puc_rx_frame, MAC_IE_HDR_LEN + uc_subelm_len);
-            puc_rpt_detail_data += MAC_IE_HDR_LEN + uc_subelm_len;
-            *pul_rpt_detail_act_len += MAC_IE_HDR_LEN + uc_subelm_len;
-            en_found_ie = OAL_FALSE;
-        }
-
-        l_tmp_len   -= uc_subelm_len + MAC_IE_HDR_LEN;
-        puc_rx_frame += uc_subelm_len + MAC_IE_HDR_LEN;
-
-        if ((l_tmp_len < MAC_IE_HDR_LEN) || (l_tmp_len < (MAC_IE_HDR_LEN + uc_subelm_len)))
-        {
-            break;
-        }
-    }
-#endif
 }
 
 
@@ -2359,7 +2315,7 @@ oal_uint32 hmac_rrm_meas_bcn(hmac_vap_stru *pst_hmac_vap, mac_bcn_req_stru *pst_
     pst_rrm_info = pst_hmac_vap->pst_rrm_info;
 
     /* 根据模式进行测量 */
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
     switch (pst_bcn_req->en_mode)
     {
         /* Passive:触发扫描，不发probe req，测量收到的Beacon和probe rsp */
@@ -2407,8 +2363,16 @@ oal_uint32 hmac_rrm_meas_bcn(hmac_vap_stru *pst_hmac_vap, mac_bcn_req_stru *pst_
                 return OAL_FAIL;
             }
 
-            oal_memcopy(st_trans_req_info.auc_bssid, pst_rrm_info->st_bcn_req_info.auc_bssid, WLAN_MAC_ADDR_LEN);
-            oal_memcopy(st_trans_req_info.auc_ssid, pst_rrm_info->st_bcn_req_info.puc_ssid, pst_rrm_info->st_bcn_req_info.uc_ssid_len);
+            memcpy_s(st_trans_req_info.auc_bssid, WLAN_MAC_ADDR_LEN,
+                     pst_rrm_info->st_bcn_req_info.auc_bssid, WLAN_MAC_ADDR_LEN);
+            if (EOK != memcpy_s(st_trans_req_info.auc_ssid, WLAN_SSID_MAX_LEN,
+                                pst_rrm_info->st_bcn_req_info.puc_ssid,
+                                pst_rrm_info->st_bcn_req_info.uc_ssid_len)) {
+                OAM_ERROR_LOG0(0, OAM_SF_RRM, "hmac_rrm_meas_bcn::memcpy fail!");
+                st_rptmode.bit_incapable = 1;
+                hmac_rrm_encap_meas_rpt_reject(pst_hmac_vap, &st_rptmode);
+                return OAL_FAIL;
+            }
             st_trans_req_info.us_ssid_len = (oal_uint16)pst_rrm_info->st_bcn_req_info.uc_ssid_len;
             st_trans_req_info.uc_action_dialog_token = pst_rrm_info->st_bcn_req_info.uc_dialog_token;
             st_trans_req_info.uc_meas_token = pst_rrm_info->st_bcn_req_info.uc_meas_token;
@@ -2559,12 +2523,13 @@ OAL_STATIC oal_void hmac_rrm_parse_beacon_req(hmac_vap_stru *pst_hmac_vap, mac_m
 
     pst_rrm_info = pst_hmac_vap->pst_rrm_info;
 
-    OAL_MEMZERO(&st_scan_req, OAL_SIZEOF(mac_scan_req_stru));
+    memset_s(&st_scan_req, OAL_SIZEOF(mac_scan_req_stru), 0, OAL_SIZEOF(mac_scan_req_stru));
 
     pst_bcn_req = (mac_bcn_req_stru *)&(pst_meas_req_ie->auc_meas_req[0]);
 
-    oal_memcopy(pst_rrm_info->st_bcn_req_info.auc_bssid, pst_bcn_req->auc_bssid, WLAN_MAC_ADDR_LEN);
-    OAL_MEMZERO(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru));
+    memcpy_s(pst_rrm_info->st_bcn_req_info.auc_bssid, WLAN_MAC_ADDR_LEN,
+             pst_bcn_req->auc_bssid, WLAN_MAC_ADDR_LEN);
+    memset_s(&st_rptmode, OAL_SIZEOF(mac_meas_rpt_mode_stru), 0, OAL_SIZEOF(mac_meas_rpt_mode_stru));
 
     /*************************************************************************/
     /*                    Beacon Request                                     */
@@ -2659,22 +2624,24 @@ OAL_STATIC oal_void hmac_rrm_parse_beacon_req(hmac_vap_stru *pst_hmac_vap, mac_m
         puc_ssid_sub_element = mac_find_ie_etc(MAC_EID_SSID, puc_ssid_search_addr, c_bcn_req_sub_len);
         if (OAL_PTR_NULL != puc_ssid_sub_element)
         {
-            pst_rrm_info->st_bcn_req_info.uc_ssid_len = *(puc_ssid_sub_element + 1);
-            if (0 != pst_rrm_info->st_bcn_req_info.uc_ssid_len)
+            /* check ssid len */
+            if ( puc_ssid_sub_element[1] >= WLAN_SSID_MAX_LEN || 0 == puc_ssid_sub_element[1] )
             {
-                pst_rrm_info->st_bcn_req_info.puc_ssid = OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, pst_rrm_info->st_bcn_req_info.uc_ssid_len, OAL_TRUE);
-                if (OAL_PTR_NULL == pst_rrm_info->st_bcn_req_info.puc_ssid)
-                {
-                    OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_parse_beacon_req::memalloc ssid fail}");
-                    return;
-                }
+                OAM_ERROR_LOG1(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_RRM, "hmac_rrm_parse_beacon_req::frame_body::ssid_len[%d] invalid.", puc_ssid_sub_element[1]);
 
-                oal_memcopy(pst_rrm_info->st_bcn_req_info.puc_ssid, (puc_ssid_sub_element + 2), pst_rrm_info->st_bcn_req_info.uc_ssid_len);
+                return;
             }
-            else
+
+            pst_rrm_info->st_bcn_req_info.uc_ssid_len = *(puc_ssid_sub_element + 1);
+            pst_rrm_info->st_bcn_req_info.puc_ssid = OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, pst_rrm_info->st_bcn_req_info.uc_ssid_len, OAL_TRUE);
+            if (OAL_PTR_NULL == pst_rrm_info->st_bcn_req_info.puc_ssid)
             {
-                OAM_WARNING_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_RRM, "hmac_rrm_parse_beacon_req::frame_body::ssid_len is 0.");
+                OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_parse_beacon_req::memalloc ssid fail}");
+                return;
             }
+            memcpy_s(pst_rrm_info->st_bcn_req_info.puc_ssid, pst_rrm_info->st_bcn_req_info.uc_ssid_len,
+                     (puc_ssid_sub_element + 2), pst_rrm_info->st_bcn_req_info.uc_ssid_len);
+
         }
 
         /* 获取Reporting detail */
@@ -2701,7 +2668,8 @@ OAL_STATIC oal_void hmac_rrm_parse_beacon_req(hmac_vap_stru *pst_hmac_vap, mac_m
                 OAM_WARNING_LOG0(0, OAM_SF_RRM, "{hmac_rrm_parse_beacon_req::memalloc reqinfo_ieid fail}");
                 return;
             }
-            oal_memcopy(pst_rrm_info->st_bcn_req_info.puc_reqinfo_ieid, (puc_reqinfo + 2), pst_rrm_info->st_bcn_req_info.uc_req_ie_num);
+            memcpy_s(pst_rrm_info->st_bcn_req_info.puc_reqinfo_ieid, pst_rrm_info->st_bcn_req_info.uc_req_ie_num,
+                     (puc_reqinfo + 2), pst_rrm_info->st_bcn_req_info.uc_req_ie_num);
         }
     }
 
@@ -2743,7 +2711,7 @@ OAL_STATIC oal_void hmac_rrm_get_bcn_info_from_rpt(hmac_user_stru *pst_hmac_user
         return;
     }
 
-    OAL_MEMZERO(pst_meas_rpt_bcn, OAL_SIZEOF(mac_meas_rpt_bcn_stru));
+    memset_s(pst_meas_rpt_bcn, OAL_SIZEOF(mac_meas_rpt_bcn_stru), 0, OAL_SIZEOF(mac_meas_rpt_bcn_stru));
 
     pst_meas_rpt_bcn_item = (mac_meas_rpt_bcn_item_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(mac_meas_rpt_bcn_item_stru), OAL_TRUE);
     if (OAL_PTR_NULL == pst_meas_rpt_bcn_item)
@@ -2768,8 +2736,10 @@ OAL_STATIC oal_void hmac_rrm_get_bcn_info_from_rpt(hmac_user_stru *pst_hmac_user
 
     pst_meas_rpt_bcn_item->uc_optclass  = pst_bcn_rpt->uc_optclass;
     pst_meas_rpt_bcn_item->uc_channum   = pst_bcn_rpt->uc_channum;
-    oal_memcopy(pst_meas_rpt_bcn_item->aul_act_meas_start_time, pst_bcn_rpt->aul_act_meas_start_time,
-                OAL_SIZEOF(pst_bcn_rpt->aul_act_meas_start_time));
+    memcpy_s(pst_meas_rpt_bcn_item->aul_act_meas_start_time,
+             OAL_SIZEOF(pst_meas_rpt_bcn_item->aul_act_meas_start_time),
+             pst_bcn_rpt->aul_act_meas_start_time,
+             OAL_SIZEOF(pst_bcn_rpt->aul_act_meas_start_time));
     pst_meas_rpt_bcn_item->us_duration  = pst_bcn_rpt->us_duration;
 
     /* Rpt Frm Info */
@@ -2918,7 +2888,8 @@ OAL_STATIC oal_void hmac_rrm_encap_meas_rpt_neighbor(hmac_vap_stru *pst_hmac_vap
         }
         /*Neighbor Report IE*/
         pst_neighbor_rpt_ie->uc_eid       = MAC_EID_NEIGHBOR_REPORT;
-        oal_memcopy(pst_neighbor_rpt_ie->auc_bssid, pst_bss_dscr->auc_bssid, OAL_SIZEOF(pst_bss_dscr->auc_bssid));
+        memcpy_s(pst_neighbor_rpt_ie->auc_bssid, OAL_SIZEOF(pst_neighbor_rpt_ie->auc_bssid),
+                 pst_bss_dscr->auc_bssid, OAL_SIZEOF(pst_bss_dscr->auc_bssid));
 
         /*BSSID Information*/
         pst_neighbor_rpt_ie->st_bssid_info.bit_ap_reachability    = 0; //not support preauth
@@ -2958,7 +2929,7 @@ oal_uint32 hmac_rrm_neighbor_scan_do(hmac_vap_stru *pst_hmac_vap, mac_neighbor_r
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(&st_scan_req, OAL_SIZEOF(st_scan_req));
+    memset_s(&st_scan_req, OAL_SIZEOF(st_scan_req), 0, OAL_SIZEOF(st_scan_req));
 
     st_scan_req.en_scan_type = WLAN_SCAN_TYPE_ACTIVE;
     st_scan_req.us_scan_time = WLAN_NEIGHBOR_SCAN_TIME;
@@ -2974,14 +2945,18 @@ oal_uint32 hmac_rrm_neighbor_scan_do(hmac_vap_stru *pst_hmac_vap, mac_neighbor_r
     /*SSID过滤*/
     if(0 != pst_neighbor_req->uc_ssid_len)
     {
-        oal_memcopy(st_scan_req.ast_mac_ssid_set[0].auc_ssid, pst_neighbor_req->puc_ssid, pst_neighbor_req->uc_ssid_len);
+        if (EOK != memcpy_s(st_scan_req.ast_mac_ssid_set[0].auc_ssid, WLAN_SSID_MAX_LEN,
+                            pst_neighbor_req->puc_ssid, pst_neighbor_req->uc_ssid_len)) {
+            OAM_ERROR_LOG0(0, OAM_SF_RRM, "hmac_rrm_neighbor_scan_do::memcpy fail!");
+            return OAL_FAIL;
+        }
     }
 
     /*全信道扫描*/
     hmac_rrm_get_neighbor_rpt_channels(&st_scan_req);
 
     /*回调函数指针*/
-    if ( OAL_FALSE == en_local_meas )
+    if (OAL_FALSE == en_local_meas )
     {
         st_scan_req.p_fn_cb = hmac_rrm_neighbor_scan_cb;
 
@@ -2989,13 +2964,13 @@ oal_uint32 hmac_rrm_neighbor_scan_do(hmac_vap_stru *pst_hmac_vap, mac_neighbor_r
 
     /* 直接调用扫描模块扫描请求处理函数 */
     ul_ret = hmac_scan_proc_scan_req_event_etc(pst_hmac_vap, &st_scan_req);
-    if(OAL_SUCC != ul_ret)
+    if (OAL_SUCC != ul_ret)
     {
         OAM_WARNING_LOG1(0, OAM_SF_RRM, "hmac_rrm_neighbor_scan_do:hmac_scan_proc_scan_req_event_etc failed, ret=%d", ul_ret);
-        if ( OAL_FALSE == en_local_meas )
+        if (OAL_FALSE == en_local_meas )
         {
             /*扫描失败回复不带IE的neighbor Report*/
-            if ( OAL_SUCC != hmac_rrm_fill_basic_rm_rpt_action(pst_hmac_vap))
+            if (OAL_SUCC != hmac_rrm_fill_basic_rm_rpt_action(pst_hmac_vap))
             {
                 return OAL_FAIL;
             }
@@ -3119,7 +3094,7 @@ OAL_STATIC oal_void hmac_rrm_get_neighbor_info_from_rpt(hmac_user_stru *pst_hmac
         return;
     }
 
-    OAL_MEMZERO(pst_meas_rpt_neighbor, OAL_SIZEOF(mac_meas_rpt_bcn_stru));
+    memset_s(pst_meas_rpt_neighbor, OAL_SIZEOF(mac_meas_rpt_bcn_stru), 0, OAL_SIZEOF(mac_meas_rpt_bcn_stru));
 
     pst_meas_rpt_neighbor_item = (mac_neighbor_rpt_ie_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(mac_neighbor_rpt_ie_stru), OAL_TRUE);
     if (OAL_PTR_NULL == pst_meas_rpt_neighbor_item)
@@ -3132,7 +3107,8 @@ OAL_STATIC oal_void hmac_rrm_get_neighbor_info_from_rpt(hmac_user_stru *pst_hmac
     pst_meas_rpt_neighbor->pst_meas_rpt_neighbor_item = pst_meas_rpt_neighbor_item;
 
     /*fill node begin*/
-    oal_memcopy(pst_meas_rpt_neighbor->pst_meas_rpt_neighbor_item, pst_neighbor_rpt_ie, OAL_SIZEOF(mac_neighbor_rpt_ie_stru));
+    memcpy_s(pst_meas_rpt_neighbor->pst_meas_rpt_neighbor_item, OAL_SIZEOF(mac_neighbor_rpt_ie_stru),
+             pst_neighbor_rpt_ie, OAL_SIZEOF(mac_neighbor_rpt_ie_stru));
     OAM_WARNING_LOG4(0, OAM_SF_RRM, "{hmac_rrm_get_neighbor_info_from_rpt:auc_bssid =%x:ff:ff:%x:%x:%x.",
     pst_meas_rpt_neighbor_item->auc_bssid[0],
     pst_meas_rpt_neighbor_item->auc_bssid[3],
@@ -3170,7 +3146,8 @@ OAL_STATIC oal_uint32 hmac_rrm_encap_local_bssid_rpt(hmac_vap_stru *pst_hmac_vap
 
     /*Neighbor Report IE*/
     pst_neighbor_rpt_ie->uc_eid       = MAC_EID_NEIGHBOR_REPORT;
-    oal_memcopy(pst_neighbor_rpt_ie->auc_bssid, pst_mac_vap->auc_bssid, OAL_SIZEOF(pst_mac_vap->auc_bssid));
+    memcpy_s(pst_neighbor_rpt_ie->auc_bssid, OAL_SIZEOF(pst_neighbor_rpt_ie->auc_bssid),
+             pst_mac_vap->auc_bssid, OAL_SIZEOF(pst_mac_vap->auc_bssid));
 
     /*BSSID Information*/
     pst_neighbor_rpt_ie->st_bssid_info.bit_ap_reachability    = 0; //not support preauth

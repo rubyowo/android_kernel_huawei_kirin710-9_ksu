@@ -162,6 +162,7 @@ typedef struct
     oal_uint32   ul_tx_total;        /* 发送总计，仅仅统计数据帧  */
     oal_uint32   ul_rx_replay;       /* 接收重放帧个数 */
     oal_uint32   ul_rx_replay_droped;    /* 接收重放帧被过滤个数 */
+    oal_uint32   ul_rx_filter_encrypt_cnt;  /* 统计加密场景过滤非加密数据帧的个数 */
 }dmac_user_query_stats_stru;
 
 /* 软件平均rssi统计信息结构体 */

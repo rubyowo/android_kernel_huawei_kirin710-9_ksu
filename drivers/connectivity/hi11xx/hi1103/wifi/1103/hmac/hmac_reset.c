@@ -59,11 +59,7 @@ oal_uint32 hmac_reset_sys_event_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len,
                 pst_mac_dev->us_device_reset_num++;
             }
 
-#if 0
-            pst_mac_dev->uc_device_reset_in_progress = pst_reset_sys->uc_value;
-#else
             hmac_config_set_reset_state_etc(pst_mac_vap, uc_len, puc_param);
-#endif
 
             break;
         case MAC_RESET_SWITCH_SYS_TYPE:
@@ -83,7 +79,7 @@ oal_uint32  hmac_proc_query_response_event_etc(mac_vap_stru *pst_mac_vap, oal_ui
 {
     hmac_vap_stru       *pst_hmac_vap;
     oal_uint8            uc_flag = 0;
-    dmac_query_station_info_response_event  *pst_query_station_reponse_event;
+    dmac_query_station_info_response_event  *pst_query_station_reponse_event = OAL_PTR_NULL;
 
     pst_hmac_vap = mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
     if (OAL_PTR_NULL == pst_hmac_vap)
@@ -100,7 +96,7 @@ oal_uint32  hmac_proc_query_response_event_etc(mac_vap_stru *pst_mac_vap, oal_ui
         pst_hmac_vap->station_info.tx_packets =  pst_query_station_reponse_event->ul_tx_packets;
         pst_hmac_vap->station_info.rx_bytes   =  pst_query_station_reponse_event->ul_rx_bytes;
         pst_hmac_vap->station_info.tx_bytes   =  pst_query_station_reponse_event->ul_tx_bytes;
-        
+
 #ifdef CONFIG_HW_GET_EXT_SIG
         pst_hmac_vap->station_info.noise   =  pst_query_station_reponse_event->s_free_power;
         pst_hmac_vap->station_info.chload      =  pst_query_station_reponse_event->s_chload;
@@ -180,8 +176,11 @@ oal_uint32  hmac_proc_query_response_event_etc(mac_vap_stru *pst_mac_vap, oal_ui
         }
 #endif
         pst_hmac_vap->station_info.txrate.flags = uc_flag;
-
+    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+        pst_hmac_vap->center_freq  = oal_ieee80211_channel_to_frequency(pst_mac_vap->st_channel.uc_chan_number,(enum nl80211_band)pst_mac_vap->st_channel.en_band);
+    #else
         pst_hmac_vap->center_freq  = oal_ieee80211_channel_to_frequency(pst_mac_vap->st_channel.uc_chan_number,(enum ieee80211_band)pst_mac_vap->st_channel.en_band);
+    #endif
         pst_hmac_vap->s_free_power = pst_query_station_reponse_event->s_free_power;
         pst_hmac_vap->st_station_info_extend.uc_distance = pst_query_station_reponse_event->st_station_info_extend.uc_distance;
         pst_hmac_vap->st_station_info_extend.uc_cca_intr = pst_query_station_reponse_event->st_station_info_extend.uc_cca_intr;
@@ -206,9 +205,9 @@ oal_uint32 hmac_config_reset_operate_etc(mac_vap_stru *pst_mac_vap, oal_uint16 u
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint32            ul_ret;
 #endif
-    oal_int8             *pc_token;
-    oal_int8             *pc_end;
-    oal_int8             *pc_ctx;
+    oal_int8             *pc_token = OAL_PTR_NULL;
+    oal_int8             *pc_end = OAL_PTR_NULL;
+    oal_int8             *pc_ctx = OAL_PTR_NULL;
     oal_int8             *pc_sep = " ";
 
     pst_mac_dev = mac_res_get_dev_etc(pst_mac_vap->uc_device_id);

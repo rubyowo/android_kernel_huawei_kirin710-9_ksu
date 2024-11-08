@@ -27,6 +27,7 @@ extern "C" {
 #define FIN_FLAG_BIT    (1 << 0)
 #define SYN_FLAG_BIT    (1 << 1)
 #define RESET_FLAG_BIT  (1 << 2)
+#define PSH_FLAG_BIT    (1 << 3)
 #define URGENT_FLAG_BIT (1 << 5)
 #define FILTER_FLAG_MASK (FIN_FLAG_BIT | SYN_FLAG_BIT | RESET_FLAG_BIT | URGENT_FLAG_BIT)
 #define MAX_TIME_BY_TWO (1 << 16)

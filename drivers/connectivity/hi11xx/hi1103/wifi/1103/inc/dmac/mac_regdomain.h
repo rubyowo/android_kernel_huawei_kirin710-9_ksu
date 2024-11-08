@@ -26,11 +26,7 @@ extern "C" {
 #define MAC_GET_CH_BIT(_val) (1 << (_val))
 
 /* 默认管制域最大发送功率 */
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-#define MAC_RC_DEFAULT_MAX_TX_PWR   20      /* 20dBm */
-#else
 #define MAC_RC_DEFAULT_MAX_TX_PWR   30
-#endif
 
 #define MAC_RD_BMAP_SIZE            32
 
@@ -162,7 +158,7 @@ typedef struct
 extern mac_regdomain_rom_cb g_st_mac_regdomain_rom_cb;
 
 
-#define MAC_MAX_SUPP_CHANNEL    (oal_uint8)(OAL_MAX((oal_uint8)MAC_CHANNEL_FREQ_2_BUTT, (oal_uint8)MAC_CHANNEL_FREQ_5_BUTT))
+#define MAC_MAX_SUPP_CHANNEL    (oal_uint8)MAC_CHANNEL_FREQ_5_BUTT
 
 /*****************************************************************************
   5 消息头
@@ -313,7 +309,7 @@ oal_bool_enum mac_regdomain_channel_is_support_bw(wlan_channel_bandwidth_enum_ui
 
 OAL_STATIC OAL_INLINE wlan_channel_band_enum_uint8 mac_get_band_by_channel_num(oal_uint8 uc_channel_num)
 {
-    return ((uc_channel_num > MAX_CHANNEL_NUM_FREQ_2G) ? WLAN_BAND_5G : WLAN_BAND_2G);/* [false alarm]:返回值为布尔值0或者1，不影响*/
+    return ((uc_channel_num > MAX_CHANNEL_NUM_FREQ_2G) ? WLAN_BAND_5G : WLAN_BAND_2G);
 }
 
 

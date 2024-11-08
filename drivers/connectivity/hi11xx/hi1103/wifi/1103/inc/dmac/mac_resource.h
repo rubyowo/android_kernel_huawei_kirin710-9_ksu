@@ -62,16 +62,6 @@ extern oal_uint8   g_uc_max_active_user;
   7 STRUCT定义
 *****************************************************************************/
 
-/*
-typedef struct
-{
-    mac_res_user_hash_stru      ast_user_hash_info[WLAN_ASSOC_USER_MAX_NUM];
-    oal_queue_stru              st_queue;
-    oal_uint32                  aul_idx[WLAN_ASSOC_USER_MAX_NUM];
-    oal_uint8                   auc_user_cnt[WLAN_ASSOC_USER_MAX_NUM];
-
-}mac_res_hash_stru;
-*/
 typedef struct
 {
    oal_uint                 ul_user_idx_size;
@@ -137,8 +127,6 @@ extern mac_res_stru  *g_pst_mac_res;
 extern oal_uint32  mac_res_alloc_dmac_dev_etc(oal_uint8    *puc_dev_idx);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 extern oal_uint32  mac_res_alloc_hmac_dev_etc(oal_uint8    *puc_dev_idx);
-#else
-extern oal_uint32  mac_res_alloc_hmac_dev_etc(oal_uint32    ul_dev_idx);
 #endif
 extern oal_uint32  mac_res_free_dev_etc(oal_uint32 ul_dev_idx);
 extern oal_uint32  mac_res_free_mac_user_etc(oal_uint16 us_idx);
@@ -150,13 +138,6 @@ oal_uint16  mac_chip_get_max_asoc_user(oal_uint8 uc_chip_id);
 oal_uint8  mac_chip_get_max_active_user(oal_void);
 oal_uint8  mac_chip_get_max_multi_user(oal_void);
 oal_uint16  mac_board_get_max_user(oal_void);
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_void mac_res_set_hw_addr(oal_uint8 *puc_addr);
-extern oal_void  mac_res_set_mac_bitmap(oal_uint8 val);
-extern oal_void  mac_res_clear_mac_bitmap(oal_uint8 *puc_addr);
-extern oal_int32 mac_res_get_mac_addr(oal_uint8 *puc_addr);
-#endif
-
 
 
 OAL_STATIC OAL_INLINE oal_uint32  mac_res_alloc_hmac_vap(oal_uint8 *puc_idx, oal_uint16 us_hmac_priv_size)
@@ -168,7 +149,7 @@ OAL_STATIC OAL_INLINE oal_uint32  mac_res_alloc_hmac_vap(oal_uint8 *puc_idx, oal
         return OAL_FAIL;
     }
 
-    ul_idx_temp = (oal_uint)oal_queue_dequeue(&(g_pst_mac_res->st_vap_res.st_queue));
+    ul_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_pst_mac_res->st_vap_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_idx_temp)
@@ -267,7 +248,7 @@ OAL_STATIC OAL_INLINE oal_uint32  mac_res_alloc_hmac_user(oal_uint16 *pus_idx, o
         return OAL_FAIL;
     }
 
-    ul_idx_temp = (oal_uint)oal_queue_dequeue_16(&(g_pst_mac_res->st_user_res.st_queue));
+    ul_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue_16(&(g_pst_mac_res->st_user_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_idx_temp)

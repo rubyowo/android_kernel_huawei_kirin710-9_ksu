@@ -1,6 +1,5 @@
 
 
-
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -9,9 +8,7 @@ extern "C" {
 
 #ifdef _PRE_WLAN_FEATURE_DAQ
 
-/*****************************************************************************
-  1 头文件包含
-*****************************************************************************/
+/* 1 头文件包含 */
 #include "wlan_spec.h"
 #include "mac_resource.h"
 #include "mac_device.h"
@@ -20,35 +17,27 @@ extern "C" {
 #include "hmac_vap.h"
 #include "hmac_main.h"
 
-#undef  THIS_FILE_ID
+#undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_DATA_ACQ_C
 
-/*****************************************************************************
-  2 全局变量定义
-*****************************************************************************/
-
+/* 2 全局变量定义 */
 oal_uint8 g_uc_data_acq_used = OAL_FALSE;
 
+/* 3 函数实现 */
 
-
-/*****************************************************************************
-  3 函数实现
-*****************************************************************************/
-
-
-oal_void  hmac_data_acq_init(oal_void)
+oal_void hmac_data_acq_init(oal_void)
 {
     g_uc_data_acq_used = OAL_FALSE;
 }
 
 
-oal_void  hmac_data_acq_exit(oal_void)
+oal_void hmac_data_acq_exit(oal_void)
 {
     g_uc_data_acq_used = OAL_FALSE;
 }
 
 
-oal_void  hmac_data_acq_down_vap(mac_vap_stru *pst_mac_vap)
+oal_void hmac_data_acq_down_vap(mac_vap_stru *pst_mac_vap)
 {
     oal_uint32                   ul_ret;
     mac_device_stru             *pst_device;
@@ -58,18 +47,15 @@ oal_void  hmac_data_acq_down_vap(mac_vap_stru *pst_mac_vap)
 
     pst_device = mac_res_get_dev(pst_mac_vap->uc_device_id);
 
-    if (OAL_PTR_NULL == pst_device)
-    {
+    if (OAL_PTR_NULL == pst_device) {
         OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_data_acq_down_vap::pst_device null.}");
         return;
     }
 
     /* 遍历device下所有vap，设置vap 下的信道号 */
-    for (uc_vap_idx = 0; uc_vap_idx < pst_device->uc_vap_num; uc_vap_idx++)
-    {
+    for (uc_vap_idx = 0; uc_vap_idx < pst_device->uc_vap_num; uc_vap_idx++) {
         pst_hmac_vap = mac_res_get_hmac_vap(pst_device->auc_vap_id[uc_vap_idx]);
-        if (OAL_PTR_NULL == pst_hmac_vap)
-        {
+        if (OAL_PTR_NULL == pst_hmac_vap) {
             OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_data_acq_down_vap::pst_hmac_vap null.}");
             continue;
         }
@@ -78,8 +64,7 @@ oal_void  hmac_data_acq_down_vap(mac_vap_stru *pst_mac_vap)
 
         ul_ret = hmac_config_down_vap(&pst_hmac_vap->st_vap_base_info, OAL_SIZEOF(mac_cfg_down_vap_param_stru), (oal_uint8 *)&st_down_vap);
 
-        if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
-        {
+        if (OAL_UNLIKELY(OAL_SUCC != ul_ret)) {
             OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_data_acq_down_vap::hmac_config_down_vap failed.}");
         }
     }
@@ -88,12 +73,11 @@ oal_void  hmac_data_acq_down_vap(mac_vap_stru *pst_mac_vap)
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_data_acq_down_vap::g_uc_data_acq_used=%d.}", g_uc_data_acq_used);
 }
 
-
-#endif  /* end of _PRE_WLAN_FEATURE_DAQ*/
+#endif /* end of _PRE_WLAN_FEATURE_DAQ */
 
 #ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
+#if __cplusplus
+}
+#endif
 #endif
 

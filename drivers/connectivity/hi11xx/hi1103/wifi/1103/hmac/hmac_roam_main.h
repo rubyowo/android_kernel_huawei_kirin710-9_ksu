@@ -25,6 +25,8 @@ extern "C" {
 #define ROAM_CONNECT_TIME_MAX     (10 * 1000)       /* 关联超时时间 单位ms*/
 #define ROAM_INVALID_SCAN_MAX     (5)              /* 连续无效扫描门限   */
 
+#define ROAM_NEIGHBOR_PROCESS_TIME_MAX        (150)       /* 扫描超时时间 单位ms*/
+
 /* 漫游场景识别一，识别出密集AP场景和低密AP场景 */
 #define WLAN_FULL_CHANNEL_NUM           (20)       /* 判断全信道扫描的数目门限 */
 #define ROAM_ENV_CANDIDATE_GOOD_NUM     (5)        /* 统计漫游环境中强信号强度AP的个数 */
@@ -35,7 +37,7 @@ extern "C" {
 /* 漫游场景识别二，识别出不满足漫游门限、但是有更好信号强度AP的场景 */
 #define ROAM_ENV_BETTER_RSSI_PERIOD      (4)        /* 不满足漫游门限，但是有更好信号强度AP的扫描周期 */
 #define ROAM_ENV_BETTER_RSSI_NULL_PERIOD (1)        /* 不满足漫游门限，但是有更好信号强度AP的扫描周期扫不到合适AP的周期 */
-#define ROAM_ENV_BETTER_RSSI_DISTANSE   (20)       /* 同一个ESS中最强信号强度AP和当前关联AP的RSSI间隔 */
+#define ROAM_ENV_BETTER_RSSI_DISTANSE   (30)       /* 同一个ESS中最强信号强度AP和当前关联AP的RSSI间隔 */
 
 #define ROAM_FAIL_FIVE_TIMES            (100)
 
@@ -51,6 +53,7 @@ typedef enum
     ROAM_TRIGGER_11V                  = 3,
     ROAM_TRIGGER_M2S                  = 4,
     ROAM_TRIGGER_BSSID                = 5, /* 指定BSSID漫游 */
+    ROAM_TRIGGER_HOME_NETWORK         = 6,
 
     ROAM_TRIGGER_BUTT
 }roam_trigger_condition_enum;
@@ -75,6 +78,7 @@ typedef enum
     ROAM_MAIN_STATE_SCANING            = 1,
     ROAM_MAIN_STATE_CONNECTING         = 2,
     ROAM_MAIN_STATE_UP                 = 3,
+    ROAM_MAIN_STATE_NEIGHBOR_PROCESS   = 4,
 
     ROAM_MAIN_STATE_BUTT
 }roam_main_state_enum;
@@ -160,6 +164,12 @@ typedef struct
     oal_uint32                 ul_roam_11v_scan_fail;
 #endif
     oal_uint32                 ul_roam_eap_fail;
+    oal_uint32                 ul_scan_start_timetamp;          /* 漫游扫描开始时间点 */
+    oal_uint32                 ul_scan_end_timetamp;            /* 漫游扫描开始时间点 */
+    oal_uint32                 ul_connect_start_timetamp;       /* 漫游关联开始时间点 */
+    oal_uint32                 ul_connect_end_timetamp;         /* 漫游关联完成时间点 */
+    oal_uint8                  uc_roam_mode;                    /* 漫游模式 */
+    oal_uint8                  uc_scan_mode;                    /* 扫描模式 */
 }hmac_roam_static_stru;
 
 /*****************************************************************************
@@ -182,6 +192,7 @@ oal_uint32 hmac_roam_check_signal_bridge_etc(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_start_etc(hmac_vap_stru *pst_hmac_vap, roam_channel_org_enum uc_scan_type,
                            oal_bool_enum_uint8 en_current_bss_ignore, oal_uint8 *pauc_target_bssid,
                            roam_trigger_enum_uint8 en_roam_trigger);
+oal_uint32 hmac_roam_handle_home_network(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_show_etc(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_init_etc(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_info_init_etc(hmac_vap_stru *pst_hmac_vap);
@@ -194,6 +205,7 @@ oal_uint32 hmac_roam_trigger_handle_etc(hmac_vap_stru *pst_hmac_vap, oal_int8 c_
 oal_void hmac_roam_tbtt_handle_etc(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_scan_complete_etc(hmac_vap_stru *pst_hmac_vap);
 oal_void hmac_roam_connect_complete_etc(hmac_vap_stru *pst_hmac_vap, oal_uint32 ul_result);
+oal_uint32 hmac_roam_connect_ft_ds_change_to_air_etc(hmac_vap_stru *pst_hmac_vap, oal_void *p_param);
 oal_void  hmac_roam_add_key_done_etc(hmac_vap_stru *pst_hmac_vap);
 oal_void  hmac_roam_wpas_connect_state_notify_etc(hmac_vap_stru *pst_hmac_vap, wpas_connect_state_enum_uint32 conn_state);
 oal_uint32 hmac_roam_rssi_trigger_type(hmac_vap_stru *pst_hmac_vap, roam_scenario_enum_uint8 en_val);
@@ -203,6 +215,9 @@ oal_int8 hmac_get_rssi_from_scan_result(hmac_vap_stru *pst_hmac_vap, oal_uint8 *
 oal_uint32 hmac_roam_reassoc_etc(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_rx_ft_action_etc(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_netbuf);
 #endif //_PRE_WLAN_FEATURE_11R
+#ifdef _PRE_WLAN_FEATURE_11K
+oal_uint32 hmac_roam_rx_neighbor_response_action_etc(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_netbuf);
+#endif
 oal_void hmac_roam_timeout_test_etc(hmac_vap_stru *pst_hmac_vap);
 
 #endif //_PRE_WLAN_FEATURE_ROAM

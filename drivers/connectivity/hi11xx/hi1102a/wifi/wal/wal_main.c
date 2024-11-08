@@ -39,7 +39,6 @@ extern "C" {
 
 #include "hmac_vap.h"
 
-
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_MAIN_C
 /*****************************************************************************
@@ -52,7 +51,7 @@ OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_crx_table[WAL_HOST_CRX_S
 OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_BUTT];
 
 /* HOST DRX子表 */
-/* OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_drx_table[WAL_HOST_DRX_SUBTYPE_BUTT]; */
+
 
 /* wal对外钩子函数 */
 oam_wal_func_hook_stru     g_st_wal_drv_func_hook;
@@ -83,8 +82,8 @@ oal_uint32  wal_event_fsm_init(oal_void)
     g_ast_wal_host_crx_table[WAL_HOST_CRX_SUBTYPE_CFG].p_func = wal_config_process_pkt;
     frw_event_table_register(FRW_EVENT_TYPE_HOST_CRX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_crx_table);
 
-    /* g_ast_wal_host_drx_table[WAL_HOST_DRX_SUBTYPE_TX].p_func = hmac_tx_lan_to_wlan_ap;
-    frw_event_table_register(FRW_EVENT_TYPE_HOST_DRX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_drx_table); */
+
+
 
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_SCAN_COMP_STA].p_func     = wal_scan_comp_proc_sta;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_ASOC_COMP_STA].p_func     = wal_asoc_comp_proc_sta;
@@ -120,6 +119,9 @@ oal_uint32  wal_event_fsm_init(oal_void)
 #if defined(_PRE_WLAN_FEATURE_DATA_SAMPLE)
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_SAMPLE_REPORT].p_func   = wal_sample_report2sdt;
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+    g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_EXT_AUTH_REQ].p_func    = wal_report_external_auth_req;
+#endif
     frw_event_table_register(FRW_EVENT_TYPE_HOST_CTX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_ctx_table);
 
     return OAL_SUCC;
@@ -130,9 +132,9 @@ oal_uint32  wal_event_fsm_exit(oal_void)
 {
     OAL_IO_PRINT("debug2");
 
-    OAL_MEMZERO(g_ast_wal_host_crx_table, OAL_SIZEOF(g_ast_wal_host_crx_table));
+    memset_s(g_ast_wal_host_crx_table, OAL_SIZEOF(g_ast_wal_host_crx_table), 0, OAL_SIZEOF(g_ast_wal_host_crx_table));
 
-    OAL_MEMZERO(g_ast_wal_host_ctx_table, OAL_SIZEOF(g_ast_wal_host_ctx_table));
+    memset_s(g_ast_wal_host_ctx_table, OAL_SIZEOF(g_ast_wal_host_ctx_table), 0, OAL_SIZEOF(g_ast_wal_host_ctx_table));
 
     return OAL_SUCC;
 }
@@ -159,7 +161,7 @@ oal_int32 wal_wakelock_info_print(char* buf, oal_int32 buf_len)
     return ret;
 }
 
-OAL_STATIC ssize_t  wal_get_wakelock_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_wakelock_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -187,12 +189,12 @@ OAL_STATIC ssize_t  wal_get_wakelock_info(struct device *dev, struct device_attr
 }
 
 extern oal_int32 wal_atcmsrv_ioctl_get_rx_pckg(oal_net_device_stru *pst_net_dev, oal_int32 *pl_rx_pckg_succ_num);
-OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     ssize_t                     ret = 0;
-    oal_net_device_stru*        pst_net_dev;
-    mac_vap_stru*               pst_vap;
-    hmac_vap_stru*              pst_hmac_vap;
+    oal_net_device_stru*        pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru*               pst_vap = OAL_PTR_NULL;
+    hmac_vap_stru*              pst_hmac_vap = OAL_PTR_NULL;
     oal_int32                   l_rx_pckg_succ_num;
     oal_int32                   l_ret;
 
@@ -255,8 +257,10 @@ OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct device *dev, str
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(wakelock, S_IRUGO, wal_get_wakelock_info, NULL);
-OAL_STATIC DEVICE_ATTR(packet_statistics_wlan0, S_IRUGO, wal_get_packet_statistics_wlan0_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_wakelock =
+    __ATTR(wakelock, S_IRUGO, wal_get_wakelock_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_packet_statistics_wlan0 =
+    __ATTR(packet_statistics_wlan0, S_IRUGO, wal_get_packet_statistics_wlan0_info, NULL);
 
 oal_int32 wal_msg_queue_info_print(char* buf, oal_int32 buf_len)
 {
@@ -267,7 +271,7 @@ oal_int32 wal_msg_queue_info_print(char* buf, oal_int32 buf_len)
     return ret;
 }
 
-OAL_STATIC ssize_t  wal_get_msg_queue_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_msg_queue_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -296,13 +300,13 @@ OAL_STATIC ssize_t  wal_get_msg_queue_info(struct device *dev, struct device_att
 OAL_STATIC ssize_t  wal_get_dev_wifi_info_print(char* buf, oal_int32 buf_len)
 {
     ssize_t                     ret = 0;
-    oal_net_device_stru*        pst_net_dev;
-    mac_vap_stru*               pst_vap;
-    hmac_vap_stru*              pst_hmac_vap;
+    oal_net_device_stru*        pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru*               pst_vap = OAL_PTR_NULL;
+    hmac_vap_stru*              pst_hmac_vap = OAL_PTR_NULL;
 
     if(NULL == buf)
     {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "%s error: buf is null\r\n",__FUNCTION__);
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "%s error: buf is null\r\n", (uintptr_t)__FUNCTION__);
         return 0;
     }
 
@@ -343,11 +347,11 @@ OAL_STATIC ssize_t  wal_get_dev_wifi_info_print(char* buf, oal_int32 buf_len)
     ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "rx_beacon_from_assoc_ap:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_cnt);
     ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "ap_distance:%d\n",pst_hmac_vap->st_station_info_extend.uc_distance);
     ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "disturbing_degree:%d\n",pst_hmac_vap->st_station_info_extend.uc_cca_intr);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "lost_beacon_amount:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_tout_cnt);
+    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tbtt_cnt:%d\n",pst_hmac_vap->st_station_info_extend.ul_tbtt_cnt);
 
     return ret;
 }
-OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -373,9 +377,11 @@ OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct device *dev, struct device_attr
 
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(dev_wifi_info, S_IRUGO, wal_get_dev_wifi_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_dev_wifi_info =
+    __ATTR(dev_wifi_info, S_IRUGO, wal_get_dev_wifi_info, NULL);
 
-OAL_STATIC DEVICE_ATTR(msg_queue, S_IRUGO, wal_get_msg_queue_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_msg_queue =
+    __ATTR(msg_queue, S_IRUGO, wal_get_msg_queue_info, NULL);
 
 OAL_STATIC struct attribute *wal_sysfs_entries[] = {
         &dev_attr_wakelock.attr,
@@ -464,6 +470,13 @@ oal_int32  wal_main_init(oal_void)
         return -OAL_EFAIL;
     }
 
+#ifdef _PRE_WLAN_FEATURE_DFR
+    wal_dfx_init();
+#endif //#ifdef _PRE_WLAN_FEATURE_DFR
+#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
+    wal_set_custom_process_func(wal_custom_cali, wal_priv_init_config);
+#endif
+
     /* 初始化每个device硬件设备对应的wiphy */
     ul_ret = wal_cfg80211_init();
     if (ul_ret != OAL_SUCC)
@@ -486,8 +499,8 @@ oal_int32  wal_main_init(oal_void)
 
 #ifdef _PRE_WLAN_FEATURE_P2P
     /* 初始化cfg80211 删除网络设备工作队列 */
-    g_pst_del_virtual_inf_workqueue = OAL_CREATE_SINGLETHREAD_WORKQUEUE("cfg80211_del_virtual_inf");
-    if (!g_pst_del_virtual_inf_workqueue)
+    del_virtual_inf_workqueue = OAL_CREATE_SINGLETHREAD_WORKQUEUE("cfg80211_del_virtual_inf");
+    if (!del_virtual_inf_workqueue)
     {
         wal_cfg80211_exit();
         frw_timer_delete_all_timer();
@@ -505,12 +518,7 @@ oal_int32  wal_main_init(oal_void)
 /*debug sysfs*/
     wal_sysfs_entry_init();
 #endif
-#ifdef _PRE_WLAN_FEATURE_DFR
-    wal_dfx_init();
-#endif //#ifdef _PRE_WLAN_FEATURE_DFR
-#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-    wal_set_custom_process_func(wal_custom_cali, wal_priv_init_config);
-#endif
+
 #ifdef _PRE_WLAN_FEATURE_IP_FILTER
     wal_register_ip_filter(&g_st_ip_filter_ops);
 #endif /* _PRE_WLAN_FEATURE_IP_FILTER */
@@ -604,10 +612,10 @@ oal_void  wal_main_exit(oal_void)
     oam_wal_func_fook_unregister();
 #ifdef _PRE_WLAN_FEATURE_P2P
     /* 删除cfg80211 删除网络设备工作队列 */
-    if (g_pst_del_virtual_inf_workqueue)
+    if (del_virtual_inf_workqueue)
     {
-        oal_destroy_workqueue(g_pst_del_virtual_inf_workqueue);
-        g_pst_del_virtual_inf_workqueue = OAL_PTR_NULL;
+        oal_destroy_workqueue(del_virtual_inf_workqueue);
+        del_virtual_inf_workqueue = OAL_PTR_NULL;
     }
 #endif
 

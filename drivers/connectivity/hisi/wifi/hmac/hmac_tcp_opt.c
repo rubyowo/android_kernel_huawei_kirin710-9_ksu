@@ -59,7 +59,7 @@ hmac_tcp_ack_opt_th_params g_st_tcp_ack_opt_th_params = {0, 0, 0, 0};
 /*****************************************************************************
   5 内部静态函数声明
 *****************************************************************************/
-oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru    *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head);
+oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(void *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head);
 
 /*****************************************************************************
   4 函数实现
@@ -574,16 +574,17 @@ oal_tcp_ack_type_enum_uint8  hmac_tcp_opt_tx_get_tcp_ack(oal_netbuf_stru *skb, h
 }
 
 
-oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru    *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head)
+oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(void *hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head)
 {
-    struct tcp_list_node *node;
+    hmac_vap_stru         *pst_hmac_vap;
+    struct tcp_list_node  *node;
     oal_netbuf_stru * skb;
     oal_netbuf_head_stru  head_t;
     struct wlan_perform_tcp_list *tmp_list;
     oal_dlist_head_stru        *pst_entry;
     oal_dlist_head_stru        *pst_entry_temp;
 
-    OAL_BUG_ON(!pst_hmac_vap);
+    OAL_BUG_ON(!hmac_vap);
     OAL_BUG_ON(!head);
     OAL_BUG_ON(HMAC_TCP_ACK_QUEUE != type);
     OAL_BUG_ON((HCC_TX != dir));
@@ -594,6 +595,7 @@ oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru    *pst_hmac_vap, hmac_t
     }
     oal_netbuf_head_init(&head_t);
 
+    pst_hmac_vap = (hmac_vap_stru *)hmac_vap;
 #ifdef _PRE_WLAN_TCP_OPT_DEBUG
     OAL_IO_PRINT("\r\n====hmac_tcp_opt_tcp_ack_list_filter:uc_vap_id = %d,dir=%d filter queue qlen %u====\r\n",pst_hmac_vap->st_vap_base_info.uc_vap_id, dir, oal_netbuf_list_len(head));
 #endif

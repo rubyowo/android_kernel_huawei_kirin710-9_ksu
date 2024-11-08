@@ -123,20 +123,20 @@ OAL_STATIC oal_void dpd_cordic(oal_int32 l_real, oal_int32 l_image, oal_uint32* 
 oal_uint16  LUT_Gain[DPD_CALI_LUT_LENGTH], DPD_Gain[DPD_CALI_LUT_LENGTH];
 hi1102_complex_stru  LUT_Theta[DPD_CALI_LUT_LENGTH], DPD_Theta[DPD_CALI_LUT_LENGTH];
 
-// oal_memalloc(oal_uint32 ul_size)
+
 oal_uint32 hi1102_rf_cali_dpd_corr_calc(oal_uint32* hi1102_dpd_cali_data_read, oal_uint32* hi1102_dpd_cali_data_calc)
 {
    oal_uint8 idx = 0,  jdx =0;
    oal_uint32  l_amp = 0,  vrms =0;
    oal_int32 l_real = 0,l_imag =0;
 
-  // oal_uint32  LUT_Gain[DPD_CALI_LUT_LENGTH] = {0};
-  // oal_uint32  DPD_Gain[DPD_CALI_LUT_LENGTH] = {0};
-   //hi1102_complex_stru  LUT_Theta[DPD_CALI_LUT_LENGTH] = {0};
-  // hi1102_complex_stru  DPD_Theta[DPD_CALI_LUT_LENGTH] = {0};
 
-   //oal_uint32  LUT_Gain[DPD_CALI_LUT_LENGTH], DPD_Gain[DPD_CALI_LUT_LENGTH];
-   //hi1102_complex_stru  LUT_Theta[DPD_CALI_LUT_LENGTH], DPD_Theta[DPD_CALI_LUT_LENGTH];
+
+
+
+
+
+
    oal_uint32 pa_gain_target = 0;
    oal_int32  l_divider = 2048;
    oal_int32 l_dpd_real = 0, l_dpd_imag = 0;
@@ -232,19 +232,19 @@ oal_uint32 hi1102_rf_cali_dpd_corr_calc(oal_uint32* hi1102_dpd_cali_data_read, o
 
    for(idx= 0; idx < DPD_CALI_LUT_LENGTH; idx++)
    {
-/*
-     OAM_ERROR_LOG4(0, OAM_SF_CALIBRATE,"DPD_Gain[%d]=%d, DPD_theta1=%d, DPD_theta2=%d\n\r", idx,DPD_Gain[idx], DPD_Theta[idx].l_real, DPD_Theta[idx].l_imag);
-*/
+
+
+
      l_dpd_real = hi1102_cali_div_round_closest(DPD_Gain[idx] * DPD_Theta[idx].l_real, l_divider);
      l_dpd_imag = hi1102_cali_div_round_closest(DPD_Gain[idx] * DPD_Theta[idx].l_imag, l_divider);
      *(hi1102_dpd_cali_data_calc + idx) = (SET2COMP(l_dpd_real))| ((SET2COMP(l_dpd_imag))<<11);
-/*
-     OAM_ERROR_LOG4(0, OAM_SF_CALIBRATE,  "dpd_gain[%d] real=%d, image=%d, DPD_CAL=0x%06x\n\r", idx,
-                     hi1102_cali_div_round_closest (DPD_Gain[idx] * DPD_Theta[idx].l_real, 2048),
-                     hi1102_cali_div_round_closest(DPD_Gain[idx] * DPD_Theta[idx].l_imag, 2048),
-                     (oal_uint32)(*(hi1102_dpd_cali_data_calc + idx)));*/
-     //OAM_WARNING_LOG1(0, OAM_SF_CALIBRATE, "{hmac_dpd_cali_data_recv::[%x]!}\r\n",
-     //(oal_uint32)(*(hi1102_dpd_cali_data_calc + idx)));
+
+
+
+
+
+
+
    }
 
    return OAL_SUCC;

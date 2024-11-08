@@ -95,11 +95,6 @@ extern oal_void  hmac_rx_free_netbuf_list(
                 oal_uint16                  us_nums_buf);
 
 extern oal_uint32 hmac_rx_lan_frame(oal_netbuf_head_stru *pst_netbuf_header);
-#ifdef _PRE_WLAN_FEATURE_PKT_MEM_OPT
-extern oal_void hmac_pkt_mem_opt_init(hmac_device_stru *pst_hmac_device);
-extern oal_void hmac_pkt_mem_opt_exit(hmac_device_stru *pst_hmac_device);
-extern oal_void hmac_pkt_mem_opt_cfg(oal_uint32 ul_cfg_tpye, oal_uint32 ul_cfg_value);
-#endif
 
 #ifdef __cplusplus
     #if __cplusplus

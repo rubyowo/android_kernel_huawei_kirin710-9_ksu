@@ -23,6 +23,9 @@ extern "C" {
 #include "frw_timer.h"
 #include "dmac_beacon.h"
 
+#include "securec.h"
+#include "securectype.h"
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_MAC_PM_C
 
@@ -62,7 +65,7 @@ oal_uint32 mac_pm_arbiter_init(mac_device_stru* pst_device)
         OAM_ERROR_LOG0(pst_device->uc_cfg_vap_id, OAM_SF_PWR, "hmac_pm_arbiter_init FAIL:out of memory");
         return OAL_FAIL;
     }
-    OAL_MEMZERO(pst_arbiter, OAL_SIZEOF(mac_pm_arbiter_stru));
+    memset_s(pst_arbiter, OAL_SIZEOF(mac_pm_arbiter_stru), 0, OAL_SIZEOF(mac_pm_arbiter_stru));
     pst_arbiter->pst_state_info = &g_pm_arbiter_state_info[0];
 
     pst_device->pst_pm_arbiter = (oal_void*)pst_arbiter;
@@ -86,8 +89,8 @@ oal_uint32 mac_pm_arbiter_destroy(mac_device_stru* pst_device)
 oal_uint32 mac_pm_arbiter_alloc_id(mac_device_stru* pst_device, oal_uint8* pst_name,mac_pm_arbiter_type_enum en_arbiter_type)
 {
     mac_pm_arbiter_stru *pst_pm_arbiter = (mac_pm_arbiter_stru*)(pst_device->pst_pm_arbiter);
-    oal_uint32 i;
-
+    oal_uint32           i;
+    oal_int32            l_ret;
     if (pst_pm_arbiter == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG0(pst_device->uc_cfg_vap_id, OAM_SF_PWR, "hmac_pm_arbiter_alloc_id FAIL:mac device have no arbiter struct");
@@ -106,8 +109,12 @@ oal_uint32 mac_pm_arbiter_alloc_id(mac_device_stru* pst_device, oal_uint8* pst_n
         if (((1<<i) & pst_pm_arbiter->ul_id_bitmap) == 0)
         {
             pst_pm_arbiter->ul_id_bitmap |=  (1<<i);
-            OAL_SPRINTF((char *)&pst_pm_arbiter->requestor[i].auc_id_name[0],
-                    MAC_PM_ARBITER_MAX_REQ_NAME, "%s", pst_name);
+            l_ret = snprintf_s((char *)&pst_pm_arbiter->requestor[i].auc_id_name[0],
+                               MAC_PM_ARBITER_MAX_REQ_NAME, MAC_PM_ARBITER_MAX_REQ_NAME - 1, "%s", pst_name);
+            if (l_ret < 0) {
+                OAM_ERROR_LOG0(0, OAM_SF_PWR, "mac_pm_arbiter_alloc_id::snprintf_s error!");
+                return MAC_PWR_ARBITER_ID_INVALID;
+            }
             pst_pm_arbiter->requestor[i].en_arbiter_type = en_arbiter_type;
             pst_pm_arbiter->uc_requestor_num++;
             return i;
@@ -200,8 +207,6 @@ oal_void mac_pm_arbiter_to_state(mac_device_stru *pst_device, mac_vap_stru *pst_
        /*操作hal层接口*/
        if(OAL_SUCC == mac_pm_set_hal_state(pst_device, pst_mac_vap, uc_state_to))
        {
-           //OAM_INFO_LOG1(pst_device->uc_cfg_vap_id, OAM_SF_PWR, "PM arbiter:set device to state %d",uc_state_to);
-
            pst_pm_arbiter->uc_cur_state  = uc_state_to;
        }
 
@@ -329,7 +334,7 @@ oal_uint32  mac_pm_set_wow_para(dmac_vap_stru *pst_dmac_vap, hal_wow_param_stru 
         return OAL_FAIL;
     }
 
-    OAL_MEMZERO(pst_wow_para, OAL_SIZEOF(hal_wow_param_stru));
+    memset_s(pst_wow_para, OAL_SIZEOF(hal_wow_param_stru), 0, OAL_SIZEOF(hal_wow_param_stru));
 
 #if (WLAN_MAX_NSS_NUM >= WLAN_DOUBLE_NSS)
     pst_dmac_device = (dmac_device_stru *)dmac_res_get_mac_dev(pst_mac_device->uc_device_id);
@@ -367,7 +372,8 @@ oal_uint32  mac_pm_set_wow_para(dmac_vap_stru *pst_dmac_vap, hal_wow_param_stru 
                 pst_wow_para->ul_ap0_probe_resp_address = OAL_VIRT_TO_PHY_ADDR((oal_uint32 *)oal_netbuf_data(pst_dmac_vap->pst_wow_probe_resp));
                 pst_wow_para->ul_ap0_probe_resp_len = pst_dmac_vap->us_wow_probe_resp_len;
                 pst_wow_para->ul_ap0_probe_resp_phy = 0;
-                pst_wow_para->ul_ap0_probe_resp_rate = mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
+                /* 110x废弃 */
+                pst_wow_para->ul_ap0_probe_resp_rate = 0x490010//mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
                 ul_wow_set_bitmap |= HAL_WOW_PARA_AP0_PROBE_RESP;
                 /* 硬件没对vap模式判断,ap下进入wow后会1s发送mac地址全零的"null data" */
                 pst_wow_para->ul_nulldata_interval = 0;
@@ -382,14 +388,16 @@ oal_uint32  mac_pm_set_wow_para(dmac_vap_stru *pst_dmac_vap, hal_wow_param_stru 
                 pst_wow_para->ul_ap1_probe_resp_address = OAL_VIRT_TO_PHY_ADDR((oal_uint32 *)oal_netbuf_data(pst_dmac_vap->pst_wow_probe_resp));
                 pst_wow_para->ul_ap1_probe_resp_len = pst_dmac_vap->us_wow_probe_resp_len;
                 pst_wow_para->ul_ap1_probe_resp_phy = 0;
-                pst_wow_para->ul_ap1_probe_resp_rate = mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
+                /* 110x废弃 */
+                pst_wow_para->ul_ap1_probe_resp_rate = 0x490010//mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
                 ul_wow_set_bitmap |= HAL_WOW_PARA_AP1_PROBE_RESP;
                 pst_wow_para->ul_nulldata_interval = 0;
                 ul_wow_set_bitmap |= HAL_WOW_PARA_NULLDATA_INTERVAL;
             }
             else if(4 == pst_dmac_vap->pst_hal_vap->uc_vap_id)
             {
-                pst_wow_para->ul_nulldata_rate = mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
+                /* 110x废弃 */
+                pst_wow_para->ul_nulldata_rate = 0x490010//mac_fcs_get_prot_datarate(&pst_dmac_vap->st_vap_base_info);
                 pst_wow_para->ul_nulldata_phy_mode = mac_fcs_get_prot_mode(&pst_dmac_vap->st_vap_base_info);
                 ul_wow_set_bitmap |= HAL_WOW_PARA_NULLDATA;
                 if (!pst_dmac_vap->pst_wow_null_data)
@@ -459,7 +467,7 @@ oal_uint32 mac_pm_set_hal_state(mac_device_stru *pst_device, mac_vap_stru *pst_m
     }
 
     pst_ap_pm_handler = &pst_dmac_vap->st_pm_handler;
-    OAL_MEMZERO(&st_para, OAL_SIZEOF(hal_lpm_state_param_stru));
+    memset_s(&st_para, OAL_SIZEOF(hal_lpm_state_param_stru), 0, OAL_SIZEOF(hal_lpm_state_param_stru));
 
     switch(uc_state_to)
     {

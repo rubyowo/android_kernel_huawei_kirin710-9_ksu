@@ -16,8 +16,7 @@ extern "C" {
 #include "wal_linux_ioctl.h"
 #include "wal_main.h"
 #include "wal_config.h"
-
-
+#include "wal_linux_scan.h"
 
 
 #undef  THIS_FILE_ID
@@ -34,7 +33,7 @@ extern "C" {
 
 
 oal_int32 wal_cfg80211_start_req(oal_net_device_stru    *pst_net_dev,
-                                void                        *ps_param,
+                                OAL_CONST void              *ps_param,
                                 oal_uint16                   us_len,
                                 wlan_cfgid_enum_uint16       en_wid,
                                 oal_bool_enum_uint8          en_need_rsp)
@@ -124,20 +123,20 @@ oal_uint32  wal_cfg80211_start_sched_scan(oal_net_device_stru *pst_net_dev, mac_
 
     oal_memcopy(pst_pno_scan_params, pst_pno_scan_info, OAL_SIZEOF(mac_pno_scan_stru));
 
-    OAL_MEMZERO(&st_write_msg, OAL_SIZEOF(st_write_msg));
+    memset_s(&st_write_msg, OAL_SIZEOF(st_write_msg), 0, OAL_SIZEOF(st_write_msg));
     /* 填写 msg 消息头*/
     st_write_msg.en_wid = WLAN_CFGID_CFG80211_START_SCHED_SCAN;
-    st_write_msg.us_len = OAL_SIZEOF(pst_pno_scan_params);
+    st_write_msg.us_len = OAL_SIZEOF(mac_pno_scan_stru *);
 
     /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &pst_pno_scan_params, OAL_SIZEOF(pst_pno_scan_params));
+    oal_memcopy(st_write_msg.auc_value, &pst_pno_scan_params, OAL_SIZEOF(mac_pno_scan_stru *));
 
     /***************************************************************************
            抛事件到wal层处理
     ***************************************************************************/
     l_ret = wal_send_cfg_event(pst_net_dev,
                            WAL_MSG_TYPE_WRITE,
-                           WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(pst_pno_scan_params),
+                           WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_pno_scan_stru *),
                            (oal_uint8 *)&st_write_msg,
                            OAL_TRUE,
                            &pst_rsp_msg);
@@ -177,6 +176,20 @@ oal_int32  wal_cfg80211_start_connect(oal_net_device_stru *pst_net_dev, mac_cfg8
 
 oal_int32  wal_cfg80211_start_disconnect(oal_net_device_stru *pst_net_dev, mac_cfg_kick_user_param_stru *pst_disconnect_param)
 {
+    mac_vap_stru    *pst_mac_vap;
+    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
+    if (OAL_PTR_NULL == pst_mac_vap)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_SCAN, "{wal_cfg80211_start_disconnect::pst_mac_vap is null!}\r\n");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+    // 终止可能存在的扫描
+    if (WLAN_VAP_MODE_BSS_STA == pst_mac_vap->en_vap_mode)
+    {
+        wal_force_scan_complete_for_disconnect_scene(pst_net_dev);
+    }
+
+
     /* 注意 由于消息未真正处理就直接返回，导致WPA_SUPPLICANT继续下发消息，在驱动侧等到处理时被异常唤醒，导致后续下发的消息误以为操作失败，
        目前将去关联事件修改为等待消息处理结束后再上报，最后一个入参由OAL_FALSE改为OAL_TRUE */
     return wal_cfg80211_start_req(pst_net_dev, pst_disconnect_param, OAL_SIZEOF(mac_cfg_kick_user_param_stru), WLAN_CFGID_KICK_USER, OAL_TRUE);
@@ -188,6 +201,19 @@ oal_int32  wal_cfg80211_fbt_kick_user(oal_net_device_stru *pst_net_dev, mac_cfg_
     return wal_cfg80211_start_req(pst_net_dev, pst_disconnect_param, OAL_SIZEOF(mac_cfg_kick_user_param_stru), WLAN_CFGID_FBT_KICK_USER, OAL_TRUE);
 }
 #endif
+
+#ifdef _PRE_WLAN_FEATURE_SAE
+/*
+ * 函 数 名  : wal_cfg80211_do_external_auth
+ * 功能描述  : 执行内核下发 ext_auth 命令到 hmac
+ */
+oal_uint32 wal_cfg80211_do_external_auth(oal_net_device_stru * pst_netdev,
+                                        hmac_external_auth_req_stru *pst_ext_auth)
+{
+    return (oal_uint32)wal_cfg80211_start_req(pst_netdev, pst_ext_auth, OAL_SIZEOF(*pst_ext_auth),
+                                                WLAN_CFGID_CFG80211_EXTERNAL_AUTH, OAL_TRUE);
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
 #ifdef __cplusplus
     #if __cplusplus

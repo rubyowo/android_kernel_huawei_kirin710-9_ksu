@@ -26,54 +26,14 @@ extern "C" {
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
-#if 0
-
-oal_uint32 hmac_smps_update_user_capbility(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user)
-{
-    oal_uint32   ul_ret;
-    wlan_nss_enum_uint8  en_avail_num_spatial_stream;
-
-    switch(pst_mac_user->st_ht_hdl.bit_sm_power_save)
-    {
-        case WLAN_MIB_MIMO_POWER_SAVE_STATIC:
-            en_avail_num_spatial_stream = WLAN_SINGLE_NSS;
-            break;
-        case WLAN_MIB_MIMO_POWER_SAVE_DYNAMIC:
-            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_SMPS, "{hmac_smps_update_user_capbility: user smps mode is DYNAMIC!}");
-            en_avail_num_spatial_stream = WLAN_DOUBLE_NSS;
-            break;
-        case WLAN_MIB_MIMO_POWER_SAVE_MIMO:
-            en_avail_num_spatial_stream = WLAN_DOUBLE_NSS;
-            break;
-        default:
-            OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_SMPS, "{hmac_smps_update_user_capbility: en_user_smps_mode mode[%d] fail!}",
-            pst_mac_user->st_ht_hdl.bit_sm_power_save);
-            return OAL_FAIL;
-    }
-
-    pst_mac_user->en_avail_num_spatial_stream = en_avail_num_spatial_stream;
-
-    /***************************************************************************
-        抛事件到DMAC层, 同步DMAC数据
-    ***************************************************************************/
-    ul_ret = hmac_config_update_user_m2s_event(pst_mac_vap, pst_mac_user);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
-    {
-        OAM_WARNING_LOG1(pst_mac_user->uc_vap_id, OAM_SF_SMPS, "{hmac_smps_update_user_capbility::hmac_config_update_user_m2s_event failed[%d].}", ul_ret);
-        return ul_ret;
-    }
-
-    return OAL_SUCC;
-}
-#endif
 
 oal_uint32 hmac_smps_update_user_status(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user)
 {
     wlan_mib_mimo_power_save_enum_uint8 en_user_smps_mode;
 
-    if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_mac_user))
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,pst_mac_user))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_update_user_status: NULL PTR pst_mac_vap is [%d] and pst_mac_user is [%d].}", pst_mac_vap, pst_mac_user);
+        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_update_user_status: NULL PTR pst_mac_vap is [%x] and pst_mac_user is [%x].}", (uintptr_t)pst_mac_vap, (uintptr_t)pst_mac_user);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -108,9 +68,9 @@ oal_uint32 hmac_mgmt_rx_smps_frame(mac_vap_stru *pst_mac_vap, hmac_user_stru *ps
 {
     wlan_mib_mimo_power_save_enum_uint8     en_user_smps_mode;
 
-    if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == puc_data))
+    if (OAL_ANY_NULL_PTR3(pst_mac_vap,pst_hmac_user,puc_data))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_SMPS, "{hmac_mgmt_rx_smps_frame::null param, 0x%x 0x%x 0x%x.}", pst_mac_vap, pst_hmac_user, puc_data);
+        OAM_ERROR_LOG3(0, OAM_SF_SMPS, "{hmac_mgmt_rx_smps_frame::null param, 0x%x 0x%x 0x%x.}", (uintptr_t)pst_mac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)puc_data);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -174,7 +134,7 @@ oal_void hmac_smps_set_vap_mode_sta(mac_device_stru *pst_mac_device, mac_vap_str
 
     if (OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == pst_mac_user)
     {
-        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_set_vap_mode_sta::pst_mac_vap[%p], pst_mac_user[%p].}",pst_mac_vap, pst_mac_user);
+        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_set_vap_mode_sta::pst_mac_vap[%p], pst_mac_user[%p].}",(uintptr_t)pst_mac_vap, (uintptr_t)pst_mac_user);
         return;
     }
 
@@ -239,9 +199,9 @@ oal_void hmac_smps_set_vap_mode_ap(mac_device_stru *pst_mac_device, mac_vap_stru
     oal_uint32                              ul_ret;
     hmac_vap_stru                          *pst_hmac_vap;
 
-    if (OAL_PTR_NULL == pst_mac_device || OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == pst_mac_user)
+    if (OAL_ANY_NULL_PTR3(pst_mac_device,pst_mac_vap,pst_mac_user))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_SMPS, "{hmac_smps_set_vap_mode_ap::pst_mac_device[%p],pst_mac_vap[%p], pst_mac_user[%p].}",pst_mac_device, pst_mac_vap, pst_mac_user);
+        OAM_ERROR_LOG3(0, OAM_SF_SMPS, "{hmac_smps_set_vap_mode_ap::pst_mac_device[%p],pst_mac_vap[%p], pst_mac_user[%p].}",(uintptr_t)pst_mac_device, (uintptr_t)pst_mac_vap, (uintptr_t)pst_mac_user);
         return;
     }
 
@@ -336,9 +296,9 @@ oal_uint32 hmac_smps_update_status(mac_vap_stru *pst_mac_vap, mac_user_stru *pst
 {
     mac_device_stru                        *pst_mac_device;
 
-    if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_mac_user))
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,pst_mac_user))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_update_status: NULL PTR pst_mac_vap is [%d] and pst_mac_user is [%d].}", pst_mac_vap, pst_mac_user);
+        OAM_ERROR_LOG2(0, OAM_SF_SMPS, "{hmac_smps_update_status: NULL PTR pst_mac_vap is [%d] and pst_mac_user is [%d].}", (uintptr_t)pst_mac_vap, (uintptr_t)pst_mac_user);
         return OAL_ERR_CODE_PTR_NULL;
     }
 

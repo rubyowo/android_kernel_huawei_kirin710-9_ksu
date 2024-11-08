@@ -43,17 +43,20 @@ extern "C" {
 #define ROAM_RSSI_NE70_DB                 (-70)
 #define ROAM_RSSI_NE68_DB                 (-68)
 #define ROAM_RSSI_NE65_DB                 (-65)
+#define ROAM_RSSI_NE50_DB                 (-50)
 
 #define ROAM_RSSI_DIFF_4_DB               (4)
 #define ROAM_RSSI_DIFF_6_DB               (6)
 #define ROAM_RSSI_DIFF_8_DB               (8)
 #define ROAM_RSSI_DIFF_10_DB              (10)
 #define ROAM_RSSI_DIFF_20_DB              (20)
+#define ROAM_RSSI_DIFF_30_DB              (30)
 
 #define ROAM_RSSI_CMD_TYPE                (-128)
 #define ROAM_RSSI_LINKLOSS_TYPE           (-121)
 #define ROAM_RSSI_MAX_TYPE                (-126)
 
+#define ROAM_NEIGHBOR_RPT_BSSID_MAX_NUM   (12)
 
 /*****************************************************************************
   3 枚举定义
@@ -67,6 +70,17 @@ typedef enum
 }roam_blacklist_type_enum;
 typedef oal_uint8  roam_blacklist_type_enum_uint8;
 
+typedef enum
+{
+    ROAMING_DISABLE             = 0,
+    ROAMING_RESTART             = 1,
+    ROAMING_SCENARIO_ENTERPRISE = 2,
+    ROAMING_SCENARIO_ENTERPRISE_DENSE = 3,
+    ROAMING_SCENARIO_BETTER_AP  = 4,
+    ROAMING_SCENARIO_HOME       = 5,
+    ROAMING_SCENARIO_BUTT
+}roam_scenario_type_enum;
+typedef oal_uint8 roam_scenario_type_enum_uint8;
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -100,6 +114,12 @@ typedef struct
     hmac_roam_bss_info_stru     ast_bss[ROAM_LIST_MAX];
 }hmac_roam_bss_list_stru;
 
+typedef struct
+{
+    oal_uint8        auc_bssid[WLAN_MAC_ADDR_LEN];
+    mac_channel_stru st_channel;
+}hmac_roam_alg_bss_info;
+
 /* 漫游算法结构体 */
 typedef struct
 {
@@ -117,7 +137,11 @@ typedef struct
     oal_uint8                    uc_scan_period;              /* 从高密场景向低密场景切换的扫描周期 */
     oal_uint8                    uc_better_rssi_scan_period;  /* 有更好信号强度AP的连续扫描次数 */
     oal_uint8                    uc_better_rssi_null_period;
-    oal_uint8                    uc_rsv[2];
+    oal_uint8                    uc_candidate_bss_home_num;    /* 家庭场景漫游时候选AP的数目 */
+    oal_uint8                    uc_candidate_5g_strong_rssi_num;
+    oal_uint8                    uc_roam_fail_cnt;
+    oal_uint8                    uc_rsv[3];
+    hmac_roam_alg_bss_info       st_candidate_bss_home; /* home network candidate 5G bss */
     mac_bss_dscr_stru           *pst_max_rssi_bss;      /* 记录 scan 结果的最大 rssi 的 bss */
 }hmac_roam_alg_stru;
 
@@ -125,9 +149,13 @@ typedef struct
 typedef struct
 {
     roam_connect_state_enum_uint8   en_state;
+    mac_status_code_enum_uint16     en_status_code;     /* auth/assoc rsp frame status code */
+    oal_uint8                       uc_rsv[1];
     oal_uint8                       uc_auth_num;
     oal_uint8                       uc_assoc_num;
     oal_uint8                       uc_ft_num;
+    oal_uint8                       uc_ft_force_air;    /*0:可以使用ds，1:ds失败，禁止使用ds*/
+    oal_uint8                       uc_ft_failed;       /* 0:ds漫游未失败，1:ds漫游失败 */
     frw_timeout_stru                st_timer;           /* 漫游connect使用的定时器 */
     mac_bss_dscr_stru              *pst_bss_dscr;
 }hmac_roam_connect_stru;
@@ -165,18 +193,9 @@ typedef struct
     wlan_nss_enum_uint8             en_cur_num_spatial_stream;
     wlan_nss_enum_uint8             en_avail_bf_num_spatial_stream;
     oal_uint16                      us_cap_info;        /* 旧的bss的能力位信息 */
+    mac_ap_type_enum_uint16         en_ap_type;
 }hmac_roam_old_bss_stru;
 
-#if 0
-/* 漫游缓存结构体 */
-typedef struct
-{
-    struct sk_buff_head         st_data_queue;
-    struct workqueue_struct    *pst_wq;
-    struct work_struct          st_work;
-    struct hcc_handler         *pst_hcc;
-}hmac_roam_buf_stru;
-#endif
 /* 漫游主结构体 */
 typedef struct
 {
@@ -193,7 +212,7 @@ typedef struct
     hmac_vap_stru                  *pst_hmac_vap;       /* 漫游对应的vap */
     hmac_user_stru                 *pst_hmac_user;      /* 漫游对应的BSS user */
     hmac_roam_old_bss_stru          st_old_bss;         /* 漫游之前保存旧bss相关信息 */
-    mac_scan_req_stru               st_scan_params;     /* 漫游扫描参数 */
+    mac_scan_req_h2d_stru           st_scan_h2d_params;     /* 漫游扫描参数 */
     hmac_roam_config_stru           st_config;          /* 漫游相关配置信息 */
     hmac_roam_connect_stru          st_connect;         /* 漫游connect信息 */
     hmac_roam_alg_stru              st_alg;             /* 漫游算法信息 */
@@ -201,9 +220,11 @@ typedef struct
     frw_timeout_stru                st_timer;           /* 漫游使用的定时器 */
     wpas_connect_state_enum_uint32  ul_connected_state; /* 外部关联的状态进度 */
     oal_uint32                      ul_ip_addr_obtained;/* IP地址是否获取 */
-#if 0
-    hmac_roam_buf_stru              st_buf;             /* 漫游缓存信息 */
-#endif
+
+    oal_uint8                       auc_neighbor_rpt_bssid[ROAM_NEIGHBOR_RPT_BSSID_MAX_NUM][WLAN_MAC_ADDR_LEN];
+    oal_uint8                       uc_neighbor_rpt_bssid_num;
+    oal_uint8                       uc_roaming_scenario;
+    oal_uint8                       uc_rsv[2];
 }hmac_roam_info_stru;
 typedef oal_uint32  (*hmac_roam_fsm_func)(hmac_roam_info_stru *pst_roam_info, oal_void *p_param);
 
@@ -226,11 +247,15 @@ oal_uint32 hmac_roam_alg_add_history_etc(hmac_roam_info_stru *pst_roam_info, oal
 oal_uint32 hmac_roam_alg_bss_check_etc(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr);
 oal_uint32 hmac_roam_alg_scan_channel_init_etc(hmac_roam_info_stru *pst_roam_info, mac_scan_req_stru *pst_scan_params);
 oal_void hmac_roam_alg_init_etc(hmac_roam_info_stru *pst_roam_info, oal_int8 c_current_rssi);
+oal_void hmac_roam_alg_init_rssi_etc(hmac_vap_stru *pst_hmac_vap, hmac_roam_info_stru *pst_roam_info);
 mac_bss_dscr_stru *hmac_roam_alg_select_bss_etc(hmac_roam_info_stru *pst_roam_info);
 oal_bool_enum_uint8 hmac_roam_alg_find_in_blacklist_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid);
 oal_bool_enum_uint8 hmac_roam_alg_find_in_history_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid);
 oal_bool_enum_uint8 hmac_roam_alg_need_to_stop_roam_trigger_etc(hmac_roam_info_stru *pst_roam_info);
 oal_uint32 hmac_roam_alg_bss_in_ess_etc(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr);
+#ifdef _PRE_WLAN_1103_CHR
+oal_void hmac_chr_roam_info_report_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 ul_result);
+#endif
 #endif //_PRE_WLAN_FEATURE_ROAM
 
 #ifdef __cplusplus

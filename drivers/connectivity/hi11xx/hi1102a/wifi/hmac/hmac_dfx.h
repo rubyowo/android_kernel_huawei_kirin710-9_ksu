@@ -30,8 +30,38 @@ extern "C" {
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+#ifdef _PRE_WLAN_1102A_CHR
+typedef enum
+{
+    HMAC_CHR_ROAM_SUCCESS= 0,
+    HMAC_CHR_ROAM_SCAN_FAIL = 1,
+    HMAC_CHR_ROAM_HANDSHAKE_FAIL = 2,
+    HMAC_CHR_ROAM_CONNECT_FAIL = 3,
+    HMAC_CHR_ROAM_TIMEOUT_FAIL = 4,
+    HMAC_CHR_ROAM_START = 5,
+    HMAC_CHR_ROAM_REASON_BUTT
+}hmac_chr_roam_fail_reason;
+typedef oal_uint8 roam_fail_reason_enum_uint8;
 
+typedef enum
+{
+    HMAC_CHR_ROAM_NORMAL = 0,
+    HMAC_CHR_OVER_DS = 1,
+    HMAC_CHR_OVER_THE_AIR = 2,
 
+    HMAC_CHR_ROAM_MODE_BUTT
+}hmac_chr_roam_mode;
+typedef oal_uint8 roam_mode_enum_uint8;
+
+typedef enum
+{
+    HMAC_CHR_NON_11K = 0,
+    HMAC_CHR_11K = 1,
+
+    HMAC_CHR_SCAN_MODE_BUTT
+}hmac_chr_scan_mode;
+typedef oal_uint8 scan_mode_enum_uint8;
+#endif
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -39,33 +69,20 @@ extern "C" {
 
 typedef struct
 {
-    oal_uint8  uc_vap_state;
-    oal_uint8  uc_vap_mode;
-    oal_uint8  uc_p2p_mode;
-    oal_uint16 us_user_nums;
-    oal_uint8  uc_protocol;
-    oal_uint8  uc_chnl_band;
-    oal_uint8  uc_chnl_bandwidth;
-    oal_uint8  uc_chnl_idx;
-}hmac_chr_p2p_info_stru;
-
-typedef struct
-{
     oal_uint8 uc_vap_state;
     oal_uint8 uc_vap_num;
-    mac_channel_stru  st_channel;
     oal_uint8 uc_protocol;
     oal_uint8 uc_vap_rx_nss;
-    hmac_chr_p2p_info_stru  st_p2p_info;
     oal_uint8 uc_ap_protocol_mode;
     oal_uint8 uc_ap_spatial_stream_num;
     oal_uint8 bit_ampdu_active   : 1;
     oal_uint8 bit_amsdu_active   : 1;
     oal_uint8 bit_is_dbac_running: 1;
+    oal_uint8 bit_is_dbdc_running: 1;
     oal_uint8 bit_sta_11ntxbf    : 1;
     oal_uint8 bit_ap_11ntxbf     : 1;
     oal_uint8 bit_ap_qos         : 1;
-    oal_uint8 reserved           : 2;
+    oal_uint8 bit_ap_1024qam_cap : 1;
 }hmac_chr_vap_info_stru;
 
 typedef struct tag_hmac_chr_ba_info_stru
@@ -81,7 +98,7 @@ typedef struct tag_hmac_chr_disasoc_reason_stru
     dmac_disasoc_misc_reason_enum_uint16 en_disasoc_reason;
 }hmac_chr_disasoc_reason_stru;
 
-typedef struct tag_hamc_chr_info
+typedef struct
 {
 
     hmac_chr_disasoc_reason_stru st_disasoc_reason;
@@ -93,15 +110,26 @@ typedef struct tag_hamc_chr_info
 
 typedef struct tag_hmac_chr_connect_fail_report_stru
 {
-    //oal_int32    ul_snr;
+    oal_int32    ul_snr;
     oal_int32    ul_noise;           /* 底噪 */
     oal_int32    ul_chload;          /* 信道繁忙程度*/
     oal_int8     c_signal;
     oal_uint8    uc_distance;        /*算法的tpc距离，对应dmac_alg_tpc_user_distance_enum*/
     oal_uint8    uc_cca_intr;        /*算法的cca_intr干扰，对应alg_cca_opt_intf_enum*/
     oal_uint16   us_err_code;
-    oal_uint8    _resv[3];
+    oal_uint8    _resv[2];
 }mac_chr_connect_fail_report_stru;
+
+typedef struct
+{
+    oal_uint8 uc_trigger;
+    oal_uint8 uc_roam_result;
+    oal_uint8 uc_scan_mode;
+    oal_uint8 uc_roam_mode;
+    oal_uint32 uc_scan_time;
+    oal_uint32 uc_connect_time;
+    oal_uint8   _resv[4];
+}hmac_chr_roam_info_stru;
 
 #endif
 /*****************************************************************************

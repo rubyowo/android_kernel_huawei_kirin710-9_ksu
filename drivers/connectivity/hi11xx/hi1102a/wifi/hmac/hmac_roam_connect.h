@@ -109,6 +109,10 @@ oal_void hmac_roam_connect_key_done(hmac_vap_stru *pst_hmac_vap);
 oal_uint32 hmac_roam_connect_ft_reassoc(hmac_vap_stru *pst_hmac_vap);
 #endif //_PRE_WLAN_FEATURE_11R
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_uint32 hmac_roam_sae_config_reassoc_req(hmac_vap_stru *pst_hmac_vap);
+#endif
+
 #endif //_PRE_WLAN_FEATURE_ROAM
 
 #ifdef __cplusplus

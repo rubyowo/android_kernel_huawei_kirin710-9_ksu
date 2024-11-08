@@ -13,11 +13,11 @@ extern "C" {
 *****************************************************************************/
 #include "wlan_spec.h"
 #include "mac_resource.h"
-#if (defined(_PRE_PRODUCT_ID_HI110X_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151))
+#if defined(_PRE_PRODUCT_ID_HI110X_DEV)
 #include "dmac_vap.h"
 #include "dmac_user.h"
 #endif
-#if (defined(_PRE_PRODUCT_ID_HI110X_HOST) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151))
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 #include "hmac_vap.h"
 #include "hmac_user.h"
 #endif
@@ -49,7 +49,7 @@ mac_res_stru    g_st_mac_res_etc;
         return OAL_FAIL;
     }
 
-    ul_dev_idx_temp = (oal_uint)oal_queue_dequeue(&(g_pst_mac_res->st_dev_res.st_queue));
+    ul_dev_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_pst_mac_res->st_dev_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_dev_idx_temp)
@@ -66,23 +66,8 @@ mac_res_stru    g_st_mac_res_etc;
 
     return OAL_SUCC;
 }
-#else
-
-oal_uint32  mac_res_alloc_hmac_dev_etc(oal_uint32    ul_dev_idx)
-{
-    if (OAL_UNLIKELY(ul_dev_idx >= MAC_RES_MAX_DEV_NUM))
-    {
-        MAC_ERR_LOG(0, "mac_res_alloc_hmac_dev_etc: ul_dev_idx >= MAC_RES_MAX_DEV_NUM");
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{mac_res_alloc_hmac_dev_etc::invalid ul_dev_idx[%d].}", ul_dev_idx);
-
-        return OAL_FAIL;
-    }
-
-    (g_pst_mac_res->st_dev_res.auc_user_cnt[ul_dev_idx])++;
-
-    return OAL_SUCC;
-}
 #endif
+
 oal_uint8  mac_chip_get_max_multi_user(oal_void)
 {
     /* 组播最大用户总数 */

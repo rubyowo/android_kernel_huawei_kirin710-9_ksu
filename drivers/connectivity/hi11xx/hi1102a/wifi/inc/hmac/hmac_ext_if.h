@@ -97,6 +97,10 @@ typedef enum
 #if defined(_PRE_WLAN_FEATURE_DATA_SAMPLE)
     HMAC_HOST_CTX_EVENT_SUB_TYPE_SAMPLE_REPORT,
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+    HMAC_HOST_CTX_EVENT_SUB_TYPE_EXT_AUTH_REQ,     /* STA上报SAE认证事件 */
+#endif
+
     HMAC_HOST_CTX_EVENT_SUB_TYPE_BUTT
 }hmac_host_ctx_event_sub_type_enum;
 typedef oal_uint8 hmac_host_ctx_event_sub_type_enum_uint8;
@@ -135,7 +139,6 @@ typedef struct
                            bit_resv                    : 26;
     oal_uint32             ul_excp_type;       /* 异常类型 */
     oal_completion         st_plat_process_comp;           /* 用来检测device异常恢复过程中平台工作是否完成的信号量 */
-    oal_mutex_stru         wifi_excp_mutex;
 }hmac_dfr_info_stru;
 #endif //_PRE_WLAN_FEATURE_DFR
 
@@ -282,6 +285,18 @@ typedef struct
     oal_uint32                  ul_val;
 }hmac_cfg_rx_filter_stru;
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+/* 上报SAE 认证请求事件的数据结构 */
+typedef struct {
+    oal_nl80211_external_auth_action en_action;
+    oal_uint8                        auc_bssid[WLAN_MAC_ADDR_LEN];
+    oal_ssids_stru                   st_ssid;
+    oal_uint32                       ul_key_mgmt_suite;
+    oal_uint16                       us_status;
+
+}hmac_external_auth_req_stru;
+#endif
+
 /* 和device侧的mac_tx_ctl归一使用一份移到dmac_ext_if.h */
 #if 1
 struct  mac_tx_ctl_cut
@@ -343,7 +358,7 @@ struct mac_rx_ctl_cut
 
     oal_uint8                   uc_msdu_in_buffer     :6;
     oal_uint8                   bit_is_fragmented     :1;
-    oal_uint8                   bit_reserved1         :1;
+    oal_uint8                   bit_has_tcp_ack_info  :1;
 
     mac_data_type_enum_uint8    bit_data_frame_type   :4;
     oal_uint8                   bit_ta_user_idx       :4;
@@ -431,14 +446,12 @@ extern oal_uint32  hmac_config_down_vap(mac_vap_stru *pst_mac_vap, oal_uint16 us
 #ifdef _PRE_WLAN_FEATURE_PM
 extern oal_uint32 hmac_config_wifi_enable(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
-//extern oal_uint32  hmac_config_update_mode(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_param);
+
 extern oal_uint32  hmac_config_set_mac_addr(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_get_mode(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_concurrent(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_get_concurrent(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-extern oal_uint32  hmac_config_set_bss_type(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-extern oal_uint32  hmac_config_get_bss_type(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
 extern oal_uint32  hmac_config_get_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_get_ampdu(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
@@ -497,8 +510,6 @@ extern oal_uint32  hmac_config_set_bt_upc_by_freq(mac_vap_stru *pst_mac_vap, oal
 extern oal_uint32  hmac_config_print_bt_gm(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 extern oal_uint32  hmac_config_get_freq(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-extern oal_uint32  hmac_config_set_wmm_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32  hmac_config_get_wmm_params(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_vap_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_event_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_eth_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -589,7 +600,7 @@ extern oal_uint32 hmac_config_11i_add_key(mac_vap_stru *pst_mac_vap, oal_uint16 
 extern oal_uint32 hmac_config_11i_get_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_11i_remove_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_11i_set_default_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-//extern oal_uint32 hmac_config_11i_add_wep_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
 extern oal_uint32 hmac_config_kick_user(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_VOWIFI
 extern oal_uint32  hmac_config_vowifi_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -622,7 +633,7 @@ oal_uint32  hmac_config_dump_ba_bitmap(mac_vap_stru *pst_mac_vap, oal_uint16 us_
 #endif //#ifdef _PRE_DEBUG_MODE
 extern oal_uint32  hmac_config_dump_all_rx_dscr(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_vap_pkt_stat(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-//oal_uint32 hmac_config_11i_init_privacy(mac_vap_stru *pst_mac_vap,mac_cfg80211_connect_param_stru *pst_mac_connect_param);
+
 extern oal_uint32 hmac_config_amsdu_ampdu_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_11i_add_wep_entry(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_sdt_recv_reg_cmd(mac_vap_stru  *pst_mac_vap, oal_uint8 *puc_buf, oal_uint16 us_len);
@@ -740,8 +751,8 @@ extern oal_uint32 hmac_config_set_acs_cmd(mac_vap_stru *pst_mac_vap, oal_uint16 
 extern oal_uint32 hmac_config_beacon_chain_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif //#ifdef _PRE_DEBUG_MODE
 
-//extern oal_uint32 hmac_config_tdls_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-//extern oal_uint32 hmac_config_tdls_channel_switch_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
+
 extern oal_uint32  hmac_config_2040_channel_switch_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_FortyMHzIntolerant(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_2040_coext_support(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -810,6 +821,12 @@ extern oal_uint32 hmac_config_get_smps_info(mac_vap_stru *pst_mac_vap, oal_uint1
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
 extern oal_uint32  hmac_config_resume_rx_intr_fifo(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
+extern oal_uint32 hmac_config_dscr_th_opt(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32 hmac_config_tcp_ack_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+extern oal_uint32 hmac_config_set_pmf_cap(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_pmf_capable, oal_bool_enum_uint8 en_pmf_required);
+#endif
 
 extern oal_uint32  hmac_tx_report_eth_frame(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_netbuf);
 
@@ -833,8 +850,8 @@ extern oal_uint32  hmac_config_set_isolation_mode(mac_vap_stru *pst_mac_vap, oal
 extern oal_uint32  hmac_config_set_isolation_type(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_isolation_forword(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_set_isolation_clear(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-/*extern oal_void hmac_config_get_blacklist(mac_vap_stru *pst_mac_vap,oal_uint8 *pst_info_str,oal_int16 str_len);*/
-/*extern oal_void hmac_config_get_isolation(mac_vap_stru *pst_mac_vap,oal_uint8 *pst_info_str,oal_int16 str_len);*/
+
+
 #endif
 #ifdef _PRE_DEBUG_MODE
 extern oal_uint32  hmac_config_set_vap_nss(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -865,8 +882,13 @@ extern oal_uint32 hmac_config_flush_pmksa(mac_vap_stru *pst_mac_vap, oal_uint16 
 extern oal_uint32  hmac_config_scan_abort(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_remain_on_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_cancel_remain_on_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_uint32 hmac_config_external_auth(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif /* _PRE_WLAN_FEATURE_SAE */
 #ifdef _PRE_WLAN_FEATURE_HS20
 extern oal_uint32  hmac_config_set_qos_map(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32  hmac_config_interworking_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_P2P
@@ -881,6 +903,7 @@ extern oal_uint32  hmac_config_vap_classify_en(mac_vap_stru *pst_mac_vap, oal_ui
 extern oal_uint32  hmac_config_vap_classify_tid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_get_fem_pa_status(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_query_station_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32  hmac_config_query_chr_info_ext(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_query_rssi(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32  hmac_config_query_rate(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 
@@ -937,10 +960,6 @@ extern oal_uint32  hmac_find_p2p_listen_channel(mac_vap_stru *pst_mac_vap, oal_u
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
 oal_uint32  hmac_set_device_freq_mode(oal_uint8 uc_device_freq_type);
 oal_uint32 hmac_config_set_device_freq(oal_uint8 uc_device_freq_type);
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-extern oal_uint32  hmac_config_set_tx_classify_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI

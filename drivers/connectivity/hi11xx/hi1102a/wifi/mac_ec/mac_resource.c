@@ -296,7 +296,7 @@ oal_void  mac_res_vap_init(oal_void)
     #endif
 
         /* 初始值保存的是对应数组下标值加1 */
-        oal_queue_enqueue(&(g_st_mac_res.st_vap_res.st_queue), (oal_void *)(ul_loop + 1));
+        oal_queue_enqueue(&(g_st_mac_res.st_vap_res.st_queue), (oal_void *)(uintptr_t)(ul_loop + 1));
         /* 初始化对应的引用计数值为0 */
         g_st_mac_res.st_vap_res.auc_user_cnt[ul_loop] = 0;
      }
@@ -376,7 +376,7 @@ oal_uint32  mac_res_user_init(oal_void)
     for (ul_loop = 0; ul_loop < MAC_RES_MAX_USER_NUM; ul_loop++)
     {
         /* 初始值保存的是对应数组下标值加1 */
-        oal_queue_enqueue(&(g_st_mac_res.st_user_res.st_queue), (oal_void *)(ul_loop + 1));
+        oal_queue_enqueue(&(g_st_mac_res.st_user_res.st_queue), (oal_void *)(uintptr_t)(ul_loop + 1));
 
         /* 初始化对应的引用位置 */
         g_st_mac_res.st_user_res.past_user_info[ul_loop]  = (oal_uint8 *)p_user_info + ul_one_user_info_size;
@@ -438,7 +438,7 @@ oal_uint32  mac_res_init(oal_void)
     for (ul_loop = 0; ul_loop < MAC_RES_MAX_DEV_NUM; ul_loop++)
     {
         /* 初始值保存的是对应数组下标值加1 */
-        oal_queue_enqueue(&(g_st_mac_res.st_dev_res.st_queue), (oal_void *)(ul_loop + 1));
+        oal_queue_enqueue(&(g_st_mac_res.st_dev_res.st_queue), (oal_void *)(uintptr_t)(ul_loop + 1));
 
         /* 初始化对应的引用计数值为0 */
         g_st_mac_res.st_dev_res.auc_user_cnt[ul_loop] = 0;
@@ -487,7 +487,7 @@ oal_uint32  mac_res_free_mac_user(oal_uint16 us_idx)
     }
 
     /* 入队索引值需要加1操作 */
-    oal_queue_enqueue(&(g_st_mac_res.st_user_res.st_queue), (oal_void *)((oal_uint)us_idx + 1));
+    oal_queue_enqueue(&(g_st_mac_res.st_user_res.st_queue), (oal_void *)(uintptr_t)((oal_uint)us_idx + 1));
 
     return OAL_SUCC;
 }
@@ -515,7 +515,7 @@ oal_uint32  mac_res_free_mac_vap(oal_uint32 ul_idx)
     }
 
     /* 入队索引值需要加1操作 */
-    oal_queue_enqueue(&(g_st_mac_res.st_vap_res.st_queue), (oal_void *)((oal_uint)ul_idx + 1));
+    oal_queue_enqueue(&(g_st_mac_res.st_vap_res.st_queue), (oal_void *)(uintptr_t)((oal_uint)ul_idx + 1));
 
     return OAL_SUCC;
 }
@@ -546,7 +546,7 @@ oal_uint32  mac_res_set_max_asoc_user(oal_uint16 us_num)
         return OAL_FAIL;
     }
 
-    ul_dev_idx_temp = (oal_uint)oal_queue_dequeue(&(g_st_mac_res.st_dev_res.st_queue));
+    ul_dev_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_st_mac_res.st_dev_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_dev_idx_temp)
@@ -577,7 +577,7 @@ oal_uint32  mac_res_set_max_asoc_user(oal_uint16 us_num)
         return OAL_FAIL;
     }
 
-    ul_dev_idx_temp = (oal_uint)oal_queue_dequeue(&(g_st_mac_res.st_dev_res.st_queue));
+    ul_dev_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_st_mac_res.st_dev_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_dev_idx_temp)
@@ -637,7 +637,7 @@ oal_uint32  mac_res_free_dev(oal_uint32 ul_dev_idx)
     }
 
     /* 入队索引值需要加1操作 */
-    oal_queue_enqueue(&(g_st_mac_res.st_dev_res.st_queue), (oal_void *)((oal_uint)ul_dev_idx + 1));
+    oal_queue_enqueue(&(g_st_mac_res.st_dev_res.st_queue), (oal_void *)(uintptr_t)((oal_uint)ul_dev_idx + 1));
 
     return OAL_SUCC;
 }

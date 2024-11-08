@@ -17,6 +17,7 @@ extern "C" {
 #include "frw_ext_if.h"
 #include "mac_vap.h"
 #include "mac_device.h"
+#include "hmac_ext_if.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_EVENT_H
@@ -69,6 +70,9 @@ extern oal_int32  wal_cfg80211_start_disconnect(oal_net_device_stru *pst_net_dev
 #ifdef _PRE_WLAN_FEATURE_HILINK
 extern oal_int32  wal_cfg80211_fbt_kick_user(oal_net_device_stru *pst_net_dev, mac_cfg_kick_user_param_stru *pst_disconnect_param);
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_uint32 wal_cfg80211_do_external_auth(oal_net_device_stru * pst_netdev, hmac_external_auth_req_stru *pst_ext_auth);
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
 #ifdef __cplusplus
     #if __cplusplus

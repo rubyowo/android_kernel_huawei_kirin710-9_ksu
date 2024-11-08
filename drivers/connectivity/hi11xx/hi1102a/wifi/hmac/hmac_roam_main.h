@@ -35,6 +35,7 @@ typedef enum
     ROAM_TRIGGER_APP                  = 1,
     ROAM_TRIGGER_COEX                 = 2,
     ROAM_TRIGGER_11V                  = 3,
+    ROAM_TRIGGER_BSSID                = 4,
 
     ROAM_TRIGGER_BUTT
 }roam_trigger_condition_enum;
@@ -117,7 +118,11 @@ typedef struct
     oal_uint32                 ul_roam_11v_scan_fail;           /* 11v扫描失败次数 */
 #endif
     oal_uint32                 ul_roam_eap_fail;                /* 漫游回原BSS失败计数 */
-
+    oal_uint32                 ul_scan_timetamp;                /* 漫游扫描开始时间点 */
+    oal_uint32                 ul_connect_timetamp;             /* 漫游关联开始时间点 */
+    oal_uint32                 ul_connect_comp_timetamp;        /* 漫游关联完成时间点 */
+    oal_uint8                  ul_roam_mode;                    /* 漫游模式 */
+    oal_uint8                  ul_scan_mode;                    /* 扫描模式 */
 }hmac_roam_static_stru;
 
 /*****************************************************************************

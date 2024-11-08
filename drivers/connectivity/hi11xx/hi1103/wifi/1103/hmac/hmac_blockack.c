@@ -32,9 +32,9 @@ extern "C" {
 
 oal_void hmac_reorder_ba_timer_start_etc(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, oal_uint8 uc_tid)
 {
-    mac_vap_stru               *pst_mac_vap;
-    hmac_ba_rx_stru            *pst_ba_rx_stru;
-    mac_device_stru            *pst_device;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
+    hmac_ba_rx_stru            *pst_ba_rx_stru = OAL_PTR_NULL;
+    mac_device_stru            *pst_device = OAL_PTR_NULL;
     oal_uint16                  us_timeout;
 
     /* 如果超时定时器已经被注册则返回 */
@@ -89,21 +89,6 @@ OAL_STATIC hmac_rx_buf_stru* hmac_ba_buffer_frame_in_reorder(hmac_ba_rx_stru* ps
 
     pst_rx_buf = &(pst_ba_rx_hdl->ast_re_order_list[us_buf_index]);
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    if (1 == pst_rx_buf->in_use)
-    {
-        hmac_rx_free_netbuf_list_etc(&pst_rx_buf->st_netbuf_head, pst_rx_buf->uc_num_buf);
-        OAM_INFO_LOG1(0, OAM_SF_BA, "{hmac_ba_buffer_frame_in_reorder::slot already used, seq[%d].}", us_seq_num);
-    }
-    else
-    {
-        pst_ba_rx_hdl->uc_mpdu_cnt++;
-    }
-
-    pst_rx_buf->uc_num_buf   = pst_cb_ctrl->bit_buff_nums;  //标识该MPDU占用的netbuff个数，一般用于AMSDU
-
-    pst_rx_buf->in_use = 1;
-#else
     if (1 == pst_rx_buf->in_use)
     {
         hmac_rx_free_netbuf_list_etc(&pst_rx_buf->st_netbuf_head, pst_rx_buf->uc_num_buf);
@@ -131,13 +116,11 @@ OAL_STATIC hmac_rx_buf_stru* hmac_ba_buffer_frame_in_reorder(hmac_ba_rx_stru* ps
         /* 遇到最后一个amsdu buffer 才标记in use 为 1 */
         if(OAL_TRUE == pst_cb_ctrl->bit_is_last_buffer)
         {
-            //OAM_INFO_LOG1(0, OAM_SF_BA, "{hmac_ba_buffer_frame_in_reorder::amsdu total [%d] netbuf num}", pst_rx_buf->uc_num_buf);
             pst_ba_rx_hdl->uc_mpdu_cnt++;
             pst_rx_buf->in_use = 1;
         }
         else
         {
-            //OAM_INFO_LOG1(0, OAM_SF_BA, "{hmac_ba_buffer_frame_in_reorder::partial amsdu [%d] netbuf num}", pst_rx_buf->uc_num_buf);
             pst_rx_buf->in_use = 0;
         }
     }
@@ -147,7 +130,7 @@ OAL_STATIC hmac_rx_buf_stru* hmac_ba_buffer_frame_in_reorder(hmac_ba_rx_stru* ps
         pst_ba_rx_hdl->uc_mpdu_cnt++;
         pst_rx_buf->in_use = 1;
     }
-#endif
+
     return pst_rx_buf;
 }
 
@@ -158,7 +141,7 @@ OAL_STATIC oal_uint32  hmac_ba_send_frames_with_gap(hmac_ba_rx_stru *pst_ba_rx_h
     oal_uint16           us_seq_num;
     hmac_rx_buf_stru    *pst_rx_buf  = OAL_PTR_NULL;
     oal_uint8            uc_loop_index;
-    oal_netbuf_stru     *pst_netbuf;
+    oal_netbuf_stru     *pst_netbuf = OAL_PTR_NULL;
 
     us_seq_num   = pst_ba_rx_hdl->us_baw_start;
 
@@ -210,7 +193,7 @@ OAL_STATIC oal_uint16  hmac_ba_send_frames_in_order(hmac_ba_rx_stru *pst_ba_rx_h
     oal_uint16          us_seq_num;
     hmac_rx_buf_stru   *pst_rx_buf  = OAL_PTR_NULL;
     oal_uint8           uc_loop_index;
-    oal_netbuf_stru    *pst_netbuf;
+    oal_netbuf_stru    *pst_netbuf = OAL_PTR_NULL;
 
     us_seq_num   = pst_ba_rx_hdl->us_baw_start;
     while((pst_rx_buf = hmac_remove_frame_from_reorder_q(pst_ba_rx_hdl, us_seq_num)) != OAL_PTR_NULL)
@@ -248,7 +231,7 @@ OAL_STATIC OAL_INLINE oal_void  hmac_ba_buffer_rx_frame(hmac_ba_rx_stru *pst_ba_
                                                                    oal_uint16 us_seq_num)
 {
     hmac_rx_buf_stru   *pst_rx_netbuf = OAL_PTR_NULL;
-    oal_netbuf_stru    *pst_netbuf;
+    oal_netbuf_stru    *pst_netbuf = OAL_PTR_NULL;
     oal_uint8           uc_netbuf_index;
 #ifdef _PRE_DEBUG_MODE
     oal_uint32          ul_netbuf_num;
@@ -399,7 +382,7 @@ oal_uint32  hmac_ba_filter_serv_etc(
                 oal_netbuf_head_stru       *pst_netbuf_header,
                 oal_bool_enum_uint8        *pen_is_ba_buf)
 {
-    hmac_ba_rx_stru        *pst_ba_rx_hdl;
+    hmac_ba_rx_stru        *pst_ba_rx_hdl = OAL_PTR_NULL;
     oal_uint16              us_seq_num;
     oal_bool_enum_uint8     en_is_4addr;
     oal_uint8               uc_is_tods;
@@ -407,13 +390,11 @@ oal_uint32  hmac_ba_filter_serv_etc(
     oal_uint8               uc_tid;
     oal_uint16              us_baw_start_temp;
     oal_uint32              ul_ret;
-    mac_ieee80211_frame_stru   *pst_frame_hdr;
-    hmac_vap_stru               *pst_hmac_vap;
-    mac_vap_stru               *pst_mac_vap;
+    mac_ieee80211_frame_stru   *pst_frame_hdr = OAL_PTR_NULL;
+    hmac_vap_stru               *pst_hmac_vap = OAL_PTR_NULL;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_netbuf_header ||
-        OAL_PTR_NULL == pst_cb_ctrl ||
-        OAL_PTR_NULL == pen_is_ba_buf))
+    if (OAL_ANY_NULL_PTR3(pst_netbuf_header,pst_cb_ctrl,pen_is_ba_buf))
     {
         OAM_ERROR_LOG0(0, OAM_SF_BA, "{hmac_ba_filter_serv_etc::param null.}");
 
@@ -479,9 +460,6 @@ oal_uint32  hmac_ba_filter_serv_etc(
             /* 确实已经收到该帧 */
             if (hmac_ba_isset(pst_ba_rx_hdl, us_seq_num))
             {
-                //OAM_WARNING_LOG2(pst_vap->uc_vap_id, OAM_SF_BA, "{hmac_ba_filter_serv_etc::duplicate frame,us_seq_num=%d baw_start=%d.",
-                //                us_seq_num, pst_ba_rx_hdl->us_baw_start);
-
                 HMAC_USER_STATS_PKT_INCR(pst_hmac_user->ul_rx_pkt_drop, 1);
                 return OAL_FAIL;
             }
@@ -490,7 +468,6 @@ oal_uint32  hmac_ba_filter_serv_etc(
         return OAL_SUCC;
     }
     /* restart ba timer */
-    //frw_timer_restart_timer_etc(&pst_ba_rx_hdl->st_ba_timer, pst_ba_rx_hdl->st_ba_timer.us_timeout, OAL_TRUE);
     if (OAL_TRUE == hmac_ba_seqno_lt(pst_ba_rx_hdl->us_baw_tail, us_seq_num))
     {
         pst_ba_rx_hdl->us_baw_tail = us_seq_num;
@@ -504,20 +481,11 @@ oal_uint32  hmac_ba_filter_serv_etc(
          #endif
         )
     {
-        //OAM_TID_AMPDU_STATS_INCR(pst_tid_queue->pst_tid_ampdu_stat->ul_ba_recipient_direct_up_count, 1);
-
         pst_ba_rx_hdl->us_baw_start = DMAC_BA_SEQNO_ADD(pst_ba_rx_hdl->us_baw_start, 1);
         pst_ba_rx_hdl->us_baw_end  = DMAC_BA_SEQNO_ADD(pst_ba_rx_hdl->us_baw_end, 1);
-
-        //OAM_WARNING_LOG1(pst_vap->uc_vap_id, OAM_SF_BA, "{hmac_ba_filter_serv_etc::new packet need not be buffered, ws[%d].}\r\n", pst_ba_rx_hdl->us_baw_start);
-        //OAL_IO_PRINT("{hmac_ba_filter_serv_etc::new packet need not be buffered, ws[%d].}\r\n", pst_ba_rx_hdl->us_baw_start);
     }
     else
     {
-        //OAM_TID_AMPDU_STATS_INCR(pst_tid_queue->pst_tid_ampdu_stat->ul_ba_recipient_buffer_frame_count, 1);
-        //OAM_WARNING_LOG2(pst_vap->uc_vap_id, OAM_SF_BA, "{hmac_ba_filter_serv_etc::new packet need buffered, ws[%d],sq[%d].}\r\n", pst_ba_rx_hdl->us_baw_start, us_seq_num);
-        //OAL_IO_PRINT("{hmac_ba_filter_serv_etc::new packet need buffered, ws[%d],sq[%d].}\r\n", pst_ba_rx_hdl->us_baw_start, us_seq_num);
-
         /* Buffer the new MSDU */
         *pen_is_ba_buf = OAL_TRUE;
 
@@ -531,8 +499,6 @@ oal_uint32  hmac_ba_filter_serv_etc(
         if((pst_ba_rx_hdl->us_baw_tail == DMAC_BA_SEQNO_SUB(pst_ba_rx_hdl->us_baw_start, 1)) &&
             (pst_ba_rx_hdl->uc_mpdu_cnt > 0))
         {
-            //OAM_TID_AMPDU_STATS_INCR(pst_tid_queue->pst_tid_ampdu_stat->ul_ba_recipient_sync_loss_count, 1);
-
             OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_BA, "{hmac_ba_filter_serv_etc::Sync loss and flush the reorder queue.}");
             hmac_ba_flush_reorder_q(pst_ba_rx_hdl);
         }
@@ -544,12 +510,6 @@ oal_uint32  hmac_ba_filter_serv_etc(
         }
     }
 
-#if 0 /* 函数hmac_ba_need_update_hw_baw逻辑有误，且并未根据它的返回做任何实质性的操作，应是上移到hmac后的残留代码 */
-    if (OAL_TRUE == hmac_ba_need_update_hw_baw(pst_ba_rx_hdl, us_seq_num))
-    {
-        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_BA, "{hmac_ba_filter_serv_etc::need to check mac ba ssn.}");
-    }
-#endif
     if (us_baw_start_temp != pst_ba_rx_hdl->us_baw_start)
     {
         pst_ba_rx_hdl->en_timer_triggered = OAL_FALSE;
@@ -620,7 +580,6 @@ OAL_STATIC oal_uint32  hmac_ba_rx_prepare_bufflist(hmac_vap_stru *pst_hmac_vap, 
         if (OAL_PTR_NULL != pst_netbuf)
         {
             oal_netbuf_add_to_list_tail(pst_netbuf, pst_netbuf_head);
-            //OAL_IO_PRINT("hmac_ba_rx_prepare_bufflist: out 0x%x", pst_netbuf);
         }
         else
         {
@@ -640,11 +599,10 @@ OAL_STATIC oal_uint32  hmac_ba_send_reorder_timeout(hmac_ba_rx_stru *pst_rx_ba, 
     oal_netbuf_head_stru        st_netbuf_head;
     oal_uint16                  us_baw_head;
     oal_uint16                  us_baw_start;   /* 保存最初的窗口起始序列号 */
-    hmac_rx_buf_stru           *pst_rx_buf;
+    hmac_rx_buf_stru           *pst_rx_buf = OAL_PTR_NULL;
     oal_uint8                   uc_buff_count = 0;
     oal_uint32                  ul_ret;
     oal_uint16                  us_baw_end;
-
 
     oal_netbuf_list_head_init(&st_netbuf_head);
     us_baw_head     = pst_rx_ba->us_baw_start;
@@ -652,8 +610,6 @@ OAL_STATIC oal_uint32  hmac_ba_send_reorder_timeout(hmac_ba_rx_stru *pst_rx_ba, 
     us_baw_end      = HMAC_BA_SEQNO_ADD(pst_rx_ba->us_baw_tail, 1);
     ul_rx_timeout   = (oal_uint32)(*pus_timeout);
 
-    /* OAM_INFO_LOG2(0, OAM_SF_BA, "{hmac_ba_send_reorder_timeout::us_baw_head=%d us_baw_end=%d.}",
-                  us_baw_head, us_baw_end); */
     oal_spin_lock(&pst_rx_ba->st_ba_lock);
 
     while (us_baw_head != us_baw_end)
@@ -670,7 +626,6 @@ OAL_STATIC oal_uint32  hmac_ba_send_reorder_timeout(hmac_ba_rx_stru *pst_rx_ba, 
         ul_time_diff = (oal_uint32)OAL_TIME_GET_STAMP_MS() - pst_rx_buf->ul_rx_time;
         if (ul_time_diff < ul_rx_timeout)
         {
-            /* frw_timer_restart_timer_etc(&pst_rx_ba->st_ba_timer, (oal_uint16)(ul_rx_timeout - ul_time_diff), OAL_TRUE); */
             *pus_timeout = (oal_uint16)(ul_rx_timeout - ul_time_diff);
             break;
         }
@@ -699,10 +654,7 @@ OAL_STATIC oal_uint32  hmac_ba_send_reorder_timeout(hmac_ba_rx_stru *pst_rx_ba, 
     /* 判断本次定时器超时是否有帧上报 */
     if (us_baw_start != pst_rx_ba->us_baw_start)
     {
-        //hmac_ba_update_rx_baw(pst_rx_ba, us_baw_start);
         pst_rx_ba->en_timer_triggered = OAL_TRUE;
-
-        //OAL_IO_PRINT("hmac_ba_send_reorder_timeout: old seq %d, new seq %d\r\n", us_baw_start, pst_rx_ba->us_baw_start);
     }
 
     hmac_rx_lan_frame_etc(&st_netbuf_head);
@@ -713,13 +665,13 @@ OAL_STATIC oal_uint32  hmac_ba_send_reorder_timeout(hmac_ba_rx_stru *pst_rx_ba, 
 
 oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
 {
-    hmac_ba_rx_stru                    *pst_rx_ba;
-    hmac_vap_stru                      *pst_vap;
-    hmac_user_stru                     *pst_hmac_user;
+    hmac_ba_rx_stru                    *pst_rx_ba = OAL_PTR_NULL;
+    hmac_vap_stru                      *pst_vap = OAL_PTR_NULL;
+    hmac_user_stru                     *pst_hmac_user = OAL_PTR_NULL;
     hmac_ba_alarm_stru                 *pst_alarm_data;
     mac_delba_initiator_enum_uint8      en_direction;
     oal_uint8                           uc_tid = 0;
-    mac_device_stru                    *pst_mac_device;
+    mac_device_stru                    *pst_mac_device = OAL_PTR_NULL;
     oal_uint16                          us_timeout= 0;
 
     pst_alarm_data = (hmac_ba_alarm_stru *)p_arg;
@@ -754,8 +706,6 @@ oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-
-//    if (pst_mac_device->ul_core_id >= 1)
     if (pst_mac_device->ul_core_id >= WLAN_FRW_MAX_NUM_CORES)
     {
         OAM_ERROR_LOG1(0, OAM_SF_BA, "{hmac_ba_timeout_fn_etc::core id %d overflow.}", pst_mac_device->ul_core_id);
@@ -784,18 +734,8 @@ oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
 
         if (pst_rx_ba->uc_mpdu_cnt > 0)
         {
-            //OAL_IO_PRINT("{hmac_ba_timeout_fn_etc::us_ba_timeout=%d uc_mpdu_cnt=%d.\r\n}", pst_rx_ba->us_ba_timeout, pst_rx_ba->uc_mpdu_cnt);
             hmac_ba_send_reorder_timeout(pst_rx_ba, pst_vap, pst_alarm_data, &us_timeout);
-
-            //pst_alarm_data->us_timeout_times = 0;
         }
-#if 0
-        else
-        {
-            /* frw_timer_restart_timer_etc(&pst_rx_ba->st_ba_timer, pst_vap->us_rx_timeout[WLAN_WME_TID_TO_AC(pst_alarm_data->uc_tid)], OAL_TRUE); */
-            pst_alarm_data->us_timeout_times++;
-        }
-#endif
 
         /* 若重排序队列刷新后,依然有缓存帧则需要重启定时器;
            若重排序队列无帧则为了节省功耗不启动定时器,在有帧入队时重启 */
@@ -804,7 +744,6 @@ oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
             oal_spin_lock(&(pst_hmac_user->ast_tid_info[uc_tid].st_ba_timer_lock));
             /* 此处不需要判断定时器是否已经启动,如果未启动则启动定时器;
                如果此定时器已经启动*/
-            //if (OAL_FALSE == pst_hmac_user->ast_tid_info[uc_tid].st_ba_timer.en_is_registerd)
             FRW_TIMER_CREATE_TIMER(&(pst_hmac_user->ast_tid_info[uc_tid].st_ba_timer),
                                    hmac_ba_timeout_fn_etc,
                                    us_timeout,
@@ -816,15 +755,6 @@ oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
             oal_spin_unlock(&(pst_hmac_user->ast_tid_info[uc_tid].st_ba_timer_lock));
         }
 
-#if 0  /*变量us_timeout_times没有使用，不再需要赋值*/
-        if (pst_alarm_data->us_timeout_times == pst_vap->us_del_timeout && pst_vap->us_del_timeout != 0)
-        {
-            //pst_dmac_user = (dmac_user_stru *)mac_res_get_dmac_user(pst_alarm_data->us_mac_user_idx);
-            //uc_tid        = pst_alarm_data->uc_tid;
-            //dmac_mgmt_delba(pst_vap, pst_dmac_user, uc_tid, en_direction, MAC_QSTA_TIMEOUT);
-            pst_alarm_data->us_timeout_times = 0;
-        }
-#endif
     }
     else
     {
@@ -844,9 +774,9 @@ oal_uint32  hmac_ba_timeout_fn_etc(oal_void *p_arg)
 
 oal_uint32  hmac_ba_reset_rx_handle_etc(mac_device_stru *pst_mac_device, hmac_ba_rx_stru **ppst_rx_ba, oal_uint8 uc_tid, oal_bool_enum_uint8 en_is_aging)
 {
-    hmac_vap_stru    *pst_hmac_vap;
-    hmac_user_stru   *pst_hmac_user;
-    mac_chip_stru    *pst_mac_chip;
+    hmac_vap_stru    *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_user_stru   *pst_hmac_user = OAL_PTR_NULL;
+    mac_chip_stru    *pst_mac_chip = OAL_PTR_NULL;
     oal_bool_enum     en_need_del_lut = OAL_TRUE;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == *ppst_rx_ba) || (OAL_TRUE != (*ppst_rx_ba)->en_is_ba)))
@@ -926,7 +856,7 @@ oal_uint8  hmac_mgmt_check_set_rx_ba_ok_etc(
                 mac_device_stru   *pst_device,
                 hmac_tid_stru     *pst_tid_info)
 {
-    mac_chip_stru *pst_mac_chip;
+    mac_chip_stru *pst_mac_chip = OAL_PTR_NULL;
 #ifdef _PRE_WLAN_FEATURE_RX_AGGR_EXTEND
     oal_uint8     uc_max_rx_ba_size;
 #endif
@@ -1031,13 +961,13 @@ oal_uint8  hmac_mgmt_check_set_rx_ba_ok_etc(
 
 oal_void  hmac_up_rx_bar_etc(hmac_vap_stru *pst_hmac_vap, dmac_rx_ctl_stru *pst_rx_ctl, oal_netbuf_stru *pst_netbuf)
 {
-    oal_uint8                 *puc_payload;
-    mac_ieee80211_frame_stru  *pst_frame_hdr;
-    oal_uint8                 *puc_sa_addr;
+    oal_uint8                 *puc_payload = OAL_PTR_NULL;
+    mac_ieee80211_frame_stru  *pst_frame_hdr = OAL_PTR_NULL;
+    oal_uint8                 *puc_sa_addr = OAL_PTR_NULL;
     oal_uint8                  uc_tidno;
-    hmac_user_stru            *pst_ta_user;
+    hmac_user_stru            *pst_ta_user = OAL_PTR_NULL;
     oal_uint16                 us_start_seqnum;
-    hmac_ba_rx_stru           *pst_ba_rx_info;
+    hmac_ba_rx_stru           *pst_ba_rx_info = OAL_PTR_NULL;
 
     pst_frame_hdr = (mac_ieee80211_frame_stru  *)mac_get_rx_cb_mac_hdr(&(pst_rx_ctl->st_rx_info));
     puc_sa_addr = pst_frame_hdr->auc_address2;
@@ -1107,7 +1037,7 @@ oal_bool_enum_uint8 hmac_is_device_ba_setup_etc(void)
 {
     oal_uint32           uc_device_max;
     oal_uint8            uc_device;
-    mac_device_stru     *pst_mac_device;
+    mac_device_stru     *pst_mac_device = OAL_PTR_NULL;
     mac_chip_stru       *pst_mac_chip;
 
     pst_mac_chip = hmac_res_get_mac_chip(0);

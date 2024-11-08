@@ -19,6 +19,8 @@ extern "C" {
 #include "hmac_mgmt_bss_comm.h"
 #include "hmac_rx_data.h"
 #include "hmac_uapsd.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_UAPSD_C
@@ -72,7 +74,7 @@ oal_void hmac_uapsd_update_user_para (oal_uint8  *puc_mac_hdr,oal_uint8  uc_sub_
         return;
     }
 
-    OAL_MEMZERO(&st_uapsd_status,  OAL_SIZEOF(mac_user_uapsd_status_stru));
+    memset_s(&st_uapsd_status, OAL_SIZEOF(mac_user_uapsd_status_stru), 0, OAL_SIZEOF(mac_user_uapsd_status_stru));
     st_uapsd_status.uc_qos_info = puc_wmm_ie[HMAC_UAPSD_WME_LEN];
 
     /* 8ÎªWMM IE³¤¶È */

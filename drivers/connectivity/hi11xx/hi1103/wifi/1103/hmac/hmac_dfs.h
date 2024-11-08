@@ -28,7 +28,7 @@ extern "C" {
 *****************************************************************************/
 #define HMAC_DFS_ONE_SEC_IN_MS    1000
 #define HMAC_DFS_ONE_MIN_IN_MS    (60 * HMAC_DFS_ONE_SEC_IN_MS)
-#define HMAC_DFS_SIXTY_TWO_SEC_IN_MS (62 * HMAC_DFS_ONE_SEC_IN_MS)  
+#define HMAC_DFS_SIXTY_TWO_SEC_IN_MS (62 * HMAC_DFS_ONE_SEC_IN_MS)
 
 /* CAC检测时长，5600MHz ~ 5650MHz频段外，默认60秒 */
 #define HMAC_DFS_CAC_OUTOF_5600_TO_5650_MHZ_TIME_MS           HMAC_DFS_SIXTY_TWO_SEC_IN_MS
@@ -113,12 +113,6 @@ extern oal_bool_enum_uint8 hmac_dfs_try_cac_etc(hmac_device_stru *pst_hmac_devic
 extern oal_uint32  hmac_dfs_init_scan_hook_etc(hmac_scan_record_stru    *pst_scan_record,
                                            hmac_device_stru         *pst_dev);
 
-
-#if 0
-extern oal_uint32  hmac_dfs_ap_pause_radar_handler(hmac_vap_stru *pst_hmac_vap);
-#endif
-
-
 /*****************************************************************************
   11 内联函数定义
 *****************************************************************************/
@@ -130,7 +124,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  hmac_dfs_need_for_cac(mac_device_stru
     oal_uint32              ul_ret;
     mac_channel_list_stru   st_chan_info;
     oal_uint8               uc_dfs_ch_cnt = 0;
-    mac_channel_stru       *pst_channel;
+    mac_channel_stru       *pst_channel = OAL_PTR_NULL;
 
     /* dfs使能位 */
     if (OAL_FALSE == mac_vap_get_dfs_enable(pst_mac_vap))

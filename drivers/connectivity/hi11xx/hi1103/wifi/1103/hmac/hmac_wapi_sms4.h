@@ -77,8 +77,8 @@ extern "C" {
 *****************************************************************************/
 
 
-extern    oal_void hmac_sms4_crypt_etc(oal_uint8 *puc_Input, oal_uint8 *puc_Output, oal_uint32 *pul_rk);
-extern    oal_void hmac_sms4_keyext_etc(oal_uint8 *puc_key, oal_uint32 *pul_rk);
+extern oal_void hmac_sms4_crypt_etc(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_uint32 *puc_rk, oal_uint32 ul_rk_len);
+extern oal_void hmac_sms4_keyext_etc(oal_uint8 *puc_key, oal_uint32 *pul_rk, oal_uint32 ul_rk_len);
 
 #endif
 

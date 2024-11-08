@@ -50,7 +50,6 @@ oal_uint32 hmac_check_opmode_notify_etc(
         return OAL_SUCC;
     }
 
-    //puc_opmode_notify_ie = mac_get_opmode_notify_ie(puc_payload, (oal_uint16)ul_msg_len, us_info_elem_offset);
     puc_opmode_notify_ie = mac_find_ie_etc(MAC_EID_OPMODE_NOTIFY, puc_payload_offset, (oal_int32)ul_msg_len);
 
     /* STA关联在vht下,且vap在双空间流的情况下才解析此ie */
@@ -83,17 +82,16 @@ oal_uint32 hmac_check_opmode_notify_etc(
 oal_uint32  hmac_mgmt_rx_opmode_notify_frame_etc(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, oal_netbuf_stru *pst_netbuf)
 {
     mac_opmode_notify_stru     *pst_opmode_notify = OAL_PTR_NULL;
-//    oal_uint8                   uc_mgmt_frm_type;
     oal_uint8                  *puc_frame_payload;
     mac_user_stru              *pst_mac_user;
     mac_rx_ctl_stru           *pst_rx_ctrl;
     oal_uint8                  *puc_data;
     oal_uint32                  ul_ret;
 
-    if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user)|| (OAL_PTR_NULL == pst_netbuf))
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
         OAM_ERROR_LOG3(0, OAM_SF_OPMODE, "{hmac_mgmt_rx_opmode_notify_frame_etc::pst_hmac_vap = [%x],pst_hmac_user = [%x], pst_netbuf = [%x]!}\r\n",
-                        pst_hmac_vap, pst_hmac_user, pst_netbuf);
+                        (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 

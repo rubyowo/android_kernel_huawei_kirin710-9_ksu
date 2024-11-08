@@ -71,7 +71,7 @@ extern "C" {
 #define WLAN_TCP_ACK_FILTER_THROUGHPUT_TH_HIGH  50
 #define WLAN_TCP_ACK_FILTER_THROUGHPUT_TH_LOW   20
 
-#define WLAN_AMPDU_HW_SWITCH_PERIOD     300 /* 1分钟 */
+#define WLAN_AMPDU_HW_SWITCH_PERIOD     100 /* 硬件聚合切回软件聚合时间：10s */
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -184,7 +184,6 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hmac_tx_get_next_mpdu(oal_netbuf_stru *ps
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_buf))
     {
-      //  OAM_ERROR_LOG0(0, OAM_SF_TX, "{hmac_tx_get_next_mpdu::pst_buf null}");
         return OAL_PTR_NULL;
     }
 
@@ -201,11 +200,10 @@ OAL_STATIC OAL_INLINE oal_netbuf_stru *hmac_tx_get_next_mpdu(oal_netbuf_stru *ps
 OAL_STATIC OAL_INLINE oal_void hmac_tx_netbuf_list_enqueue(oal_netbuf_head_stru *pst_head, oal_netbuf_stru *pst_buf, oal_uint8 uc_netbuf_num)
 {
     oal_uint32             ul_netbuf_index;
-    oal_netbuf_stru       *pst_buf_next;
+    oal_netbuf_stru       *pst_buf_next = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_head) || (OAL_PTR_NULL == pst_buf)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_head,pst_buf)))
     {
-      //  OAM_ERROR_LOG2(0, OAM_SF_TX, "{hmac_tx_get_next_mpdu::input null %x %x}", pst_head, pst_buf);
         return;
     }
 
@@ -307,6 +305,56 @@ OAL_STATIC OAL_INLINE oal_void hmac_tx_set_frame_ctrl(oal_uint32                
         }
     }
 }
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+
+OAL_STATIC OAL_INLINE oal_void hmac_tx_set_frame_htc(hmac_vap_stru                   *pst_hmac_vap,
+                                                      oal_uint32                              ul_qos,
+                                                      mac_tx_ctl_stru                         *pst_tx_ctl,
+                                                      mac_ieee80211_qos_htc_frame_addr4_stru  *pst_hdr_addr4)
+{
+    mac_ieee80211_qos_htc_frame_stru *pst_hdr = OAL_PTR_NULL;
+    oal_uint32                                ul_htc_value;
+
+    if (ul_qos != HMAC_TX_BSS_QOS)
+    {
+        return;
+    }
+
+    if (pst_hmac_vap->uc_htc_order_flag == MAC_VAP_11AX_HTC_CONFIG_UPH_TRIGGER_CAL)
+    {
+        ul_htc_value = 0xFFFFFFFF;
+    }
+    else if (pst_hmac_vap->uc_htc_order_flag == MAC_VAP_11AX_HTC_CONFIG_SOFT_ADD)
+    {
+        ul_htc_value = pst_hmac_vap->ul_htc_info;
+    }
+    else
+    {
+        return;
+    }
+
+#ifdef _PRE_WLAN_FEATURE_HIMIT
+    MAC_GET_CB_HTC_FLAG(pst_tx_ctl) = 1; //标记为带有HTC字段
+#endif
+    /* 更新帧头长度 */
+    if (OAL_FALSE == MAC_GET_CB_IS_4ADDRESS(pst_tx_ctl))
+    {
+        pst_hdr                                    = (mac_ieee80211_qos_htc_frame_stru *)pst_hdr_addr4;
+        pst_hdr->st_frame_control.bit_order        = 1;
+        MAC_GET_CB_FRAME_HEADER_LENGTH(pst_tx_ctl) = MAC_80211_QOS_HTC_FRAME_LEN;
+        pst_hdr->ul_htc                            = ul_htc_value;
+    }
+    else
+    {
+        /* 设置QOS控制字段 */
+        pst_hdr_addr4->st_frame_control.bit_order  = 1;
+        MAC_GET_CB_FRAME_HEADER_LENGTH(pst_tx_ctl) = MAC_80211_QOS_HTC_4ADDR_FRAME_LEN;
+        pst_hdr_addr4->ul_htc                      = ul_htc_value;
+    }
+
+}
+#endif
 
 
 OAL_STATIC OAL_INLINE oal_uint32 hmac_tx_set_addresses(
@@ -481,11 +529,11 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_tid_need_ba_session(
                                     oal_uint8        uc_tidno,
                                     oal_netbuf_stru *pst_buf)
 {
-    hmac_tid_stru         *pst_hmac_tid_info;
+    hmac_tid_stru         *pst_hmac_tid_info = OAL_PTR_NULL;
     wlan_ciper_protocol_type_enum_uint8 en_cipher_type;
     oal_bool_enum_uint8    en_ampdu_support;
 #ifndef _PRE_WLAN_FEATURE_AMPDU_VAP
-    mac_device_stru       *pst_mac_device;
+    mac_device_stru       *pst_mac_device = OAL_PTR_NULL;
 #endif
 
     /* 该tid下不允许建BA，配置命令需求 */
@@ -585,9 +633,9 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_tid_need_ba_session(
     }
 #endif
 
-    /* 需要先发送5个单播帧，再进行BA会话的建立 */
+    /* 进行BA会话的建立 */
     if ((OAL_TRUE == pst_hmac_user->st_user_base_info.st_cap_info.bit_qos) &&
-        (pst_hmac_user->auc_ba_flag[uc_tidno] < DMAC_UCAST_FRAME_TX_COMP_TIMES))
+        (pst_hmac_user->auc_ba_flag[uc_tidno] <  pst_hmac_user->uc_tx_ba_limit))
     {
         OAM_INFO_LOG1(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_BA,
                       "{hmac_tid_need_ba_session::auc_ba_flag[%d]}", pst_hmac_user->auc_ba_flag[uc_tidno]);

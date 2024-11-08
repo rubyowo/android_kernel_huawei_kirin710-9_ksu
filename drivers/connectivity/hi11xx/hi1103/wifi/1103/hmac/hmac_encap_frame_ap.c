@@ -141,7 +141,7 @@ oal_void  hmac_set_exsup_rates_ie_asoc_rsp(mac_user_stru *pst_mac_user, oal_uint
 
 oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
                 mac_vap_stru                   *pst_mac_ap,
-                oal_uint8                      *puc_sta_addr,
+                const unsigned char            *puc_sta_addr,
                 oal_uint16                      us_assoc_id,
                 mac_status_code_enum_uint16     en_status_code,
                 oal_uint8                      *puc_asoc_rsp,
@@ -150,13 +150,13 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
     oal_uint32                     us_asoc_rsp_len       = 0;
     oal_uint8                      uc_ie_len             = 0;
     oal_uint32                     ul_timeout = 0;
-    mac_device_stru               *pst_mac_device;
-    oal_uint8                     *puc_asoc_rsp_original;
+    mac_device_stru               *pst_mac_device = OAL_PTR_NULL;
+    oal_uint8                     *puc_asoc_rsp_original = OAL_PTR_NULL;
     mac_Timeout_Interval_type_enum en_tie_type           = MAC_TIE_BUTT;
 
-    mac_user_stru     *pst_mac_user;
-    hmac_user_stru    *pst_hmac_user;
-    oal_uint16         us_app_ie_len;
+    mac_user_stru     *pst_mac_user = OAL_PTR_NULL;
+    hmac_user_stru    *pst_hmac_user = OAL_PTR_NULL;
+    oal_uint16         us_app_ie_len = 0;
 #if _PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST
     mac_vht_opern_stru  *pst_vht_opern;
 #endif
@@ -168,9 +168,9 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
     oal_mlme_ie_stru               *pst_mlme_ie;
 #endif
 
-    if ((OAL_PTR_NULL == pst_mac_ap) || (OAL_PTR_NULL == puc_sta_addr) || (OAL_PTR_NULL == puc_asoc_rsp))
+    if (OAL_ANY_NULL_PTR3(pst_mac_ap,puc_sta_addr,puc_asoc_rsp))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_ASSOC, "{hmac_mgmt_encap_asoc_rsp_ap_etc::pst_mac_ap[0x%x], puc_data[0x%x], puc_asoc_req[0x%x].}", pst_mac_ap, puc_sta_addr, puc_asoc_rsp);
+        OAM_ERROR_LOG3(0, OAM_SF_ASSOC, "{hmac_mgmt_encap_asoc_rsp_ap_etc::pst_mac_ap[0x%x], puc_data[0x%x], puc_asoc_req[0x%x].}", (uintptr_t)pst_mac_ap, (uintptr_t)puc_sta_addr, (uintptr_t)puc_asoc_rsp);
         return us_asoc_rsp_len;
     }
 
@@ -181,7 +181,7 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
     pst_mac_device = mac_res_get_dev_etc(pst_mac_ap->uc_device_id);
     if (OAL_PTR_NULL == pst_mac_device)
     {
-        OAM_ERROR_LOG1(pst_mac_ap->uc_vap_id, OAM_SF_ASSOC, "{hmac_mgmt_encap_asoc_rsp_ap_etc::pst_mac_device is a null ptr.[0x%x]}", pst_mac_device);
+        OAM_ERROR_LOG1(pst_mac_ap->uc_vap_id, OAM_SF_ASSOC, "{hmac_mgmt_encap_asoc_rsp_ap_etc::pst_mac_device is a null ptr.[0x%x]}", (uintptr_t)pst_mac_device);
         return us_asoc_rsp_len;
     }
 
@@ -272,13 +272,17 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
     {
         if (0 != pst_mlme_ie->us_optie_len)
         {
-            oal_memcopy(puc_asoc_rsp, pst_mlme_ie->auc_optie, pst_mlme_ie->us_optie_len);
+            if (EOK != memcpy_s(puc_asoc_rsp, pst_mlme_ie->us_optie_len,
+                                pst_mlme_ie->auc_optie, pst_mlme_ie->us_optie_len)) {
+                OAM_ERROR_LOG0(0, OAM_SF_AUTH, "hmac_mgmt_encap_asoc_rsp_ap_etc::memcpy fail!");
+                return us_asoc_rsp_len;
+            }
             puc_asoc_rsp += pst_mlme_ie->us_optie_len;
         }
     }
 #endif
 
-#if  defined(_PRE_WIFI_DMT ) || (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
+#if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
     /* 设置 Supported Rates IE */
     mac_set_supported_rates_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, &uc_ie_len);
     puc_asoc_rsp += uc_ie_len;
@@ -298,7 +302,6 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
 
 
     /* 设置 EDCA IE */
-    //mac_set_wmm_params_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, &uc_ie_len);
     mac_set_wmm_params_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, pst_mac_user->st_cap_info.bit_qos, &uc_ie_len);
     puc_asoc_rsp += uc_ie_len;
 
@@ -312,9 +315,8 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
         /* 设置 HT-Capabilities Information IE*/
         mac_set_ht_capabilities_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, &uc_ie_len);
 #ifdef _PRE_WLAN_FEATURE_TXBF_HT
-        if ((OAL_TRUE == pst_mac_user->st_cap_info.bit_11ntxbf)
-        && (OAL_TRUE == pst_mac_ap->st_cap_flag.bit_11ntxbf)
-        && (0 != uc_ie_len))
+        if (OAL_ALL_TRUE_VALUE2(pst_mac_user->st_cap_info.bit_11ntxbf, pst_mac_ap->st_cap_flag.bit_11ntxbf) &&
+            (0 != uc_ie_len))
         {
             puc_asoc_rsp += MAC_11N_TXBF_CAP_OFFSET;
 
@@ -383,10 +385,7 @@ oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
     /* 填充WPS信息 */
     mac_add_app_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, &us_app_ie_len, OAL_APP_ASSOC_RSP_IE);
     puc_asoc_rsp += us_app_ie_len;
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    mac_add_app_ie_etc((oal_void *)pst_mac_ap, puc_asoc_rsp, &us_app_ie_len, OAL_APP_VENDOR_IE);
-    puc_asoc_rsp += us_app_ie_len;
-#endif
+
 #ifdef _PRE_WLAN_FEATURE_HISTREAM
     mac_set_histream_ie((oal_void *)pst_mac_ap, puc_asoc_rsp, &uc_ie_len);
     puc_asoc_rsp += uc_ie_len;
@@ -443,9 +442,9 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  hmac_mgmt_is_challenge_txt_equal(oal_
     oal_uint16  us_idx          = 0;
     oal_uint8   uc_ch_text_len  = 0;
 
-    if (OAL_PTR_NULL == puc_data || OAL_PTR_NULL == puc_chtxt)
+    if (OAL_ANY_NULL_PTR2(puc_data,puc_chtxt))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY,"{hmac_mgmt_is_challenge_txt_equal::puc_data[0x%x] or puc_chtxt[0x%x] is NULL.}", puc_data, puc_chtxt);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY,"{hmac_mgmt_is_challenge_txt_equal::puc_data[0x%x] or puc_chtxt[0x%x] is NULL.}", (uintptr_t)puc_data, (uintptr_t)puc_chtxt);
         return OAL_FALSE;
     }
 
@@ -473,19 +472,20 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  hmac_mgmt_is_challenge_txt_equal(oal_
 
 oal_err_code_enum  hmac_encap_auth_rsp_get_user_idx_etc(mac_vap_stru *pst_mac_vap,
                                                 oal_uint8   *puc_mac_addr,
-                                                oal_uint8   uc_is_seq1,
+                                                oal_uint8    uc_mac_len,
+                                                oal_uint8    uc_is_seq1,
                                                 oal_uint8   *puc_auth_resend,
                                                 oal_uint16  *pus_user_index)
 {
     oal_uint32                      ul_ret;
-    hmac_vap_stru                  *pst_hmac_vap;
-    hmac_user_stru                 *pst_hmac_user;
-    hmac_user_stru                 *pst_user;
-    hmac_vap_stru                  *pst_hmac_other_vap;
+    hmac_vap_stru                  *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_user_stru                 *pst_hmac_user = OAL_PTR_NULL;
+    hmac_user_stru                 *pst_user = OAL_PTR_NULL;
+    hmac_vap_stru                  *pst_hmac_other_vap = OAL_PTR_NULL;
     oal_uint16                      us_user_idx;
 
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
+    if ((OAL_PTR_NULL == pst_hmac_vap) || (uc_mac_len != ETHER_ADDR_LEN))
     {
         OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{hmac_encap_auth_rsp_get_user_idx_etc::mac_res_get_hmac_vap failed!}");
         return OAL_FAIL;
@@ -556,17 +556,9 @@ oal_err_code_enum  hmac_encap_auth_rsp_get_user_idx_etc(mac_vap_stru *pst_mac_va
     ul_ret = hmac_user_add_etc(pst_mac_vap, puc_mac_addr, pus_user_index);
     if (OAL_SUCC != ul_ret)
     {
-        if(OAL_ERR_CODE_CONFIG_EXCEED_SPEC == ul_ret)
-        {
-            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{hmac_encap_auth_rsp_get_user_idx_etc::mac_vap_add_assoc_user_etc fail, users exceed config spec.}");
-            return OAL_ERR_CODE_CONFIG_EXCEED_SPEC;
-        }
-        else
-        {
-            OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{hmac_encap_auth_rsp_get_user_idx_etc::mac_vap_add_assoc_user_etc fail,user_idx[%d]}",*pus_user_index);
-            return OAL_FAIL;
-        }
+        return (OAL_ERR_CODE_CONFIG_EXCEED_SPEC == ul_ret) ? OAL_ERR_CODE_CONFIG_EXCEED_SPEC : OAL_FAIL;
     }
+
     return OAL_SUCC;
 }
 
@@ -713,7 +705,7 @@ hmac_ap_auth_process_code_enum_uint8   hmac_encap_auth_rsp_seq3_etc(
 
 hmac_auth_rsp_fun hmac_encap_auth_rsp_get_func_etc(oal_uint16 us_auth_seq)
 {
-    hmac_auth_rsp_fun        st_auth_rsp_fun;
+    hmac_auth_rsp_fun        st_auth_rsp_fun = OAL_PTR_NULL;
     switch(us_auth_seq)
     {
         case WLAN_AUTH_TRASACTION_NUM_ONE:
@@ -751,11 +743,11 @@ oal_uint32 hmac_encap_auth_rsp_support_etc(hmac_vap_stru *pst_hmac_vap, oal_uint
 
 oal_void hmac_tid_clear_etc(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_user)
 {
-    mac_device_stru   *pst_device;
+    mac_device_stru   *pst_device = OAL_PTR_NULL;
     oal_uint8          uc_loop;
-    hmac_amsdu_stru   *pst_amsdu;
-    oal_netbuf_stru   *pst_amsdu_net_buf;
-    hmac_tid_stru     *pst_tid;
+    hmac_amsdu_stru   *pst_amsdu = OAL_PTR_NULL;
+    oal_netbuf_stru   *pst_amsdu_net_buf = OAL_PTR_NULL;
+    hmac_tid_stru     *pst_tid = OAL_PTR_NULL;
 
 #ifdef _PRE_WLAN_FEATURE_AMPDU_VAP
     hmac_vap_stru      *pst_hmac_vap;
@@ -806,9 +798,6 @@ oal_void hmac_tid_clear_etc(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_
             }
             pst_amsdu->uc_msdu_num = 0;
             pst_amsdu->us_amsdu_size = 0;
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-            pst_amsdu->uc_short_pkt_num = 0;
-#endif
         }
 
         /* tid解锁, 使能软中断 */
@@ -850,7 +839,8 @@ oal_void hmac_tid_clear_etc(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_
 }
 
 
-oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_auth_rsp, oal_netbuf_stru *pst_auth_req, oal_uint8 *puc_chtxt)
+oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_auth_rsp,
+    oal_netbuf_stru *pst_auth_req, oal_uint8 *puc_chtxt, oal_uint8 uc_chtxt_len)
 {
     oal_uint16       us_auth_rsp_len        = 0;
     hmac_user_stru  *pst_hmac_user_sta      = OAL_PTR_NULL;
@@ -860,7 +850,7 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
     oal_uint8        uc_is_seq1;
     oal_uint16       us_auth_seq            = 0;
     oal_uint8        auc_addr2[6]           = {0};
-    hmac_vap_stru   *pst_hmac_vap;
+    hmac_vap_stru   *pst_hmac_vap = OAL_PTR_NULL;
     oal_uint16       us_user_index          = 0xffff;
     oal_uint32       ul_ret                 = 0;
 
@@ -870,14 +860,20 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
     /* 认证方法 */
     hmac_ap_auth_process_code_enum_uint8       ul_auth_proc_rst;
 
-    oal_uint8       *puc_data;
-    mac_tx_ctl_stru *pst_tx_ctl;
+    oal_uint8       *puc_data = OAL_PTR_NULL;
+    mac_tx_ctl_stru *pst_tx_ctl = OAL_PTR_NULL;
     hmac_auth_rsp_handle_stru              st_auth_rsp_handle;
     oal_uint32                      ul_alg_suppt = 0;
 
-    if (OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == pst_auth_rsp || OAL_PTR_NULL == pst_auth_req || OAL_PTR_NULL == puc_chtxt)
+    if (OAL_ANY_NULL_PTR4(pst_mac_vap,pst_auth_rsp,pst_auth_req,puc_chtxt))
     {
-        OAM_ERROR_LOG4(0, OAM_SF_AUTH,"{hmac_encap_auth_rsp_etc::pst_mac_vap[0x%x], puc_data[0x%x], puc_auth_req[0x%x] and puc_chtxt[0x%x]}", pst_mac_vap, pst_auth_rsp, pst_auth_req, puc_chtxt);
+        OAM_ERROR_LOG4(0, OAM_SF_AUTH,
+            "{hmac_encap_auth_rsp_etc::pst_mac_vap[0x%x], p_data[0x%x], p_auth_req[0x%x], p_chtxt[0x%x]}",
+            (uintptr_t)pst_mac_vap, (uintptr_t)pst_auth_rsp, (uintptr_t)pst_auth_req, (uintptr_t)puc_chtxt);
+        return us_auth_rsp_len;
+    }
+
+    if (uc_chtxt_len > WLAN_CHTXT_SIZE) {
         return us_auth_rsp_len;
     }
 
@@ -902,7 +898,7 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
     mac_hdr_set_frame_control(puc_data, WLAN_FC0_SUBTYPE_AUTH);
 
     /* 获取STA的地址 */
-    mac_get_address2(oal_netbuf_header(pst_auth_req), auc_addr2);
+    mac_get_address2(oal_netbuf_header(pst_auth_req), auc_addr2, sizeof(auc_addr2));
 
     /* 将DA设置为STA的地址 */
     oal_set_mac_addr(((mac_ieee80211_frame_stru *)puc_data)->auc_address1, auc_addr2);
@@ -989,21 +985,17 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
     uc_is_seq1 = (WLAN_AUTH_TRASACTION_NUM_ONE == us_auth_seq);
     ul_ret = hmac_encap_auth_rsp_get_user_idx_etc(pst_mac_vap,
                                         auc_addr2,
+                                        sizeof(auc_addr2),
                                         uc_is_seq1,
                                         &st_auth_rsp_handle.st_auth_rsp_param.uc_auth_resend,
                                         &us_user_index);
     if(OAL_SUCC != ul_ret)
     {
-        if(OAL_ERR_CODE_CONFIG_EXCEED_SPEC == ul_ret)
-        {
-            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_AUTH,"{hmac_encap_auth_rsp_etc::hmac_ap_get_user_idx fail, users exceed config spec!}");
-            puc_frame[4] = MAC_AP_FULL;
-        }
-        else
-        {
-            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_AUTH,"{hmac_encap_auth_rsp_etc::hmac_ap_get_user_idx Err!}");
-            puc_frame[4] = MAC_UNSPEC_FAIL;
-        }
+        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_AUTH,
+            "{hmac_encap_auth_rsp_etc::hmac_ap_get_user_idx fail[%d]! (1002:exceed config spec)}", ul_ret);
+
+        puc_frame[4] = (OAL_ERR_CODE_CONFIG_EXCEED_SPEC == ul_ret) ? MAC_AP_FULL : MAC_UNSPEC_FAIL;
+
 #ifdef _PRE_WLAN_1103_CHR
         CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_WIFI, CHR_LAYER_DRV, CHR_WIFI_DRV_EVENT_SOFTAP_CONNECT, puc_frame[4]);
 #endif
@@ -1025,13 +1017,6 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
         MAC_GET_CB_MPDU_LEN(pst_tx_ctl)    = us_auth_rsp_len;
         return us_auth_rsp_len;
     }
-
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-    if (MAC_USER_STATE_ASSOC == pst_hmac_user_sta->st_user_base_info.en_user_asoc_state)
-    {
-        pst_hmac_user_sta->st_user_base_info.en_is_reauth_user = OAL_TRUE;
-    }
-#endif
 
     /* 获取hmac vap指针 */
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
@@ -1156,10 +1141,14 @@ oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *
             /* seq为1 的认证帧重传 */
             hmac_mgmt_encap_chtxt(puc_frame, puc_chtxt, &us_auth_rsp_len, pst_hmac_user_sta);
 
-            /* 重启超时定时器 */
-            frw_timer_restart_timer_etc(&pst_hmac_user_sta->st_mgmt_timer,
-                                    pst_hmac_user_sta->st_mgmt_timer.ul_timeout,
-                                    OAL_FALSE);
+            if (OAL_TRUE == pst_hmac_vap->st_mgmt_timer.en_is_registerd)
+            {
+                /* 重启超时定时器 */
+                frw_timer_restart_timer_etc(&pst_hmac_user_sta->st_mgmt_timer,
+                                        pst_hmac_user_sta->st_mgmt_timer.ul_timeout,
+                                        OAL_FALSE);
+            }
+
             break;
         }
         case HMAC_AP_AUTH_SEQ3_OPEN_ANY:

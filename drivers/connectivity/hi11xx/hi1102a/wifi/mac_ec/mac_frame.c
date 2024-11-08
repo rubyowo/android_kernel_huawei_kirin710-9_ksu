@@ -21,7 +21,6 @@ extern "C" {
 #include "mac_resource.h"
 #include "mac_regdomain.h"
 #include "dmac_ext_if.h"
-
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_MAC_FRAME_EC_C
 
@@ -85,8 +84,8 @@ mac_frame_rom_cb_stru g_st_mac_frame_rom_cb =
 
 oal_bool_enum_uint8 mac_is_ftm_req_frame(oal_netbuf_stru *pst_netbuf)
 {
-    oal_uint8 *puc_mac_header;
-    oal_uint8 *puc_mac_payload;
+    oal_uint8 *puc_mac_header = OAL_PTR_NULL;
+    oal_uint8 *puc_mac_payload = OAL_PTR_NULL;
 
     /* 判断入参合法性 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_netbuf))
@@ -113,8 +112,8 @@ oal_bool_enum_uint8 mac_is_ftm_req_frame(oal_netbuf_stru *pst_netbuf)
 
 oal_bool_enum_uint8 mac_is_ftm_frame(oal_netbuf_stru *pst_netbuf)
 {
-    oal_uint8 *puc_mac_header;
-    oal_uint8 *puc_mac_payload;
+    oal_uint8 *puc_mac_header = OAL_PTR_NULL;
+    oal_uint8 *puc_mac_payload = OAL_PTR_NULL;
 
     /* 判断入参合法性 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_netbuf))
@@ -141,8 +140,8 @@ oal_bool_enum_uint8 mac_is_ftm_frame(oal_netbuf_stru *pst_netbuf)
 
 oal_bool_enum_uint8 mac_is_ftm_related_frame(oal_netbuf_stru *pst_netbuf)
 {
-    oal_uint8 *puc_mac_header;
-    oal_uint8 *puc_mac_payload;
+    oal_uint8 *puc_mac_header = OAL_PTR_NULL;
+    oal_uint8 *puc_mac_payload = OAL_PTR_NULL;
 
     /* 判断入参合法性 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_netbuf))
@@ -172,8 +171,8 @@ oal_bool_enum_uint8 mac_is_ftm_related_frame(oal_netbuf_stru *pst_netbuf)
 
 oal_void mac_ftm_add_to_ext_capabilities_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
-    mac_vap_stru                *pst_mac_vap;
-    mac_ext_cap_ftm_ie_stru     *pst_ext_cap_ftm;
+    mac_vap_stru                *pst_mac_vap = OAL_PTR_NULL;
+    mac_ext_cap_ftm_ie_stru     *pst_ext_cap_ftm = OAL_PTR_NULL;
     mac_ftm_mode_enum_uint8      en_ftm_mode;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap || OAL_PTR_NULL == puc_buffer || OAL_PTR_NULL == puc_ie_len))
@@ -259,46 +258,65 @@ oal_void  mac_set_nb_ie(oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
     puc_buffer[1] = uc_index - MAC_IE_HDR_LEN;
     *puc_ie_len = uc_index;
 }
-#if 0
 
-oal_void  mac_get_nb_ie( oal_void *pst_vap, oal_uint8 *puc_payload, oal_uint16 us_frame_len)
-{
-    oal_uint8       *puc_nb;
-    oal_uint8        uc_nb_len;
-    oal_uint8        uc_loop;
-    oal_uint8       *puc_bw;
-    mac_vap_stru    *pst_mac_vap;
 
-    /* 入参合法判断 */
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_vap) || (OAL_PTR_NULL == puc_payload)))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{mac_get_nb_ie: input pointer is null!}");
-        return;
-    }
 
-    pst_mac_vap = (mac_vap_stru *)pst_vap;
 
-    puc_nb = mac_find_vendor_ie(MAC_EID_VENDOR, MAC_HISI_NB_IE, puc_payload, us_frame_len);
-    if (OAL_PTR_NULL == puc_nb)
-    {
-        return ;
-    }
 
-    uc_nb_len = puc_nb[1];
 
-    if (uc_nb_len <=  MAC_OUI_LEN)
-    {
-        OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_TX, "mac_get_nb_ie::nb_len[%u] err!", uc_nb_len);
-        return;
-    }
 
-    puc_bw = puc_nb + MAC_IE_HDR_LEN + MAC_OUI_LEN + MAC_OUITYPE_LEN;
-    for (uc_loop = 0; uc_loop < (uc_nb_len - (MAC_OUI_LEN + MAC_OUITYPE_LEN)); uc_loop++)
-    {
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_TX, "mac_get_nb_ie::bw[%x]!", puc_bw[uc_loop]);
-    }
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif
 
 
@@ -366,7 +384,7 @@ oal_uint32  mac_report_80211_get_switch(
     mac_ieee80211_frame_stru         *pst_frame_hdr;
     oal_uint8                         uc_frame_type = 0;
     oal_uint16                        us_user_idx = 0xffff;
-    oal_uint8                        *puc_da;
+    oal_uint8                        *puc_da = OAL_PTR_NULL;
     oal_uint32                        ul_ret;
 
     pst_frame_hdr = (mac_ieee80211_frame_stru *)(mac_get_rx_cb_mac_hdr(pst_rx_cb));
@@ -498,8 +516,8 @@ oal_uint32  mac_report_80211_get_switch(
             OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_RX,
                              "{mac_report_80211_get_switch::oam_report_80211_ucast_get_switch_etc failed! ul_ret=[%d],frame_type=[%d], user_idx=[%d]}",
                              ul_ret, uc_frame_type, us_user_idx);
-            OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_RX, "{oam_report_80211_ucast_get_switch_etc::frame_switch=[%d], cb_switch=[%d], dscr_switch=[%d]",
-                             pen_frame_switch, pen_cb_switch, pen_dscr_switch);
+            OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_RX, "{oam_report_80211_ucast_get_switch_etc::frame_switch=[%x], cb_switch=[%x], dscr_switch=[%x]",
+                             (uintptr_t)pen_frame_switch, (uintptr_t)pen_cb_switch, (uintptr_t)pen_dscr_switch);
 
             return ul_ret;
         }
@@ -514,7 +532,7 @@ oal_uint32  mac_report_80211_get_user_macaddr(
                                             oal_uint8        auc_user_macaddr[])
 {
     mac_ieee80211_frame_stru *pst_frame_hdr;
-    oal_uint8                *puc_da;
+    oal_uint8                *puc_da = OAL_PTR_NULL;
 
     pst_frame_hdr = (mac_ieee80211_frame_stru *)(mac_get_rx_cb_mac_hdr(pst_rx_cb));
     if (OAL_PTR_NULL == pst_frame_hdr)
@@ -629,8 +647,8 @@ oal_uint32  mac_rx_report_80211_frame(oal_uint8 *pst_vap,
                                              oam_ota_type_enum_uint8 en_ota_type)
 {
     oal_uint8            uc_sub_type;
-    mac_vap_stru        *pst_mac_vap;
-    mac_rx_ctl_stru     *pst_mac_rx_cb;
+    mac_vap_stru        *pst_mac_vap = OAL_PTR_NULL;
+    mac_rx_ctl_stru     *pst_mac_rx_cb = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_rx_cb || OAL_PTR_NULL == pst_vap)
     {
@@ -713,9 +731,9 @@ oal_uint8 *mac_find_vendor_ie(oal_uint32      ul_oui,
                                 oal_uint8    *puc_ies,
                                 oal_int32     l_len)
 {
-    struct mac_ieee80211_vendor_ie *pst_ie;
-    oal_uint8 *puc_pos;
-    oal_uint8 *puc_end;
+    struct mac_ieee80211_vendor_ie *pst_ie = OAL_PTR_NULL;
+    oal_uint8 *puc_pos = OAL_PTR_NULL;
+    oal_uint8 *puc_end = OAL_PTR_NULL;
     oal_uint32 ul_ie_oui;
 
     if (OAL_PTR_NULL == puc_ies)
@@ -854,7 +872,7 @@ oal_void  mac_set_cap_info_ap(oal_void *pst_vap, oal_uint8 *puc_cap_info)
     pst_cap_info->bit_delayed_block_ack = pst_mib->st_wlan_mib_sta_config.en_dot11DelayedBlockAckOptionImplemented;
 
     /* Immediate Block Ack 参考STA及AP标杆，此能力一直为0,实际通过addba协商。此处修改为标杆一致。mib值不修改 */
-    /*pst_cap_info->bit_immediate_block_ack = pst_mib->st_wlan_mib_sta_config.en_dot11ImmediateBlockAckOptionImplemented;*/
+
     pst_cap_info->bit_immediate_block_ack = 0;
 }
 
@@ -879,19 +897,17 @@ oal_void  mac_set_cap_info_sta(oal_void *pst_vap, oal_uint8 *puc_cap_info)
     oal_memcopy(puc_cap_info, (oal_uint8 *)(&pst_mac_vap->us_assoc_user_cap_info), OAL_SIZEOF(mac_cap_info_stru));
 
     /* 以下能力位不学习，保持默认值 */
-    pst_cap_info->bit_ibss              = 0;
-    pst_cap_info->bit_cf_pollable       = 0;
-    pst_cap_info->bit_cf_poll_request   = 0;
-#ifdef _PRE_WLAN_FEATURE_11K
-    pst_cap_info->bit_radio_measurement = pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RadioMeasurementActivated
-                                            && pst_cap_info->bit_radio_measurement;
-#endif
+    pst_cap_info->bit_ibss               = 0;
+    pst_cap_info->bit_cf_pollable        = 0;
+    pst_cap_info->bit_cf_poll_request    = 0;
+    pst_cap_info->bit_radio_measurement |= pst_mac_vap->bit_sta_11k_info;
+    pst_cap_info->bit_spectrum_mgmt      = 0;
 }
 
 
 oal_void  mac_set_ssid_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len, oal_uint16 us_frm_type)
 {
-    oal_uint8    *puc_ssid;
+    oal_uint8    *puc_ssid = OAL_PTR_NULL;
     oal_uint8     uc_ssid_len;
     mac_vap_stru *pst_mac_vap = (mac_vap_stru *)pst_vap;
 
@@ -995,15 +1011,15 @@ oal_void mac_set_dsss_params(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8
     ***************************************************************************/
 
     
-#if 0
-    if (WLAN_BAND_2G != pst_mac_vap->st_channel.en_band)
-    {
-        /* 如果不是2.4GHz频段，则没有dsss参数 */
-        *puc_ie_len = 0;
 
-        return;
-    }
-#endif
+
+
+
+
+
+
+
+
     pst_mac_device = mac_res_get_dev(pst_mac_vap->uc_device_id);
     if (OAL_PTR_NULL == pst_mac_device)
     {
@@ -1032,7 +1048,7 @@ oal_void mac_set_dsss_params(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8
 oal_void mac_set_country_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru                *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_regdomain_info_stru     *pst_rd_info;
+    mac_regdomain_info_stru     *pst_rd_info = OAL_PTR_NULL;
     oal_uint8                    uc_band;
     oal_uint8                    uc_index;
     oal_uint32                   ul_ret;
@@ -1122,7 +1138,7 @@ oal_void mac_set_country_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 
 oal_void mac_set_11ntxbf_vendor_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru                        *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_11ntxbf_vendor_ie_stru          *pst_vendor_ie;
+    mac_11ntxbf_vendor_ie_stru          *pst_vendor_ie = OAL_PTR_NULL;
     if (OAL_TRUE != pst_mac_vap->st_cap_flag.bit_11ntxbf)
     {
         *puc_ie_len = 0;
@@ -1189,7 +1205,7 @@ oal_void mac_set_quiet_ie(
 {
     /* 管制域相关 tbd, 需要11h特性进一步分析此ie的设置 */
 
-    mac_quiet_ie_stru *pst_quiet;
+    mac_quiet_ie_stru *pst_quiet = OAL_PTR_NULL;
     mac_vap_stru      *pst_mac_vap = (mac_vap_stru *)pst_vap;
 
     if ((OAL_TRUE != pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11SpectrumManagementRequired)
@@ -1262,7 +1278,7 @@ oal_void mac_set_tpc_report_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uin
 oal_void mac_set_erp_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru         *pst_mac_vap    = (mac_vap_stru *)pst_vap;
-    mac_erp_params_stru  *pst_erp_params;
+    mac_erp_params_stru  *pst_erp_params = OAL_PTR_NULL;
 
     /***************************************************************************
     --------------------------------------------------------------------------
@@ -1379,8 +1395,8 @@ oal_uint32 mac_set_rsn_ie(oal_void *pst_vap, oal_uint8 *puc_pmkid, oal_uint8 *pu
     mac_vap_stru                        *pst_mac_vap = (mac_vap_stru *)pst_vap;
     oal_uint8                            uc_index;
     oal_uint16                           us_rsn_capabilities;
-    wlan_mib_dot11RSNAConfigEntry_stru  *pst_mib_rsna_cfg;
-    wlan_mib_Dot11PrivacyEntry_stru     *pst_mib_privacy;
+    wlan_mib_dot11RSNAConfigEntry_stru  *pst_mib_rsna_cfg = OAL_PTR_NULL;
+    wlan_mib_Dot11PrivacyEntry_stru     *pst_mib_privacy = OAL_PTR_NULL;
     oal_uint32                           ul_ret;
     oal_uint8                            uc_pair_suites_num;
     oal_uint8                            uc_akm_suites_num;
@@ -1900,7 +1916,7 @@ oal_void mac_set_exsup_rates_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_ui
 
 oal_void mac_set_bssload_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
-    mac_bss_load_stru  *pst_bss_load;
+    mac_bss_load_stru  *pst_bss_load = OAL_PTR_NULL;
     mac_vap_stru       *pst_mac_vap  = (mac_vap_stru *)pst_vap;
 
     if (OAL_FALSE == pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11QosOptionImplemented ||
@@ -2423,7 +2439,7 @@ oal_void mac_set_ht_capabilities_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oa
 oal_void mac_set_ht_opern_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru        *pst_mac_vap     = (mac_vap_stru *)pst_vap;
-    mac_ht_opern_stru   *pst_ht_opern;
+    mac_ht_opern_stru   *pst_ht_opern = OAL_PTR_NULL;
     oal_uint8           uc_obss_non_ht = 0;
 
     if (OAL_TRUE != mac_mib_get_HighThroughputOptionImplemented(pst_mac_vap))
@@ -2561,20 +2577,27 @@ oal_void mac_set_ht_opern_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8
     *puc_ie_len = MAC_IE_HDR_LEN + MAC_HT_OPERN_LEN;
 }
 
-oal_void mac_set_ext_capabilities_bss_transition_ie(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
+oal_void mac_set_ext_capabilities_bss_transition_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
 #if defined(_PRE_WLAN_FEATURE_11V) || defined(_PRE_WLAN_FEATURE_11V_ENABLE)
     mac_ext_cap_ie_stru     *pst_ext_cap;
-
+    mac_vap_stru            *pst_mac_vap = (mac_vap_stru *)pst_vap;
     pst_ext_cap = (mac_ext_cap_ie_stru *)(puc_buffer + MAC_IE_HDR_LEN);
 
      /* 首先需先使能wirelessmanagerment标志 */
      /* 然后如果是站点本地能力位和扩展控制变量均支持BSS TRANSITION 设置扩展能力bit位 */
     if ( (OAL_TRUE == mac_mib_get_WirelessManagementImplemented(pst_mac_vap)) &&
          (OAL_TRUE == mac_mib_get_MgmtOptionBSSTransitionImplemented(pst_mac_vap)) &&
-         (OAL_TRUE == mac_mib_get_MgmtOptionBSSTransitionActivated(pst_mac_vap)))
+         (OAL_TRUE == mac_mib_get_MgmtOptionBSSTransitionActivated(pst_mac_vap))&&
+         (OAL_TRUE == pst_mac_vap->bit_sta_11v_info)&&
+         (IS_LEGACY_STA(pst_mac_vap)))
     {
         pst_ext_cap->bit_bss_transition = 1;
+
+    }
+    else
+    {
+        pst_ext_cap->bit_bss_transition = 0;
     }
 #endif
 }
@@ -2583,7 +2606,7 @@ oal_void mac_set_ext_capabilities_bss_transition_ie(oal_void *pst_mac_vap, oal_u
 oal_void mac_set_obss_scan_params(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru                *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_obss_scan_params_stru   *pst_obss_scan;
+    mac_obss_scan_params_stru   *pst_obss_scan = OAL_PTR_NULL;
     oal_uint32                  ul_ret;
 
     if (OAL_TRUE != mac_mib_get_HighThroughputOptionImplemented(pst_mac_vap))
@@ -2647,7 +2670,7 @@ oal_void mac_set_obss_scan_params(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_
 oal_void mac_set_ext_capabilities_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru            *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_ext_cap_ie_stru     *pst_ext_cap;
+    mac_ext_cap_ie_stru     *pst_ext_cap = OAL_PTR_NULL;
 
     if (OAL_FALSE == mac_mib_get_HighThroughputOptionImplemented(pst_mac_vap))
     {
@@ -2874,7 +2897,7 @@ oal_void  mac_set_vht_capabilities_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, 
 oal_void  mac_set_vht_opern_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru        *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_vht_opern_stru  *pst_vht_opern;
+    mac_vht_opern_stru  *pst_vht_opern = OAL_PTR_NULL;
 
     if ((OAL_TRUE != pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11VHTOptionImplemented)
 #ifdef _PRE_WLAN_FEATURE_11AC2G
@@ -2958,30 +2981,30 @@ oal_void  mac_set_vht_opern_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uin
             pst_vht_opern->uc_channel_center_freq_seg0 = pst_mac_vap->st_channel.uc_chan_number - 6;
             break;
 
-#if 0 //为了提高兼容性，40M及其以下都填0
-        case WLAN_BAND_WIDTH_40MINUS:
-            /***********************************************************************
-            | 从20 | 主20 |
-            |
-            | 中心频率相对于主20偏-2个信道
-            ************************************************************************/
-            pst_vht_opern->uc_channel_center_freq_seg0 = pst_mac_vap->st_channel.uc_chan_number - 2;
-            break;
 
-        case WLAN_BAND_WIDTH_40PLUS:
-            /***********************************************************************
-            | 主20 | 从20 |
-            |
-            | 中心频率相对于主20偏+2个信道
-            ************************************************************************/
-            pst_vht_opern->uc_channel_center_freq_seg0 = pst_mac_vap->st_channel.uc_chan_number + 2;
-            break;
 
-        case WLAN_BAND_WIDTH_20M:
-            /* 中心频率就是主信道频率   */
-            pst_vht_opern->uc_channel_center_freq_seg0 = pst_mac_vap->st_channel.uc_chan_number;
-            break;
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         default:
             /* 中心频率直接填0  */
@@ -3068,7 +3091,7 @@ oal_uint32  mac_set_csa_bw_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint
 
 oal_uint8*  mac_get_ssid(oal_uint8 *puc_beacon_body, oal_int32 l_frame_body_len, oal_uint8 *puc_ssid_len)
 {
-    const oal_uint8   *puc_ssid_ie;
+    const oal_uint8   *puc_ssid_ie = OAL_PTR_NULL;
     oal_uint16         us_offset =  MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
 
     /*************************************************************************/
@@ -3136,7 +3159,7 @@ oal_uint8  mac_get_dtim_period(oal_uint8 *puc_frame_body, oal_uint16 us_frame_bo
 
     us_offset = MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
 
-    //puc_ie = mac_get_tim_ie(puc_frame_body, us_frame_body_len, us_offset);
+
     puc_ie = mac_find_ie(MAC_EID_TIM, puc_frame_body + us_offset, us_frame_body_len - us_offset);
     if ((OAL_PTR_NULL != puc_ie) && (puc_ie[1] >= MAC_MIN_TIM_LEN))
     {
@@ -3156,7 +3179,7 @@ oal_uint8  mac_get_dtim_cnt(oal_uint8 *puc_frame_body, oal_uint16 us_frame_body_
 
     us_offset = MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
 
-    //puc_ie = mac_get_tim_ie(puc_frame_body, us_frame_body_len, us_offset);
+
     puc_ie = mac_find_ie(MAC_EID_TIM, puc_frame_body + us_offset, us_frame_body_len - us_offset);
     if ((OAL_PTR_NULL != puc_ie) && (puc_ie[1] >= MAC_MIN_TIM_LEN))
     {
@@ -3275,7 +3298,7 @@ oal_uint16 mac_get_rsn_capability(const oal_uint8 *puc_rsn_ie)
 oal_void mac_set_power_cap_ie(oal_uint8 *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru            *pst_mac_vap        = (mac_vap_stru *)pst_vap;
-    mac_regclass_info_stru  *pst_regclass_info;
+    mac_regclass_info_stru  *pst_regclass_info = OAL_PTR_NULL;
 
     /********************************************************************************************
             ------------------------------------------------------------------------------------
@@ -3569,7 +3592,7 @@ oal_uint8  mac_get_bss_type(oal_uint16 us_cap_info)
 
 oal_uint32  mac_check_mac_privacy(oal_uint16 us_cap_info,oal_uint8 *pst_vap)
 {
-    mac_vap_stru       *pst_mac_vap;
+    mac_vap_stru       *pst_mac_vap = OAL_PTR_NULL;
     mac_cap_info_stru  *pst_cap_info = (mac_cap_info_stru *)&us_cap_info;
 
     if (OAL_PTR_NULL == pst_vap)
@@ -3629,7 +3652,7 @@ oal_void mac_add_wps_ie(oal_void *pst_vap,
 {
     mac_vap_stru    *pst_mac_vap;
     oal_uint8       *puc_app_ie;
-    oal_uint8       *puc_wps_ie;
+    oal_uint8       *puc_wps_ie = OAL_PTR_NULL;
     oal_uint32       ul_app_ie_len;
 
     pst_mac_vap   = (mac_vap_stru *)pst_vap;
@@ -3642,7 +3665,7 @@ oal_void mac_add_wps_ie(oal_void *pst_vap,
         return;
     }
 
-    //puc_wps_ie = mac_get_wps_ie(puc_app_ie, (oal_uint16)ul_app_ie_len, 0);
+
     puc_wps_ie = mac_find_vendor_ie(MAC_WLAN_OUI_MICROSOFT, MAC_WLAN_OUI_TYPE_MICROSOFT_WPS, puc_app_ie, (oal_int32)ul_app_ie_len);
     if ((puc_wps_ie == OAL_PTR_NULL) || (puc_wps_ie[1] < MAC_MIN_WPS_IE_LEN))
     {
@@ -3722,7 +3745,7 @@ wlan_pmf_cap_status_uint8 mac_get_pmf_cap(oal_uint8 *puc_ie, oal_uint32 ul_ie_le
     }
 
     /* 查找RSN信息元素,如果没有RSN信息元素,则按照不支持处理*/
-    //puc_rsn_ie = mac_get_rsn_ie(puc_ie, ul_ie_len, 0);
+
     puc_rsn_ie = mac_find_ie(MAC_EID_RSN, puc_ie, (oal_int32)(ul_ie_len));
     if (OAL_PTR_NULL == puc_rsn_ie)
     {
@@ -3834,7 +3857,7 @@ oal_void mac_set_rde_ie(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint8 
 oal_void mac_set_tspec_ie(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len, oal_uint8 uc_tid)
 {
     oal_uint8           uc_len = 0;
-    mac_ts_info_stru    *pst_ts_info;
+    mac_ts_info_stru    *pst_ts_info = OAL_PTR_NULL;
 /***********************************************************************************************
           --------------------------------------------------------------------------------------
           |Element ID|Length|TS Info|Nominal MSDU Size|Max MSDU Size|Min Serv Itvl|Max Serv Itvl|
@@ -3885,7 +3908,7 @@ oal_void mac_set_tspec_ie(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint
 oal_void mac_set_rrm_enabled_cap_field(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
     mac_vap_stru                *pst_mac_vap = (mac_vap_stru *)pst_vap;
-    mac_rrm_enabled_cap_ie_stru *pst_rrm_enabled_cap_ie;
+    mac_rrm_enabled_cap_ie_stru *pst_rrm_enabled_cap_ie = OAL_PTR_NULL;
 
     puc_buffer[0] = MAC_EID_RRM;
     puc_buffer[1] = MAC_RRM_ENABLE_CAP_IE_LEN;

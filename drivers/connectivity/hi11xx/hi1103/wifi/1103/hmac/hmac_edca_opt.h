@@ -24,11 +24,7 @@ extern "C" {
 *****************************************************************************/
 #define HMAC_EDCA_OPT_MIN_PKT_LEN   256                                 /* 小于该长度的ip报文不被统计，排除chariot控制报文*/
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#define HMAC_EDCA_OPT_TIME_MS       1000                                /* edca参数调整默认定时器 */
-#else
 #define HMAC_EDCA_OPT_TIME_MS       30000                               /* edca参数调整默认定时器 */
-#endif
 
 #define HMAC_EDCA_OPT_PKT_NUM       ((HMAC_EDCA_OPT_TIME_MS) >> 3)      /* 平均每毫秒报文个数 */
 
@@ -87,9 +83,6 @@ typedef oal_uint8 wlan_txrx_data_enum_uint8;
 extern oal_void     hmac_edca_opt_rx_pkts_stat_etc(oal_uint16 us_assoc_id, oal_uint8 uc_tidno, mac_ip_header_stru *pst_ip);
 extern oal_void     hmac_edca_opt_tx_pkts_stat_etc(mac_tx_ctl_stru  *pst_tx_ctl, oal_uint8 uc_tidno, mac_ip_header_stru *pst_ip);
 extern oal_uint32   hmac_edca_opt_timeout_fn_etc(oal_void *p_arg);
-#if 0//验收通过后，此函数会删除-wanran
-extern oal_void     hmac_edca_opt_adj_param_sta(oal_void *pst_void);
-#endif
 
 #endif   /* end of _PRE_WLAN_FEATURE_EDCA_OPT_AP */
 

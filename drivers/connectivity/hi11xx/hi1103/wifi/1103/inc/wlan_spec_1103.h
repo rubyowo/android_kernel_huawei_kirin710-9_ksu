@@ -29,12 +29,8 @@ extern "C" {
 /*****************************************************************************
   0.5.3 AMSDU功能
 *****************************************************************************/
-#ifdef _PRE_WIFI_DMT
-#define WLAN_AMSDU_MAX_NUM                  witp_dmt_get_amsdu_aggr_num()
-#else
 /* 一个amsdu下允许拥有的msdu的最大个数 */
 #define WLAN_AMSDU_MAX_NUM                  4
-#endif
 
 /*****************************************************************************
   0.8.2 STA AP规格
@@ -150,16 +146,10 @@ extern "C" {
 #define WLAN_DEFAULT_MAX_TIME_PER_SCAN                 (3 * 1500)  /* 扫描的默认的最大执行时间，超过此时间，做超时处理 */
 
 /*TBD 扫描时，主被动扫描定时时间，单位ms，变量命名有误*/
-#ifdef _PRE_WIFI_DMT
-#define WLAN_DEFAULT_ACTIVE_SCAN_TIME           40
-#define WLAN_DEFAULT_PASSIVE_SCAN_TIME          800
-#define WLAN_DEFAULT_DFS_CHANNEL_SCAN_TIME      240         /*GC模式下指定雷达信道扫描监听时间*/
-#else
+
 #define WLAN_DEFAULT_ACTIVE_SCAN_TIME           20
 #define WLAN_DEFAULT_PASSIVE_SCAN_TIME          60
 #define WLAN_DEFAULT_DFS_CHANNEL_SCAN_TIME      240
-#endif
-
 #define WLAN_LONG_ACTIVE_SCAN_TIME              40             /* 指定SSID扫描个数超过3个时,1次扫描超时时间为40ms */
 
 /*****************************************************************************
@@ -169,15 +159,10 @@ extern "C" {
 #define WLAN_ASSOC_AP_MAX_NUM               2
 
 /* TBD，入网延迟，单位ms。变量需要修订*/
-#ifdef _PRE_WIFI_DMT
 #define WLAN_JOIN_START_TIMEOUT                 10000
-#define WLAN_AUTH_TIMEOUT                       500
-#define WLAN_ASSOC_TIMEOUT                      500
-#else
-#define WLAN_JOIN_START_TIMEOUT                 10000
-#define WLAN_AUTH_TIMEOUT                       300
+#define WLAN_AUTH_TIMEOUT                       300   /* STA auth timeout */
+#define WLAN_AUTH_AP_TIMEOUT                    500   /* APUT auth timeout */
 #define WLAN_ASSOC_TIMEOUT                      600
-#endif
 
 /*****************************************************************************
   2.1.2 热点入网功能
@@ -199,13 +184,9 @@ extern "C" {
 /* 单位ms */
 #define WLAN_USER_ACTIVE_TO_INACTIVE_TIME       5000
 
-#ifdef _PRE_WIFI_DMT
-#define WLAN_AP_USER_AGING_TIME                  witp_dmt_get_user_aging_time()
-#else
 /* 单位ms */
 #define WLAN_AP_USER_AGING_TIME                 (60 * 1000)    /* AP 用户老化时间 60S */
 #define WLAN_P2PGO_USER_AGING_TIME              (60 * 1000)     /* GO 用户老化时间 60S */
-#endif
 
 /* AP keepalive参数,单位ms */
 #define WLAN_AP_KEEPALIVE_TRIGGER_TIME          (15 * 1000)       /* keepalive定时器触发周期 */
@@ -318,6 +299,13 @@ extern "C" {
 /* 存储硬件接收上报的描述符链表数目(ping pong使用) */
 #define HAL_HW_RX_DSCR_LIST_NUM         2
 
+#ifdef _PRE_WLAN_FEATURE_DOUBLE_TX_QUEUE
+#define HAL_TX_QUEUE_SUIT_ID_11AX 1
+#define HAL_TX_QUEUE_SUIT_NUM     2
+#define HAL_TX_Q_S_INVALID_VAP_INDEX    0x7
+#else
+#define HAL_TX_QUEUE_SUIT_NUM  1
+#endif
 
 /*****************************************************************************
   2.2.10 协议节能STA侧功能
@@ -374,14 +362,9 @@ extern "C" {
 /*****************************************************************************
   2.5.1 块确认功能
 *****************************************************************************/
-#ifdef _PRE_WIFI_DMT
-/* 与RSP侧一致，考虑最差的场景下最大超时时间 */
-#define WLAN_ADDBA_TIMEOUT                      10000
-#define WLAN_TX_PROT_TIMEOUT                    60000
-#else
+
 #define WLAN_ADDBA_TIMEOUT                      500
 #define WLAN_TX_PROT_TIMEOUT                    6000
-#endif
 
 #define WLAN_BAR_SEND_TIMEOUT                   500
 
@@ -394,6 +377,7 @@ extern "C" {
 /*****************************************************************************
   2.5.2 AMPDU功能
 *****************************************************************************/
+#define WLAN_AMPDU_RX_HE_BUFFER_SIZE    256  /* AMPDU接收端接收缓冲区的buffer size的大小 */
 #define WLAN_AMPDU_RX_BUFFER_SIZE       64  /* AMPDU接收端接收缓冲区的buffer size的大小 */
 #define WLAN_AMPDU_RX_BA_LUT_WSIZE      64  /* AMPDU接收端用于填写BA RX LUT表的win size,
                                                要求大于等于WLAN_AMPDU_RX_BUFFER_SIZE */
@@ -406,17 +390,14 @@ extern "C" {
 
 #define WLAN_AMPDU_TX_MAX_BUF_SIZE      64  /* 发送端的buffer size */
 
+#define WLAN_AMPDU_DISORDER_AP_MAX_NUM  4  /* 存在乱序重传兼容性的AP AMPDU发送端最大聚合子MPDU个数 */
+
 #define WLAN_AMPDU_TX_SCHD_STRATEGY     2   /* 软件聚合逻辑，最大聚合设置为窗口大小的一半 */
 
 /* MAC RX BA_LUT表共32行 */
 #define HAL_MAX_RX_BA_LUT_SIZE                32
 /* MAC TX BA_LUT表共32行 */
 #define HAL_MAX_TX_BA_LUT_SIZE                32
-
-/*TBD ，待修订为2*/
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-#define HAL_PROXYSTA_MAX_BA_LUT_SIZE    16
-#endif
 
 /*****************************************************************************
   2.5.3 AMSDU功能
@@ -427,9 +408,12 @@ extern "C" {
 /* 1103 spec amsdu最大长度，对应WLAN_LARGE_NETBUF_SIZE，受制于一个buffer长度 */
 #define WLAN_AMSDU_FRAME_MAX_LEN            7935
 
-/* >= WLAN_AMSDU_MAX_NUM/2  */
-#define WLAN_DSCR_SUBTABEL_MAX_NUM          1
-
+/* AMSDU MAX NUM  */
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV)
+#define WLAN_DSCR_SUB_MSDU_MAX_NUM          4
+#else
+#define WLAN_DSCR_SUB_MSDU_MAX_NUM          1
+#endif
 /*****************************************************************************
   2.5.6 小包优化
 *****************************************************************************/
@@ -637,6 +621,13 @@ extern "C" {
 #endif
 
 /* HAL DEV0支持的最大带宽 FPGA只支持80M*/
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV))
+#if (defined(_PRE_WLAN_DBB_ONLY) || (_PRE_WLAN_CHIP_ASIC == _PRE_WLAN_CHIP_VERSION))
+#define WLAN_HAL0_BW_MAX_WIDTH      WLAN_BW_CAP_160M
+#else
+#define WLAN_HAL0_BW_MAX_WIDTH      WLAN_BW_CAP_20M
+#endif
+#else
 #if (_PRE_WLAN_CHIP_ASIC == _PRE_WLAN_CHIP_VERSION)
 #if defined(_PRE_WLAN_1103_PILOT) && defined(_PRE_WLAN_FEATURE_160M)
 #define WLAN_HAL0_BW_MAX_WIDTH      WLAN_BW_CAP_160M
@@ -645,6 +636,7 @@ extern "C" {
 #endif
 #else
 #define WLAN_HAL0_BW_MAX_WIDTH      WLAN_BW_CAP_40M
+#endif
 #endif
 
 /*HAL DEV0 支持SOUNDING功能 */
@@ -658,10 +650,31 @@ extern "C" {
 
 /* HAL DEV0是否支持1024QAM */
 #define WLAN_HAL0_1024QAM_IS_EN     OAL_TRUE
-
+#if (_PRE_PRODUCT_ID ==_PRE_PRODUCT_ID_HI1105_DEV)
 /* HAL DEV0的SU_BFEE能力 */
-#define WLAN_HAL0_SU_BFEE_NUM       4
+#define WLAN_HAL0_SU_BFEE_ANT_SUPPORT_NUM       8
 
+/* HE SU BFEE支持的接收空时流数 */
+#define WLAN_HAL0_NTX_STS_BELOW_80M    8
+
+/* HE SU BFEE支持的接收空时流数 */
+#define WLAN_HAL0_NTX_STS_OVER_80M    8
+#else
+/* HAL DEV0的SU_BFEE能力 */
+#define WLAN_HAL0_SU_BFEE_ANT_SUPPORT_NUM       4
+
+/* HE SU BFEE支持的接收空时流数 */
+#define WLAN_HAL0_NTX_STS_BELOW_80M    4
+
+/* HE SU BFEE支持的接收空时流数 */
+#define WLAN_HAL0_NTX_STS_OVER_80M    4
+#endif
+
+/* HAL DEV0的SU_BFER能力 */
+#define WLAN_HAL0_NUM_DIM_BELOW_80M    1
+
+/* HAL DEV0的SU_BFER能力 */
+#define WLAN_HAL0_NUM_DIM_OVER_80M    1
 /* HAL DEV0是否支持11MC */
 #define WLAN_HAL0_11MC_IS_EN        OAL_FALSE
 
@@ -717,6 +730,8 @@ extern "C" {
 /*HAL DEV0支持TXOP PS*/
 #define WLAN_HAL0_TXOPPS_IS_EN        OAL_TRUE
 
+/* SU BFER支持的发送空时流数，主路默认支持2流 */
+#define WLAN_HAL0_NUMBER_SOUNDING_DIM    1
 
 /* HAL DEV0是否支持160M和80+80M的short GI */
 #ifdef _PRE_WLAN_FEATURE_160M
@@ -740,7 +755,7 @@ extern "C" {
 #define WLAN_HAL1_1024QAM_IS_EN     OAL_TRUE
 
 /* HAL DEV1的SU_BFEE能力 */
-#define WLAN_HAL1_SU_BFEE_NUM       2
+#define WLAN_HAL1_SU_BFEE_ANT_SUPPORT_NUM       2
 
 /* HAL DEV1是否支持11MC */
 #define WLAN_HAL1_11MC_IS_EN        OAL_FALSE
@@ -762,10 +777,13 @@ extern "C" {
 
 /* HAL DEV1是否support su txbfer */
 #define WLAN_HAL1_SU_BFER_IS_EN     OAL_FALSE
-
+#if (_PRE_PRODUCT_ID ==_PRE_PRODUCT_ID_HI1105_DEV)
+/* HAL DEV1是否support su txbfee */
+#define WLAN_HAL1_SU_BFEE_IS_EN     OAL_TRUE
+#else
 /* HAL DEV1是否support su txbfee */
 #define WLAN_HAL1_SU_BFEE_IS_EN     OAL_FALSE
-
+#endif
 /* HAL DEV1是否support mu txbfer */
 #define WLAN_HAL1_MU_BFER_IS_EN     OAL_FALSE
 
@@ -774,6 +792,21 @@ extern "C" {
 
 /* 是否支持11n txbf */
 #define WLAN_HAL1_11N_TXBF_IS_EN    OAL_FALSE
+
+/* SU BFER支持的发送空时流数，辅路只支持1流 */
+#define WLAN_HAL1_NUMBER_SOUNDING_DIM    0
+
+/* HAL DEV1的SU_BFEE能力 */
+#define WLAN_HAL1_NTX_STS_BELOW_80M    4
+
+/* HAL DEV1的SU_BFEE能力 */
+#define WLAN_HAL1_NTX_STS_OVER_80M    4
+
+/* HE SU BFER支持的发送空时流数，辅路只支持1流 */
+#define WLAN_HAL1_NUM_DIM_BELOW_80M    0
+
+/* HE SU BFER支持的发送空时流数，辅路只支持1流 */
+#define WLAN_HAL1_NUM_DIM_OVER_80M    0
 
 /* HAL DEV1是否support tx stbc */
 #define WLAN_HAL1_TX_STBC_IS_EN     OAL_FALSE
@@ -820,10 +853,7 @@ extern "C" {
 /* RF PLL个数 */
 #define WLAN_RF_PLL_NUMS   2
 
-#if 0
-#define WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE     2
-#endif
- /* AP VAP的规格、STA VAP的规格、STA P2P共存的规格放入平台*/
+/* AP VAP的规格、STA VAP的规格、STA P2P共存的规格放入平台*/
 
 /* PROXY STA模式下VAP规格宏定义放入平台 */
 
@@ -905,14 +935,7 @@ extern "C" {
 /*****************************************************************************
   2.9.18 Proxy STA特性
 *****************************************************************************/
-/* 每个DEVICE支持的最大业务VAP数目: 场景一有4个AP VAP；场景二有1个AP VAP + 1个STA VAP */
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-#define WLAN_MAX_PROXY_STA_NUM                  15
-#define WLAN_STA0_HAL_VAP_ID                    4
-#define WLAN_PROXY_STA_START_ID                 16
-#define WLAN_PROXY_STA_END_ID                   31
-#define WLAN_PROXY_STA_MAX_REP                  2
-#endif
+
 /*****************************************************************************
   2.10 MAC FRAME特性
 *****************************************************************************/
@@ -946,6 +969,12 @@ extern "C" {
 #define WLAN_LOW_RATE_OPEN_MLD_TH      (100)             /* 每100ms收到低速率包打开MLD算法的门限 */
 #define WLAN_LOW_RATE_OPEN_MLD_COUNT    (10)             /* 每100ms收到低速率包打开MLD算法的次数门限 */
 
+#define WLAN_LOW_RATE_DEC_AGC_TH          (100)              /* 每100ms收到低速率包降低agc target的门限 */
+#define WLAN_LOW_RATE_DEC_AGC_COUNT       (3)              /* 每100ms收到低速率包降低agc target的次数门限 */
+#define WLAN_DEC_AGC_INTF_RSSI_MAX        (-57)
+#define WLAN_DEC_AGC_INTF_RSSI_MIN        (-80)
+#define WLAN_DEC_AGC_DECAY_RSSI_MAX       (-67)
+#define WLAN_DEC_AGC_DECAY_RSSI_MIN       (-80)
 
 #define WLAN_PHY_EXTLNA_CHGPTDBM_TH_VAL(_en_band, _en_pm_flag) (      \
             ((_en_pm_flag) == OAL_FALSE) ? (WLAN_PHY_EXTLNA_CHGPTDBM_TH): \
@@ -959,9 +988,22 @@ extern "C" {
 /* bfer 2*2规格缓存的bfee report矩阵 */
 /* buffer size = 2*(4+6)/2*468/8(160M) = 590bytes,另外为snr值预留10byte,预留部分内存到640bytes */
 #define WLAN_TXBF_BFER_MATRIX_BUFFER_SIZE       (640)
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV)
+/* bfee 8*2规格缓存的 he mu bfee延时反馈矩阵 */
+/* buffer size = 26*(7+9)/2*500/8(160M) = 13000bytes,另外为snr预留10bytes,
+   HE MU exculsive beamforming report信息大小：Ns * （Nc *4） = 500 * 2 * 4 = 500bytes
+   共预留部分内存到14000bytes */
+#define WLAN_TXBF_BFEE_MATRIX_BUFFER_SIZE       (14000)
+
+#else
 /* bfee 4*2规格缓存的mu bfee延时反馈矩阵 */
 /* buffer size = 10*(7+9)/2*468/8(160M) = 4680bytes,另外为snr值预留10byte,预留部分内存到5000bytes */
 #define WLAN_TXBF_BFEE_MATRIX_BUFFER_SIZE       (5000)
+#endif
+
+#define HE_BFEE_NTX_SUPP_STS_CAP_EIGHT                (8)     /* 1105表示最大接收NDP Nsts个数 */
+#define HE_BFEE_NTX_SUPP_STS_CAP_FOUR                 (4)     /* 1103表示最大接收NDP Nsts个数 */
+
 /*****************************************************************************
 
   2.11 描述符偏移

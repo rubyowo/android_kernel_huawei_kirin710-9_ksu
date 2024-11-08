@@ -17,6 +17,8 @@ extern "C" {
 #include "mac_vap.h"
 #include "hmac_user.h"
 #include "hmac_vap.h"
+#include "securec.h"
+#include "securectype.h"
 
 /*****************************************************************************
   2 宏定义
@@ -104,6 +106,8 @@ OAL_STATIC OAL_INLINE oal_void hmac_mgmt_encap_chtxt(oal_uint8 *puc_frame,
                                                                oal_uint16 *pus_auth_rsp_len,
                                                                hmac_user_stru *pst_hmac_user_sta)
 {
+    oal_int32 l_ret;
+
     /* Challenge Text Element                  */
     /* --------------------------------------- */
     /* |Element ID | Length | Challenge Text | */
@@ -114,25 +118,30 @@ OAL_STATIC OAL_INLINE oal_void hmac_mgmt_encap_chtxt(oal_uint8 *puc_frame,
     puc_frame[7] = WLAN_CHTXT_SIZE;
 
     /* 将challenge text拷贝到帧体中去 */
-    oal_memcopy(&puc_frame[8], puc_chtxt, WLAN_CHTXT_SIZE);
+    l_ret = memcpy_s(&puc_frame[8], WLAN_CHTXT_SIZE, puc_chtxt, WLAN_CHTXT_SIZE);
 
     /* 认证帧长度增加Challenge Text Element的长度 */
     *pus_auth_rsp_len += (WLAN_CHTXT_SIZE + MAC_IE_HDR_LEN);
 
     /* 保存明文的challenge text */
-    oal_memcopy(pst_hmac_user_sta->auc_ch_text, &puc_frame[8], WLAN_CHTXT_SIZE);
+    l_ret += memcpy_s(pst_hmac_user_sta->auc_ch_text, WLAN_CHTXT_SIZE, &puc_frame[8], WLAN_CHTXT_SIZE);
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_mgmt_encap_chtxt::memcpy fail!");
+    }
 }
 
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
 
-extern oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_auth_rsp, oal_netbuf_stru *pst_auth_req, oal_uint8 *puc_chtxt);
+extern oal_uint16  hmac_encap_auth_rsp_etc(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *pst_auth_rsp,
+oal_netbuf_stru *pst_auth_req, oal_uint8 *puc_chtxt, oal_uint8 uc_chtxt_len);
 
-#ifdef _PRE_WLAN_FEATURE_11R_AP
+#if defined(_PRE_WLAN_FEATURE_11R_AP) || defined(_PRE_WLAN_FEATURE_SAE)
 extern oal_err_code_enum  hmac_encap_auth_rsp_get_user_idx_etc(mac_vap_stru *pst_mac_vap,
                                                 oal_uint8   *puc_mac_addr,
-                                                oal_uint8   uc_is_seq1,
+                                                oal_uint8    uc_mac_len,
+                                                oal_uint8    uc_is_seq1,
                                                 oal_uint8   *puc_auth_resend,
                                                 oal_uint16  *pus_user_index);
 extern oal_uint32 hmac_get_assoc_comeback_time(mac_vap_stru *pst_mac_vap,
@@ -140,7 +149,7 @@ extern oal_uint32 hmac_get_assoc_comeback_time(mac_vap_stru *pst_mac_vap,
 #endif
 extern oal_uint32 hmac_mgmt_encap_asoc_rsp_ap_etc(
                     mac_vap_stru                   *pst_mac_ap,
-                    oal_uint8                      *puc_sta_addr,
+                    const unsigned char            *puc_sta_addr,
                     oal_uint16                      us_assoc_id,
                     mac_status_code_enum_uint16     en_status_code,
                     oal_uint8                      *puc_asoc_rsp,

@@ -15,6 +15,7 @@ extern "C" {
 *****************************************************************************/
 #include "platform_spec.h"
 #include "oal_ext_if.h"
+#include "wlan_cali_1105.h"
 
 /*****************************************************************************
   2 宏定义
@@ -31,11 +32,8 @@ extern "C" {
 #define WLAN_MIN_FRAME_HEADER_LEN           10          /* ack与cts的帧头长度为10 */
 #define WLAN_MAX_FRAME_LEN                  1600        /* 维测用，防止越界 */
 #define WLAN_MGMT_FRAME_HEADER_LEN          24          /* 管理帧的MAC帧头长度，数据帧36，管理帧为28 */
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-#define WLAN_IWPRIV_MAX_BUFF_LEN            200         /* iwpriv上传的字符串最大长度 */
-#else
 #define WLAN_IWPRIV_MAX_BUFF_LEN            100         /* iwpriv上传的字符串最大长度 */
-#endif
+
 /* SSID最大长度, +1为\0预留空间 */
 #define WLAN_SSID_MAX_LEN                   (32 + 1)
 
@@ -61,6 +59,7 @@ extern "C" {
 #define WLAN_FC0_SUBTYPE_ACTION_NO_ACK      0xe0
 
 /* 控制帧subtype */
+#define WLAN_FC0_SUBTYPE_TRIG               0x20
 #define WLAN_FC0_SUBTYPE_NDPA               0x50
 #define WLAN_FC0_SUBTYPE_Control_Wrapper    0x70        /* For TxBF RC */
 #define WLAN_FC0_SUBTYPE_BAR                0x80
@@ -137,35 +136,14 @@ extern "C" {
 #define WLAN_5G_80M_SUB_BAND_NUM    7
 #define WLAN_5G_CALI_SUB_BAND_NUM   (WLAN_5G_20M_SUB_BAND_NUM + WLAN_5G_80M_SUB_BAND_NUM)
 
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-#define WLAN_DYNC_CALI_POW_PD_PARAM_NUM   3    /* 动态校准power&pdet表达式参数个数 */
-#define WLAN_DYNC_CALI_2G_PD_PARAM_NUMS   18
-#define WLAN_DYNC_CALI_5G_PD_PARAM_NUMS   36
-#define WLAN_DYNC_CALI_5G_UPC_PARAM_NUMS  14
-#define WLAN_DYNC_CALI_5G_UPC_PARAM_STR_LEN  69 /* 5G upc参数字符串长度:4(每个参数字符个数)*14(参数个数)+13(分隔符)=69 */
-#define WLAN_DYNC_CALI_2G_UPC_PARAM_STR_LEN  29 /* 2G upc参数字符串长度:4(每个参数字符个数)*6(参数个数)+5(分隔符)=29 */
-#define WLAN_DYNC_CALI_PDET_MAX           800  /* 动态校准pdet上报最大值 */
-#endif
-
 #define WLAN_DIEID_MAX_LEN   40
 
 #define WLAN_FIELD_TYPE_AID            0xC000
 #define WLAN_AID(AID)                  ((AID) &~ 0xc000)
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#define WLAN_MAX_VAP_NUM            4   /*设备支持的最大VAP数目*/
-#define WLAN_SIFS_OFDM_POWLVL_NUM   1   /*OFDM SIFS帧的功率档位数目*/
-#if (_PRE_TARGET_PRODUCT_TYPE_E5 == _PRE_CONFIG_TARGET_PRODUCT)
-#define WLAN_2G_SUB_BAND_NUM        13   /*2G子频段数目*/
-#else
-#define WLAN_2G_SUB_BAND_NUM        3   /*2G子频段数目*/
-#endif
-
-#else
 #define WLAN_MAX_VAP_NUM            2
 #define WLAN_2G_SUB_BAND_NUM        13
 #define WLAN_SIFS_OFDM_POWLVL_NUM   4
-#endif
 
 #define WLAN_BW_CAP_TO_BANDWIDTH(_bw_cap) \
     ((WLAN_BW_CAP_20M == (_bw_cap)) ? WLAN_BAND_ASSEMBLE_20M :   \
@@ -173,6 +151,21 @@ extern "C" {
      (WLAN_BW_CAP_80M == (_bw_cap)) ? WLAN_BAND_ASSEMBLE_80M :   \
      (WLAN_BW_CAP_160M == (_bw_cap)) ? WLAN_BAND_ASSEMBLE_160M : \
      (WLAN_BAND_ASSEMBLE_20M))
+
+#ifdef _PRE_WLAN_FEATURE_160M
+#define WLAN_BANDWIDTH_TO_BW_CAP(_bw) \
+    ((WLAN_BAND_WIDTH_20M == (_bw)) ? WLAN_BW_CAP_20M : \
+    ((WLAN_BAND_WIDTH_40PLUS == (_bw)) || (WLAN_BAND_WIDTH_40MINUS == (_bw))) ?  WLAN_BW_CAP_40M : \
+    (((_bw) >= WLAN_BAND_WIDTH_80PLUSPLUS) && ((_bw) <= WLAN_BAND_WIDTH_80MINUSMINUS)) ?  WLAN_BW_CAP_80M : \
+    (((_bw) >= WLAN_BAND_WIDTH_160PLUSPLUSPLUS) && ((_bw) <= WLAN_BAND_WIDTH_160MINUSMINUSMINUS)) ?  WLAN_BW_CAP_160M : \
+     WLAN_BW_CAP_BUTT)
+#else
+#define WLAN_BANDWIDTH_TO_BW_CAP(_bw) \
+     ((WLAN_BAND_WIDTH_20M == (_bw)) ? WLAN_BW_CAP_20M : \
+     ((WLAN_BAND_WIDTH_40PLUS == (_bw)) || (WLAN_BAND_WIDTH_40MINUS == (_bw))) ?  WLAN_BW_CAP_40M : \
+     (((_bw) >= WLAN_BAND_WIDTH_80PLUSPLUS) && ((_bw) <= WLAN_BAND_WIDTH_80MINUSMINUS)) ?  WLAN_BW_CAP_80M : \
+      WLAN_BW_CAP_BUTT)
+#endif
 
 #define WLAN_INVALD_VHT_MCS     0xff
 #define WLAN_GET_VHT_MAX_SUPPORT_MCS(_us_vht_mcs_map)   \
@@ -197,6 +190,13 @@ extern "C" {
         (((_tid) == 4) || ((_tid) == 5)) ? WLAN_WME_AC_VI : \
         WLAN_WME_AC_VO)
 
+
+#define WLAN_INVALID_FRAME_TYPE(_uc_frame_type)   \
+        ((WLAN_FC0_TYPE_DATA != (_uc_frame_type)) \
+        && (WLAN_FC0_TYPE_MGT != (_uc_frame_type)) \
+        && (WLAN_FC0_TYPE_CTL != (_uc_frame_type)))
+
+
 /*****************************************************************************
   2.3 HT宏定义
 *****************************************************************************/
@@ -208,6 +208,10 @@ extern "C" {
 
 #define WLAN_AMSDU_FRAME_MAX_LEN_SHORT      3839
 #define WLAN_AMSDU_FRAME_MAX_LEN_LONG       7935
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+#define TXOP_DURATION_RTS_THRESHOLD_MAX             1023
+#endif
 
 /* Maximum A-MSDU Length Indicates maximum A-MSDU length.See 9.11. Set to 0 for 3839 octetsSet to 1 for 7935 octets */
 #define WLAN_HT_GET_AMSDU_MAX_LEN(_bit_amsdu_max_length)  \
@@ -506,9 +510,7 @@ typedef enum
     WLAN_VAP_MODE_BSS_AP,        /* BSS AP模式 */
     WLAN_VAP_MODE_WDS,           /* WDS模式 */
     WLAN_VAP_MODE_MONITOER,      /* 侦听模式 */
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    WLAN_VAP_MODE_PROXYSTA,     /* proxysta模式，只是在写hal接口时使用 */
-#endif
+
     WLAN_VAP_HW_TEST,
 
     WLAN_VAP_MODE_BUTT
@@ -672,14 +674,18 @@ typedef oal_uint8 wlan_ciper_protocol_type_enum_uint8;
 #define WLAN_AUTH_SUITE_TDLS             7
 #define WLAN_AUTH_SUITE_SAE_SHA256       8
 #define WLAN_AUTH_SUITE_FT_SHA256        9
+#define WLAN_AUTH_SUITE_OWE              18
+
+
+#define MAC_OWE_GROUP_SUPPORTED_NUM          (3)
+#define MAC_OWE_GROUP_19                     (19)
+#define MAC_OWE_GROUP_20                     (20)
+#define MAC_OWE_GROUP_21                     (21)
 
 typedef enum
 {
     WITP_WPA_VERSION_1 = 1,
     WITP_WPA_VERSION_2 = 2,
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-    WITP_WPA_VERSION_C = 3,
-#endif
 #ifdef _PRE_WLAN_FEATURE_WAPI
     WITP_WAPI_VERSION = 1 << 2,
 #endif
@@ -756,6 +762,25 @@ typedef oal_uint8 regdomain_enum_uint8;
 
 
 /*****************************************************************************
+  3.4 HE枚举类型
+*****************************************************************************/
+
+typedef enum
+{
+    WLAN_HE_RU_SIZE_26,
+    WLAN_HE_RU_SIZE_52,
+    WLAN_HE_RU_SIZE_106,
+    WLAN_HE_RU_SIZE_242,
+    WLAN_HE_RU_SIZE_484,
+    WLAN_HE_RU_SIZE_996,
+    WLAN_HE_RU_SIZE_1992,
+
+    WLAN_HE_RU_SIZE_BUTT,
+}wlan_he_rusize_enum;
+typedef oal_uint8 wlan_he_rusize_enum_uint8;
+
+
+/*****************************************************************************
   3.4 VHT枚举类型
 *****************************************************************************/
 
@@ -824,6 +849,9 @@ typedef enum
     WLAN_HT_11G_MODE                = 9,    /* 11ng,不包括11b*/
 #if defined(_PRE_WLAN_FEATURE_11AX) || defined(_PRE_WLAN_FEATURE_11AX_ROM)
     WLAN_HE_MODE                    = 10,   /*11ax*/
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+    WLAN_HE_ER_MODE                 = 11,   /*11ax ER SU PPDU*/
+#endif
 #endif
 
     WLAN_PROTOCOL_BUTT
@@ -878,6 +906,15 @@ typedef oal_uint8 wlan_channel_bandwidth_enum_uint8;
 
 typedef enum
 {
+    WLAN_AP_BANDWIDTH_20M       = 1,
+    WLAN_AP_BANDWIDTH_40M       = 2,
+    WLAN_AP_BANDWIDTH_80M       = 4,
+    WLAN_AP_BANDWIDTH_160M      = 8,
+}wlan_vendor_ap_bandwidth_enum;
+typedef oal_uint8 wlan_vendor_ap_bandwidth_enum_uint8;
+
+typedef enum
+{
     WLAN_CH_SWITCH_DONE     = 0,   /* 信道切换已经完成，AP在新信道运行 */
     WLAN_CH_SWITCH_STATUS_1 = 1,   /* AP还在当前信道，准备进行信道切换(发送CSA帧/IE) */
     WLAN_CH_SWITCH_STATUS_2 = 2,
@@ -923,28 +960,6 @@ typedef oal_uint8 wlan_bw_switch_status_enum_uint8;
 
 typedef enum
 {
-    WLAN_BAND_ASSEMBLE_20M                   = 0,
-
-    WLAN_BAND_ASSEMBLE_40M                   = 4,
-    WLAN_BAND_ASSEMBLE_40M_DUP               = 5,
-
-    WLAN_BAND_ASSEMBLE_80M                   = 8,
-    WLAN_BAND_ASSEMBLE_80M_DUP               = 9,
-
-    WLAN_BAND_ASSEMBLE_160M                  = 12,
-    WLAN_BAND_ASSEMBLE_160M_DUP              = 13,
-
-    WLAN_BAND_ASSEMBLE_80M_80M               = 15,
-
-    WLAN_BAND_ASSEMBLE_AUTO,
-
-    WLAN_BAND_ASSEMBLE_BUTT
-}hal_channel_assemble_enum;
-typedef oal_uint8 hal_channel_assemble_enum_uint8;
-
-
-typedef enum
-{
     WLAN_HT_MIXED_PREAMBLE          = 0,
     WLAN_HT_GF_PREAMBLE             = 1,
 
@@ -983,7 +998,7 @@ typedef oal_uint8 wlan_ht_mcs_enum_uint8;
 #define WLAN_DOUBLE_NSS                 1
 #define WLAN_TRIPLE_NSS                 2
 #define WLAN_FOUR_NSS                   3
-#define WLAN_NSS_LIMIT                   4
+#define WLAN_NSS_LIMIT                  4
 /* 因为要用作预编译，所以由枚举改成宏，为了便于理解，下面的类型转义先不变 */
 typedef oal_uint8 wlan_nss_enum_uint8;
 
@@ -1007,6 +1022,23 @@ typedef enum
     WLAN_SOUNDING_BUTT
 }wlan_sounding_enum;
 typedef oal_uint8 wlan_sounding_enum_uint8;
+
+
+typedef enum
+{
+    WLAN_PROT_DATARATE_CHN0_1M = 0,
+    WLAN_PROT_DATARATE_CHN1_1M,
+    WLAN_PROT_DATARATE_CHN0_6M,
+    WLAN_PROT_DATARATE_CHN1_6M,
+    WLAN_PROT_DATARATE_CHN0_12M,
+    WLAN_PROT_DATARATE_CHN1_12M,
+    WLAN_PROT_DATARATE_CHN0_24M,
+    WLAN_PROT_DATARATE_CHN1_24M,
+
+    WLAN_PROT_DATARATE_BUTT
+}wlan_prot_datarate_enum;
+typedef oal_uint8 wlan_prot_datarate_enum_uint8;
+
 
 typedef struct
 {
@@ -1048,6 +1080,18 @@ typedef enum
 }wlan_tpc_work_mode_enum;
 typedef oal_uint8 wlan_tpc_mode_enum_uint8;
 
+typedef enum
+{
+    WLAN_TX_AMSDU_NONE                = 0,
+    WLAN_TX_AMSDU_BY_2                = 1,
+    WLAN_TX_AMSDU_BY_3                = 2,
+    WLAN_TX_AMSDU_BY_4                = 3,
+
+    WLAN_TX_AMSDU_BUTT
+}wlan_tx_amsdu_enum;
+typedef oal_uint8 wlan_tx_amsdu_enum_uint8;
+
+
 /* CCA_OPT工作模式 */
 #define WLAN_CCA_OPT_DISABLE                0   /* 不做任何优化 */
 #define WLAN_CCA_OPT_ENABLE                 1   /* 不做同频识别的EDCA优化 */
@@ -1074,6 +1118,17 @@ typedef oal_uint8 wlan_tpc_mode_enum_uint8;
 /* DFS使能模式 */
 #define WLAN_DFS_EN_OFF               0   /* 算法关闭 */
 #define WLAN_DFS_EN_ON                1   /* 算法打开,检测到雷达切换信道 */
+
+#define WLAN_BAND_WIDTH_IS_40M(_uc_bandwidth)   ((WLAN_BAND_WIDTH_40MINUS == (_uc_bandwidth)) || (WLAN_BAND_WIDTH_40PLUS == (_uc_bandwidth)))
+#define WLAN_BAND_WIDTH_IS_80M(_uc_bandwidth)   (((_uc_bandwidth) >= WLAN_BAND_WIDTH_80PLUSPLUS) && ((_uc_bandwidth) <= WLAN_BAND_WIDTH_80MINUSMINUS))
+#ifdef _PRE_WLAN_FEATURE_160M
+#define WLAN_BAND_WIDTH_IS_160M(_uc_bandwidth)  (((_uc_bandwidth) >= WLAN_BAND_WIDTH_160PLUSPLUSPLUS) && ((_uc_bandwidth) <= WLAN_BAND_WIDTH_160MINUSMINUSMINUS))
+#endif
+#define WLAN_BAND_WIDTH_IS_20M_OR_40M(_uc_bandwidth) \
+        ((WLAN_BAND_WIDTH_20M == (_uc_bandwidth)) \
+        || (WLAN_BAND_WIDTH_40PLUS == (_uc_bandwidth)) \
+        || (WLAN_BAND_WIDTH_40MINUS == (_uc_bandwidth)))
+
 
 /*****************************************************************************
   3.5 WME枚举类型
@@ -1208,31 +1263,18 @@ typedef enum
 } wlan_scan_mode_enum;
 typedef oal_uint8 wlan_scan_mode_enum_uint8;
 
-/*Android P 增加，是否启动并发扫描标志位*/
+/* 内核定义flag标志位，BIT9是否启动并发扫描标志位*/
 typedef enum
 {
-    WLAN_SCAN_FLAG_LOW_PRIORITY  = 0,
-    WLAN_SCAN_FLAG_LOW_FLUSH     = 1,
-    WLAN_SCAN_FLAG_AP            = 2,
-    WLAN_SCAN_FLAG_RANDOM_ADDR   = 3,
-    WLAN_SCAN_FLAG_LOW_SPAN      = 4,/*并发扫描*/
-    WLAN_SCAN_FLAG_LOW_POWER     = 5,
-    WLAN_SCAN_FLAG_HIFH_ACCURACY = 6,/*顺序扫描,非并发 */
+    WLAN_SCAN_FLAG_LOW_PRIORITY  = BIT0,
+    WLAN_SCAN_FLAG_LOW_FLUSH     = BIT1,
+    WLAN_SCAN_FLAG_AP            = BIT2,
+    WLAN_SCAN_FLAG_RANDOM_ADDR   = BIT3,
+    WLAN_SCAN_FLAG_LOW_SPAN      = BIT8,
+    WLAN_SCAN_FLAG_LOW_POWER     = BIT9, /*并发扫描*/
+    WLAN_SCAN_FLAG_HIFH_ACCURACY = BIT10,/*顺序扫描,非并发 */
     WLAN_SCAN_FLAG_BUTT
 } wlan_scan_flag_enum;
-
-/*内核定义 flag标志位*/
-typedef enum
-{
-    WLAN_NL80211_SCAN_FLAG_BIT_LOW_PRIORITY   = 0,
-    WLAN_NL80211_SCAN_FLAG_BIT_FLUSH          = 1,
-    WLAN_NL80211_SCAN_FLAG_BIT_AP             = 2,
-    WLAN_NL80211_SCAN_FLAG_BIT_RANDOM_ADDR    = 3,
-    WLAN_NL80211_SCAN_FLAG_BIT_LOW_SPAN       = 8,
-    WLAN_NL80211_SCAN_FLAG_BIT_LOW_POWER      = 9,
-    WLAN_NL80211_SCAN_FLAG_BIT_HIGH_ACCURACY  = 10,
-    WLAN_NL80211_SCAN_FLAG_BIT_BUTT
-}wlan_nl80211_scan_flag_bit_enum;
 
 /* 扫描结果枚举 */
 typedef enum
@@ -1401,6 +1443,78 @@ typedef oal_uint8 wlan_special_frm_enum_uint8;
 
 
 /*****************************************************************************
+  3.12 HE枚举
+*****************************************************************************/
+typedef enum
+{
+    WLAN_HE_MCS0,
+    WLAN_HE_MCS1,
+    WLAN_HE_MCS2,
+    WLAN_HE_MCS3,
+    WLAN_HE_MCS4,
+    WLAN_HE_MCS5,
+    WLAN_HE_MCS6,
+    WLAN_HE_MCS7,
+    WLAN_HE_MCS8,
+    WLAN_HE_MCS9,
+    WLAN_HE_MCS10,
+    WLAN_HE_MCS11,
+    WLAN_HE_MCS_BUTT,
+}wlan_he_mcs_enum;
+typedef oal_uint8 wlan_he_mcs_enum_uint8;
+
+/* 算法用, 修改GI顺序需要对应修改 HAL_GET_DSCR_GI_TYPE 和 HAL_GET_ALG_GI_TYPE映射关系*/
+typedef enum
+{
+    WLAN_NON_HE_GI_LONG   = 0,         /* long gi: 0.8us */
+    WLAN_NON_HE_GI_SHORT  = 1,         /* short gi: 0.4us */
+
+    WLAN_NON_HE_GI_TYPE_BUTT,
+}wlan_non_he_gi_type_enum;
+typedef oal_uint8 wlan_non_he_gi_type_enum_uint8;
+
+typedef enum
+{
+    WLAN_HE_GI_LONG   = 0,         /* long gi: 3.2us */
+    WLAN_HE_GI_SHORT  = 1,         /* short gi:      0.8us */
+    WLAN_HE_GI_MIDDLE = 2,         /* middle gi:    1.6us */
+
+    WLAN_HE_GI_TYPE_BUTT,
+}wlan_he_gi_type_enum;
+typedef oal_uint8 wlan_he_gi_type_enum_uint8;
+typedef oal_uint8 wlan_gi_type_enum_uint8;
+
+typedef enum
+{
+    WLAN_HE_LTF_1X   = 0,         /* LTF: 1X */
+    WLAN_HE_LTF_2X   = 1,         /* LTF: 2X*/
+    WLAN_HE_LTF_4X   = 2,         /* LTF: 4X */
+
+    WLAN_HE_LTF_TYPE_BUTT,
+}wlan_he_ltf_type_enum;
+typedef oal_uint8 wlan_he_ltf_type_enum_uint8;
+
+
+/*****************************************************************************
+    BQR 每20M带宽枚举
+*****************************************************************************/
+#ifdef _PRE_WLAN_FEATURE_BQRP
+typedef enum
+{
+    WLAN_PER20M_0 = 0,
+    WLAN_PER20M_1,
+    WLAN_PER20M_2,
+    WLAN_PER20M_3,
+    WLAN_PER20M_4,
+    WLAN_PER20M_5,
+    WLAN_PER20M_6,
+    WLAN_PER20M_7,
+    WLAN_PER20M_BUTT,
+}wlan_per20m_cca_status_enum;
+typedef oal_uint8 wlan_per20m_cca_status_enum_uint8;
+#endif
+
+/*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
 
@@ -1458,6 +1572,14 @@ typedef struct
     oal_int16   s_free_power_stats_160M;
     oal_uint16  us_phy_total_stats_time_ms;
 }wlan_scan_chan_stats_stru;
+
+#ifdef _PRE_WLAN_FEATURE_BQRP
+typedef struct
+{
+    oal_int16   s_per20m_idle_pwr[8];         //每个20M空闲功率统计上报(对应p2m_per_20m_cca_st[0] ~ p2m_per_20m_cca_st[7])
+    oal_uint32  aul_free_chn_per20m_time[8];  //每个20M空闲功率时间统计上报(对应p2m_per_20m_cca_st[0] ~ p2m_per_20m_cca_st[7])
+}wlan_scan_per20m_status_stru;
+#endif
 
 typedef struct
 {

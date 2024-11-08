@@ -28,6 +28,8 @@ extern "C" {
 #include "oal_types.h"
 #include "hmac_rx_data.h"
 #include "frw_event_main.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TCP_OPT_C
@@ -68,7 +70,7 @@ hmac_tcp_ack_opt_th_params g_st_tcp_ack_opt_th_params = {0, 0, 0};
 /*****************************************************************************
   5 内部静态函数声明
 *****************************************************************************/
-oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru    *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head);
+oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(void *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru  *head);
 
 /*****************************************************************************
   4 函数实现
@@ -125,7 +127,7 @@ void hmac_tcp_opt_ack_show_count(hmac_vap_stru    *pst_hmac_vap)
 
 struct tcp_list_node *hmac_tcp_opt_find_oldest_node(hmac_vap_stru         *pst_hmac_vap, hcc_chan_type dir)
 {
-    struct tcp_list_node *node;
+    struct tcp_list_node *node = OAL_PTR_NULL;
     struct tcp_list_node *oldest_node = OAL_PTR_NULL;
     oal_uint  oldest_time = jiffies;  /*init current time*/
     oal_uint8               uc_tcp_stream_index;
@@ -236,11 +238,11 @@ void hmac_tcp_opt_free_ack_list(hmac_vap_stru *pst_hmac_vap,oal_uint8 dir,oal_ui
 {
 #if !defined(WIN32)
     oal_netbuf_head_stru  st_head_t;
-    oal_netbuf_head_stru *head;
-    oal_netbuf_stru* pst_netbuf;
-    oal_netbuf_head_stru* hcc_ack_queue;
-    struct wlan_perform_tcp_list *tmp_list;
-    struct tcp_list_node       *node;
+    oal_netbuf_head_stru *head = OAL_PTR_NULL;
+    oal_netbuf_stru* pst_netbuf = OAL_PTR_NULL;
+    oal_netbuf_head_stru* hcc_ack_queue = OAL_PTR_NULL;
+    struct wlan_perform_tcp_list *tmp_list = OAL_PTR_NULL;
+    struct tcp_list_node       *node = OAL_PTR_NULL;
     oal_uint16               us_tcp_stream_index;
 
     oal_spin_lock_bh(&pst_hmac_vap->ast_hmac_tcp_ack[dir].data_queue_lock[type]);
@@ -291,9 +293,9 @@ oal_tcp_ack_type_enum_uint8 hmac_tcp_opt_get_tcp_ack_type(hmac_vap_stru         
                                              hcc_chan_type  dir,
                                              oal_uint8  uc_index)
 {
-    oal_tcp_header_stru     *pst_tcp_hdr;
+    oal_tcp_header_stru     *pst_tcp_hdr = OAL_PTR_NULL;
     oal_uint32              ul_new_tcp_ack_no;
-    oal_uint32              *pul_old_tcp_ack_no;
+    oal_uint32              *pul_old_tcp_ack_no = OAL_PTR_NULL;
 
     /*lint -e522*/
     OAL_WARN_ON(uc_index >= HMAC_TCP_STREAM);
@@ -323,9 +325,9 @@ oal_tcp_ack_type_enum_uint8 hmac_tcp_opt_get_tcp_ack_type(hmac_vap_stru         
 
 oal_bool_enum_uint8 hmac_judge_rx_netbuf_is_tcp_ack(mac_llc_snap_stru *pst_snap)
 {
-    oal_ip_header_stru  *pst_ip_hdr;
+    oal_ip_header_stru  *pst_ip_hdr = OAL_PTR_NULL;
     oal_bool_enum_uint8 en_is_tcp_ack = OAL_FALSE;
-    oal_tcp_header_stru    *pst_tcp_hdr;
+    oal_tcp_header_stru *pst_tcp_hdr = OAL_PTR_NULL;
 
     if(OAL_PTR_NULL == pst_snap)
     {
@@ -346,7 +348,7 @@ oal_bool_enum_uint8 hmac_judge_rx_netbuf_is_tcp_ack(mac_llc_snap_stru *pst_snap)
             {
                 if (OAL_TRUE == oal_netbuf_is_tcp_ack(pst_ip_hdr))
                 {
-                    pst_tcp_hdr = (oal_tcp_header_stru *)(pst_ip_hdr + 1);
+                    pst_tcp_hdr = (oal_tcp_header_stru *) (pst_ip_hdr + 1);
                     /*option3:SYN FIN RST URG有为1的时候不过滤*/
                     if ((pst_tcp_hdr->uc_flags) & FILTER_FLAG_MASK)
                     {
@@ -395,8 +397,8 @@ oal_bool_enum_uint8 hmac_judge_rx_netbuf_classify(oal_netbuf_stru *pst_netbuff)
 
 oal_bool_enum_uint8 hmac_judge_tx_netbuf_is_tcp_ack(oal_ether_header_stru *ps_ethmac_hdr)
 {
-    oal_ip_header_stru     *pst_ip;
-    oal_tcp_header_stru    *pst_tcp_hdr;
+    oal_ip_header_stru     *pst_ip = OAL_PTR_NULL;
+    oal_tcp_header_stru    *pst_tcp_hdr = OAL_PTR_NULL;
     oal_bool_enum_uint8     en_is_tcp_ack = OAL_FALSE;
 
 
@@ -446,13 +448,13 @@ oal_bool_enum_uint8 hmac_judge_tx_netbuf_is_tcp_ack(oal_ether_header_stru *ps_et
 
 oal_tcp_ack_type_enum_uint8  hmac_tcp_opt_rx_get_tcp_ack_type_index(oal_netbuf_stru *skb, hmac_vap_stru    *pst_hmac_vap, oal_uint8 *p_uc_index, oal_uint8 dir)
 {
-    oal_ip_header_stru  *pst_ip_hdr;
-    oal_tcp_header_stru *pst_tcp_hdr;
-    mac_llc_snap_stru             *pst_snap;
-    hmac_rx_ctl_stru                   *pst_rx_ctrl;                        /* 指向MPDU控制块信息的指针 */
+    oal_ip_header_stru  *pst_ip_hdr = OAL_PTR_NULL;
+    oal_tcp_header_stru *pst_tcp_hdr = OAL_PTR_NULL;
+    mac_llc_snap_stru             *pst_snap = OAL_PTR_NULL;
+    hmac_rx_ctl_stru                   *pst_rx_ctrl = OAL_PTR_NULL;                        /* 指向MPDU控制块信息的指针 */
     struct wlan_tcp_flow        st_tcp_flow_info;
 
-    OAL_MEMZERO(&st_tcp_flow_info, OAL_SIZEOF(st_tcp_flow_info));
+    memset_s(&st_tcp_flow_info, OAL_SIZEOF(st_tcp_flow_info), 0, OAL_SIZEOF(st_tcp_flow_info));
 
     pst_rx_ctrl = (hmac_rx_ctl_stru *)oal_netbuf_cb(skb);
     pst_snap = (mac_llc_snap_stru*)(skb->data + pst_rx_ctrl->st_rx_info.uc_mac_header_len);
@@ -558,7 +560,7 @@ oal_uint8 hmac_tcp_opt_add_new_node(hmac_vap_stru           *pst_hmac_vap,
                                               const oal_tcp_header_stru *pst_tcp_hdr,
                                               const hcc_chan_type dir)
 {
-    struct tcp_list_node *pst_node;
+    struct tcp_list_node *pst_node = OAL_PTR_NULL;
 
     if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_tcp_info)|| (OAL_PTR_NULL == pst_tcp_hdr))
     {
@@ -589,12 +591,12 @@ oal_uint8 hmac_tcp_opt_add_new_node(hmac_vap_stru           *pst_hmac_vap,
 
 oal_tcp_ack_type_enum_uint8  hmac_tcp_opt_tx_get_tcp_ack_type_index(oal_netbuf_stru *skb, hmac_vap_stru           *pst_hmac_vap, oal_uint8 *p_uc_index, oal_uint8 dir)
 {
-    oal_ip_header_stru  *pst_ip_hdr;
-    oal_tcp_header_stru *pst_tcp_hdr;
-    oal_ether_header_stru *eth_hdr;
+    oal_ip_header_stru  *pst_ip_hdr = OAL_PTR_NULL;
+    oal_tcp_header_stru *pst_tcp_hdr = OAL_PTR_NULL;
+    oal_ether_header_stru *eth_hdr = OAL_PTR_NULL;
     struct wlan_tcp_flow   st_tcp_flow_info;
 
-    OAL_MEMZERO(&st_tcp_flow_info, OAL_SIZEOF(st_tcp_flow_info));
+    memset_s(&st_tcp_flow_info, OAL_SIZEOF(st_tcp_flow_info), 0, OAL_SIZEOF(st_tcp_flow_info));
 
     eth_hdr = (oal_ether_header_stru *)oal_netbuf_data(skb);
     if(OAL_FALSE == hmac_judge_tx_netbuf_is_tcp_ack(eth_hdr))
@@ -634,14 +636,15 @@ oal_tcp_ack_type_enum_uint8  hmac_tcp_opt_tx_get_tcp_ack_type_index(oal_netbuf_s
 }
 
 
-oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru       *pst_hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru *head)
+oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(void *hmac_vap, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru *head)
 {
-    oal_netbuf_stru                 *skb;
+    hmac_vap_stru                   *pst_hmac_vap = OAL_PTR_NULL;
+    oal_netbuf_stru                 *skb = OAL_PTR_NULL;
     oal_netbuf_head_stru            head_t;
     oal_uint8                      uc_tcp_stream_index;
-    struct wlan_perform_tcp         *pst_hmac_tcp_ack;
+    struct wlan_perform_tcp         *pst_hmac_tcp_ack = OAL_PTR_NULL;
 
-    if(OAL_WARN_ON(!pst_hmac_vap))
+    if(OAL_WARN_ON(!hmac_vap))
     {
         OAM_INFO_LOG0(0,OAM_SF_ANY,"{hmac_tcp_opt_rx_tcp_ack_filter_etc fail:hmac_vap is null}");
         return OAL_FAIL;
@@ -672,6 +675,7 @@ oal_uint16 hmac_tcp_opt_tx_tcp_ack_filter(hmac_vap_stru       *pst_hmac_vap, hma
     }
     oal_netbuf_head_init(&head_t);
 
+    pst_hmac_vap = (hmac_vap_stru *)hmac_vap;
     while(!!(skb = oal_netbuf_delist(head)))
     {
         if(hmac_tcp_opt_tcp_ack_filter(skb, pst_hmac_vap, dir))
@@ -723,7 +727,7 @@ oal_uint32 hmac_tcp_opt_tcp_ack_filter(oal_netbuf_stru *skb, hmac_vap_stru *pst_
     oal_tcp_ack_type_enum_uint8 uc_tcp_ack_type;
     oal_uint8 uc_tcp_stream_index;
     oal_uint32 ul_ack_limit;
-    oal_netbuf_head_stru* hcc_ack_queue;
+    oal_netbuf_head_stru* hcc_ack_queue = OAL_PTR_NULL;
     oal_netbuf_stru     *ack          = NULL;
     oal_uint32 ul_ret;
 
@@ -841,8 +845,8 @@ void hmac_tcp_ack_process_hcc_queue(hmac_vap_stru    *pst_hmac_vap,
                                     hcc_chan_type dir,hmac_tcp_opt_queue type)
 {
     oal_netbuf_head_stru  st_head_t;
-    oal_netbuf_head_stru *head;
-    oal_netbuf_stru* pst_netbuf;
+    oal_netbuf_head_stru *head = OAL_PTR_NULL;
+    oal_netbuf_stru* pst_netbuf = OAL_PTR_NULL;
     oal_uint32 ul_ret;
 
     oal_spin_lock_bh(&pst_hmac_vap->ast_hmac_tcp_ack[dir].data_queue_lock[type]);
@@ -879,7 +883,7 @@ void hmac_tcp_ack_process_hcc_queue(hmac_vap_stru    *pst_hmac_vap,
             /* 调用失败，要释放内核申请的netbuff内存池 */
             if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
             {
-                //hmac_free_netbuf_list(pst_buf);
+
 #ifdef _PRE_WLAN_TCP_OPT_DEBUG
                 OAL_IO_PRINT("\r\n====hmac_tcp_ack_process_hcc_queue send fail:uc_vap_id = %d====\r\n",pst_hmac_vap->st_vap_base_info.uc_vap_id);
 #endif
@@ -892,9 +896,9 @@ void hmac_tcp_ack_process_hcc_queue(hmac_vap_stru    *pst_hmac_vap,
 oal_int32 hmac_tcp_ack_process(void)
 {
     oal_uint8 uc_vap_idx;
-    hmac_vap_stru* pst_hmac_vap;
+    hmac_vap_stru* pst_hmac_vap = OAL_PTR_NULL;
 
-    hmac_device_stru    *pst_hmac_device;
+    hmac_device_stru    *pst_hmac_device = OAL_PTR_NULL;
 
     if(!oal_in_interrupt())
         frw_event_task_lock();/*lint !e522*/
@@ -935,8 +939,8 @@ oal_int32 hmac_tcp_ack_process(void)
 oal_bool_enum_uint8 hmac_tcp_ack_need_schedule(void)
 {
     oal_uint8 uc_vap_idx;
-    hmac_vap_stru* pst_hmac_vap;
-    oal_netbuf_head_stru *head;
+    hmac_vap_stru* pst_hmac_vap = OAL_PTR_NULL;
+    oal_netbuf_head_stru *head = OAL_PTR_NULL;
     mac_device_stru     *pst_mac_device;
 
     pst_mac_device = mac_res_get_dev(0);
@@ -1020,7 +1024,7 @@ oal_int32 hmac_set_hmac_tcp_ack_need_schedule(hmac_tcp_ack_need_schedule_func p_
 
 oal_void hmac_tcp_ack_opt_switch_ctrol(oal_uint32        ul_rx_throughput_mbps)
 {
-    hmac_device_stru      *pst_hmac_device;
+    hmac_device_stru      *pst_hmac_device = OAL_PTR_NULL;
 
     if (OAL_FALSE == g_st_tcp_ack_opt_th_params.uc_tcp_ack_filter_en)
     {
@@ -1040,11 +1044,15 @@ oal_void hmac_tcp_ack_opt_switch_ctrol(oal_uint32        ul_rx_throughput_mbps)
         pst_hmac_device->sys_tcp_tx_ack_opt_enable == OAL_FALSE)
     {
         pst_hmac_device->sys_tcp_tx_ack_opt_enable = OAL_TRUE;
+        OAM_WARNING_LOG3(0, OAM_SF_ANY, "{hmac_tcp_ack_opt_switch_ctrol:tcp ack filter ON! 1.rx_mbps [%d];2.ini_rx_high [%d];3.ini_rx_low [%d].}",
+                        ul_rx_throughput_mbps,g_st_tcp_ack_opt_th_params.us_rx_filter_throughput_high,g_st_tcp_ack_opt_th_params.us_rx_filter_throughput_low);
     }
     else if (ul_rx_throughput_mbps < g_st_tcp_ack_opt_th_params.us_rx_filter_throughput_low &&
             pst_hmac_device->sys_tcp_tx_ack_opt_enable == OAL_TRUE)
     {
         pst_hmac_device->sys_tcp_tx_ack_opt_enable = OAL_FALSE;
+        OAM_WARNING_LOG3(0, OAM_SF_ANY, "{hmac_tcp_ack_opt_switch_ctrol:tcp ack filter OFF! 1.rx_mbps [%d];2.ini_rx_high [%d];3.ini_rx_low [%d].}",
+                ul_rx_throughput_mbps,g_st_tcp_ack_opt_th_params.us_rx_filter_throughput_high,g_st_tcp_ack_opt_th_params.us_rx_filter_throughput_low);
     }
     else
     {

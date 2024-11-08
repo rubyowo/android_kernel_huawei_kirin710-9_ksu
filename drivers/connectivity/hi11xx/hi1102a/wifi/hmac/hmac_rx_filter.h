@@ -32,7 +32,7 @@ extern "C" {
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-
+extern oal_uint32 g_rx_filter_val;
 
 /*****************************************************************************
   5 消息头定义
@@ -67,6 +67,7 @@ extern oal_uint32 hmac_set_rx_filter_value(mac_vap_stru *pst_mac_vap);
 extern oal_void  hmac_rx_filter_exit(oal_void);
 extern oal_bool_enum_uint8 hmac_find_is_sta_up(mac_device_stru *pst_mac_device);
 extern oal_uint32 hmac_calc_up_ap_num(mac_device_stru *pst_mac_device);
+extern oal_uint32 hmac_set_rx_filter_send_event(mac_vap_stru *pst_mac_vap, oal_uint32 ul_rx_filter_val);
 
 #ifdef _PRE_DEBUG_MODE
 extern oal_void  hmac_set_rx_filter_en(oal_uint8 uc_rx_filter_en);

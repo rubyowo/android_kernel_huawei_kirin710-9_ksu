@@ -32,8 +32,8 @@ extern "C" {
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-extern oal_uint8 g_wlan_fast_check_cnt;  //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
-extern oal_uint8 g_wlan_ps_mode;
+extern oal_uint8 wlan_fast_check_cnt;  //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
+extern oal_uint8 wlan_ps_mode;
 
 /*****************************************************************************
   5 消息头定义
@@ -143,6 +143,7 @@ oal_uint32 hmac_config_set_cus_dts_cali(mac_vap_stru *pst_mac_vap, oal_uint16 us
 oal_uint32 hmac_config_set_cus_nvram_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 oal_uint32 hmac_config_dev_customize_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 oal_uint32  hmac_config_set_cus_base_power_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+oal_uint32 hmac_config_set_5g_high_band_max_pow_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 oal_uint32 hmac_config_set_cus_fcc_ce_power_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
 extern oal_uint32  hmac_config_set_cus_dyn_cali(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -169,9 +170,12 @@ extern oal_uint32  hmac_config_ftm_dbg(mac_vap_stru *pst_mac_vap, oal_uint16 us_
 #endif
 #ifdef _PRE_WLAN_FEATURE_APF
 extern oal_uint32  hmac_config_set_apf(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_void hmac_set_apf_switch_by_pps(hmac_device_stru *pst_hmac_device, mac_cfg_suspend_stru *pst_suspend);
 #endif
 extern oal_uint32 hmac_config_set_2040_coext_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-
+extern oal_uint32 hmac_config_filter_11v_bsstreq_switch(mac_vap_stru *pst_mac_vap, oal_uint8 uc_enable_filter);
+extern oal_uint32 hmac_config_set_event_netbuf_num(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_add_p2p);
+extern oal_uint32 hmac_config_fft_window_offset(mac_vap_stru *pst_mac_vap,oal_bool_enum_uint8 en_fft_window_offset_enable);
 #ifdef __cplusplus
     #if __cplusplus
         }

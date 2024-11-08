@@ -40,6 +40,14 @@ typedef enum
 }btcoex_blacklist_type_enum;
 typedef oal_uint8 btcoex_blacklist_type_enum_uint8;
 
+typedef enum
+{
+    BTCOEX_BA_TYPE_NORMAL, //host侧不做任何处理
+    BTCOEX_BA_TYPE_REJECT, //拒绝建立BA
+    BTCOEX_BA_TYPE_SIZE_1, //聚合个数为1
+}btcoex_ba_type_enum;
+typedef oal_uint8 btcoex_ba_type_enum_uint8;
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -83,8 +91,9 @@ typedef struct
 typedef struct
 {
     hmac_btcoex_delba_exception_stru ast_hmac_btcoex_delba_exception[MAX_BTCOEX_BSS_IN_BL];
-    oal_uint8 uc_exception_bss_index;       /* 黑名单MAC地址的数组下标 */
-    oal_uint8 auc_resv[3];
+    oal_uint8                        uc_exception_bss_index;       /* 黑名单MAC地址的数组下标 */
+    oal_uint8                        auc_resv[3];
+    hal_btcoex_btble_status_stru     st_btble_status;
 } hmac_device_btcoex_stru;
 
 typedef struct
@@ -94,8 +103,9 @@ typedef struct
     oal_uint8                        uc_ba_size;
     oal_uint8                        uc_rx_no_pkt_count;           /* 超时时间内没有收到帧的次数 */
     oal_bool_enum_uint8              en_delba_btcoex_trigger;      /* 是否btcoex触发删建BA */
-    oal_uint8 auc_resv[1];
+    btcoex_ba_type_enum_uint8        en_ba_type;                   /* 标记共存场景下是否特殊处理BA会话 */
 } hmac_user_btcoex_stru;
+
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
@@ -111,6 +121,22 @@ typedef struct
 *****************************************************************************/
 extern oal_uint32 hmac_btcoex_check_exception_in_list(oal_void *p_arg, oal_uint8 *auc_addr);
 extern oal_void hmac_btcoex_blacklist_handle_init(oal_void *p_arg);
+extern oal_void hmac_btcoex_process_btble_status(
+                                                 mac_device_stru              *pst_mac_device,
+                                                 hal_btcoex_btble_status_stru *pst_btble_status_old,
+                                                 hal_btcoex_btble_status_stru *pst_btble_status_new);
+
+extern oal_void hmac_btcoex_ap_tpye_identify(
+                                    mac_vap_stru            *pst_mac_vap,
+                                    oal_uint8               *puc_mac_addr,
+                                    mac_bss_dscr_stru       *pst_bss_dscr,
+                                    mac_ap_type_enum_uint8  *pen_ap_type);
+
+extern oal_void hmac_btcoex_process_exception_ap(
+                            mac_vap_stru           *pst_mac_vap,
+                            mac_user_stru          *pst_mac_user,
+                            mac_ap_type_enum_uint8  en_ap_type);
+
 #endif /* #ifdef _PRE_WLAN_FEATURE_COEXIST_BT */
 
 #ifdef __cplusplus

@@ -30,6 +30,9 @@ extern "C" {
 #include "hmac_ext_if.h"
 #include "hmac_vap.h"
 #include "hmac_p2p.h"
+#ifdef _PRE_WLAN_FEATURE_ROAM
+#include "hmac_roam_main.h"
+#endif //_PRE_WLAN_FEATURE_ROAM
 
 #include "wal_linux_cfg80211.h"
 #include "wal_linux_scan.h"
@@ -59,6 +62,9 @@ extern "C" {
 #include "board.h"
 #endif
 
+#include "securec.h"
+#include "securectype.h"
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_CFG80211_C
 #define WAL_BCN_BSSID_LENGTH_ADDR    (37)
@@ -69,8 +75,15 @@ extern "C" {
 extern  hmac_dfr_info_stru    g_st_dfr_info_etc;
 #endif // _PRE_WLAN_FEATURE_DFR
 #ifdef _PRE_WLAN_FEATURE_AP_PM
-extern oal_uint8 g_uc_is_cpu_sleep;
+extern oal_uint8 is_cpu_sleep;
 #endif
+
+#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
+extern uint8 g_auc_wifinvmac_etc[MAC_LEN];
+extern uint8 g_auc_wifistamac_etc[MAC_LEN];
+extern uint8 g_auc_wifiapmac_etc[MAC_LEN];
+#endif
+
 #define hi1151_a_rates           (hi1151_rates + 4)
 #define hi1151_a_rates_size      8
 #define hi1151_g_rates           (hi1151_rates + 0)
@@ -158,6 +171,7 @@ OAL_STATIC const oal_uint32 g_ast_wlan_supported_cipher_suites[] = {
     WLAN_CIPHER_SUITE_AES_CMAC,
     WLAN_CIPHER_SUITE_BIP_CMAC_256,
     WLAN_CIPHER_SUITE_SMS4,
+    WLAN_CIPHER_SUITE_BIP_GMAC_256,
 };
 
 extern OAL_CONST wal_ioctl_mode_map_stru g_ast_mode_map_etc[];
@@ -226,19 +240,13 @@ OAL_STATIC oal_ieee80211_iface_limit ap_no_limits[] = {
     {
  #if (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_E5)
     .max = 2,
- #elif defined(_PRE_WLAN_PRODUCT_1151V200)
-    .max = 16,
  #else
     .max = 4,
  #endif
     .types = BIT(NL80211_IFTYPE_AP),
     },
     {
- #ifdef _PRE_WLAN_PRODUCT_1151V200
-    .max = 3,
- #else
     .max = 1,
- #endif
     .types = BIT(NL80211_IFTYPE_STATION),
     },
 };
@@ -249,8 +257,6 @@ ap_iface_combinations[] = {
     .num_different_channels = 2,
  #if (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_E5)
     .max_interfaces = 2,
- #elif defined(_PRE_WLAN_PRODUCT_1151V200)
-    .max_interfaces = 16,
  #else
     .max_interfaces = 4,
  #endif
@@ -270,8 +276,11 @@ wal_cfg80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
     },
     [NL80211_IFTYPE_STATION] = {
         .tx = 0xffff,
-        .rx = BIT(IEEE80211_STYPE_ACTION >> 4) |
-        BIT(IEEE80211_STYPE_PROBE_REQ >> 4)
+        .rx = BIT(IEEE80211_STYPE_ACTION >> 4)
+              | BIT(IEEE80211_STYPE_PROBE_REQ >> 4)
+#ifdef _PRE_WLAN_FEATURE_SAE
+              | BIT(IEEE80211_STYPE_AUTH >> 4)
+#endif
     },
     [NL80211_IFTYPE_AP] = {
         .tx = 0xffff,
@@ -326,7 +335,11 @@ wal_cfg80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
 OAL_STATIC struct ieee80211_supported_band g_st_supported_band_2ghz_info = {
     g_ast_supported_channels_2ghz_info,
     hi1151_g_rates,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    NL80211_BAND_2GHZ,
+#else
     IEEE80211_BAND_2GHZ,
+#endif
     sizeof(g_ast_supported_channels_2ghz_info)/sizeof(oal_ieee80211_channel),
     hi1151_g_rates_size,
     {
@@ -339,7 +352,11 @@ OAL_STATIC struct ieee80211_supported_band g_st_supported_band_2ghz_info = {
 OAL_STATIC oal_ieee80211_supported_band g_st_supported_band_5ghz_info = {
     g_ast_supported_channels_5ghz_info,
     hi1151_a_rates,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    NL80211_BAND_5GHZ,
+#else
     IEEE80211_BAND_5GHZ,
+#endif
     sizeof(g_ast_supported_channels_5ghz_info)/sizeof(oal_ieee80211_channel),
     hi1151_a_rates_size,
     {
@@ -357,24 +374,17 @@ cookie_arry_stru        g_cookie_array_etc[WAL_COOKIE_ARRAY_SIZE];
 *****************************************************************************/
 #ifdef _PRE_WLAN_FEATURE_UAPSD
 
-oal_uint32 wal_find_wmm_uapsd_etc(oal_uint8 *puc_frame_body, oal_int32 l_len)
+OAL_STATIC oal_uint32 wal_find_wmm_uapsd_etc(oal_uint8 *puc_wmm_ie)
 {
-    oal_int32    l_index = 0;
-
     /* 判断 WMM UAPSD 是否使能 */
-    while (l_index < l_len)
+    if (puc_wmm_ie[1] < MAC_WMM_QOS_INFO_POS)
     {
-        if ((MAC_EID_WMM == puc_frame_body[l_index])
-            && (0 == oal_memcmp(puc_frame_body + l_index + 2, g_auc_wmm_oui_etc, MAC_OUI_LEN))
-            && (MAC_OUITYPE_WMM == puc_frame_body[l_index + 2 + MAC_OUI_LEN])
-            && (puc_frame_body[l_index + MAC_WMM_QOS_INFO_POS] & BIT7))
-        {
-            return OAL_TRUE;
-        }
-        else
-        {
-            l_index += (MAC_IE_HDR_LEN + puc_frame_body[l_index + 1]);
-        }
+        return OAL_FALSE;
+    }
+
+    if (puc_wmm_ie[MAC_WMM_QOS_INFO_POS] & BIT7)
+    {
+        return OAL_TRUE;
     }
 
     return OAL_FALSE;
@@ -384,7 +394,7 @@ oal_uint32 wal_find_wmm_uapsd_etc(oal_uint8 *puc_frame_body, oal_int32 l_len)
 
 oal_uint32 wal_cfg80211_open_wmm_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_open_wmm_etc::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -407,7 +417,8 @@ oal_void wal_parse_wpa_wpa2_ie_etc(oal_beacon_parameters *pst_beacon_info,
 {
     oal_ieee80211_mgmt      *pst_mgmt;
     oal_uint16               us_capability_info;
-    oal_uint8               *puc_ie_tmp;
+    oal_uint8               *puc_ie_tmp = OAL_PTR_NULL;
+    oal_int32                l_ret = EOK;
 
     /* 判断是否加密 */
     pst_mgmt = (oal_ieee80211_mgmt *)pst_beacon_info->head;
@@ -423,15 +434,18 @@ oal_void wal_parse_wpa_wpa2_ie_etc(oal_beacon_parameters *pst_beacon_info,
         puc_ie_tmp = mac_find_ie_etc(MAC_EID_RSN, pst_beacon_info->tail, pst_beacon_info->tail_len);
         if (OAL_PTR_NULL != puc_ie_tmp)
         {
-            oal_memcopy(pst_beacon_param->auc_rsn_ie, puc_ie_tmp, MAC_MAX_RSN_LEN);
+            l_ret += memcpy_s(pst_beacon_param->auc_rsn_ie, MAC_MAX_RSN_LEN, puc_ie_tmp, MAC_MAX_RSN_LEN);
         }
 
         /* 查找 WPA 信息元素，并解析出认证类型 */
         puc_ie_tmp = mac_find_vendor_ie_etc(MAC_WLAN_OUI_MICROSOFT, MAC_OUITYPE_WPA, pst_beacon_info->tail, pst_beacon_info->tail_len);
         if (OAL_PTR_NULL != puc_ie_tmp)
         {
-            oal_memcopy(pst_beacon_param->auc_wpa_ie, puc_ie_tmp, MAC_MAX_RSN_LEN);
+            l_ret += memcpy_s(pst_beacon_param->auc_wpa_ie, MAC_MAX_RSN_LEN, puc_ie_tmp, MAC_MAX_RSN_LEN);
         }
+    }
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_parse_wpa_wpa2_ie_etc::memcpy fail!");
     }
 }
 #ifdef _PRE_WLAN_FEATURE_11R_AP
@@ -485,7 +499,7 @@ oal_uint32 wal_parse_wmm_ie_etc(oal_net_device_stru *pst_dev,
     /*  找到wmm ie，顺便判断下uapsd是否使能 */
     else
     {
-        if(OAL_FALSE == wal_find_wmm_uapsd_etc(pst_beacon_info->tail, pst_beacon_info->tail_len))
+        if(OAL_FALSE == wal_find_wmm_uapsd_etc(puc_wmm_ie))
         {
         /* 对应UAPSD 关*/
             uc_uapsd = OAL_FALSE;
@@ -505,14 +519,15 @@ oal_uint32 wal_parse_wmm_ie_etc(oal_net_device_stru *pst_dev,
             OAM_INFO_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_CFG,
                 "{wal_parse_wmm_ie_etc:: (1103)It is a Go, set uapsd = WLAN_FEATURE_UAPSD_IS_OPEN)}");
         }
-#elif defined(_PRE_PRODUCT_ID_HI1102_HOST)
-       uc_uapsd = OAL_FALSE;
 #endif
        OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CFG,
            "{wal_parse_wmm_ie_etc:: uapsd = %d)}", uc_uapsd);
 #endif
 
-        oal_memcopy(st_write_msg.auc_value, &uc_uapsd, OAL_SIZEOF(uc_uapsd));
+        if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(uc_uapsd), &uc_uapsd, OAL_SIZEOF(uc_uapsd))) {
+            OAM_ERROR_LOG0(0, OAM_SF_TX, "wal_parse_wmm_ie_etc::memcpy fail!");
+            return OAL_FAIL;
+        }
 
         /* 发送消息 */
         ul_ret = (oal_uint32)wal_send_cfg_event_etc(pst_dev,
@@ -548,8 +563,8 @@ oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_vap_para
 {
     
     oal_int32                   l_ret;
-    oal_net_device_stru        *pst_net_dev;
-    oal_net_device_stru        *pst_cfg_net_dev;
+    oal_net_device_stru        *pst_net_dev = OAL_PTR_NULL;
+    oal_net_device_stru        *pst_cfg_net_dev = OAL_PTR_NULL;
     wal_msg_write_stru          st_write_msg;
     wal_msg_stru               *pst_rsp_msg = OAL_PTR_NULL;
     oal_uint32                  ul_err_code;
@@ -558,7 +573,7 @@ oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_vap_para
     mac_wiphy_priv_stru        *pst_wiphy_priv;
 
     mac_vap_stru               *pst_cfg_mac_vap;
-    hmac_vap_stru              *pst_cfg_hmac_vap;
+    hmac_vap_stru              *pst_cfg_hmac_vap = OAL_PTR_NULL;
     mac_device_stru            *pst_mac_device;
     wlan_vap_mode_enum_uint8    en_vap_mode;
 #ifdef _PRE_WLAN_FEATURE_P2P
@@ -631,7 +646,7 @@ oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_vap_para
 #endif
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     ((mac_cfg_add_vap_param_stru *)st_write_msg.auc_value)->bit_11ac2g_enable = (oal_uint8)!!hwifi_get_init_value_etc(CUS_TAG_INI, WLAN_CFG_INIT_11AC2G_ENABLE);
-    ((mac_cfg_add_vap_param_stru *)st_write_msg.auc_value)->bit_disable_capab_2ght40 = g_st_wlan_customize_etc.uc_disable_capab_2ght40;
+    ((mac_cfg_add_vap_param_stru *)st_write_msg.auc_value)->bit_disable_capab_2ght40 = wlan_customize_etc.uc_disable_capab_2ght40;
 #endif
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_cfg_net_dev,
@@ -643,8 +658,6 @@ oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_vap_para
 
     if (OAL_UNLIKELY(OAL_SUCC != l_ret))
     {
-        OAL_MEM_FREE(pst_wdev, OAL_FALSE);
-        oal_net_free_netdev(pst_net_dev);
         OAM_WARNING_LOG1(pst_cfg_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_add_vap_etc::return err code %d!}\r\n", l_ret);
         return (oal_uint32)l_ret;
     }
@@ -653,11 +666,7 @@ oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_vap_para
     ul_err_code = wal_check_and_release_msg_resp_etc(pst_rsp_msg);
     if(OAL_SUCC != ul_err_code)
     {
-        OAM_WARNING_LOG1(pst_cfg_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_add_vap_etc::hmac add vap fail, ul_err_code[%u]!}\r\n",
-                          ul_err_code);
-        /* 异常处理，释放内存 */
-        OAL_MEM_FREE(pst_wdev, OAL_FALSE);
-        oal_net_free_netdev(pst_net_dev);
+        OAM_WARNING_LOG1(pst_cfg_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_add_vap_etc::hmac add vap fail, ul_err_code[%u]!}\r\n", ul_err_code);
         return ul_err_code;
     }
 
@@ -673,8 +682,8 @@ oal_uint32 wal_cfg80211_del_vap_etc(mac_cfg_del_vap_param_stru *pst_del_vap_para
 {
     wal_msg_write_stru           st_write_msg;
     wal_msg_stru                *pst_rsp_msg = OAL_PTR_NULL;
-    oal_net_device_stru         *pst_net_dev;
-    mac_vap_stru                *pst_mac_vap;
+    oal_net_device_stru         *pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru                *pst_mac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_del_vap_param))
     {
@@ -711,7 +720,6 @@ oal_uint32 wal_cfg80211_del_vap_etc(mac_cfg_del_vap_param_stru *pst_del_vap_para
     }
 
     /* 不需要释放net_device 结构下的wireless_dev 成员 */
-    //OAL_MEM_FREE(OAL_NETDEVICE_WDEV(pst_net_dev), OAL_TRUE);
 
     /***************************************************************************
                                 抛事件到wal层处理
@@ -789,9 +797,9 @@ oal_uint32 wal_cfg80211_vowifi_report_etc(frw_event_mem_stru *pst_event_mem)
 oal_uint32 wal_cfg80211_cac_report(frw_event_mem_stru *pst_event_mem)
 {
 #if (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_E5) || (_PRE_CONFIG_TARGET_PRODUCT == _PRE_TARGET_PRODUCT_TYPE_CPE)
-    frw_event_stru                  *pst_event;
-    hmac_vap_stru                   *pst_hmac_vap;
-    hmac_cac_event_stru             *pst_cac_event;
+    frw_event_stru                  *pst_event = OAL_PTR_NULL;
+    hmac_vap_stru                   *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_cac_event_stru             *pst_cac_event = OAL_PTR_NULL;
     oal_uint32                       ul_ret;
     enum PRIV_NL80211_RADAR_EVENT    en_event;
     enum PRIV_NL80211_CHAN_WIDTH     en_chan_width;
@@ -871,8 +879,6 @@ oal_uint32 wal_cfg80211_cac_report(frw_event_mem_stru *pst_event_mem)
 }
 
 
-//#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 44))
-
 OAL_STATIC oal_bool_enum wal_check_support_basic_rate_6M(oal_uint8   *puc_supported_rates_ie,
                                                             oal_uint8    uc_supported_rates_num,
                                                             oal_uint8   *puc_extended_supported_rates_ie,
@@ -944,13 +950,11 @@ OAL_STATIC oal_uint32  wal_parse_protocol_mode(
     if (WLAN_BAND_2G == en_band)
     {
         us_offset = MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
-        //puc_supported_rates_ie = mac_get_supported_rates_ie(pst_beacon_info->head + 24, (oal_uint16)pst_beacon_info->head_len, us_offset);
         puc_supported_rates_ie = mac_find_ie_etc(MAC_EID_RATES, pst_beacon_info->head + 24 + us_offset, pst_beacon_info->head_len - us_offset);
         if (OAL_PTR_NULL != puc_supported_rates_ie)
         {
             uc_supported_rates_num = puc_supported_rates_ie[1];
         }
-        //puc_extended_supported_rates_ie = mac_get_exsup_rates_ie(pst_beacon_info->tail, (oal_uint16)pst_beacon_info->tail_len, 0);
         puc_extended_supported_rates_ie = mac_find_ie_etc(MAC_EID_XRATES, pst_beacon_info->tail, pst_beacon_info->tail_len);
         if (OAL_PTR_NULL != puc_extended_supported_rates_ie)
         {
@@ -998,11 +1002,9 @@ OAL_STATIC oal_uint32 wal_parse_ht_vht_ie(
     oal_uint8              *puc_ht_ie;
     oal_uint8              *puc_vht_ie;
     oal_uint32              ul_ret;
-    mac_frame_ht_cap_stru  *pst_ht_cap;
-    mac_vht_cap_info_stru  *pst_vht_cap;
+    mac_frame_ht_cap_stru  *pst_ht_cap = OAL_PTR_NULL;
+    mac_vht_cap_info_stru  *pst_vht_cap = OAL_PTR_NULL;
 
-    //puc_ht_ie  = mac_get_ht_cap_ie(pst_beacon_info->tail, (oal_uint16)pst_beacon_info->tail_len, 0);
-    //puc_vht_ie = mac_get_vht_cap_ie(pst_beacon_info->tail, (oal_uint16)pst_beacon_info->tail_len, 0);
     puc_ht_ie  = mac_find_ie_etc(MAC_EID_HT_CAP, pst_beacon_info->tail, pst_beacon_info->tail_len);
     puc_vht_ie = mac_find_ie_etc(MAC_EID_VHT_CAP, pst_beacon_info->tail, pst_beacon_info->tail_len);
 
@@ -1053,8 +1055,6 @@ OAL_STATIC oal_uint32 wal_parse_ht_vht_ie(
 
     }
 
-//    pst_beacon_param->uc_smps_mode  = (oal_uint8)pst_ht_cap->bit_sm_power_save;
-
     if (OAL_PTR_NULL == puc_vht_ie)
     {
         return OAL_SUCC;
@@ -1080,39 +1080,6 @@ OAL_STATIC oal_uint32 wal_parse_ht_vht_ie(
     return OAL_SUCC;
 }
 
-//#endif
-#if 0
-
-OAL_STATIC oal_uint32 wal_parse_beacon_wps_ie(mac_vap_stru *pst_mac_vap, oal_beacon_parameters *pst_beacon_info)
-{
-    oal_app_ie_stru  st_wps_ie;
-    oal_uint8       *puc_wps_ie         = OAL_PTR_NULL;
-    oal_uint32       ul_ret;
-
-
-    puc_wps_ie  = mac_get_wps_ie(pst_beacon_info->tail, (oal_uint16)pst_beacon_info->tail_len, 0);
-    if (OAL_PTR_NULL == puc_wps_ie)
-    {
-        /* WPS 信息元素为空，设置WPS 功能为空 */
-        pst_mac_vap->st_cap_flag.bit_wps = OAL_FALSE;
-        if (OAL_PTR_NULL != pst_mac_vap->ast_app_ie[OAL_APP_BEACON_IE].puc_ie)
-        {
-            OAL_MEM_FREE(pst_mac_vap->ast_app_ie[OAL_APP_BEACON_IE].puc_ie, OAL_TRUE);
-            pst_mac_vap->ast_app_ie[OAL_APP_BEACON_IE].puc_ie = OAL_PTR_NULL;
-        }
-        pst_mac_vap->ast_app_ie[OAL_APP_BEACON_IE].ul_ie_len     = 0;
-        pst_mac_vap->ast_app_ie[OAL_APP_BEACON_IE].ul_ie_max_len = 0;
-        return OAL_SUCC;
-    }
-
-    /* 添加WPS信息元素BEACON 帧到VAP 结构中 */
-    st_wps_ie.puc_ie    = puc_wps_ie;
-    st_wps_ie.ul_ie_len = puc_wps_ie[1];
-    ul_ret = hmac_config_set_app_ie_to_vap_etc(pst_mac_vap, &st_wps_ie, OAL_APP_BEACON_IE);
-
-    return ul_ret;
-}
-#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0))
 OAL_STATIC oal_int32 wal_cfg80211_sched_scan_stop(oal_wiphy_stru          *pst_wiphy,
                                                   oal_net_device_stru     *pst_netdev,
@@ -1129,7 +1096,7 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_stop(oal_wiphy_stru          *pst_w
 OAL_STATIC oal_int32 wal_p2p_stop_roc(mac_vap_stru *pst_mac_vap, oal_net_device_stru *pst_netdev)
 {
 #ifdef _PRE_WLAN_FEATURE_P2P
-    hmac_vap_stru     *pst_hmac_vap;
+    hmac_vap_stru     *pst_hmac_vap = OAL_PTR_NULL;
     hmac_device_stru  *pst_hmac_device;
     pst_hmac_device = hmac_res_get_mac_dev_etc(pst_mac_vap->uc_device_id);
     if (OAL_PTR_NULL == pst_hmac_device)
@@ -1143,7 +1110,7 @@ OAL_STATIC oal_int32 wal_p2p_stop_roc(mac_vap_stru *pst_mac_vap, oal_net_device_
     {
         if (pst_hmac_device->st_scan_mgmt.en_is_scanning != OAL_TRUE)
         {
-            OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_P2P, "{wal_p2p_stop_roc::not in scan state but vap is listen state!}");
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_P2P, "{wal_p2p_stop_roc::not in scan state but vap is listen state!}");
             return OAL_SUCC;
         }
 
@@ -1178,17 +1145,17 @@ OAL_STATIC oal_int32  wal_cfg80211_scan(
                     oal_cfg80211_scan_request_stru        *pst_request)
 #endif
 {
-    hmac_device_stru               *pst_hmac_device;
-    mac_vap_stru                   *pst_mac_vap;
-    hmac_scan_stru                 *pst_scan_mgmt;
+    hmac_device_stru               *pst_hmac_device = OAL_PTR_NULL;
+    mac_vap_stru                   *pst_mac_vap = OAL_PTR_NULL;
+    hmac_scan_stru                 *pst_scan_mgmt = OAL_PTR_NULL;
     oal_int32                       l_ret = 0;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44))//TBD:确认正确的 Linux 版本号
     oal_net_device_stru            *pst_netdev;
 #endif
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_request))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_request))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_scan::scan failed, null ptr, pst_wiphy[%p], pst_request[%p]!}", pst_wiphy, pst_request);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_scan::scan failed, null ptr, pst_wiphy[%p], pst_request[%p]!}", (uintptr_t)pst_wiphy, (uintptr_t)pst_request);
         goto fail;
     }
 
@@ -1332,10 +1299,15 @@ OAL_STATIC oal_void wal_set_crypto_info(mac_conn_param_stru *pst_conn_param, oal
             if (OAL_PTR_NULL == puc_wep_key)
             {
                 OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_set_crypto_info::puc_wep_key(%d)(%p) alloc mem return null ptr!}",
-                (oal_uint32)(pst_sme->key_len),(oal_uint8 *)pst_sme->key);
+                (oal_uint32)(pst_sme->key_len),(uintptr_t)((oal_uint8 *)pst_sme->key));
                 return;
             }
-            oal_memcopy(puc_wep_key, (oal_uint8 *)pst_sme->key, (oal_uint32)(pst_sme->key_len));
+            if (EOK != memcpy_s(puc_wep_key, (oal_uint32)pst_sme->key_len,
+                                (oal_uint8 *)pst_sme->key, (oal_uint32)(pst_sme->key_len))) {
+                OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_set_crypto_info::memcpy fail!");
+                oal_free(puc_wep_key);
+                return ;
+            }
             pst_conn_param->puc_wep_key = puc_wep_key;
 
             return;
@@ -1421,10 +1393,10 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
 #endif
     oal_uint8                          *puc_ie = OAL_PTR_NULL;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_net_device) || (OAL_PTR_NULL == pst_sme))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy, pst_net_device, pst_sme))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_connect::connect failed, pst_wiphy, pst_netdev, pst_sme %p, %p, %p!}\r\n",
-                       pst_wiphy, pst_net_device, pst_sme);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_net_device, (uintptr_t)pst_sme);
 
         return -OAL_EINVAL;
     }
@@ -1445,21 +1417,30 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
     }
 
     /* 初始化驱动连接参数 */
-    OAL_MEMZERO(&st_mac_conn_param, OAL_SIZEOF(mac_conn_param_stru));
+    memset_s(&st_mac_conn_param, OAL_SIZEOF(mac_conn_param_stru), 0, OAL_SIZEOF(mac_conn_param_stru));
 
     /* 解析内核下发的 ssid */
     st_mac_conn_param.uc_ssid_len   = (oal_uint8)pst_sme->ssid_len;
-    oal_memcopy(st_mac_conn_param.auc_ssid, (oal_uint8 *)pst_sme->ssid, st_mac_conn_param.uc_ssid_len);
+    l_ret = memcpy_s(st_mac_conn_param.auc_ssid, OAL_SIZEOF(st_mac_conn_param.auc_ssid),
+                     (oal_uint8 *)pst_sme->ssid, st_mac_conn_param.uc_ssid_len);
 
 #if (defined(_PRE_PRODUCT_ID_HI110X_HOST))
     if (pst_sme->bssid)
     {
-        oal_memcopy(st_mac_conn_param.auc_bssid, (oal_uint8 *)pst_sme->bssid, OAL_MAC_ADDR_LEN);
+        if (EOK != memcpy_s(st_mac_conn_param.auc_bssid, OAL_MAC_ADDR_LEN,
+                            (oal_uint8 *)pst_sme->bssid, OAL_MAC_ADDR_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_cfg80211_connect::memcpy fail!");
+            return -OAL_EFAIL;
+        }
     }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0))
     else if (pst_sme->bssid_hint)
     {
-        oal_memcopy(st_mac_conn_param.auc_bssid, (oal_uint8 *)pst_sme->bssid_hint, OAL_MAC_ADDR_LEN);
+        if (EOK != memcpy_s(st_mac_conn_param.auc_bssid, OAL_MAC_ADDR_LEN,
+                            (oal_uint8 *)pst_sme->bssid_hint, OAL_MAC_ADDR_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_cfg80211_connect::memcpy fail!");
+            return -OAL_EFAIL;
+        }
     }
 #endif
     else
@@ -1467,9 +1448,6 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
         OAM_WARNING_LOG0(0, OAM_SF_ASSOC, "{wal_cfg80211_connect::bssid and bssid_hint is NULL.}");
         return -OAL_EFAIL;
     }
-#else
-    /* 解析内核下发的 bssid */
-    oal_memcopy(st_mac_conn_param.auc_bssid, (oal_uint8 *)pst_sme->bssid, OAL_MAC_ADDR_LEN);
 #endif
     /* 解析内核下发的安全相关参数 */
     /* 设置认证类型 */
@@ -1487,7 +1465,7 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
     }
 
     OAM_WARNING_LOG4(0, OAM_SF_ANY, "{wal_cfg80211_connect::start a new connect, ssid_len[%d], auth_type[%d], privacy[%d], mfp[%d]}\r\n",
-      pst_sme->ssid_len, pst_sme->auth_type, pst_sme->privacy, pst_sme->mfp);
+                    pst_sme->ssid_len, pst_sme->auth_type, pst_sme->privacy, pst_sme->mfp);
 
     /* 设置加密参数 */
     wal_set_crypto_info(&st_mac_conn_param, pst_sme);
@@ -1505,12 +1483,17 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
         if (OAL_PTR_NULL == puc_ie)
         {
             OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_scan_work_func_etc::puc_ie(%d)(%p) alloc mem return null ptr!}",
-            (oal_uint32)(pst_sme->ie_len),(oal_uint8 *)pst_sme->ie);
+            (oal_uint32)(pst_sme->ie_len),(uintptr_t)(oal_uint8 *)pst_sme->ie);
             free_connect_param_resource(&st_mac_conn_param);
             return OAL_ERR_CODE_ALLOC_MEM_FAIL;
         }
-        oal_memcopy(puc_ie, (oal_uint8 *)pst_sme->ie, st_mac_conn_param.ul_ie_len);
+        l_ret += memcpy_s(puc_ie, pst_sme->ie_len, (oal_uint8 *)pst_sme->ie, st_mac_conn_param.ul_ie_len);
         st_mac_conn_param.puc_ie = puc_ie;
+    }
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_cfg80211_connect::memcpy fail!");
+        free_connect_param_resource(&st_mac_conn_param);
+        return -OAL_EFAIL;
     }
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -1532,11 +1515,11 @@ OAL_STATIC oal_int32  wal_cfg80211_connect(oal_wiphy_stru *pst_wiphy, oal_net_de
     /* 抛事件给驱动，启动关联 */
     l_ret = wal_cfg80211_start_connect_etc(pst_net_device, &st_mac_conn_param);
 
-    if( OAL_SUCC != l_ret)
+    if(OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_connect::wal_cfg80211_start_connect_etc fail %d!}\r\n", l_ret);
         /*事件下发失败在WAL释放，下发成功，无论succ fail HMAC会释放*/
-        if((-OAL_EFAIL != l_ret)&&(-OAL_ETIMEDOUT != l_ret))
+        if (OAL_VALUE_NE_ALL2(l_ret, -OAL_EFAIL, -OAL_ETIMEDOUT))
         {
             free_connect_param_resource(&st_mac_conn_param);
         }
@@ -1558,9 +1541,9 @@ OAL_STATIC oal_int32  wal_cfg80211_disconnect(
     mac_user_stru                   *pst_mac_user;
     mac_vap_stru                    *pst_mac_vap;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_net_device))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_net_device))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_disconnect::input param pointer is null,pst_wiphy, pst_netdev %d, %d!}\r\n", pst_wiphy, pst_net_device);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_disconnect::input param pointer is null,pst_wiphy, pst_netdev %x, %x!}\r\n", (uintptr_t)pst_wiphy, (uintptr_t)pst_net_device);
 
         return -OAL_EINVAL;
     }
@@ -1594,12 +1577,13 @@ OAL_STATIC oal_int32  wal_cfg80211_disconnect(
     }
 
     /* 解析内核下发的connect参数 */
-    oal_memset(&st_mac_cfg_kick_user_param, 0, OAL_SIZEOF(mac_cfg_kick_user_param_stru));
+    memset_s(&st_mac_cfg_kick_user_param, OAL_SIZEOF(mac_cfg_kick_user_param_stru),
+             0, OAL_SIZEOF(mac_cfg_kick_user_param_stru));
 
     /* 解析内核下发的去关联原因  */
     st_mac_cfg_kick_user_param.us_reason_code = us_reason_code;
 
-    oal_memcopy(st_mac_cfg_kick_user_param.auc_mac_addr, pst_mac_user->auc_user_mac_addr, WLAN_MAC_ADDR_LEN);
+    memcpy_s(st_mac_cfg_kick_user_param.auc_mac_addr, WLAN_MAC_ADDR_LEN, pst_mac_user->auc_user_mac_addr, WLAN_MAC_ADDR_LEN);
 
     l_ret = wal_cfg80211_start_disconnect_etc(pst_net_device, &st_mac_cfg_kick_user_param);
     if( OAL_SUCC != l_ret)
@@ -1638,14 +1622,13 @@ OAL_STATIC oal_int32 wal_cfg80211_add_key(oal_wiphy_stru          *pst_wiphy,
     wal_msg_write_stru             st_write_msg;
     mac_addkey_param_stru          st_payload_params;
     wal_msg_stru                  *pst_rsp_msg = NULL;
+    oal_int32                      l_ret = EOK;
 
     /*1.1 入参检查*/
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == pst_netdev)
-        || (OAL_PTR_NULL == pst_params))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_netdev,pst_params))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_add_key::Param Check ERROR,pst_wiphy, pst_netdev, pst_params %d, %d, %d!}\r\n",
-                       pst_wiphy, pst_netdev, pst_params);
+        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_add_key::Param Check ERROR,pst_wiphy, pst_netdev, pst_params %x, %x, %x!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev, (uintptr_t)pst_params);
         return -OAL_EINVAL;
     }
 
@@ -1660,14 +1643,14 @@ OAL_STATIC oal_int32 wal_cfg80211_add_key(oal_wiphy_stru          *pst_wiphy,
 
 
     /*2.1 消息参数准备*/
-    oal_memset(&st_payload_params, 0, OAL_SIZEOF(st_payload_params));
+    memset_s(&st_payload_params, OAL_SIZEOF(st_payload_params), 0, OAL_SIZEOF(st_payload_params));
     st_payload_params.uc_key_index = uc_key_index;
 
-    OAL_MEMZERO(st_payload_params.auc_mac_addr, WLAN_MAC_ADDR_LEN);
+    memset_s(st_payload_params.auc_mac_addr, WLAN_MAC_ADDR_LEN, 0, WLAN_MAC_ADDR_LEN);
     if (OAL_PTR_NULL != puc_mac_addr)
     {
         /*不能使用内核下发的mac指针，可能被释放，需要拷贝到本地再使用*/
-        oal_memcopy(st_payload_params.auc_mac_addr, puc_mac_addr, WLAN_MAC_ADDR_LEN);
+        l_ret += memcpy_s(st_payload_params.auc_mac_addr, WLAN_MAC_ADDR_LEN, puc_mac_addr, WLAN_MAC_ADDR_LEN);
     }
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -1684,8 +1667,8 @@ OAL_STATIC oal_int32 wal_cfg80211_add_key(oal_wiphy_stru          *pst_wiphy,
     st_payload_params.st_key.key_len = pst_params->key_len;
     st_payload_params.st_key.seq_len = pst_params->seq_len;
     st_payload_params.st_key.cipher  = pst_params->cipher;
-    oal_memcopy(st_payload_params.st_key.auc_key, pst_params->key, (oal_uint32)pst_params->key_len);
-    oal_memcopy(st_payload_params.st_key.auc_seq, pst_params->seq, (oal_uint32)pst_params->seq_len);
+    l_ret += memcpy_s(st_payload_params.st_key.auc_key, OAL_WPA_KEY_LEN, pst_params->key, (oal_uint32)pst_params->key_len);
+    l_ret += memcpy_s(st_payload_params.st_key.auc_seq, OAL_WPA_SEQ_LEN, pst_params->seq, (oal_uint32)pst_params->seq_len);
     OAM_INFO_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_add_key::key_len:%d, seq_len:%d, cipher:0x%08x!}\r\n",
                   pst_params->key_len, pst_params->seq_len, pst_params->cipher);
 
@@ -1697,7 +1680,11 @@ OAL_STATIC oal_int32 wal_cfg80211_add_key(oal_wiphy_stru          *pst_wiphy,
     st_write_msg.us_len = OAL_SIZEOF(mac_addkey_param_stru);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_payload_params, OAL_SIZEOF(mac_addkey_param_stru));
+    l_ret += memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_addkey_param_stru),
+                      &st_payload_params, OAL_SIZEOF(mac_addkey_param_stru));
+    if (l_ret != EOK) {
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "wal_cfg80211_add_key::memcpy fail! l_ret[%d]", l_ret);
+    }
 
     /*由于消息中使用了局部变量指针，因此需要将发送该函数设置为同步，否则hmac处理时会使用野指针*/
     if (OAL_SUCC != wal_send_cfg_event_etc(pst_netdev,
@@ -1751,12 +1738,12 @@ OAL_STATIC oal_int32 wal_cfg80211_get_key(oal_wiphy_stru *pst_wiphy,
     mac_getkey_param_stru         st_payload_params  = {0};
     oal_uint8                     auc_mac_addr[WLAN_MAC_ADDR_LEN];
     wal_msg_stru                  *pst_rsp_msg = NULL;
+    oal_int32                     l_ret = EOK;
 
     /*1.1 入参检查*/
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_wiphy) || OAL_UNLIKELY(OAL_PTR_NULL == pst_netdev)
-        ||OAL_UNLIKELY(OAL_PTR_NULL == cookie)|| OAL_UNLIKELY(OAL_PTR_NULL == callback))
+    if (OAL_ANY_NULL_PTR4(pst_wiphy,pst_netdev,cookie,callback))
     {
-        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{wal_cfg80211_get_key::Param Check ERROR,pst_wiphy, pst_netdev, cookie, callback %d, %d, %d, %d!}\r\n", pst_wiphy, pst_netdev, cookie, callback);
+        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{wal_cfg80211_get_key::Param Check ERROR,pst_wiphy, pst_netdev, cookie, callback %x, %x, %x, %x!}\r\n", (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev, (uintptr_t)cookie, (uintptr_t)callback);
         return -OAL_EINVAL;
     }
 
@@ -1767,7 +1754,7 @@ OAL_STATIC oal_int32 wal_cfg80211_get_key(oal_wiphy_stru *pst_wiphy,
     if (OAL_PTR_NULL != puc_mac_addr)
     {
         /*不能使用内核下发的mac指针，可能被释放，需要拷贝到本地再使用*/
-        oal_memcopy(auc_mac_addr, puc_mac_addr, WLAN_MAC_ADDR_LEN);
+        l_ret += memcpy_s(auc_mac_addr, WLAN_MAC_ADDR_LEN, puc_mac_addr, WLAN_MAC_ADDR_LEN);
         st_payload_params.puc_mac_addr = auc_mac_addr;
     }
     else
@@ -1812,7 +1799,12 @@ OAL_STATIC oal_int32 wal_cfg80211_get_key(oal_wiphy_stru *pst_wiphy,
     st_write_msg.us_len = OAL_SIZEOF(mac_getkey_param_stru);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_payload_params, OAL_SIZEOF(mac_getkey_param_stru));
+    l_ret += memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_getkey_param_stru),
+                      &st_payload_params, OAL_SIZEOF(mac_getkey_param_stru));
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_get_key::memcpy fail!");
+        return -OAL_EINVAL;
+    }
 
     /*由于消息中使用了局部变量指针，因此需要将发送该函数设置为同步，否则hmac处理时会使用野指针*/
     if (OAL_SUCC != wal_send_cfg_event_etc(pst_netdev,
@@ -1862,11 +1854,12 @@ OAL_STATIC oal_int32 wal_cfg80211_remove_key(oal_wiphy_stru *pst_wiphy,
     mac_removekey_param_stru         st_payload_params  = {0};
     wal_msg_write_stru               st_write_msg       = {0};
     wal_msg_stru                    *pst_rsp_msg = NULL;
+    oal_int32                        l_ret = EOK;
 
     /*1.1 入参检查*/
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_wiphy) || OAL_UNLIKELY(OAL_PTR_NULL == pst_netdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_remove_key::Param Check ERROR,pst_wiphy, pst_netdev %d, %d!}\r\n", pst_wiphy, pst_netdev);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_remove_key::Param Check ERROR,pst_wiphy, pst_netdev %x, %x!}\r\n", (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -1881,11 +1874,11 @@ OAL_STATIC oal_int32 wal_cfg80211_remove_key(oal_wiphy_stru *pst_wiphy,
 
     /*2.1 消息参数准备*/
     st_payload_params.uc_key_index = uc_key_index;
-    OAL_MEMZERO(st_payload_params.auc_mac_addr, OAL_MAC_ADDR_LEN);
+    memset_s(st_payload_params.auc_mac_addr, OAL_MAC_ADDR_LEN, 0, OAL_MAC_ADDR_LEN);
     if (OAL_PTR_NULL != puc_mac_addr)
     {
         /*不能使用内核下发的mac指针，可能被释放，需要拷贝到本地再使用*/
-        oal_memcopy(st_payload_params.auc_mac_addr, puc_mac_addr, WLAN_MAC_ADDR_LEN);
+        l_ret += memcpy_s(st_payload_params.auc_mac_addr, OAL_MAC_ADDR_LEN, puc_mac_addr, WLAN_MAC_ADDR_LEN);
     }
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -1918,7 +1911,12 @@ OAL_STATIC oal_int32 wal_cfg80211_remove_key(oal_wiphy_stru *pst_wiphy,
     st_write_msg.us_len = OAL_SIZEOF(mac_removekey_param_stru);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_payload_params, OAL_SIZEOF(mac_removekey_param_stru));
+    l_ret += memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_removekey_param_stru),
+                      &st_payload_params, OAL_SIZEOF(mac_removekey_param_stru));
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_remove_key::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     if(OAL_SUCC != wal_send_cfg_event_etc(pst_netdev,
                                WAL_MSG_TYPE_WRITE,
@@ -1966,10 +1964,10 @@ OAL_STATIC oal_int32 wal_cfg80211_set_default_key(oal_wiphy_stru *pst_wiphy,
     wal_msg_write_stru            st_write_msg      = {0};
 
     /*1.1 入参检查*/
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_wiphy) || OAL_UNLIKELY(OAL_PTR_NULL == pst_netdev))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_default_key::pst_wiphy or pst_netdev ptr is null,error %d, %d!}\r\n",
-                       pst_wiphy, pst_netdev);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_default_key::pst_wiphy or pst_netdev ptr is null,error %x, %x!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -2000,7 +1998,11 @@ OAL_STATIC oal_int32 wal_cfg80211_set_default_key(oal_wiphy_stru *pst_wiphy,
     st_write_msg.us_len = OAL_SIZEOF(mac_setdefaultkey_param_stru);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_payload_params, OAL_SIZEOF(mac_setdefaultkey_param_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_setdefaultkey_param_stru),
+                        &st_payload_params, OAL_SIZEOF(mac_setdefaultkey_param_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_set_default_key::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_netdev,
                                WAL_MSG_TYPE_WRITE,
@@ -2028,10 +2030,10 @@ oal_int32 wal_cfg80211_set_default_mgmt_key_etc(oal_wiphy_stru          *pst_wip
     wal_msg_write_stru            st_write_msg       = {0};
 
     /*1.1 入参检查*/
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_wiphy) || OAL_UNLIKELY(OAL_PTR_NULL == pst_netdev))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_default_mgmt_key_etc::pst_wiphy or pst_netdev ptr is null,error %d, %d!}\r\n",
-                       pst_wiphy, pst_netdev);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_default_mgmt_key_etc::pst_wiphy or pst_netdev ptr is null,error %x, %x!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -2051,7 +2053,11 @@ oal_int32 wal_cfg80211_set_default_mgmt_key_etc(oal_wiphy_stru          *pst_wip
     st_write_msg.us_len = OAL_SIZEOF(mac_setdefaultkey_param_stru);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_payload_params, OAL_SIZEOF(mac_setdefaultkey_param_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_setdefaultkey_param_stru),
+                        &st_payload_params, OAL_SIZEOF(mac_setdefaultkey_param_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_set_default_mgmt_key_etc::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_netdev,
                            WAL_MSG_TYPE_WRITE,
@@ -2100,69 +2106,9 @@ OAL_STATIC oal_int32 wal_cfg80211_set_channel(oal_wiphy_stru           *pst_wiph
                                                     oal_ieee80211_channel    *pst_chan,
                                                     oal_nl80211_channel_type  en_channel_type)
 {
-#if 1
     /* 通过HOSTAPD 设置信道采用接口wal_ioctl_set_channel */
     OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_set_channel::should not call this function. call wal_ioctl_set_channel!}\r\n");
     return -OAL_EFAIL;
-#else
-    oal_net_device_stru         *pst_cfg_net_dev;
-    mac_cfg_channel_param_stru  *pst_channel_param;
-    wal_msg_write_stru           st_write_msg;
-    wlan_channel_bandwidth_enum_uint8   en_bandwith;
-    oal_int32                    l_ret;
-
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_chan))
-    {
-        return -OAL_EINVAL;
-    }
-
-    pst_cfg_net_dev = oal_dev_get_by_name("Hisilicon0");    /* 获取配置VAP 的net_device 结构 */
-
-    /***************************************************************************
-        抛事件到wal层处理
-    ***************************************************************************/
-    /* 进行内核带宽值和WITP 带宽值转换 */
-    switch(en_channel_type)
-    {
-        case NL80211_CHAN_NO_HT:
-            en_bandwith = WLAN_BAND_WIDTH_20M;
-            break;
-        case NL80211_CHAN_HT20:
-            en_bandwith = WLAN_BAND_WIDTH_20M;
-            break;
-        case NL80211_CHAN_HT40MINUS:
-            en_bandwith = WLAN_BAND_WIDTH_40MINUS;
-            break;
-        case NL80211_CHAN_HT40PLUS:
-            en_bandwith = WLAN_BAND_WIDTH_40PLUS;
-            break;
-        default:
-            return -OAL_EINVAL;
-    }
-
-    /* 填写消息 */
-    pst_channel_param = (mac_cfg_channel_param_stru *)(st_write_msg.auc_value);
-    pst_channel_param->uc_channel   = (oal_uint8)pst_chan->hw_value;
-    pst_channel_param->en_band      = pst_chan->band;
-    pst_channel_param->en_bandwidth = en_bandwith;
-
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_SET_CHANNEL, OAL_SIZEOF(mac_cfg_channel_param_stru));
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_cfg_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_cfg_channel_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        return -OAL_EFAIL;
-    }
-
-    return OAL_SUCC;
-#endif
 }
 #endif
 /*lint +e40*/
@@ -2171,86 +2117,9 @@ OAL_STATIC oal_int32 wal_cfg80211_set_channel(oal_wiphy_stru           *pst_wiph
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34))
 OAL_STATIC oal_int32 wal_cfg80211_set_wiphy_params(oal_wiphy_stru *pst_wiphy, oal_uint32 ul_changed)
 {
-#if 1
-        /* 通过HOSTAPD 设置RTS 门限，分片门限 采用接口wal_ioctl_set_frag， wal_ioctl_set_rts */
-        OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_set_wiphy_params::should not call this function.call wal_ioctl_set_frag/wal_ioctl_set_rts!}\r\n");
-        return OAL_SUCC;
-#else
-
-    oal_net_device_stru         *pst_cfg_net_dev;
-    mac_cfg_wiphy_param_stru    *pst_wiphy_param;
-    wal_msg_write_stru           st_write_msg;
-    oal_int32                    l_ret;
-
-    if (OAL_PTR_NULL == pst_wiphy)
-    {
-        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_set_wiphy_params::pst_wiphy = NULL!}\r\n");
-        return -OAL_EINVAL;
-    }
-
-    pst_cfg_net_dev = oal_dev_get_by_name("Hisilicon0");    /* 获取配置VAP 的net_device 结构 */
-    /* 调用oal_dev_get_by_name后，必须调用oal_dev_put使net_dev的引用计数减一 */
-    oal_dev_put(pst_cfg_net_dev);
-
-    /***************************************************************************
-        抛事件到wal层处理
-    ***************************************************************************/
-
-    /* 填写消息 */
-    pst_wiphy_param = (mac_cfg_wiphy_param_stru *)(st_write_msg.auc_value);
-    oal_memset(pst_wiphy_param, 0, sizeof(mac_cfg_wiphy_param_stru));
-
-    if (ul_changed & WIPHY_PARAM_FRAG_THRESHOLD)
-    {
-        OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_wiphy_params::wiphy->frag_threshold = %08X!}\r\n", pst_wiphy->frag_threshold);
-        pst_wiphy_param->ul_frag_threshold         = pst_wiphy->frag_threshold;
-        pst_wiphy_param->uc_frag_threshold_changed = OAL_TRUE;
-
-        if (pst_wiphy_param->ul_frag_threshold > WAL_MAX_FRAG_THRESHOLD)
-        {
-            pst_wiphy_param->ul_frag_threshold = WAL_MAX_FRAG_THRESHOLD;
-        }
-        if (pst_wiphy_param->ul_frag_threshold < WAL_MIN_FRAG_THRESHOLD)
-        {
-            pst_wiphy_param->ul_frag_threshold = WAL_MIN_FRAG_THRESHOLD;
-        }
-    }
-
-    if (ul_changed & WIPHY_PARAM_RTS_THRESHOLD)
-    {
-        OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_wiphy_params::wiphy->frag_threshold = %08X!}\r\n", pst_wiphy->frag_threshold);
-        pst_wiphy_param->ul_rts_threshold         = pst_wiphy->rts_threshold;
-        pst_wiphy_param->uc_rts_threshold_changed = OAL_TRUE;
-
-        if (pst_wiphy_param->ul_rts_threshold < WAL_MIN_RTS_THRESHOLD)
-        {
-            pst_wiphy_param->ul_rts_threshold = WAL_MIN_RTS_THRESHOLD;
-        }
-
-        if (pst_wiphy_param->ul_rts_threshold > WAL_MAX_RTS_THRESHOLD)
-        {
-            pst_wiphy_param->ul_rts_threshold = WAL_MAX_RTS_THRESHOLD;
-        }
-    }
-
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_SET_WIPHY_PARAMS, OAL_SIZEOF(mac_cfg_wiphy_param_stru));
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_cfg_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_cfg_wiphy_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_wiphy_params::return err code %d!}\r\n", l_ret);
-        return -OAL_EFAIL;
-    }
-
+    /* 通过HOSTAPD 设置RTS 门限，分片门限 采用接口wal_ioctl_set_frag， wal_ioctl_set_rts */
+    OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_set_wiphy_params::should not call this function.call wal_ioctl_set_frag/wal_ioctl_set_rts!}\r\n");
     return OAL_SUCC;
-#endif
 }
 #endif
 
@@ -2270,17 +2139,18 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
     oal_uint8               *puc_ie;
     mac_cfg_ssid_param_stru *pst_ssid_param;
     oal_uint8                uc_ssid_len;
+    oal_int32                l_memcpy_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_dev) || (OAL_PTR_NULL == pst_beacon_info))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_dev,pst_beacon_info))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_set_beacon::pst_wiphy = %x, pst_dev = %x, pst_beacon_info = %x!}\r\n",
-                         pst_wiphy, pst_dev, pst_beacon_info);
+                         (uintptr_t)pst_wiphy, (uintptr_t)pst_dev, (uintptr_t)pst_beacon_info);
         return -OAL_EINVAL;
     }
 
     if(OAL_PTR_NULL == pst_beacon_info->head)
     {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_beacon::pst_beacon_info->head %x!}\r\n", pst_beacon_info->head);
+        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_beacon::pst_beacon_info->head %x!}\r\n", (uintptr_t)(pst_beacon_info->head));
         return -OAL_EINVAL;
     }
 
@@ -2289,7 +2159,7 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
     uc_vap_id   = pst_mac_vap->uc_vap_id;
 
     /* 初始化beacon interval 和DTIM_PERIOD 参数 */
-    oal_memset(&st_beacon_param, 0, sizeof(mac_beacon_param_stru));
+    memset_s(&st_beacon_param, sizeof(mac_beacon_param_stru), 0, sizeof(mac_beacon_param_stru));
     st_beacon_param.l_interval    = pst_beacon_info->interval;
     st_beacon_param.l_dtim_period = pst_beacon_info->dtim_period;
 
@@ -2305,7 +2175,7 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
         1. 下发安全配置消息
     *****************************************************************************/
     /* 获取 WPA/WPA2 信息元素 */
-    if (OAL_PTR_NULL == pst_beacon_info->tail || OAL_PTR_NULL == pst_beacon_info->head)
+    if (OAL_ANY_NULL_PTR2(pst_beacon_info->tail,pst_beacon_info->head))
     {
         OAM_ERROR_LOG2(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_set_beacon::beacon frame error tail = %d, head = %d!}\r\n",
                        pst_beacon_info->tail, pst_beacon_info->head);
@@ -2347,7 +2217,8 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_CONFIG_BEACON, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
+    l_memcpy_ret = memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_beacon_param_stru),
+                     &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_dev,
@@ -2372,7 +2243,7 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
 
         pst_ssid_param = (mac_cfg_ssid_param_stru *)(st_write_msg.auc_value);
         pst_ssid_param->uc_ssid_len = uc_ssid_len;
-        oal_memcopy(pst_ssid_param->ac_ssid, puc_ie, uc_ssid_len);
+        l_memcpy_ret += memcpy_s(pst_ssid_param->ac_ssid, uc_ssid_len, puc_ie, uc_ssid_len);
 
         l_ret = wal_send_cfg_event_etc(pst_dev,
                                WAL_MSG_TYPE_WRITE,
@@ -2389,14 +2260,10 @@ OAL_STATIC oal_int32 wal_cfg80211_set_beacon(
 
     }
 
-    /* 3. 配置WPS信息元素 */
-#if 0
-    ul_ret = wal_parse_beacon_wps_ie(pst_mac_vap, pst_beacon_info);
-    if (OAL_SUCC != ul_ret)
-    {
-        return -OAL_EINVAL;
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_set_beacon::memcpy fail!");
+        return -OAL_EFAIL;
     }
-#endif
 
     return OAL_SUCC;
 }
@@ -2416,17 +2283,18 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
     oal_uint8               *puc_ie;
     mac_cfg_ssid_param_stru *pst_ssid_param;
     oal_uint8                uc_ssid_len;
+    oal_int32                l_memcpy_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_dev) || (OAL_PTR_NULL == pst_beacon_info))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_dev,pst_beacon_info))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_add_beacon::pst_wiphy = %x, pst_dev = %x, pst_beacon_info = %x!}\r\n",
-                         pst_wiphy, pst_dev, pst_beacon_info);
+                         (uintptr_t)pst_wiphy, (uintptr_t)pst_dev, (uintptr_t)pst_beacon_info);
         return -OAL_EINVAL;
     }
 
     if(OAL_PTR_NULL == pst_beacon_info->head)
     {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_add_beacon::pst_beacon_info->head %x!}\r\n", pst_beacon_info->head);
+        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_add_beacon::pst_beacon_info->head %x!}\r\n", (uintptr_t)(pst_beacon_info->head));
         return -OAL_EINVAL;
     }
 
@@ -2435,7 +2303,7 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
     uc_vap_id   = pst_mac_vap->uc_vap_id;
 
     /* 初始化beacon interval 和DTIM_PERIOD 参数 */
-    oal_memset(&st_beacon_param, 0, sizeof(mac_beacon_param_stru));
+    memset_s(&st_beacon_param, sizeof(mac_beacon_param_stru), 0, sizeof(mac_beacon_param_stru));
     st_beacon_param.l_interval    = pst_beacon_info->interval;
     st_beacon_param.l_dtim_period = pst_beacon_info->dtim_period;
 
@@ -2451,7 +2319,7 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
         1. 下发安全配置消息
     *****************************************************************************/
     /* 获取 WPA/WPA2 信息元素 */
-    if (OAL_PTR_NULL == pst_beacon_info->tail || OAL_PTR_NULL == pst_beacon_info->head)
+    if (OAL_ANY_NULL_PTR2(pst_beacon_info->tail,pst_beacon_info->head))
     {
         OAM_ERROR_LOG2(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_add_beacon::beacon frame error tail = %d, head = %d!}\r\n",
                        pst_beacon_info->tail, pst_beacon_info->head);
@@ -2493,7 +2361,8 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_CONFIG_BEACON, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
+    l_memcpy_ret = memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_beacon_param_stru),
+                            &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_dev,
@@ -2518,7 +2387,7 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
 
         pst_ssid_param = (mac_cfg_ssid_param_stru *)(st_write_msg.auc_value);
         pst_ssid_param->uc_ssid_len = uc_ssid_len;
-        oal_memcopy(pst_ssid_param->ac_ssid, puc_ie, uc_ssid_len);
+        l_memcpy_ret += memcpy_s(pst_ssid_param->ac_ssid, uc_ssid_len, puc_ie, uc_ssid_len);
 
         l_ret = wal_send_cfg_event_etc(pst_dev,
                                WAL_MSG_TYPE_WRITE,
@@ -2533,6 +2402,11 @@ OAL_STATIC oal_int32 wal_cfg80211_add_beacon(
             return -OAL_EFAIL;
         }
 
+    }
+
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_add_beacon::memcpy fail!");
+        return -OAL_EINVAL;
     }
 
     /* 3.配置Wmm信息元素 */
@@ -2577,10 +2451,10 @@ OAL_STATIC oal_int32 wal_cfg80211_del_beacon(oal_wiphy_stru        *pst_wiphy,
 #endif
 
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev))
     {
         OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_del_beacon::pst_wiphy = %x, pst_netdev = %x!}",
-                       pst_wiphy, pst_netdev);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -2621,7 +2495,7 @@ OAL_STATIC oal_int32 wal_cfg80211_del_beacon(oal_wiphy_stru        *pst_wiphy,
         {
             if ((OAL_TRUE == pst_device->en_pm_enable)
                 && (DEV_PWR_STATE_WOW == pst_pm_arbiter->uc_cur_state)
-                && (OAL_TRUE == g_uc_is_cpu_sleep))
+                && (OAL_TRUE == is_cpu_sleep))
             {
                 OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_del_beacon:: device is in WOW state!}");
                 return OAL_SUCC;
@@ -2670,35 +2544,6 @@ OAL_STATIC oal_int32 wal_cfg80211_del_beacon(oal_wiphy_stru        *pst_wiphy,
 #endif
 
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44)) || (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION))
-#if 0
-
-OAL_STATIC oal_int32 wal_cfg80211_bringup_ap(oal_net_device_stru *pst_netdev)
-{
-    wal_msg_write_stru st_write_msg;
-    oal_int32          l_ret = 0;
-
-    /* 填写消息 */
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_START_VAP, OAL_SIZEOF(mac_cfg_start_vap_param_stru));
-    ((mac_cfg_start_vap_param_stru *)st_write_msg.auc_value)->pst_net_dev = pst_netdev;
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_netdev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_cfg_start_vap_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_bringup_ap::failed to bring up ap, error[%d]}", l_ret);
-        return -OAL_EFAIL;
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
 
 OAL_STATIC oal_int32 wal_cfg80211_set_ssid(oal_net_device_stru *pst_netdev,
                                                 oal_uint8           *puc_ssid_ie,
@@ -2712,7 +2557,10 @@ OAL_STATIC oal_int32 wal_cfg80211_set_ssid(oal_net_device_stru *pst_netdev,
 
     pst_ssid_param = (mac_cfg_ssid_param_stru *)(st_write_msg.auc_value);
     pst_ssid_param->uc_ssid_len = uc_ssid_len;
-    oal_memcopy(pst_ssid_param->ac_ssid, (oal_int8 *)puc_ssid_ie, uc_ssid_len);
+    if (EOK != memcpy_s(pst_ssid_param->ac_ssid, uc_ssid_len, (oal_int8 *)puc_ssid_ie, uc_ssid_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_set_ssid::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_netdev,
                                WAL_MSG_TYPE_WRITE,
@@ -2735,6 +2583,17 @@ OAL_STATIC oal_int32 wal_cfg80211_set_auth_mode(oal_net_device_stru *pst_netdev,
 {
     wal_msg_write_stru           st_write_msg;
     oal_int32                    l_ret = 0;
+
+    if((WLAN_WITP_AUTH_OPEN_SYSTEM != en_auth_algs)
+    && (WLAN_WITP_AUTH_SHARED_KEY  != en_auth_algs)
+#ifdef _PRE_WLAN_FEATURE_SAE
+    && (WLAN_WITP_AUTH_SAE         != en_auth_algs)
+#endif
+    && (WLAN_WITP_AUTH_AUTOMATIC   != en_auth_algs))
+    {
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_auth_mode::en_auth_algs error[%d].}", en_auth_algs);
+        return -OAL_EFAIL;
+    }
 
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_AUTH_MODE, OAL_SIZEOF(oal_uint32));
     *((oal_uint32 *)(st_write_msg.auc_value)) = en_auth_algs;  /* 设置配置命令参数 */
@@ -2769,20 +2628,19 @@ OAL_STATIC oal_int32 wal_cfg80211_fill_beacon_param(oal_net_device_stru *pst_net
     oal_uint8     uc_vap_id;
     oal_uint32    ul_offset;
     mac_vap_stru *pst_mac_vap;
+    oal_int32     l_ret = EOK;
 
-    if (OAL_PTR_NULL == pst_netdev
-       || OAL_PTR_NULL == pst_beacon_info
-       || OAL_PTR_NULL == pst_beacon_param)
+    if (OAL_ANY_NULL_PTR3(pst_netdev,pst_beacon_info,pst_beacon_param))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_fill_beacon_param::param is NULL. pst_mac_vap=0x%x, pst_beacon_info=0x%x, pst_beacon_param=0x%x",
-           pst_netdev, pst_beacon_info, pst_beacon_param);
+           (uintptr_t)pst_netdev, (uintptr_t)pst_beacon_info, (uintptr_t)pst_beacon_param);
         return -OAL_EINVAL;
     }
      /* 获取vap id */
     pst_mac_vap = OAL_NET_DEV_PRIV(pst_netdev);
     if (OAL_PTR_NULL == pst_mac_vap)
     {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_fill_beacon_param::pst_mac_vap = %x}", pst_mac_vap);
+        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_fill_beacon_param::pst_mac_vap = %x}", (uintptr_t)pst_mac_vap);
         return -OAL_EINVAL;
     }
 
@@ -2790,10 +2648,10 @@ OAL_STATIC oal_int32 wal_cfg80211_fill_beacon_param(oal_net_device_stru *pst_net
     /*****************************************************************************
         1.安全配置ie消息等
     *****************************************************************************/
-    if (OAL_PTR_NULL == pst_beacon_info->tail || OAL_PTR_NULL == pst_beacon_info->head)
+    if (OAL_ANY_NULL_PTR2(pst_beacon_info->tail,pst_beacon_info->head))
     {
         OAM_ERROR_LOG2(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_fill_beacon_param::beacon frame error tail = %x, head = %x!}",
-                       pst_beacon_info->tail, pst_beacon_info->head);
+                       (uintptr_t)(pst_beacon_info->tail), (uintptr_t)(pst_beacon_info->head));
         return -OAL_EINVAL;
     }
 
@@ -2807,6 +2665,14 @@ OAL_STATIC oal_int32 wal_cfg80211_fill_beacon_param(oal_net_device_stru *pst_net
 
     ul_beacon_head_len = (oal_uint32)pst_beacon_info->head_len;
     ul_beacon_tail_len = (oal_uint32)pst_beacon_info->tail_len;
+
+    /* 运算溢出保护 */
+    if ((ul_beacon_head_len + ul_beacon_tail_len) < ul_beacon_head_len)
+    {
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_fill_beacon_param::beacon_head_len[%d], beacon_tail_len[%d]. len abnormal.}", ul_beacon_head_len, ul_beacon_tail_len);
+        return -OAL_EINVAL;
+    }
+
     puc_beacon_info_tmp = (oal_uint8 *)(oal_memalloc(ul_beacon_head_len + ul_beacon_tail_len));
     if (OAL_PTR_NULL == puc_beacon_info_tmp)
     {
@@ -2815,12 +2681,19 @@ OAL_STATIC oal_int32 wal_cfg80211_fill_beacon_param(oal_net_device_stru *pst_net
     }
     else
     {
-        oal_memcopy(puc_beacon_info_tmp, pst_beacon_info->head, ul_beacon_head_len);
-        oal_memcopy(puc_beacon_info_tmp + ul_beacon_head_len, pst_beacon_info->tail, ul_beacon_tail_len);
+        l_ret += memcpy_s(puc_beacon_info_tmp, ul_beacon_head_len + ul_beacon_tail_len,
+                          pst_beacon_info->head, ul_beacon_head_len);
+        l_ret += memcpy_s(puc_beacon_info_tmp + ul_beacon_head_len, ul_beacon_tail_len,
+                          pst_beacon_info->tail, ul_beacon_tail_len);
+    }
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_cfg80211_fill_beacon_param::memcpy fail!");
+        oal_free(puc_beacon_info_tmp);
+        return -OAL_EINVAL;
     }
 
     /* 为了复用51的解析接口，将新内核结构中的内容赋值给51接口识别的结构体，进而获取信息元素 */
-    OAL_MEMZERO(&st_beacon_info_tmp, sizeof(st_beacon_info_tmp));
+    memset_s(&st_beacon_info_tmp, sizeof(st_beacon_info_tmp), 0, sizeof(st_beacon_info_tmp));
     st_beacon_info_tmp.head     = puc_beacon_info_tmp;
     st_beacon_info_tmp.head_len = (oal_int32)ul_beacon_head_len;
     st_beacon_info_tmp.tail     = puc_beacon_info_tmp + ul_beacon_head_len;
@@ -2890,10 +2763,10 @@ OAL_STATIC oal_int32 wal_cfg80211_change_beacon(oal_wiphy_stru         *pst_wiph
     OAM_INFO_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_change_beacon::enter here.}");
 
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == pst_beacon_info))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_netdev,pst_beacon_info))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_change_beacon::pst_wiphy = %x, pst_netdev = %x, pst_beacon_info = %x!}",
-                         pst_wiphy, pst_netdev, pst_beacon_info);
+                         (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev, (uintptr_t)pst_beacon_info);
         return -OAL_EINVAL;
     }
 #ifdef _PRE_WLAN_FEATURE_DFR
@@ -2907,7 +2780,7 @@ OAL_STATIC oal_int32 wal_cfg80211_change_beacon(oal_wiphy_stru         *pst_wiph
 
 
     /* 初始化beacon interval 和DTIM_PERIOD 参数 */
-    oal_memset(&st_beacon_param, 0, sizeof(mac_beacon_param_stru));
+    memset_s(&st_beacon_param, sizeof(mac_beacon_param_stru), 0, sizeof(mac_beacon_param_stru));
 
     l_ret = wal_cfg80211_fill_beacon_param(pst_netdev, pst_beacon_info, &st_beacon_param);
     if (OAL_SUCC != l_ret)
@@ -2923,7 +2796,11 @@ OAL_STATIC oal_int32 wal_cfg80211_change_beacon(oal_wiphy_stru         *pst_wiph
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_CONFIG_BEACON, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_beacon_param_stru),
+                        &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_change_beacon::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -3108,14 +2985,15 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
     oal_int32                    l_ssid_len = 0;
     oal_netdev_priv_stru        *pst_netdev_priv = OAL_PTR_NULL;
     wlan_auth_alg_mode_enum_uint8     en_auth_algs;
+    oal_int32                         l_memcpy_ret;
 
     OAM_INFO_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_start_ap::enter here.}");
 
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == pst_ap_settings))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_netdev,pst_ap_settings))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_start_ap::pst_wiphy = %x, pst_netdev = %x, pst_ap_settings = %x!}",
-                       pst_wiphy, pst_netdev, pst_ap_settings);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev, (uintptr_t)pst_ap_settings);
         return -OAL_EINVAL;
     }
 
@@ -3123,7 +3001,7 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
     pst_mac_vap = OAL_NET_DEV_PRIV(pst_netdev);
     if (OAL_PTR_NULL == pst_mac_vap)
     {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_start_ap::pst_mac_vap = %x}", pst_mac_vap);
+        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_start_ap::pst_mac_vap = %x}", (uintptr_t)pst_mac_vap);
         return -OAL_EINVAL;
     }
 
@@ -3148,8 +3026,8 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
          OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_start_ap::ssid len error, len[%d].}", l_ssid_len);
          return -OAL_EFAIL;
     }
-    oal_memset(auc_ssid_ie, 0, sizeof(auc_ssid_ie));
-    oal_memcopy(auc_ssid_ie, pst_ap_settings->ssid, (oal_uint32)l_ssid_len);
+    memset_s(auc_ssid_ie, sizeof(auc_ssid_ie), 0, sizeof(auc_ssid_ie));
+    l_memcpy_ret = memcpy_s(auc_ssid_ie, sizeof(auc_ssid_ie), pst_ap_settings->ssid, (oal_uint32)l_ssid_len);
     puc_ssid_ie = auc_ssid_ie;
     uc_ssid_len = (oal_uint8)l_ssid_len;
 
@@ -3167,13 +3045,6 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
         2.2 设置auth mode信息
     *****************************************************************************/
     en_auth_algs = pst_ap_settings->auth_type;
-    if((WLAN_WITP_AUTH_OPEN_SYSTEM != en_auth_algs)
-    && (WLAN_WITP_AUTH_SHARED_KEY != en_auth_algs)
-    && (WLAN_WITP_AUTH_AUTOMATIC != en_auth_algs))
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_start_ap::en_auth_algs error[%d].}", en_auth_algs);
-        return -OAL_EFAIL;
-    }
 
     l_ret = wal_cfg80211_set_auth_mode(pst_netdev, en_auth_algs);
     if (OAL_SUCC != l_ret)
@@ -3187,7 +3058,7 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
     *****************************************************************************/
 
     /* 初始化beacon interval 和DTIM_PERIOD 参数 */
-    oal_memset(&st_beacon_param, 0, sizeof(mac_beacon_param_stru));
+    memset_s(&st_beacon_param, sizeof(mac_beacon_param_stru), 0, sizeof(mac_beacon_param_stru));
     st_beacon_param.l_interval    = pst_ap_settings->beacon_interval;
     st_beacon_param.l_dtim_period = pst_ap_settings->dtim_period;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 44))//TBD:1102 需要，暂时用内核版本号区分
@@ -3213,7 +3084,13 @@ OAL_STATIC oal_int32 wal_cfg80211_start_ap(oal_wiphy_stru           *pst_wiphy,
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_CONFIG_BEACON, OAL_SIZEOF(mac_beacon_param_stru));
 
     /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
+    l_memcpy_ret += memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_beacon_param_stru),
+                             &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
+
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_start_ap::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -3273,10 +3150,10 @@ OAL_STATIC oal_int32 wal_cfg80211_stop_ap(oal_wiphy_stru        *pst_wiphy,
 #endif
 
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev))
     {
         OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_stop_ap::pst_wiphy = %x, pst_netdev = %x!}",
-                       pst_wiphy, pst_netdev);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -3315,7 +3192,7 @@ OAL_STATIC oal_int32 wal_cfg80211_stop_ap(oal_wiphy_stru        *pst_wiphy,
     {
         if ((OAL_TRUE == pst_device->en_pm_enable)
             && (DEV_PWR_STATE_WOW == pst_pm_arbiter->uc_cur_state)
-            && (OAL_TRUE == g_uc_is_cpu_sleep))
+            && (OAL_TRUE == is_cpu_sleep))
         {
             OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_stop_ap:: device is in WOW state!}");
             return OAL_SUCC;
@@ -3378,285 +3255,12 @@ OAL_STATIC oal_int32 wal_cfg80211_stop_ap(oal_wiphy_stru        *pst_wiphy,
     return OAL_SUCC;
 }
 
-#if 0
-
-OAL_STATIC oal_int32 wal_cfg80211_get_mode(oal_net_device_stru      *pst_netdev,
-                                                  wlan_protocol_enum_uint8 *puc_protocol_mode)
-{
-    oal_int32                       l_ret;
-    wal_msg_query_stru              st_query_msg;
-    wal_msg_stru                   *pst_rsp_msg;
-    wal_msg_rsp_stru               *pst_query_rsp_msg;
-    oal_uint8                       uc_prot_idx;
-    mac_cfg_mode_param_stru        *pst_mode_param;
-    mac_vap_stru                   *pst_mac_vap;
-
-    /***************************************************************************
-        抛事件到wal层处理
-    ***************************************************************************/
-
-    st_query_msg.en_wid = WLAN_CFGID_MODE;
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_netdev,
-                               WAL_MSG_TYPE_QUERY,
-                               WAL_MSG_WID_LENGTH,
-                               (oal_uint8 *)&st_query_msg,
-                               OAL_TRUE,
-                               &pst_rsp_msg);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_get_mode::wal_alloc_cfg_event_etc return err code %d!}", l_ret);
-        return l_ret;
-    }
-#error  wal_send_cfg_event_etc API had changed,please recode!
-
-    /* 处理返回消息 */
-    pst_query_rsp_msg = (wal_msg_rsp_stru *)(pst_rsp_msg->auc_msg_data);
-    OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_get_mode::rsp msg wid %d!}", pst_query_rsp_msg->en_wid);
-
-    pst_mode_param = (mac_cfg_mode_param_stru *)(pst_query_rsp_msg->auc_value);
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_netdev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_get_mode::null pointer.}");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    if (WLAN_VAP_MODE_BSS_AP == pst_mac_vap->en_vap_mode)
-    {
-        for (uc_prot_idx = 0; OAL_PTR_NULL != g_ast_mode_map_etc[uc_prot_idx].pc_name; uc_prot_idx++)
-        {
-            if ((g_ast_mode_map_etc[uc_prot_idx].en_mode == pst_mode_param->en_protocol) &&
-                (g_ast_mode_map_etc[uc_prot_idx].en_band == pst_mode_param->en_band) &&
-                (g_ast_mode_map_etc[uc_prot_idx].en_bandwidth == pst_mode_param->en_bandwidth))
-            {
-                break;
-            }
-        }
-    }
-    /* STA模式下频段和频段在和AP关联之后自适应，此处仅比较协议模式 */
-    else if (WLAN_VAP_MODE_BSS_STA == pst_mac_vap->en_vap_mode)
-    {
-        for (uc_prot_idx = 0; OAL_PTR_NULL != g_ast_mode_map_etc[uc_prot_idx].pc_name; uc_prot_idx++)
-        {
-            if (g_ast_mode_map_etc[uc_prot_idx].en_mode == pst_mode_param->en_protocol)
-            {
-                break;
-            }
-        }
-    }
-    else
-    {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_get_mode::vap mode error, vap mode = %d.}",
-                       pst_mac_vap->en_vap_mode);
-        return OAL_SUCC;
-    }
-
-    if (OAL_PTR_NULL == g_ast_mode_map_etc[uc_prot_idx].pc_name)
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_get_mode::uc_prot_idx[%d], en_protocol[%d].}",
-                       uc_prot_idx, pst_mode_param->en_protocol);
-        return OAL_SUCC;
-    }
-
-    *puc_protocol_mode = g_ast_mode_map_etc[uc_prot_idx].en_mode;
-    return OAL_SUCC;
-}
-
-
-OAL_STATIC oal_int32 wal_cfg80211_set_mode(oal_net_device_stru      *pst_netdev,
-                                                  wlan_protocol_enum_uint8 *puc_protocol_mode)
-{
-    mac_cfg_mode_param_stru    *pst_mode_param;
-    wal_msg_write_stru          st_write_msg;
-    oal_int32                   l_ret;
-    oal_uint8                   uc_prot_idx;
-
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == puc_protocol_mode)))
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_mode::pst_net_dev = %x, puc_protocol_mode = %x.}",
-                       pst_netdev, puc_protocol_mode);
-        return -OAL_EFAUL;
-    }
-
-    for (uc_prot_idx = 0; OAL_PTR_NULL != g_ast_mode_map_etc[uc_prot_idx].pc_name; uc_prot_idx++)
-    {
-        if (g_ast_mode_map_etc[uc_prot_idx].en_mode == *puc_protocol_mode)
-        {
-            break;
-        }
-    }
-
-    if (OAL_PTR_NULL == g_ast_mode_map_etc[uc_prot_idx].pc_name)
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_mode::un recognized protocol mode[%d]!}",
-                         *puc_protocol_mode);
-        return -OAL_EINVAL;
-    }
-
-    /***************************************************************************
-        抛事件到wal层处理
-    ***************************************************************************/
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_MODE, OAL_SIZEOF(mac_cfg_mode_param_stru));
-
-    pst_mode_param = (mac_cfg_mode_param_stru *)(st_write_msg.auc_value);
-    pst_mode_param->en_protocol  = g_ast_mode_map_etc[uc_prot_idx].en_mode;
-    pst_mode_param->en_band      = g_ast_mode_map_etc[uc_prot_idx].en_band;
-    pst_mode_param->en_bandwidth = g_ast_mode_map_etc[uc_prot_idx].en_bandwidth;
-
-    OAM_INFO_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_set_mode::protocol[%d],band[%d],bandwidth[%d]!}\r\n",
-                  pst_mode_param->en_protocol, pst_mode_param->en_band, pst_mode_param->en_bandwidth);
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_netdev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_cfg_mode_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_set_mode::wal_alloc_cfg_event_etc return err code[%d]}", l_ret);
-        return l_ret;
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
 
 OAL_STATIC oal_int32 wal_cfg80211_change_bss(oal_wiphy_stru        *pst_wiphy,
                                                     oal_net_device_stru   *pst_netdev,
                                                     oal_bss_parameters    *pst_bss_params)
 {
-#if 0
-    mac_vap_stru                *pst_mac_vap;
-    oal_int32                    l_ret = 0;
-    oal_uint8                    uc_vap_id;
-    wlan_protocol_enum_uint8     en_prev_protocol_mode = WLAN_PROTOCOL_BUTT;
-    wlan_protocol_enum_uint8     en_curr_protocol_mode = WLAN_PROTOCOL_BUTT;
-
-    OAM_INFO_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_change_bss::enter here.}");
-
-    /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == pst_bss_params))
-    {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_change_bss::pst_wiphy = %p, pst_netdev = %p, pst_bss_params = %p!}",
-                       pst_wiphy, pst_netdev, pst_bss_params);
-        return -OAL_EINVAL;
-    }
-
-    /* 获取vap id */
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_netdev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_change_bss::pst_mac_vap is null!}");
-        return -OAL_EINVAL;
-    }
-
-    uc_vap_id = pst_mac_vap->uc_vap_id;
-
-    /* 如果下发的bss参数中cts保护打开，不设置驱动 */
-    if (pst_bss_params->use_cts_prot >= 0)
-    {
-        /* do noting */
-    }
-
-    /* 如果下发的bss参数中短前导参数大于0，不设置参数 */
-    if (pst_bss_params->use_short_preamble >= 0)
-    {
-        /* do noting */
-    }
-
-    if (pst_bss_params->use_short_slot_time >= 0)
-    {
-        /* do noting */
-    }
-
-    /* set ap isolate */
-    if (pst_bss_params->ap_isolate >= 0)
-    {
-        /* do noting */
-    }
-
-    /* 根据支持的最大速率，获取当前支持的模式 */
-    if (pst_bss_params->basic_rates)
-    {
-        switch ((int)(pst_bss_params->basic_rates[pst_bss_params->basic_rates_len - 1]))
-        {
-            case 22: /* B only , rate 11 */
-                en_curr_protocol_mode = WLAN_LEGACY_11B_MODE;
-                break;
-            case 108: /* G only , rate 54 */
-                en_curr_protocol_mode = WLAN_MIXED_TWO_11G_MODE;
-                break;
-            default:
-                en_curr_protocol_mode = WLAN_LEGACY_11B_MODE;
-                break;
-        }
-    }
-
-    if (pst_bss_params->ht_opmode >= 0)
-    {
-        en_curr_protocol_mode = WLAN_HT_MODE;
-    }
-
-    /*****************************************************************************
-        1.获取原先的协议模式，如果和将要配置的相同，则直接返回
-    *****************************************************************************/
-    l_ret = wal_cfg80211_get_mode(pst_netdev, &en_prev_protocol_mode);
-    if (OAL_SUCC == l_ret)
-    {
-        /* 如果要设置的协议模式和原先的协议模式一致，直接返回成功 */
-        if (en_prev_protocol_mode == en_curr_protocol_mode)
-        {
-            OAM_INFO_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_change_bss::old protocol mode = new protocol mode.}");
-            return OAL_SUCC;
-        }
-    }
-    else
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_change_bss:: get mode failed, error[%d]}", l_ret);
-    }
-
-    /*****************************************************************************
-        2.停用ap
-    *****************************************************************************/
-    l_ret = wal_cfg80211_stop_ap(pst_wiphy, pst_netdev);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_change_bss::failed to stop ap, error[%d].}", l_ret);
-        return -OAL_EINVAL;
-    }
-
-    /*****************************************************************************
-        3.设置协议模式
-    *****************************************************************************/
-    l_ret = wal_cfg80211_set_mode(pst_netdev, &en_curr_protocol_mode);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_change_bss::failed to set mode, error[%d].}", l_ret);
-        return -OAL_EINVAL;
-    }
-
-    /*****************************************************************************
-        4.重新启用ap
-    *****************************************************************************/
-    l_ret = wal_netdev_open_etc(pst_netdev,OAL_FALSE);;
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_start_ap::failed to start ap, error[%d]}", l_ret);
-        return -OAL_EFAIL;
-    }
-
     return OAL_SUCC;
-#else
-    return OAL_SUCC;
-#endif
 }
 
 
@@ -3664,6 +3268,7 @@ OAL_STATIC oal_void  wal_cfg80211_print_sched_scan_req_info(oal_cfg80211_sched_s
 {
     oal_int8      ac_tmp_buff[200];
     oal_int32     l_loop = 0;
+    oal_int32     l_ret;
 
     /* 打印基本参数 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
@@ -3690,17 +3295,30 @@ OAL_STATIC oal_void  wal_cfg80211_print_sched_scan_req_info(oal_cfg80211_sched_s
     /* 打印ssid集合的信息 */
     for (l_loop = 0; l_loop < pst_request->n_match_sets; l_loop++)
     {
-        OAL_MEMZERO(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff));
-        OAL_SPRINTF(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), "mactch_sets[%d] info, ssid_len[%d], ssid: %.32s.\n",
-                   l_loop, pst_request->match_sets[l_loop].ssid.ssid_len, pst_request->match_sets[l_loop].ssid.ssid);
+        memset_s(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), 0, OAL_SIZEOF(ac_tmp_buff));
+        l_ret = snprintf_s(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), OAL_SIZEOF(ac_tmp_buff) - 1,
+                           "mactch_sets[%d] info, ssid_len[%d], ssid: %.32s.\n",
+                           l_loop, pst_request->match_sets[l_loop].ssid.ssid_len,
+                           pst_request->match_sets[l_loop].ssid.ssid);
+        if (l_ret < 0) {
+            OAM_ERROR_LOG0(0, OAM_SF_SCAN, "wal_cfg80211_print_sched_scan_req_info::snprintf_s error!");
+            return;
+        }
+
         oam_print_etc(ac_tmp_buff);
     }
 
     for (l_loop = 0; l_loop < pst_request->n_ssids; l_loop++)
     {
-        OAL_MEMZERO(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff));
-        OAL_SPRINTF(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), "ssids[%d] info, ssid_len[%d], ssid: %.32s.\n",
-                   l_loop, pst_request->ssids[l_loop].ssid_len, pst_request->ssids[l_loop].ssid);
+        memset_s(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), 0, OAL_SIZEOF(ac_tmp_buff));
+        l_ret = snprintf_s(ac_tmp_buff, OAL_SIZEOF(ac_tmp_buff), OAL_SIZEOF(ac_tmp_buff) - 1,
+                           "ssids[%d] info, ssid_len[%d], ssid: %.32s.\n",
+                           l_loop, pst_request->ssids[l_loop].ssid_len, pst_request->ssids[l_loop].ssid);
+        if (l_ret < 0) {
+            OAM_ERROR_LOG0(0, OAM_SF_SCAN, "wal_cfg80211_print_sched_scan_req_info::snprintf_s error!");
+            return;
+        }
+
         oam_print_etc(ac_tmp_buff);
     }
 
@@ -3715,7 +3333,7 @@ OAL_STATIC oal_bool_enum_uint8 wal_pno_scan_with_assigned_ssid(oal_cfg80211_ssid
 {
     oal_int32 l_loop;
 
-    if ((OAL_PTR_NULL == pst_ssid) || (OAL_PTR_NULL == pst_ssid_list))
+    if (OAL_ANY_NULL_PTR2(pst_ssid,pst_ssid_list))
     {
         return OAL_FALSE;
     }
@@ -3744,12 +3362,13 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_start(oal_wiphy_stru               
     mac_pno_scan_stru               st_pno_scan_info;
     oal_int32                       l_loop = 0;
     oal_uint32                      ul_ret;
+    oal_int32                       l_ret;
 
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == pst_request))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_netdev,pst_request))
     {
         OAM_ERROR_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_sched_scan_start::input param pointer is null, pst_wiphy[%p], pst_netdev[%p], pst_request[%p]!}",
-                       pst_wiphy, pst_netdev, pst_request);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev, (uintptr_t)pst_request);
         return -OAL_EINVAL;
     }
 
@@ -3795,7 +3414,7 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_start(oal_wiphy_stru               
     }
 
     /* 初始化pno扫描的结构体信息 */
-    OAL_MEMZERO(&st_pno_scan_info, OAL_SIZEOF(st_pno_scan_info));
+    memset_s(&st_pno_scan_info, OAL_SIZEOF(st_pno_scan_info), 0, OAL_SIZEOF(st_pno_scan_info));
 
     /* 将内核下发的匹配的ssid集合复制到本地 */
     pst_scan_ssid_list = OAL_PTR_NULL;
@@ -3811,7 +3430,13 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_start(oal_wiphy_stru               
             OAM_WARNING_LOG1(0, OAM_SF_SCAN, "{wal_cfg80211_sched_scan_start:: wrong ssid_len[%d]!}", pst_ssid_tmp->ssid_len);
             continue;
         }
-        oal_memcopy(st_pno_scan_info.ast_match_ssid_set[l_loop].auc_ssid, pst_ssid_tmp->ssid, pst_ssid_tmp->ssid_len);
+        l_ret = memcpy_s(st_pno_scan_info.ast_match_ssid_set[l_loop].auc_ssid, WLAN_SSID_MAX_LEN,
+                         pst_ssid_tmp->ssid, pst_ssid_tmp->ssid_len);
+        if (l_ret != EOK) {
+            OAM_ERROR_LOG0(0, OAM_SF_SCAN, "wal_cfg80211_sched_scan_start::memcpy fail!");
+            return -OAL_EINVAL;
+        }
+
         st_pno_scan_info.ast_match_ssid_set[l_loop].auc_ssid[pst_ssid_tmp->ssid_len] = '\0';
         st_pno_scan_info.ast_match_ssid_set[l_loop].en_scan_ssid = wal_pno_scan_with_assigned_ssid(pst_ssid_tmp, pst_scan_ssid_list, pst_request->n_ssids);
         st_pno_scan_info.l_ssid_count++;
@@ -3823,7 +3448,6 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_start(oal_wiphy_stru               
 #else
     st_pno_scan_info.l_rssi_thold         = pst_request->rssi_thold;
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)) */
-    //st_pno_scan_info.ul_pno_scan_interval = pst_request->interval;        /* 上层下发的默认值为10s */
     st_pno_scan_info.ul_pno_scan_interval = PNO_SCHED_SCAN_INTERVAL;        /* 驱动自己定义为30s */
     st_pno_scan_info.uc_pno_scan_repeat   = MAX_PNO_REPEAT_TIMES;
 
@@ -3857,16 +3481,40 @@ OAL_STATIC oal_int32 wal_cfg80211_sched_scan_stop(oal_wiphy_stru          *pst_w
 #endif
 {
     /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev))
     {
         OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_sched_scan_stop::input param pointer is null, pst_wiphy[%p], pst_netdev[%p]!}",
-                       pst_wiphy, pst_netdev);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
     return wal_stop_sched_scan_etc(pst_netdev);
 }
 
+#endif
+
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
+OAL_INLINE oal_int32  wal_update_setup_ap_etc(oal_net_device_stru *pst_net_dev)
+{
+     oal_int32                   l_ret;
+
+#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
+    if(wlan_customize_etc.uc_random_mac_addr_connect)
+    {
+        /* sta切到ap 用当前sta mac addr更新ap的，将sta的置成NV */
+        if (pst_net_dev->ieee80211_ptr->iftype == NL80211_IFTYPE_STATION)
+        {
+            oal_set_mac_addr(g_auc_wifiapmac_etc, g_auc_wifistamac_etc);
+            oal_set_mac_addr(g_auc_wifistamac_etc, g_auc_wifinvmac_etc);
+
+            OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_update_setup_ap_etc:: sta->ap, set ap_mac_addr with sta mac.}\r\n");
+        }
+    }
+#endif
+
+     l_ret = wal_setup_ap_etc(pst_net_dev);
+     return l_ret;
+}
 #endif
 
 
@@ -3894,8 +3542,8 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
     wlan_vap_mode_enum_uint8    en_vap_mode;
     mac_cfg_del_vap_param_stru  st_del_vap_param;
     mac_cfg_add_vap_param_stru  st_add_vap_param;
-    mac_vap_stru               *pst_mac_vap;
-    mac_device_stru            *pst_mac_device;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
+    mac_device_stru            *pst_mac_device = OAL_PTR_NULL;
     oal_int8                    ac_p2p_netdev_name[MAC_NET_DEVICE_NAME_LENGTH];
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
     oal_int32                   l_ret;
@@ -3928,11 +3576,10 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
 
 #endif //#ifdef _PRE_WLAN_FEATURE_DFR
 
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == pst_params))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_params))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_change_virtual_intf_etc::pst_wiphy or pul_flag or pst_params ptr is null,error %d, %d, %d!}\r\n",
-                        pst_wiphy, pst_params);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_change_virtual_intf_etc::pst_wiphy or pul_flag or pst_params ptr is null,error %x, %x, %x!}\r\n",
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_params);
         return -OAL_EINVAL;
     }
 
@@ -3957,10 +3604,6 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
             return -OAL_EINVAL;
 
         case NL80211_IFTYPE_STATION:
-#if 0/*暂时无用的赋值*/
-            en_vap_mode = WLAN_VAP_MODE_BSS_STA;
-            en_p2p_mode = WLAN_LEGACY_VAP_MODE;
-#endif
 
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
             if(NL80211_IFTYPE_AP == pst_net_dev->ieee80211_ptr->iftype)
@@ -3970,13 +3613,9 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
                 return l_ret;
             }
 #endif
-            //if(pst_net_dev->ieee80211_ptr->iftype != NL80211_IFTYPE_P2P_CLIENT)
-            {
-                pst_net_dev->ieee80211_ptr->iftype = en_type;//TBD:P2P BUG P2P_DEVICE 提前创建，不需要通过wpa_supplicant 创建
-                OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_change_virtual_intf_etc::change to station}\r\n");
-            }
+            pst_net_dev->ieee80211_ptr->iftype = en_type;//TBD:P2P BUG P2P_DEVICE 提前创建，不需要通过wpa_supplicant 创建
+            OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_change_virtual_intf_etc::change to station}\r\n");
             return OAL_SUCC;
-            //break;
         case NL80211_IFTYPE_P2P_CLIENT:
             en_vap_mode = WLAN_VAP_MODE_BSS_STA;
             en_p2p_mode = WLAN_P2P_CL_MODE;
@@ -3998,7 +3637,7 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
     if(NL80211_IFTYPE_AP == en_type)
     {
-        l_ret = wal_setup_ap_etc(pst_net_dev);
+        l_ret = wal_update_setup_ap_etc(pst_net_dev);
         return l_ret;
     }
 #endif
@@ -4025,7 +3664,8 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
     }
 
     /* 通过device id获取netdev名字 */
-    OAL_SPRINTF(ac_p2p_netdev_name, MAC_NET_DEVICE_NAME_LENGTH, "p2p%d", pst_mac_device->uc_device_id);
+    snprintf_s(ac_p2p_netdev_name, MAC_NET_DEVICE_NAME_LENGTH, MAC_NET_DEVICE_NAME_LENGTH - 1,
+               "p2p%d", pst_mac_device->uc_device_id);
 
     if (0 == (oal_strcmp(ac_p2p_netdev_name, pst_net_dev->name)))
     {
@@ -4043,7 +3683,7 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
     /* 停止VAP */
     wal_netdev_stop_etc(pst_net_dev);
 
-    OAL_MEMZERO(&st_del_vap_param, OAL_SIZEOF(st_del_vap_param));
+    memset_s(&st_del_vap_param, OAL_SIZEOF(st_del_vap_param), 0, OAL_SIZEOF(st_del_vap_param));
     /* 删除VAP */
     st_del_vap_param.pst_net_dev = pst_net_dev;
     /* 设备p2p 模式需要从net_device 中获取 */
@@ -4053,11 +3693,12 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
         return -OAL_EFAIL;
     }
 
-    OAL_MEMZERO(&st_add_vap_param, OAL_SIZEOF(st_add_vap_param));
+    memset_s(&st_add_vap_param, OAL_SIZEOF(st_add_vap_param), 0, OAL_SIZEOF(st_add_vap_param));
     /* 重新创建对应模式VAP */
     st_add_vap_param.pst_net_dev = pst_net_dev;
     st_add_vap_param.en_vap_mode = en_vap_mode;
     st_add_vap_param.en_p2p_mode = en_p2p_mode;
+
     wal_cfg80211_add_vap_etc(&st_add_vap_param);
 
     /* 启动VAP */
@@ -4066,8 +3707,6 @@ oal_int32 wal_cfg80211_change_virtual_intf_etc(oal_wiphy_stru        *pst_wiphy,
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34))
     pst_net_dev->ieee80211_ptr->iftype = en_type;
-//#else
-//    l_ifindex = l_ifindex;   /*comment due to codeDEX report*/
 #endif
     return OAL_SUCC;
 }
@@ -4113,7 +3752,7 @@ OAL_STATIC oal_int32 wal_cfg80211_del_station(oal_wiphy_stru        *pst_wiphy,
     us_reason_code = params->reason_code;
 #endif
 
-    if (OAL_PTR_NULL == pst_wiphy || OAL_PTR_NULL == pst_dev)
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_dev))
     {
         return -OAL_EFAUL;
     }
@@ -4143,7 +3782,7 @@ OAL_STATIC oal_int32 wal_cfg80211_del_station(oal_wiphy_stru        *pst_wiphy,
 
     if (OAL_PTR_NULL == puc_mac)
     {
-        oal_memset(auc_mac_boardcast,0xff,OAL_MAC_ADDR_LEN);
+        memset_s(auc_mac_boardcast, OAL_MAC_ADDR_LEN, 0xff, OAL_MAC_ADDR_LEN);
         puc_mac = auc_mac_boardcast;
         OAM_INFO_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_del_station::deleting all user!}\r\n");
     }
@@ -4154,7 +3793,10 @@ OAL_STATIC oal_int32 wal_cfg80211_del_station(oal_wiphy_stru        *pst_wiphy,
     }
 
     st_kick_user_param.us_reason_code = us_reason_code;
-    oal_memcopy(st_kick_user_param.auc_mac_addr, puc_mac, OAL_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(st_kick_user_param.auc_mac_addr, WLAN_MAC_ADDR_LEN, puc_mac, OAL_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_del_station::memcpy fail!");
+        return -OAL_EINVAL;
+    }
     uint_ret = wal_cfg80211_start_disconnect_etc(pst_dev, &st_kick_user_param);
     if (OAL_SUCC != uint_ret)
     {
@@ -4189,7 +3831,6 @@ OAL_STATIC oal_int32 wal_cfg80211_change_station(oal_wiphy_stru                 
 {
     return OAL_SUCC;
 }
-
 #define QUERY_STATION_INFO_TIME  (5 * OAL_TIME_HZ)
 
 OAL_STATIC oal_void wal_cfg80211_fill_station_info(oal_station_info_stru  *pst_sta_info,
@@ -4223,11 +3864,7 @@ OAL_STATIC oal_void wal_cfg80211_fill_station_info(oal_station_info_stru  *pst_s
     pst_sta_info->rx_dropped_misc  = pst_stats->rx_dropped_misc;
 
     pst_sta_info->filled |= BIT(NL80211_STA_INFO_TX_BITRATE);
-    /* kernel\net\wireless\util.c cfg80211_calculate_bitrate
-        if (!(rate->flags & RATE_INFO_FLAGS_MCS) &&
-            !(rate->flags & RATE_INFO_FLAGS_VHT_MCS))
-        return rate->legacy;
-    */
+
     if (pst_stats->txrate.flags & RATE_INFO_FLAGS_VHT_MCS)
     {
         pst_sta_info->txrate.legacy = pst_stats->txrate.legacy; /* dmac已将单位修改为100kbps */
@@ -4339,21 +3976,20 @@ OAL_STATIC oal_int32 wal_cfg80211_get_station(oal_wiphy_stru        *pst_wiphy,
                                                    oal_uint8             *puc_mac,
                                                    oal_station_info_stru *pst_sta_info)
 {
-    mac_vap_stru                          *pst_mac_vap;
-    hmac_vap_stru                         *pst_hmac_vap;
+    mac_vap_stru                          *pst_mac_vap = OAL_PTR_NULL;
+    hmac_vap_stru                         *pst_hmac_vap = OAL_PTR_NULL;
     dmac_query_request_event               st_dmac_query_request_event;
-    dmac_query_station_info_request_event *pst_query_station_info;
+    dmac_query_station_info_request_event *pst_query_station_info = OAL_PTR_NULL;
     wal_msg_write_stru                     st_write_msg;
     oal_int                                i_leftime;
     oal_int32                              l_ret;
     oal_uint8                              uc_vap_id;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_dev) ||
-        (OAL_PTR_NULL == puc_mac)|| (OAL_PTR_NULL == pst_sta_info))
+    if (OAL_ANY_NULL_PTR4(pst_wiphy,pst_dev,puc_mac,pst_sta_info))
     {
         OAM_ERROR_LOG4(0, OAM_SF_ANY,
                        "{wal_cfg80211_get_station::pst_wiphy[0x%p],pst_dev[0x%p],puc_mac[0x%p],pst_sta_info[0x%p]!}",
-                       pst_wiphy, pst_dev, puc_mac, pst_sta_info);
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_dev, (uintptr_t)puc_mac, (uintptr_t)pst_sta_info);
         return -OAL_EINVAL;
     }
 
@@ -4405,7 +4041,11 @@ OAL_STATIC oal_int32 wal_cfg80211_get_station(oal_wiphy_stru        *pst_wiphy,
     st_write_msg.us_len = OAL_SIZEOF(st_dmac_query_request_event);
 
     /*3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, pst_query_station_info, OAL_SIZEOF(dmac_query_station_info_request_event));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(dmac_query_station_info_request_event),
+                        pst_query_station_info, OAL_SIZEOF(dmac_query_station_info_request_event))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_get_station::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_dev,
                                WAL_MSG_TYPE_WRITE,
@@ -4451,6 +4091,11 @@ OAL_STATIC oal_int32 wal_cfg80211_get_station(oal_wiphy_stru        *pst_wiphy,
         pst_sta_info->filled |= BIT(NL80211_STA_INFO_CNAHLOAD);
         pst_sta_info->chload = pst_hmac_vap->station_info.chload;
 #endif
+
+#ifdef _PRE_WLAN_FEATURE_ROAM
+        hmac_roam_handle_home_network(pst_hmac_vap);
+#endif
+
         return OAL_SUCC;
     }
 }
@@ -4520,7 +4165,7 @@ oal_uint32 wal_del_p2p_group_etc(mac_device_stru *pst_mac_device)
 
         if (IS_P2P_GO(pst_mac_vap) || IS_P2P_CL(pst_mac_vap))
         {
-            OAL_MEMZERO(&st_del_vap_param, OAL_SIZEOF(st_del_vap_param));
+            memset_s(&st_del_vap_param, OAL_SIZEOF(st_del_vap_param), 0, OAL_SIZEOF(st_del_vap_param));
             OAL_IO_PRINT("wal_del_p2p_group_etc:: ifname %s\r\n", pst_net_dev->name);
             st_del_vap_param.pst_net_dev = pst_net_dev;
             st_del_vap_param.en_vap_mode = pst_mac_vap->en_vap_mode;
@@ -4532,7 +4177,9 @@ oal_uint32 wal_del_p2p_group_etc(mac_device_stru *pst_mac_device)
             wal_stop_vap_etc(pst_net_dev);
             if(OAL_SUCC == wal_cfg80211_del_vap_etc(&st_del_vap_param))
             {
-                wal_cfg80211_unregister_netdev_etc(pst_net_dev);
+                /* 启动linux work queue 删除net_device，不要直接调用unregister_netdev以防wal_netdev_stop_etc死循环 */
+                pst_hmac_vap->pst_del_net_device = pst_net_dev;
+                oal_workqueue_schedule(&(pst_hmac_vap->st_del_virtual_inf_worker));
             }
         }
     }
@@ -4649,12 +4296,10 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
 #endif
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == puc_name)
-        || (OAL_PTR_NULL == pst_params))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,puc_name,pst_params))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_add_virtual_intf:: ptr is null,error pst_wiphy %d, puc_name %d, pst_params %d!}\r\n",
-                        pst_wiphy, puc_name, pst_params);
+        OAM_ERROR_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_add_virtual_intf:: ptr is null,error pst_wiphy %x, puc_name %x, pst_params %x!}\r\n",
+                        (uintptr_t)pst_wiphy, (uintptr_t)puc_name, (uintptr_t)pst_params);
         return ERR_PTR(-EINVAL);
     }
 
@@ -4685,12 +4330,13 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
         case NL80211_IFTYPE_MONITOR:
             OAM_ERROR_LOG1(0, OAM_SF_CFG, "{wal_cfg80211_add_virtual_intf::Unsupported interface type[%d]!}\r\n", en_type);
             return ERR_PTR(-EINVAL);
-#ifdef _PRE_WLAN_FEATURE_P2P
+
+    #ifdef _PRE_WLAN_FEATURE_P2P
         case NL80211_IFTYPE_P2P_DEVICE:
-#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
+        #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
             pst_net_dev       = pst_mac_device->st_p2p_info.pst_p2p_net_device;
             pst_wdev          = pst_net_dev->ieee80211_ptr;
-#else
+        #else
             /* p2p0 在加载wifi 驱动后创建，不需要通过该接口创建，直接返回已创建的p2p0 wireless device 即可 */
             uc_p2p0_vap_idx   = pst_mac_device->st_p2p_info.uc_p2p0_vap_idx;
             pst_p2p0_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(uc_p2p0_vap_idx);
@@ -4702,9 +4348,10 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
             }
             pst_net_dev       = pst_p2p0_hmac_vap->pst_p2p0_net_device;
             pst_wdev          = pst_net_dev->ieee80211_ptr;
-#endif
+        #endif
             return pst_wdev;
-#endif
+    #endif
+
         case NL80211_IFTYPE_P2P_CLIENT:
             en_vap_mode = WLAN_VAP_MODE_BSS_STA;
             en_p2p_mode = WLAN_P2P_CL_MODE;
@@ -4725,6 +4372,7 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
             OAM_ERROR_LOG1(0, OAM_SF_CFG, "{wal_cfg80211_add_virtual_intf::Unsupported interface type[%d]!}\r\n", en_type);
             return ERR_PTR(-EINVAL);
     }
+
     /* 如果创建的net device已经存在，直接返回 */
     /* 根据dev_name找到dev */
     pst_net_dev = oal_dev_get_by_name(puc_name);
@@ -4803,7 +4451,11 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
         return ERR_PTR(-ENODEV);
     }
     pst_cfg_net_dev = pst_cfg_hmac_vap->pst_net_device;
-    oal_memcopy(ac_name, puc_name, OAL_STRLEN(puc_name));
+    if (EOK != memcpy_s(ac_name, OAL_IF_NAME_SIZE, puc_name, OAL_STRLEN(puc_name))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_add_virtual_intf::memcpy fail!");
+        return ERR_PTR(-EAGAIN);
+    }
+
 #if defined(_PRE_WLAN_FEATURE_FLOWCTL)
     pst_net_dev = oal_net_alloc_netdev_mqs(OAL_SIZEOF(oal_netdev_priv_stru), ac_name, oal_ether_setup, WAL_NETDEV_SUBQUEUE_MAX_NUM, 1);    /* 此函数第一个入参代表私有长度，此处不涉及为0 */
 #elif defined(_PRE_WLAN_FEATURE_OFFLOAD_FLOWCTL)
@@ -4827,14 +4479,13 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
         return ERR_PTR(-ENOMEM);
     }
 
-    oal_memset(pst_wdev, 0, OAL_SIZEOF(oal_wireless_dev_stru));
+    memset_s(pst_wdev, OAL_SIZEOF(oal_wireless_dev_stru), 0, OAL_SIZEOF(oal_wireless_dev_stru));
 
     /* 对netdevice进行赋值 */
     /* 对新创建的net_device 初始化对应参数 */
 #ifdef CONFIG_WIRELESS_EXT
     pst_net_dev->wireless_handlers             = &g_st_iw_handler_def_etc;
-#endif /* CONFIG_WIRELESS_EXT */
-    /* OAL_NETDEVICE_OPS(pst_net_dev)             = &g_st_wal_net_dev_ops_etc; */
+#endif
     pst_net_dev->netdev_ops                    = &g_st_wal_net_dev_ops_etc;
 
     pst_net_dev->ethtool_ops                   = &g_st_wal_ethtool_ops_etc;
@@ -4849,15 +4500,12 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
     OAL_NETDEVICE_WATCHDOG_TIMEO(pst_net_dev)  = 5;
     OAL_NETDEVICE_WDEV(pst_net_dev)            = pst_wdev;
     OAL_NETDEVICE_QDISC(pst_net_dev, OAL_PTR_NULL);
-#ifdef _PRE_WLAN_FEATURE_SMP_SUPPORT
-//    OAL_NETDEVICE_TX_QUEUE_LEN(pst_net_dev) = 0;
-#endif
 
     pst_wdev->iftype = en_type;
     pst_wdev->wiphy  = pst_mac_device->pst_wiphy;
     pst_wdev->netdev = pst_net_dev;/* 给wdev 中的net_device 赋值 */
 #ifdef _PRE_WLAN_FEATURE_P2P
-    if ((WLAN_LEGACY_VAP_MODE == en_p2p_mode) && (WLAN_VAP_MODE_BSS_STA == en_vap_mode))
+    if (WLAN_VAP_MODE_LEGACY_VAP(en_p2p_mode, en_vap_mode))
     {
         /* 如果创建wlan0， 则保存wlan0 为主net_device,p2p0 和p2p-p2p0 MAC 地址从主netdevice 获取 */
         if (pst_mac_device->st_p2p_info.pst_primary_net_device == OAL_PTR_NULL)
@@ -4897,7 +4545,7 @@ OAL_STATIC oal_wireless_dev_stru * wal_cfg80211_add_virtual_intf(oal_wiphy_stru 
 #endif
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     pst_add_vap_param->bit_11ac2g_enable = (oal_uint8)!!hwifi_get_init_value_etc(CUS_TAG_INI, WLAN_CFG_INIT_11AC2G_ENABLE);
-    pst_add_vap_param->bit_disable_capab_2ght40 = g_st_wlan_customize_etc.uc_disable_capab_2ght40;
+    pst_add_vap_param->bit_disable_capab_2ght40 = wlan_customize_etc.uc_disable_capab_2ght40;
 #endif
     /* 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_cfg_net_dev,
@@ -4962,7 +4610,7 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
 {
     /* 异步去注册net_device */
     wal_msg_write_stru           st_write_msg;
-    wal_msg_stru               *pst_rsp_msg = {0};
+    wal_msg_stru                *pst_rsp_msg = OAL_PTR_NULL;
     oal_int32                    l_ret;
 #ifdef _PRE_WLAN_FEATURE_P2P
     wlan_p2p_mode_enum_uint8     en_p2p_mode = WLAN_LEGACY_VAP_MODE;
@@ -4972,10 +4620,10 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
     hmac_vap_stru               *pst_hmac_vap;
     hmac_device_stru            *pst_hmac_device;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_wdev)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_wiphy,pst_wdev)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_del_virtual_intf::pst_wiphy or pst_wdev null ptr error %d, %d!}\r\n",
-                       pst_wiphy, pst_wdev);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_del_virtual_intf::pst_wiphy or pst_wdev null ptr error %x, %x!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev);
         return -OAL_EINVAL;
     }
 
@@ -5013,7 +4661,6 @@ OAL_STATIC oal_int32 wal_cfg80211_del_virtual_intf(oal_wiphy_stru           *pst
     oal_net_tx_stop_all_queues(pst_net_dev);
     wal_netdev_stop_etc(pst_net_dev);
     /* 在释放完net_device 后释放wireless device */
-    //OAL_MEM_FREE(OAL_NETDEVICE_WDEV(pst_net_dev), OAL_TRUE);
 
     /***************************************************************************
                                 抛事件到wal层处理
@@ -5091,8 +4738,30 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx_cancel_wait(oal_wiphy_stru        *pst
                                                     oal_wireless_dev_stru   *pst_wdev,
                                                     oal_uint64               ull_cookie)
 {
-    /* TBD */
-    return -OAL_EFAIL;
+    oal_net_device_stru            *pst_netdev = OAL_PTR_NULL;
+    mac_vap_stru                   *pst_mac_vap = OAL_PTR_NULL;
+
+    if (!pst_wdev)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx_cancel_wait::pst_wdev is Null!}");
+        return -OAL_EFAIL;
+    }
+
+    pst_netdev = pst_wdev->netdev;
+    if (!pst_netdev)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx_cancel_wait::pst_netdev is Null!}");
+        return -OAL_EFAIL;
+    }
+
+    pst_mac_vap    = OAL_NET_DEV_PRIV(pst_netdev);
+    if(NULL == pst_mac_vap)
+    {
+        OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx_cancel_wait::can't get mac vap from netdevice priv data!}");
+        return -OAL_EFAIL;
+    }
+
+    return wal_p2p_stop_roc(pst_mac_vap, pst_netdev);
 }
 #endif  /* _PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_E5 */
 #endif
@@ -5107,19 +4776,20 @@ OAL_STATIC oal_int32 wal_cfg80211_set_pmksa(oal_wiphy_stru           *pst_wiphy,
     wal_msg_write_stru                       st_write_msg           = {0};
     mac_cfg_pmksa_param_stru                *pst_cfg_pmksa;
     oal_int32                                l_ret;
+    oal_int32                                l_memcpy_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_net_device) || (OAL_PTR_NULL == pmksa))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_net_device,pmksa))
     {
         OAM_ERROR_LOG3(0, OAM_SF_CFG,
-                       "{wal_cfg80211_set_pmksa::param null! pst_wiphy[%d], pst_net_device[%d], pmksa[%d]!!}\r\n",
-                       pst_wiphy, pst_net_device, pmksa);
+                       "{wal_cfg80211_set_pmksa::param null! pst_wiphy[%x], pst_net_device[%x], pmksa[%x]!!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_net_device, (uintptr_t)pmksa);
         return -OAL_EINVAL;
     }
 
-    if ((OAL_PTR_NULL == pmksa->bssid) || (OAL_PTR_NULL == pmksa->pmkid))
+    if (OAL_ANY_NULL_PTR2(pmksa->bssid,pmksa->pmkid))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_set_pmksa::param null! bssid[%d] pmkid[%d]}\r\n",
-                       pmksa->bssid, pmksa->pmkid);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_set_pmksa::param null! bssid[%x] pmkid[%x]}\r\n",
+                       (uintptr_t)(pmksa->bssid), (uintptr_t)(pmksa->pmkid));
         return -OAL_EINVAL;
     }
 
@@ -5128,8 +4798,12 @@ OAL_STATIC oal_int32 wal_cfg80211_set_pmksa(oal_wiphy_stru           *pst_wiphy,
     ***************************************************************************/
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_SET_PMKSA, OAL_SIZEOF(mac_cfg_pmksa_param_stru));
     pst_cfg_pmksa = (mac_cfg_pmksa_param_stru *)st_write_msg.auc_value;
-    oal_memcopy(pst_cfg_pmksa->auc_bssid, pmksa->bssid, WLAN_MAC_ADDR_LEN);
-    oal_memcopy(pst_cfg_pmksa->auc_pmkid, pmksa->pmkid, WLAN_PMKID_LEN);
+    l_memcpy_ret = memcpy_s(pst_cfg_pmksa->auc_bssid, WLAN_MAC_ADDR_LEN, pmksa->bssid, WLAN_MAC_ADDR_LEN);
+    l_memcpy_ret += memcpy_s(pst_cfg_pmksa->auc_pmkid, WLAN_PMKID_LEN, pmksa->pmkid, WLAN_PMKID_LEN);
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_cfg80211_set_pmksa::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_net_device,
                                 WAL_MSG_TYPE_WRITE,
@@ -5155,19 +4829,20 @@ OAL_STATIC oal_int32 wal_cfg80211_del_pmksa(oal_wiphy_stru           *pst_wiphy,
     wal_msg_write_stru                       st_write_msg           = {0};
     mac_cfg_pmksa_param_stru                *pst_cfg_pmksa;
     oal_int32                                l_ret;
+    oal_int32                                l_memcpy_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_net_device) || (OAL_PTR_NULL == pmksa))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_net_device,pmksa))
     {
         OAM_ERROR_LOG3(0, OAM_SF_CFG,
-                       "{wal_cfg80211_del_pmksa::param null! pst_wiphy[%d], pst_net_device[%d], pmksa[%d]!!}\r\n",
-                       pst_wiphy, pst_net_device, pmksa);
+                       "{wal_cfg80211_del_pmksa::param null! pst_wiphy[%d], pst_net_device[%x], pmksa[%x]!!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_net_device, (uintptr_t)pmksa);
         return -OAL_EINVAL;
     }
 
-    if ((OAL_PTR_NULL == pmksa->bssid) || (OAL_PTR_NULL == pmksa->pmkid))
+    if (OAL_ANY_NULL_PTR2(pmksa->bssid,pmksa->pmkid))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_del_pmksa::param null! bssid[%d] pmkid[%d]}\r\n",
-                       pmksa->bssid, pmksa->pmkid);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_del_pmksa::param null! bssid[%x] pmkid[%x]}\r\n",
+                       (uintptr_t)(pmksa->bssid), (uintptr_t)(pmksa->pmkid));
         return -OAL_EINVAL;
     }
 
@@ -5176,8 +4851,12 @@ OAL_STATIC oal_int32 wal_cfg80211_del_pmksa(oal_wiphy_stru           *pst_wiphy,
     ***************************************************************************/
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_DEL_PMKSA, OAL_SIZEOF(mac_cfg_pmksa_param_stru));
     pst_cfg_pmksa = (mac_cfg_pmksa_param_stru *)st_write_msg.auc_value;
-    oal_memcopy(pst_cfg_pmksa->auc_bssid, pmksa->bssid, WLAN_MAC_ADDR_LEN);
-    oal_memcopy(pst_cfg_pmksa->auc_pmkid, pmksa->pmkid, WLAN_PMKID_LEN);
+    l_memcpy_ret = memcpy_s(pst_cfg_pmksa->auc_bssid, WLAN_MAC_ADDR_LEN, pmksa->bssid, WLAN_MAC_ADDR_LEN);
+    l_memcpy_ret += memcpy_s(pst_cfg_pmksa->auc_pmkid, WLAN_PMKID_LEN, pmksa->pmkid, WLAN_PMKID_LEN);
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_cfg80211_del_pmksa::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_net_device,
                                 WAL_MSG_TYPE_WRITE,
@@ -5203,11 +4882,11 @@ OAL_STATIC oal_int32 wal_cfg80211_flush_pmksa(oal_wiphy_stru *pst_wiphy, oal_net
     oal_int32                       l_ret;
     mac_vap_stru                   *pst_mac_vap;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_net_device))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_net_device))
     {
         OAM_ERROR_LOG2(0, OAM_SF_CFG,
-                       "{wal_cfg80211_flush_pmksa::param null! pst_wiphy[%d], pst_net_device[%d]!!}\r\n",
-                       pst_wiphy, pst_net_device);
+                       "{wal_cfg80211_flush_pmksa::param null! pst_wiphy[%x], pst_net_device[%x]!!}\r\n",
+                       (uintptr_t)pst_wiphy, (uintptr_t)pst_net_device);
         return -OAL_EINVAL;
     }
 
@@ -5262,13 +4941,10 @@ OAL_STATIC oal_int32 wal_drv_remain_on_channel(oal_wiphy_stru           *pst_wip
     oal_uint8                                uc_vap_idx;
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == pst_wdev)
-        || (OAL_PTR_NULL == pst_chan)
-        || (OAL_PTR_NULL == pull_cookie))
+    if (OAL_ANY_NULL_PTR4(pst_wiphy,pst_wdev,pst_chan,pull_cookie))
     {
         OAM_ERROR_LOG4(0, OAM_SF_P2P, "{wal_drv_remain_on_channel::pst_wiphy or pst_wdev or pst_chan or pull_cookie ptr is null,error %x, %x, %x, %x!}\r\n",
-                        pst_wiphy, pst_wdev, pst_chan, pull_cookie);
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev, (uintptr_t)pst_chan, (uintptr_t)pull_cookie);
         return -OAL_EINVAL;
     }
 
@@ -5311,8 +4987,7 @@ OAL_STATIC oal_int32 wal_drv_remain_on_channel(oal_wiphy_stru           *pst_wip
             OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_P2P, "{wal_drv_remain_on_channel::vap is null! vap id is %d}", pst_mac_device->auc_vap_id[uc_vap_idx]);
             continue;
         }
-
-        if ((( pst_other_vap->en_vap_state >= MAC_VAP_STATE_STA_JOIN_COMP) && (pst_other_vap->en_vap_state <= MAC_VAP_STATE_STA_WAIT_ASOC))
+        if (OAL_VALUE_IN_VALID_RANGE(pst_other_vap->en_vap_state, MAC_VAP_STATE_STA_JOIN_COMP, MAC_VAP_STATE_STA_WAIT_ASOC)
 #ifdef _PRE_WLAN_FEATURE_ROAM
             || (MAC_VAP_STATE_ROAMING == pst_other_vap->en_vap_state)
 #endif
@@ -5379,7 +5054,11 @@ OAL_STATIC oal_int32 wal_drv_remain_on_channel(oal_wiphy_stru           *pst_wip
 
 
     /* 3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_remain_on_channel, OAL_SIZEOF(mac_remain_on_channel_param_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_remain_on_channel_param_stru),
+                        &st_remain_on_channel, OAL_SIZEOF(mac_remain_on_channel_param_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_P2P, "wal_drv_remain_on_channel::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     /* 3.3 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -5438,9 +5117,9 @@ OAL_STATIC oal_int32 wal_cfg80211_cancel_remain_on_channel(oal_wiphy_stru       
     oal_net_device_stru                     *pst_netdev;
     oal_int32                                l_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_wdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_wdev))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_P2P, "{wal_cfg80211_cancel_remain_on_channel::pst_wiphy or pst_wdevis null,error %d, %d!}\r\n", pst_wiphy, pst_wdev);
+        OAM_ERROR_LOG2(0, OAM_SF_P2P, "{wal_cfg80211_cancel_remain_on_channel::pst_wiphy or pst_wdevis null,error %x, %x!}\r\n", (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev);
         return -OAL_EINVAL;
     }
 
@@ -5461,7 +5140,11 @@ OAL_STATIC oal_int32 wal_cfg80211_cancel_remain_on_channel(oal_wiphy_stru       
 
 
     /* 3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_cancel_remain_on_channel, OAL_SIZEOF(mac_remain_on_channel_param_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_remain_on_channel_param_stru),
+                        &st_cancel_remain_on_channel, OAL_SIZEOF(mac_remain_on_channel_param_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_P2P, "wal_cfg80211_cancel_remain_on_channel::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     /* 3.3 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -5636,7 +5319,11 @@ OAL_STATIC oal_uint32 wal_mgmt_do_tx(oal_net_device_stru    *pst_netdev,
     WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_MGMT_TX, OAL_SIZEOF(mac_mgmt_frame_stru));
 
     /* 3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, pst_mgmt_tx_param, OAL_SIZEOF(mac_mgmt_frame_stru));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(mac_mgmt_frame_stru),
+                        pst_mgmt_tx_param, OAL_SIZEOF(mac_mgmt_frame_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_mgmt_do_tx::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /* 3.3 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -5657,7 +5344,7 @@ OAL_STATIC oal_uint32 wal_mgmt_do_tx(oal_net_device_stru    *pst_netdev,
     /*lint -e730*/
     OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_mgmt_do_tx:: It will wait %d ms at most for the tx status report!}\r\n", ul_wait);
     i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_mgmt_tx->st_wait_queue,
-        OAL_TRUE== pst_mgmt_tx->mgmt_tx_complete,
+        (oal_bool_enum_uint8)(OAL_TRUE == pst_mgmt_tx->mgmt_tx_complete),
         (oal_uint32)OAL_MSECS_TO_JIFFIES(ul_wait));
 
     if ( 0 == i_leftime)
@@ -5712,6 +5399,7 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
     oal_wireless_dev_stru           *pst_roc_wireless_dev = pst_wdev;
     unsigned long                    ul_start_time_stamp;
     bool                             en_need_offchan = OAL_FALSE;
+    oal_ieee80211_channel            st_chan = {0};
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 1, 0))
     oal_ieee80211_channel       *pst_chan;
     OAL_CONST oal_uint8         *puc_buf;
@@ -5730,14 +5418,11 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
 #endif
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == pst_wdev)
-        || (OAL_PTR_NULL == pst_chan)
-        || (OAL_PTR_NULL == pull_cookie)
-        || (OAL_PTR_NULL == puc_buf))
+    if (OAL_ANY_NULL_PTR4(pst_wiphy,pst_wdev,pull_cookie,puc_buf))
     {
-        OAM_ERROR_LOG4(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx::pst_wiphy or pst_wdev or pst_chan or pull_cookie or puc_buf ptr is null,error %x, %x, %x, %x!}\r\n",
-                        pst_wiphy, ul_wait, pst_chan, pull_cookie);
+        OAM_ERROR_LOG4(0, OAM_SF_CFG,
+                        "{wal_cfg80211_mgmt_tx::pst_wiphy or pst_wdev or pull_cookie or puc_buf ptr is null,error %x, %x, %x, %x!}",
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev, (uintptr_t)pull_cookie, (uintptr_t)puc_buf);
         return -OAL_EINVAL;
     }
 
@@ -5786,9 +5471,66 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
         return OAL_SUCC;
     }
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+    if (pst_chan == OAL_PTR_NULL)
+    {
+        mac_bss_dscr_stru *pst_bss_dscr;
+        oal_uint8          auc_mac_addr[WLAN_MAC_ADDR_LEN];
+
+        if (!IS_STA(pst_mac_vap))
+        {
+            OAM_ERROR_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_CFG,
+                            "{wal_cfg80211_mgmt_tx::vap pst_chan ptr is null! vap_mode[%d], p2p_mode [%d]}",
+                            pst_mac_vap->en_vap_mode,
+                            pst_mac_vap->en_p2p_mode);
+            return -OAL_EINVAL;
+        }
+
+        /* SAE发送auth commit/comfirm 帧，下发的pst_channel入参是NULL,
+         * 需要根据目的MAC在扫描结果中查找信道信息 */
+
+        OAM_WARNING_LOG0(0, OAM_SF_SAE, "{wal_cfg80211_mgmt_tx::STA tx frame, find channel from scan result}");
+        /* 判断传入的帧长度是否够长 */
+        if (ul_len < MAC_80211_FRAME_LEN)
+        {
+            OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_SAE, "{wal_cfg80211_mgmt_tx::auth frame length is too short to send.}", ul_len);
+            return -OAL_EINVAL;
+        }
+
+        if (EOK != memcpy_s(auc_mac_addr, WLAN_MAC_ADDR_LEN, pst_mgmt->da, WLAN_MAC_ADDR_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_cfg80211_mgmt_tx::memcpy fail!");
+            return -OAL_EINVAL;
+        }
+        pst_bss_dscr = (mac_bss_dscr_stru *)hmac_scan_get_scanned_bss_by_bssid(pst_mac_vap, auc_mac_addr);
+        if (pst_bss_dscr == OAL_PTR_NULL)
+        {
+            OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_SAE, "{wal_cfg80211_mgmt_tx::can not find [%02X:XX:XX:XX:%02X:%02X] from scan result.}",
+                            auc_mac_addr[0],
+                            auc_mac_addr[4],
+                            auc_mac_addr[5]);
+            return -OAL_EINVAL;
+        }
+        st_chan.band        = pst_bss_dscr->st_channel.en_band;
+        st_chan.center_freq = oal_ieee80211_channel_to_frequency(pst_bss_dscr->st_channel.uc_chan_number, pst_bss_dscr->st_channel.en_band);
+        st_chan.hw_value    = pst_bss_dscr->st_channel.uc_chan_number;
+    }
+    else
+    {
+        st_chan = *pst_chan;
+    }
+#else
+    if (pst_chan == OAL_PTR_NULL)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx:: pst_chan ptr is null!}");
+        return -OAL_EINVAL;
+    }
+    st_chan = *pst_chan;
+#endif /* _PRE_WLAN_FEATURE_SAE */
+
     /* 2.1 消息参数准备 */
-    OAL_MEMZERO(&st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx));
-    st_mgmt_tx.channel = oal_ieee80211_frequency_to_channel(pst_chan->center_freq);
+    memset_s(&st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx), 0, OAL_SIZEOF(st_mgmt_tx));
+
+    st_mgmt_tx.channel = oal_ieee80211_frequency_to_channel(st_chan.center_freq);
 
     if(WAL_COOKIE_FULL_MASK == g_uc_cookie_array_bitmap_etc)
     {
@@ -5851,7 +5593,7 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
         break;
     }
 
-    if ((OAL_TRUE == en_need_offchan) && !pst_chan)
+    if ((OAL_TRUE == en_need_offchan) && (0 == st_chan.center_freq))
     {
         OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::need offchannle but channel is null}\r\n", en_offchan);
         return -OAL_EINVAL;
@@ -5869,7 +5611,7 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
     /* 需要offchannel,按照入参切到相应的信道XXms */
     if (OAL_TRUE == en_need_offchan)
     {
-        ul_ret = wal_drv_remain_on_channel(pst_wiphy, pst_roc_wireless_dev, pst_chan, ul_wait, pull_cookie, IEEE80211_ROC_TYPE_MGMT_TX);
+        ul_ret = wal_drv_remain_on_channel(pst_wiphy, pst_roc_wireless_dev, &st_chan, ul_wait, pull_cookie, IEEE80211_ROC_TYPE_MGMT_TX);
         if (OAL_SUCC != ul_ret)
         {
             OAM_WARNING_LOG4(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx::wal_drv_remain_on_channel[%d]!!!offchannel[%d].channel[%d],vap state[%d]}\r\n",
@@ -5886,7 +5628,7 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
     {
         ul_ret = wal_mgmt_do_tx(pst_netdev, &st_mgmt_tx, en_need_offchan, ul_wait);
         uc_retry++;
-    }while((ul_ret != DMAC_TX_SUCC) && (ul_ret != DMAC_TX_INVALID) && (uc_retry <= WAL_MGMT_TX_RETRY_CNT)
+    }while(OAL_VALUE_NE_ALL2(ul_ret, DMAC_TX_SUCC, DMAC_TX_INVALID) && (uc_retry <= WAL_MGMT_TX_RETRY_CNT)
         && time_before(OAL_TIME_JIFFY, ul_start_time_stamp + OAL_MSECS_TO_JIFFIES(ul_wait)));/*lint !e666*/
     if (uc_retry > WAL_MGMT_TX_RETRY_CNT)
     {
@@ -5904,7 +5646,14 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
 #ifdef _PRE_WLAN_FEATURE_P2P
         if (MAC_VAP_STATE_STA_LISTEN == pst_mac_vap->en_vap_state)
         {
-            mac_vap_state_change_etc(&pst_hmac_vap->st_vap_base_info, pst_mac_device->st_p2p_info.en_last_vap_state);
+            if(pst_hmac_vap->st_vap_base_info.en_p2p_mode != WLAN_LEGACY_VAP_MODE)
+            {
+                mac_vap_state_change_etc(&pst_hmac_vap->st_vap_base_info, pst_mac_device->st_p2p_info.en_last_vap_state);
+            }
+            else
+            {
+                mac_vap_state_change_etc(&pst_hmac_vap->st_vap_base_info, ((mac_vap_rom_stru *)(pst_hmac_vap->st_vap_base_info._rom))->en_last_vap_state);
+            }
 
             /* 抛事件到DMAC ，返回监听信道 */
             hmac_p2p_send_listen_expired_to_device_etc(pst_hmac_vap);
@@ -5923,33 +5672,6 @@ OAL_STATIC oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wip
 
     OAM_WARNING_LOG3(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::tx status [%d], retry cnt[%d]}, delta_time[%d]\r\n",
                     ul_ret, uc_retry, OAL_JIFFIES_TO_MSECS(OAL_TIME_JIFFY - ul_start_time_stamp));
-
-#if 0
-    if (OAL_TRUE == en_need_offchan) /* cancel roc */
-    {
-        oal_int32 l_ret = 0;
-
-        /* l_ret = wal_cfg80211_cancel_remain_on_channel(pst_wiphy, pst_wdev, *pull_cookie);
-        if (OAL_SUCC != l_ret)
-        {
-            OAM_WARNING_LOG4(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_CFG,
-                    "{wal_cfg80211_mgmt_tx::wal_cfg80211_cancel_remain_on_channel[%d]!!!offchannel[%d].channel[%d],vap state[%d]}\r\n",
-                    l_ret, en_need_offchan, st_mgmt_tx.channel, pst_hmac_vap->st_vap_base_info.en_vap_state);
-            return -OAL_EBUSY;
-        } */
-        /* stop roc which including scan  */
-        if (MAC_VAP_STATE_STA_LISTEN == pst_mac_vap->en_vap_state)
-        {
-            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_P2P, "{wal_cfg80211_mgmt_tx::wal_p2p_stop_roc::cancel roc!}");
-            l_ret = wal_p2p_stop_roc(pst_mac_vap, pst_netdev);
-            if (l_ret < 0)
-            {
-                OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_P2P, "{wal_cfg80211_mgmt_tx::wal_p2p_stop_roc::cancel roc fail l_ret=%d!}", l_ret);
-                return -OAL_EFAIL;
-            }
-        }
-    }
-#endif
 
     return OAL_SUCC;
 }
@@ -5999,8 +5721,14 @@ oal_void wal_cfg80211_mgmt_frame_register_etc(struct wiphy *wiphy,
                                         oal_uint16 frame_type,
                                         bool reg)
 {
-    //OAL_IO_PRINT("wal_cfg80211_mgmt_frame_register_etc::net_device_name:%s, if_type:%d", wdev->netdev->name, wdev->iftype);
-    OAM_INFO_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_frame_register_etc::enter.frame_type[0x%04x], reg[%d], if_type[%d]}",
+    if (wiphy == OAL_PTR_NULL || wdev == OAL_PTR_NULL)
+    {
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_frame_register_etc::wiphy[%x], wdev[%x]}",
+                    (uintptr_t)wiphy, (uintptr_t)wdev);
+        return;
+    }
+
+    OAM_INFO_LOG3(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_frame_register_etc::enter.frame_type[0x%02x], reg[%d], if_type[%d]}",
                     frame_type, reg, wdev->iftype);
 
     return;
@@ -6025,7 +5753,7 @@ oal_void wal_check_cookie_timeout(cookie_arry_stru  *pst_cookie_array,
                                     oal_uint32       ul_current_time)
 {
     oal_uint8           uc_loops = 0;
-    cookie_arry_stru   *pst_tmp_cookie;
+    cookie_arry_stru   *pst_tmp_cookie = OAL_PTR_NULL;
 
     OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_check_cookie_timeout::time_out!}\r\n");
     for (uc_loops = 0; uc_loops < WAL_COOKIE_ARRAY_SIZE; uc_loops++)
@@ -6048,7 +5776,7 @@ oal_uint32 wal_del_cookie_from_array(cookie_arry_stru   *pst_cookie_array,
                                         oal_uint8       *puc_cookie_bitmap,
                                         oal_uint8        uc_cookie_idx)
 {
-    cookie_arry_stru   *pst_tmp_cookie;
+    cookie_arry_stru   *pst_tmp_cookie = OAL_PTR_NULL;
 
     /* 清除对应cookie bitmap 位 */
     oal_bit_clear_bit_one_byte(puc_cookie_bitmap, uc_cookie_idx);
@@ -6068,7 +5796,7 @@ oal_uint32 wal_add_cookie_to_array(cookie_arry_stru *pst_cookie_array,
                                     oal_uint8       *puc_cookie_idx)
 {
     oal_uint8           uc_idx;
-    cookie_arry_stru   *pst_tmp_cookie;
+    cookie_arry_stru   *pst_tmp_cookie = OAL_PTR_NULL;
 
     if (*puc_cookie_bitmap == 0xFF)
     {
@@ -6089,7 +5817,28 @@ oal_uint32 wal_add_cookie_to_array(cookie_arry_stru *pst_cookie_array,
     return OAL_SUCC;
 }
 
+OAL_STATIC OAL_INLINE oal_void wal_cfg80211_mgmt_tx_wait_event_left_time(oal_int i_leftime, oal_uint64 *pull_cookie, oal_mgmt_tx_stru *pst_mgmt_tx)
+{
+    if (0 == i_leftime)
+    {
+        /* 超时还没有上报扫描结束 */
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms timeout!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
+        wal_check_cookie_timeout(g_cookie_array_etc, &g_uc_cookie_array_bitmap_etc, OAL_TIME_JIFFY);
 
+    }
+    else if (i_leftime < 0)
+    {
+        /* 定时器内部错误 */
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms error!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
+    }
+    else
+    {
+        /* 正常结束  */
+        OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms complete!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
+        *pull_cookie = g_cookie_array_etc[pst_mgmt_tx->mgmt_frame_id].ull_cookie;
+        wal_del_cookie_from_array(g_cookie_array_etc, &g_uc_cookie_array_bitmap_etc, pst_mgmt_tx->mgmt_frame_id);
+    }
+}
 
 oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
                                             oal_wireless_dev_stru       *pst_wdev,
@@ -6103,28 +5852,24 @@ oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
                                             oal_uint64                  *pull_cookie)
 {
     wal_msg_write_stru              st_write_msg;
-    oal_net_device_stru             *pst_netdev;
-    mac_device_stru                 *pst_mac_device;
-    mac_vap_stru                    *pst_mac_vap;
+    oal_net_device_stru             *pst_netdev = OAL_PTR_NULL;
+    mac_device_stru                 *pst_mac_device = OAL_PTR_NULL;
+    mac_vap_stru                    *pst_mac_vap = OAL_PTR_NULL;
     OAL_CONST oal_ieee80211_mgmt    *pst_mgmt;
     oal_int32                       l_ret = 0;
     oal_uint32                      ul_ret = 0;
     mac_mgmt_frame_stru             st_mgmt_tx;
     oal_int                         i_leftime;
     oal_uint8                       uc_cookie_idx;
-    mac_p2p_info_stru               *pst_p2p_info;
-    hmac_vap_stru                   *pst_hmac_vap;
-    oal_mgmt_tx_stru                *pst_mgmt_tx;
+    mac_p2p_info_stru               *pst_p2p_info = OAL_PTR_NULL;
+    hmac_vap_stru                   *pst_hmac_vap = OAL_PTR_NULL;
+    oal_mgmt_tx_stru                *pst_mgmt_tx = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_wiphy)
-        || (OAL_PTR_NULL == pst_wdev)
-        || (OAL_PTR_NULL == pst_chan)
-        || (OAL_PTR_NULL == pull_cookie)
-        || (OAL_PTR_NULL == puc_buf))
+    if (OAL_ANY_NULL_PTR5(pst_wiphy,pst_wdev,pst_chan,pull_cookie,puc_buf))
     {
         OAM_ERROR_LOG4(0, OAM_SF_CFG, "{wal_cfg80211_mgmt_tx::pst_wiphy or pst_wdev or pst_chan or pull_cookie or puc_buf ptr is null,error %x, %x, %x, %x!}\r\n",
-                        pst_wiphy, pst_wdev, pst_chan, pull_cookie);
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev, (uintptr_t)pst_chan, (uintptr_t)pull_cookie);
         return -OAL_EINVAL;
     }
 
@@ -6174,7 +5919,7 @@ oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
     }
 
     /* 2.1 消息参数准备 */
-    OAL_MEMZERO(&st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx));
+    memset_s(&st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx), 0, OAL_SIZEOF(st_mgmt_tx));
     st_mgmt_tx.channel = oal_ieee80211_frequency_to_channel((oal_int32)pst_chan->center_freq);
     ul_ret = wal_add_cookie_to_array(g_cookie_array_etc, &g_uc_cookie_array_bitmap_etc, pull_cookie, &uc_cookie_idx);
     if (OAL_SUCC != ul_ret)
@@ -6197,7 +5942,10 @@ oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
 
 
     /* 3.2 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_SIZEOF(st_mgmt_tx), &st_mgmt_tx, OAL_SIZEOF(st_mgmt_tx))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_mgmt_tx::memcpy fail!");
+        return -OAL_EINVAL;
+    }
 
     /* 3.3 发送消息 */
     l_ret = wal_send_cfg_event_etc(pst_netdev,
@@ -6219,27 +5967,7 @@ oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
     /*lint -e730*/
     i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_mgmt_tx->st_wait_queue, OAL_TRUE== pst_mgmt_tx->mgmt_tx_complete,  (oal_uint32)OAL_MSECS_TO_JIFFIES(WAL_MGMT_TX_TIMEOUT_MSEC));
    /*lint +e730*/
-
-    if ( 0 == i_leftime)
-    {
-        /* 超时还没有上报扫描结束 */
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms timeout!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
-        wal_check_cookie_timeout(g_cookie_array_etc, &g_uc_cookie_array_bitmap_etc, OAL_TIME_JIFFY);
-
-    }
-    else if (i_leftime < 0)
-    {
-        /* 定时器内部错误 */
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms error!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
-    }
-    else
-    {
-        /* 正常结束  */
-        OAM_INFO_LOG1(0, OAM_SF_ANY, "{wal_cfg80211_mgmt_tx::mgmt tx wait for %ld ms complete!}\r\n",((oal_uint32)WAL_MGMT_TX_TIMEOUT_MSEC));
-        *pull_cookie = g_cookie_array_etc[pst_mgmt_tx->mgmt_frame_id].ull_cookie;
-        wal_del_cookie_from_array(g_cookie_array_etc, &g_uc_cookie_array_bitmap_etc, pst_mgmt_tx->mgmt_frame_id);
-    }
-
+    wal_cfg80211_mgmt_tx_wait_event_left_time(i_leftime, pull_cookie, pst_mgmt_tx);
 
     if(pst_mgmt_tx->mgmt_tx_status != DMAC_TX_SUCC)
     {
@@ -6258,10 +5986,10 @@ oal_int32 wal_cfg80211_mgmt_tx(oal_wiphy_stru                *pst_wiphy,
 
 oal_uint32  wal_cfg80211_mgmt_tx_status_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru                  *pst_event;
-    dmac_crx_mgmt_tx_status_stru    *pst_mgmt_tx_status_param;
-    hmac_vap_stru                   *pst_hmac_vap;
-    oal_mgmt_tx_stru                *pst_mgmt_tx;
+    frw_event_stru                  *pst_event = OAL_PTR_NULL;
+    dmac_crx_mgmt_tx_status_stru    *pst_mgmt_tx_status_param = OAL_PTR_NULL;
+    hmac_vap_stru                   *pst_hmac_vap = OAL_PTR_NULL;
+    oal_mgmt_tx_stru                *pst_mgmt_tx = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -6321,9 +6049,9 @@ static oal_int32 wal_cfg80211_set_power_mgmt(oal_wiphy_stru  *pst_wiphy,
     oal_int32                    l_ret = 0;
     mac_vap_stru                *pst_mac_vap;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_wiphy,pst_netdev)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_power_mgmt::pst_wiphy or pst_wdev null ptrerror %d, %d!}\r\n",pst_wiphy, pst_netdev);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg80211_set_power_mgmt::pst_wiphy or pst_wdev null ptrerror %x, %x!}\r\n",(uintptr_t)pst_wiphy, (uintptr_t)pst_netdev);
         return -OAL_EINVAL;
     }
 
@@ -6381,7 +6109,7 @@ OAL_STATIC oal_int32 wal_cfg80211_update_ft_ies(oal_wiphy_stru                  
     oal_uint32                          ul_err_code;
     oal_int32                           l_ret;
 
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_netdev) || (OAL_PTR_NULL == pst_fties))
+    if (OAL_ANY_NULL_PTR3(pst_wiphy,pst_netdev,pst_fties))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_cfg80211_update_ft_ies::param is null.}\r\n");
 
@@ -6404,7 +6132,10 @@ OAL_STATIC oal_int32 wal_cfg80211_update_ft_ies(oal_wiphy_stru                  
     pst_mac_ft_ies = (mac_cfg80211_ft_ies_stru *)st_write_msg.auc_value;
     pst_mac_ft_ies->us_mdid = pst_fties->md;
     pst_mac_ft_ies->us_len  = pst_fties->ie_len;
-    oal_memcopy(pst_mac_ft_ies->auc_ie, pst_fties->ie, pst_fties->ie_len);
+    if (EOK != memcpy_s(pst_mac_ft_ies->auc_ie, pst_fties->ie_len, pst_fties->ie, pst_fties->ie_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_cfg80211_update_ft_ies::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     l_ret = wal_send_cfg_event_etc(pst_netdev,
                                WAL_MSG_TYPE_WRITE,
@@ -6458,10 +6189,10 @@ OAL_STATIC oal_void wal_cfg80211_abort_scan(oal_wiphy_stru         *pst_wiphy,
     oal_net_device_stru *pst_netdev;
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_wiphy) || (OAL_PTR_NULL == pst_wdev))
+    if (OAL_ANY_NULL_PTR2(pst_wiphy,pst_wdev))
     {
         OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_cfg80211_abort_scan::wiphy or wdev is null, %p, %p!}\r\n",
-                        pst_wiphy, pst_wdev);
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_wdev);
         return;
     }
 
@@ -6476,6 +6207,45 @@ OAL_STATIC oal_void wal_cfg80211_abort_scan(oal_wiphy_stru         *pst_wiphy,
     return;
 }
 #endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0))
+#ifdef _PRE_WLAN_FEATURE_SAE
+
+OAL_STATIC oal_int32 wal_cfg80211_external_auth(oal_wiphy_stru                  *pst_wiphy,
+                                              oal_net_device_stru             *pst_netdev,
+                                              oal_cfg80211_external_auth_stru *pst_external_auth_params)
+{
+    oal_uint32 ul_ret;
+    oal_int32  l_ret;
+    hmac_external_auth_req_stru st_ext_auth;
+
+    memset_s(&st_ext_auth, OAL_SIZEOF(st_ext_auth), 0, OAL_SIZEOF(st_ext_auth));
+    st_ext_auth.us_status = pst_external_auth_params->status;
+    l_ret = memcpy_s(st_ext_auth.auc_bssid, WLAN_MAC_ADDR_LEN, pst_external_auth_params->bssid, WLAN_MAC_ADDR_LEN);
+    st_ext_auth.st_ssid.uc_ssid_len = OAL_MIN(pst_external_auth_params->ssid.ssid_len, OAL_IEEE80211_MAX_SSID_LEN);
+    l_ret += memcpy_s(st_ext_auth.st_ssid.auc_ssid, OAL_IEEE80211_MAX_SSID_LEN,
+                      pst_external_auth_params->ssid.ssid, st_ext_auth.st_ssid.uc_ssid_len);
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_SAE, "wal_cfg80211_external_auth::memcpy fail!");
+        return -OAL_EFAIL;
+    }
+
+    OAM_WARNING_LOG4(0, OAM_SF_SAE, "{wal_cfg80211_external_auth::status %d, bssid[%02X:XX:XX:XX:%02X:%02X]}",
+                    st_ext_auth.us_status,
+                    st_ext_auth.auc_bssid[0],
+                    st_ext_auth.auc_bssid[4],
+                    st_ext_auth.auc_bssid[5]);
+
+    ul_ret = wal_cfg80211_do_external_auth(pst_netdev, &st_ext_auth);
+    if (ul_ret != OAL_SUCC)
+    {
+        OAM_WARNING_LOG1(0, OAM_SF_SAE, "{wal_cfg80211_external_auth::do external auth fail. ret %d}", ul_ret);
+        return -OAL_EFAIL;
+    }
+    return OAL_SUCC;
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) */
 
 /* 不同操作系统函数指针结构体方式不同*/
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -6552,6 +6322,12 @@ OAL_STATIC oal_cfg80211_ops_stru  g_wal_cfg80211_ops =
     .abort_scan               = wal_cfg80211_abort_scan,
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(4,1,0)) */
 #endif /* _PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_E5 */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0))
+#ifdef _PRE_WLAN_FEATURE_SAE
+    .external_auth            = wal_cfg80211_external_auth,
+#endif /* _PRE_WLAN_FEATURE_SAE */
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) */
 };
 #elif (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 OAL_STATIC oal_cfg80211_ops_stru  g_wal_cfg80211_ops =
@@ -6631,18 +6407,15 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
     oal_uint8            uc_device;
     oal_int32            l_return;
     oal_uint8            uc_dev_id;
-    mac_device_stru     *pst_device;
+    mac_device_stru     *pst_device = OAL_PTR_NULL;
     oal_uint32           ul_chip_max_num;
-    mac_board_stru      *pst_hmac_board;
-    oal_wiphy_stru      *pst_wiphy;
-    mac_wiphy_priv_stru *pst_wiphy_priv;
+    mac_board_stru      *pst_hmac_board = OAL_PTR_NULL;
+    oal_wiphy_stru      *pst_wiphy = OAL_PTR_NULL;
+    mac_wiphy_priv_stru *pst_wiphy_priv = OAL_PTR_NULL;
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
     oal_int8             ac_vap_netdev_name[MAC_NET_DEVICE_NAME_LENGTH];
 #endif
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-    oal_net_device_stru        *pst_net_dev;
-    hmac_vap_stru              *pst_cfg_hmac_vap;
-#endif
+
     hmac_board_get_instance_etc(&pst_hmac_board);
 
     ul_chip_max_num = oal_bus_get_chip_num_etc();
@@ -6695,8 +6468,8 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
             /* 1102注册支持pno调度扫描能力相关信息 */
             pst_wiphy->max_sched_scan_ssids  = MAX_PNO_SSID_COUNT;
-	        pst_wiphy->max_match_sets        = MAX_PNO_SSID_COUNT;
-	        pst_wiphy->max_sched_scan_ie_len = WAL_MAX_SCAN_IE_LEN;
+            pst_wiphy->max_match_sets        = MAX_PNO_SSID_COUNT;
+            pst_wiphy->max_sched_scan_ie_len = WAL_MAX_SCAN_IE_LEN;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0))
             pst_wiphy->max_sched_scan_reqs  = 1;
 #else
@@ -6704,12 +6477,11 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44) */
 #endif   /* _PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST */
 
-#else    /* 非p2p场景下起多vap */
+#else    /* 非p2p场景 */
             pst_wiphy->mgmt_stypes          = wal_cfg80211_default_mgmt_stypes;
             pst_wiphy->iface_combinations   = ap_iface_combinations;
             pst_wiphy->n_iface_combinations = OAL_ARRAY_SIZE(ap_iface_combinations);
-
-#endif
+#endif   /* _PRE_WLAN_FEATURE_P2P */
 #endif   /* LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44) */
 #endif   /* _PRE_OS_VERSION_LINUX == _PRE_OS_VERSION */
 
@@ -6746,11 +6518,22 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
             pst_wiphy->custom_regulatory = true;
 #endif
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+            pst_wiphy->features |= NL80211_FEATURE_SAE;                  /* 驱动支持SAE 特性 */
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+            pst_wiphy->bands[NL80211_BAND_2GHZ] = &g_st_supported_band_2ghz_info;        /* 支持的频带信息 2.4G */
+            if(mac_device_check_5g_enable(uc_dev_id))
+            {
+                pst_wiphy->bands[NL80211_BAND_5GHZ] = &g_st_supported_band_5ghz_info;        /* 支持的频带信息 5G */
+            }
+#else
             pst_wiphy->bands[IEEE80211_BAND_2GHZ] = &g_st_supported_band_2ghz_info;        /* 支持的频带信息 2.4G */
             if(mac_device_check_5g_enable(uc_dev_id))
             {
                 pst_wiphy->bands[IEEE80211_BAND_5GHZ] = &g_st_supported_band_5ghz_info;        /* 支持的频带信息 5G */
             }
+#endif
             pst_wiphy->signal_type                = CFG80211_SIGNAL_TYPE_MBM;
 
             oal_wiphy_apply_custom_regulatory(pst_wiphy, &g_st_default_regdom_etc);
@@ -6771,32 +6554,14 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
             pst_wiphy_priv  = (mac_wiphy_priv_stru *)(oal_wiphy_priv(pst_wiphy));
             pst_wiphy_priv->pst_mac_device = pst_device;
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-            pst_cfg_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_device->uc_cfg_vap_id);
-            if (OAL_PTR_NULL == pst_cfg_hmac_vap)
-            {
-                OAM_ERROR_LOG1(0, OAM_SF_CFG, "{wal_cfg80211_init_etc::pst_cfg_hmac_vap is null vap_id:%d!}\r\n",pst_device->uc_cfg_vap_id);
-                OAL_IO_PRINT("wal_cfg80211_init_etc::Get cfg vap Hisilicon[%d] failed, cfg vap id is %d\n", uc_dev_id, pst_device->uc_cfg_vap_id);
-                oal_wiphy_free(pst_device->pst_wiphy);
-                return OAL_FAIL;
-            }
-            pst_net_dev = pst_cfg_hmac_vap->pst_net_device;
-            if (OAL_PTR_NULL == pst_net_dev)
-            {
-                OAM_ERROR_LOG0(0, OAM_SF_CFG, "{wal_cfg80211_init_etc::pst_net_dev of cfg vap is null ptr!}\r\n");
-                OAL_IO_PRINT("wal_cfg80211_init_etc::Get cfg vap Hisilicon[%d] net dev failed, cfg vap id is %d\n", uc_dev_id, pst_device->uc_cfg_vap_id);
-                oal_wiphy_free(pst_device->pst_wiphy);
-                return OAL_FAIL;
-            }
-            pst_net_dev->wireless_handlers = &g_st_iw_cfg_handler_def;
-#endif
-
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
             OAL_IO_PRINT("wal_init_wlan_netdev_etc wlan and p2p[%d].\n",uc_dev_id);
 
             /* 主路辅路的netdev规格:主路wlan0 p2p0,辅路wlan1 p2p1 */
-            OAL_SPRINTF(ac_vap_netdev_name, MAC_NET_DEVICE_NAME_LENGTH, "wlan%d", uc_dev_id);
+            snprintf_s(ac_vap_netdev_name, MAC_NET_DEVICE_NAME_LENGTH,
+                       MAC_NET_DEVICE_NAME_LENGTH - 1, "wlan%d", uc_dev_id);
+
             l_return = wal_init_wlan_netdev_etc(pst_wiphy, ac_vap_netdev_name);
             if(OAL_SUCC != l_return)
             {
@@ -6804,7 +6569,9 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
                 return (oal_uint32)l_return;
             }
 
-            OAL_SPRINTF(ac_vap_netdev_name, MAC_NET_DEVICE_NAME_LENGTH, "p2p%d", uc_dev_id);
+            snprintf_s(ac_vap_netdev_name, MAC_NET_DEVICE_NAME_LENGTH,
+                       MAC_NET_DEVICE_NAME_LENGTH - 1, "p2p%d", uc_dev_id);
+
             l_return = wal_init_wlan_netdev_etc(pst_wiphy, ac_vap_netdev_name);
             if(OAL_SUCC != l_return)
             {
@@ -6815,23 +6582,6 @@ oal_uint32  wal_cfg80211_init_etc(oal_void)
                 oal_net_unregister_netdev(pst_device->st_p2p_info.pst_primary_net_device);
                 return (oal_uint32)l_return;
             }
-#if 0
-            /*信道跟随-add*/
-            OAL_SPRINTF(ac_vap_netdev_name, MAC_NET_DEVICE_NAME_LENGTH, "hwlan%d", uc_dev_id);
-            l_return = wal_init_wlan_netdev_etc(pst_wiphy, ac_vap_netdev_name);
-            if(OAL_SUCC != l_return)
-            {
-                OAL_IO_PRINT("wal_init_wlan_netdev_etc hwlan[%d] failed.l_return:%d\n",uc_dev_id,l_return);
-
-                OAL_MEM_FREE(OAL_NETDEVICE_WDEV(pst_device->st_p2p_info.pst_p2p_net_device), OAL_TRUE);
-                oal_net_unregister_netdev(pst_device->st_p2p_info.pst_p2p_net_device);
-
-                /* 释放wlan网络设备资源 */
-                OAL_MEM_FREE(OAL_NETDEVICE_WDEV(pst_device->st_p2p_info.pst_primary_net_device), OAL_TRUE);
-                oal_net_unregister_netdev(pst_device->st_p2p_info.pst_primary_net_device);
-                return (oal_uint32)l_return;
-            }
-#endif
 #endif
         }
     }
@@ -6845,9 +6595,9 @@ oal_void  wal_cfg80211_exit_etc(oal_void)
     oal_uint32          ul_chip;
     oal_uint8           uc_device;
     oal_uint8           uc_dev_id;
-    mac_device_stru    *pst_device;
+    mac_device_stru    *pst_device = OAL_PTR_NULL;
     oal_uint32          ul_chip_max_num;
-    mac_board_stru     *pst_hmac_board;
+    mac_board_stru     *pst_hmac_board = OAL_PTR_NULL;
 
     hmac_board_get_instance_etc(&pst_hmac_board);
 
@@ -6889,315 +6639,6 @@ oal_uint32  wal_cfg80211_init_evt_handle_etc(frw_event_mem_stru *pst_event_mem)
     wal_cfg80211_init_etc();
     return OAL_SUCC;
 }
-
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-
-OAL_STATIC oal_int32 wal_cfg2io_fill_beacon_param(mac_vap_stru               *pst_mac_vap,
-                                                           oal_beacon_data_stru        *pst_beacon_info,
-                                                           mac_beacon_param_stru       *pst_beacon_param)
-{
-    oal_beacon_parameters st_beacon_info_tmp;
-    oal_uint32  ul_ret;
-    oal_uint8  *puc_beacon_info_tmp;
-    oal_uint32  ul_beacon_head_len;
-    oal_uint32  ul_beacon_tail_len;
-    oal_uint32  ul_offset;
-    oal_uint8   uc_vap_id;
-
-    if (OAL_PTR_NULL == pst_mac_vap
-       || OAL_PTR_NULL == pst_beacon_info
-       || OAL_PTR_NULL == pst_beacon_param)
-    {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::param is NULL. pst_mac_vap=0x%x, pst_beacon_info=0x%x, pst_beacon_param=0x%x",
-           pst_mac_vap, pst_beacon_info, pst_beacon_param);
-        return -OAL_EINVAL;
-    }
-
-    uc_vap_id = pst_mac_vap->uc_vap_id;
-    /*****************************************************************************
-        1.安全配置ie消息等
-    *****************************************************************************/
-    if (OAL_PTR_NULL == pst_beacon_info->tail || OAL_PTR_NULL == pst_beacon_info->head)
-    {
-        OAM_ERROR_LOG2(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::beacon frame error tail = %x, head = %x!}",
-                       pst_beacon_info->tail, pst_beacon_info->head);
-        return -OAL_EINVAL;
-    }
-
-    ul_offset = MAC_TIME_STAMP_LEN + MAC_BEACON_INTERVAL_LEN + MAC_CAP_INFO_LEN;
-    /* oal_ieee80211_mgmt 前面公共部分size为 MAC_80211_FRAME_LEN(24)  */
-    if (pst_beacon_info->head_len < (ul_offset + MAC_80211_FRAME_LEN))
-    {
-        OAM_ERROR_LOG1(0, OAM_SF_CFG, "{wal_cfg2io_fill_beacon_param::pst_beacon_info head_len[%d] error. }", pst_beacon_info->head_len);
-        return -OAL_EINVAL;
-    }
-
-    ul_beacon_head_len = (oal_uint32)pst_beacon_info->head_len;
-    ul_beacon_tail_len = (oal_uint32)pst_beacon_info->tail_len;
-    puc_beacon_info_tmp = (oal_uint8 *)(OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL,(oal_uint16)(ul_beacon_head_len + ul_beacon_tail_len),OAL_TRUE));
-    if (OAL_PTR_NULL == puc_beacon_info_tmp)
-    {
-        OAM_ERROR_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::puc_beacon_info_tmp memalloc failed.}");
-        return -OAL_EINVAL;
-    }
-    else
-    {
-        if(oal_copy_from_user(puc_beacon_info_tmp, pst_beacon_info->head, ul_beacon_head_len))
-        {
-            OAM_ERROR_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::puc_beacon_info_tmp oal_copy_from_user failed.}");
-            OAL_MEM_FREE(puc_beacon_info_tmp,OAL_TRUE);
-            return -OAL_EINVAL;
-        }
-
-        if(oal_copy_from_user(puc_beacon_info_tmp + ul_beacon_head_len, pst_beacon_info->tail, ul_beacon_tail_len))
-        {
-            OAM_ERROR_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::puc_beacon_info_tmp oal_copy_from_user failed.}");
-            OAL_MEM_FREE(puc_beacon_info_tmp,OAL_TRUE);
-            return -OAL_EINVAL;
-        }
-    }
-
-    /* 为了复用51的解析接口，将新内核结构中的内容赋值给51接口识别的结构体，进而获取信息元素 */
-    OAL_MEMZERO(&st_beacon_info_tmp, sizeof(st_beacon_info_tmp));
-    st_beacon_info_tmp.head     = puc_beacon_info_tmp;
-    st_beacon_info_tmp.head_len = (oal_int32)ul_beacon_head_len;
-    st_beacon_info_tmp.tail     = puc_beacon_info_tmp + ul_beacon_head_len;
-    st_beacon_info_tmp.tail_len = (oal_int32)ul_beacon_tail_len;
-
-    /* 获取 WPA/WPA2 信息元素 */
-    wal_parse_wpa_wpa2_ie_etc(&st_beacon_info_tmp, pst_beacon_param);
-
-#ifdef _PRE_WLAN_FEATURE_11R_AP
-    /* 获取 MD 信息元素 */
-    ul_ret = wal_parse_md_ie(&st_beacon_info_tmp, pst_beacon_param);
-    if (OAL_SUCC != ul_ret)
-    {
-        OAM_WARNING_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::failed to parse MD ie!}");
-        OAL_MEM_FREE(puc_beacon_info_tmp,OAL_TRUE);
-        return -OAL_EINVAL;
-    }
-#endif
-
-    pst_beacon_param->en_shortgi_20 = mac_mib_get_ShortGIOptionInTwentyImplemented(pst_mac_vap);
-    pst_beacon_param->en_shortgi_40 = mac_mib_get_ShortGIOptionInFortyImplemented(pst_mac_vap);
-    pst_beacon_param->en_shortgi_80 = mac_mib_get_VHTShortGIOptionIn80Implemented(pst_mac_vap);
-
-    /* 释放临时申请的内存 */
-    OAL_MEM_FREE(puc_beacon_info_tmp,OAL_TRUE);
-
-#ifdef _PRE_WLAN_FEATURE_11D
-    /* 对日本14信道作特殊判断，只在11b模式下才能启用14，非11b模式 降为11b */
-    if ((14 == pst_mac_vap->st_channel.uc_chan_number) && (WLAN_LEGACY_11B_MODE != pst_beacon_param->en_protocol))
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY,
-                       "{wal_cfg2io_fill_beacon_param::ch 14 should in 11b, but is %d!}", pst_beacon_param->en_protocol);
-        OAM_ERROR_LOG0(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_fill_beacon_param::change protocol to 11b!}");
-        pst_beacon_param->en_protocol = WLAN_LEGACY_11B_MODE;
-    }
-#endif
-
-    return OAL_SUCC;
-}
-
-#if 0
-
-OAL_STATIC oal_int32 wal_cfg2io_set_channel_info(oal_net_device_stru *pst_netdev, mac_cfg_channel_param_stru *pst_chan)
-{
-    mac_cfg_channel_param_stru          *pst_channel_param;
-    wal_msg_write_stru                   st_write_msg;
-    oal_uint32                           ul_err_code;
-    wal_msg_stru                        *pst_rsp_msg = OAL_PTR_NULL;
-    oal_int32                            l_ret;
-
-
-    /***************************************************************************
-        抛事件到wal层处理
-    ***************************************************************************/
-
-    /* 填写消息 */
-    pst_channel_param = (mac_cfg_channel_param_stru *)(st_write_msg.auc_value);
-    pst_channel_param->en_band = pst_chan->en_band;
-    pst_channel_param->en_bandwidth = pst_chan->en_bandwidth;
-    pst_channel_param->uc_channel = pst_chan->uc_channel;
-
-    OAM_WARNING_LOG3(0, OAM_SF_CHAN, "{wal_cfg2io_set_channel_info::uc_channel = %d, en_band = %d, en_bandwidth = %d.}",
-                     pst_channel_param->uc_channel,
-                     pst_channel_param->en_band,
-                     pst_channel_param->en_bandwidth);
-
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_SET_CHANNEL, OAL_SIZEOF(mac_cfg_channel_param_stru));
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_netdev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_cfg_channel_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_TRUE,
-                               &pst_rsp_msg);
-
-    if(OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_CHAN, "{wal_cfg2io_set_channel_info::wal_send_cfg_event_etc return err code: [%d]!}\r\n", l_ret);
-        return -OAL_EFAIL;
-    }
-
-    /* 读取返回的错误码 */
-    ul_err_code = wal_check_and_release_msg_resp_etc(pst_rsp_msg);
-    if(OAL_SUCC != ul_err_code)
-    {
-        OAM_ERROR_LOG1(0, OAM_SF_CHAN, "{wal_cfg2io_set_channel_info::wal_send_cfg_event_etc return err code: [%u].}",
-                       ul_err_code);
-        return -OAL_EFAIL;
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
-oal_int32 wal_cfg2io_set_beacon(
-                oal_net_device_stru   *pst_dev,
-                struct wlan_ap_settings *pst_ap_settings)
-{
-    mac_beacon_param_stru        st_beacon_param;  /* beacon info struct */
-    wal_msg_write_stru           st_write_msg;
-    mac_vap_stru                *pst_mac_vap;
-    oal_beacon_data_stru        *pst_beacon_info;
-    oal_int32                    l_ret = 0;
-    oal_uint8                    uc_vap_id;
-    wlan_auth_alg_mode_enum_uint8     en_auth_algs;
-    mac_cfg_channel_param_stru        st_channel_param;
-    #if 0
-    oal_uint8                    uc_ssid_len;
-    oal_uint8                   *puc_ssid_ie;
-    oal_uint8                    auc_ssid_ie[32];
-    oal_uint32                   ul_ssid_len = 0;
-    #endif
-
-    /* 参数合法性检查 */
-    if ((OAL_PTR_NULL == pst_dev) || (OAL_PTR_NULL == pst_ap_settings))
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_cfg2io_set_beacon::pst_netdev = %x, pst_ap_settings = %x!}",
-                       pst_dev, pst_ap_settings);
-        return -OAL_EINVAL;
-    }
-
-    /* 获取vap id */
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_cfg2io_set_beacon::pst_mac_vap = %x}", pst_mac_vap);
-        return -OAL_EINVAL;
-    }
-
-    uc_vap_id = pst_mac_vap->uc_vap_id;
-    oal_memset(&st_beacon_param, 0, sizeof(mac_beacon_param_stru));
-
-    /*****************************************************************************
-        1.设置信道
-    *****************************************************************************/
-    l_ret = wal_io2cfg_get_chan_info(pst_dev, &st_channel_param, &st_beacon_param);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::failed to get channel, return err code[%x]}", l_ret);
-        return -OAL_EFAIL;
-    }
-#if 0
-    l_ret = wal_cfg2io_set_channel_info(pst_dev, &st_channel_param);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::failed to set channel, return err code[%x]}", l_ret);
-        return -OAL_EFAIL;
-    }
-#endif
-    /*****************************************************************************
-        2.1 设置ssid信息
-    *****************************************************************************/
-    #if 0
-    ul_ssid_len = pst_ap_settings->ssid_len;
-    if ((ul_ssid_len > 32) || (0 == ul_ssid_len))
-    {
-         OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::ssid len error, len[%d].}", ul_ssid_len);
-         return -OAL_EFAIL;
-    }
-    oal_memset(auc_ssid_ie, 0, sizeof(auc_ssid_ie));
-    l_ret = (oal_int32)oal_copy_from_user(auc_ssid_ie, pst_ap_settings->ssid, ul_ssid_len);
-    if(l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::ssid oal_copy_from_user fail(%d).}", l_ret);
-         return -OAL_EFAIL;
-    }
-    puc_ssid_ie = auc_ssid_ie;
-    uc_ssid_len = (oal_uint8)ul_ssid_len;
-
-    l_ret = wal_cfg80211_set_ssid(pst_dev, puc_ssid_ie, uc_ssid_len);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::fail to send ssid cfg msg, error[%d]}", l_ret);
-        return -OAL_EFAIL;
-    }
-    #endif
-
-    /*****************************************************************************
-        2.2 设置auth mode信息
-    *****************************************************************************/
-    en_auth_algs = (wlan_auth_alg_mode_enum_uint8)pst_ap_settings->auth_type;
-    if((WLAN_WITP_AUTH_OPEN_SYSTEM != en_auth_algs)
-    && (WLAN_WITP_AUTH_SHARED_KEY != en_auth_algs)
-    && (WLAN_WITP_AUTH_AUTOMATIC != en_auth_algs))
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::en_auth_algs error[%d].}", en_auth_algs);
-        return -OAL_EFAIL;
-    }
-
-    l_ret = wal_cfg80211_set_auth_mode(pst_dev, en_auth_algs);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::fail to send auth_tpye cfg msg, error[%d]}", l_ret);
-        return -OAL_EFAIL;
-    }
-
-    /*****************************************************************************
-        3.设置beacon时间间隔、tim period以及安全配置消息等
-    *****************************************************************************/
-
-    /* 初始化beacon interval 和DTIM_PERIOD 参数 */
-    st_beacon_param.l_interval    = 0;
-    st_beacon_param.l_dtim_period = 0;
-    st_beacon_param.uc_hidden_ssid = pst_mac_vap->st_cap_flag.bit_hide_ssid;
-    pst_beacon_info               = &(pst_ap_settings->beacon);
-    l_ret = wal_cfg2io_fill_beacon_param(pst_mac_vap, pst_beacon_info, &st_beacon_param);
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_ERROR_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::failed to fill beacon param, error[%d]}", l_ret);
-        return -OAL_EINVAL;
-    }
-
-    /*设置操作类型*/
-    st_beacon_param.en_operation_type = MAC_ADD_BEACON;
-
-    /* 填写 msg 消息头*/
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CFG80211_CONFIG_BEACON, OAL_SIZEOF(mac_beacon_param_stru));
-
-    /* 填写 msg 消息体 */
-    oal_memcopy(st_write_msg.auc_value, &st_beacon_param, OAL_SIZEOF(mac_beacon_param_stru));
-
-    /* 发送消息 */
-    l_ret = wal_send_cfg_event_etc(pst_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(mac_beacon_param_stru),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_SUCC != l_ret)
-    {
-        OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{wal_cfg2io_set_beacon::failed to start addset beacon, error[%d]}", l_ret);
-        return -OAL_EFAIL;
-    }
-
-    return OAL_SUCC;
-}
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_M2S
 

@@ -18,6 +18,8 @@ extern "C" {
 #include "hal_ext_if.h"
 #include "mac_device.h"
 #include "mac_user.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_MAC_VAP_H
@@ -45,12 +47,6 @@ extern "C" {
 #define MAC_NUM_NBR_802_11G_MIXED_TWO   5    /* 11G 混合2模式时的非基本速率(NBR)个数 */
 
 /* 11N MCS相关的内容 */
-#if 0
-#define MAC_MAX_RATE_SINGLE_NSS_20M_11N 72  /* 1个空间流20MHz的最大速率*/
-#define MAC_MAX_RATE_SINGLE_NSS_40M_11N 150 /* 1个空间流40MHz的最大速率*/
-#define MAC_MAX_RATE_DOUBLE_NSS_20M_11N 144 /* 1个空间流80MHz的最大速率*/
-#define MAC_MAX_RATE_DOUBLE_NSS_40M_11N 300 /* 2个空间流20MHz的最大速率*/
-#endif
 
 #define MAC_MAX_RATE_SINGLE_NSS_20M_11N 0  /* 1个空间流20MHz的最大速率*/
 #define MAC_MAX_RATE_SINGLE_NSS_40M_11N 0 /* 1个空间流40MHz的最大速率*/
@@ -96,6 +92,12 @@ extern "C" {
 #define MAC_VAP_FEATURE_ENABLE               1
 #define MAC_VAP_FEATRUE_DISABLE              0
 
+#ifdef _PRE_WLAN_FEATURE_ADAPTIVE11R
+#define MAC_RSN_AKM_FT_OVER_8021X_VAL            1
+#define MAC_RSN_AKM_FT_PSK_VAL                   2
+#define MAC_RSN_AKM_FT_OVER_SAE_VAL              4
+#define MAC_RSN_AKM_FT_OVER_8021X_SHA384_VAL     8
+#endif
 #define CIPHER_SUITE_SELECTOR(a, b, c, d) \
 	((((oal_uint32) (d)) << 24) | (((oal_uint32) (c)) << 16) | (((oal_uint32) (b)) << 8) |(oal_uint32) (a))
 #define MAC_WPA_CHIPER_CCMP                  CIPHER_SUITE_SELECTOR(0x00, 0x50, 0xf2, 4)
@@ -104,6 +106,12 @@ extern "C" {
 #define MAC_WPA_AKM_PSK_SHA256               CIPHER_SUITE_SELECTOR(0x00, 0x50, 0xf2, 6)
 #define MAC_RSN_CHIPER_CCMP                  CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 4)
 #define MAC_RSN_CHIPER_TKIP                  CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 2)
+#ifdef _PRE_WLAN_FEATURE_ADAPTIVE11R
+#define MAC_RSN_AKM_FT_OVER_8021X            CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 3)
+#define MAC_RSN_AKM_FT_PSK                   CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 4)
+#define MAC_RSN_AKM_FT_OVER_SAE              CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 9)
+#define MAC_RSN_AKM_FT_OVER_8021X_SHA384     CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 13)
+#endif
 #define MAC_RSN_AKM_PSK                      CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 2)
 #define MAC_RSN_AKM_PSK_SHA256               CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 6)
 #define MAC_WPA_CHIPER_OUI(_suit_type)       CIPHER_SUITE_SELECTOR(0x00, 0x50, 0xf2, _suit_type)
@@ -116,44 +124,12 @@ extern "C" {
 #define MAC_RSN_CIPHER_SUITE_BIP_GMAC_128       CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 11)
 #define MAC_RSN_CIPHER_SUITE_BIP_GMAC_256       CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 12)
 #define MAC_RSN_CIPHER_SUITE_BIP_CMAC_256       CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 13)
+#define MAC_RSN_CIPHER_SUITE_OWE                CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 18)
+#define IS_SUPPORT_OWE(_pul_suites)             ((MAC_RSN_CIPHER_SUITE_OWE == *(_pul_suites)) || (MAC_RSN_CIPHER_SUITE_OWE == *((_pul_suites) + 1)))
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-#define MAC_RSN_AKM_8021X                    CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 1)
-#define MAC_RSN_AKM_OSEN                     CIPHER_SUITE_SELECTOR(0x50, 0x6f, 0x9a, 1)
-
-#define WPA_CIPHER_NONE BIT(0)
-#define WPA_CIPHER_WEP40 BIT(1)
-#define WPA_CIPHER_WEP104 BIT(2)
-#define WPA_CIPHER_TKIP BIT(3)
-#define WPA_CIPHER_CCMP BIT(4)
-#define WPA_CIPHER_AES_128_CMAC BIT(5)
-#define WPA_CIPHER_GCMP BIT(6)
-#define WPA_CIPHER_SMS4 BIT(7)
-#define WPA_CIPHER_GCMP_256 BIT(8)
-#define WPA_CIPHER_CCMP_256 BIT(9)
-#define WPA_CIPHER_BIP_GMAC_128 BIT(11)
-#define WPA_CIPHER_BIP_GMAC_256 BIT(12)
-#define WPA_CIPHER_BIP_CMAC_256 BIT(13)
-#define WPA_CIPHER_GTK_NOT_USED BIT(14)
-
-#define WPA_KEY_MGMT_IEEE8021X BIT(0)
-#define WPA_KEY_MGMT_PSK BIT(1)
-#define WPA_KEY_MGMT_NONE BIT(2)
-#define WPA_KEY_MGMT_IEEE8021X_NO_WPA BIT(3)
-#define WPA_KEY_MGMT_WPA_NONE BIT(4)
-#define WPA_KEY_MGMT_FT_IEEE8021X BIT(5)
-#define WPA_KEY_MGMT_FT_PSK BIT(6)
-#define WPA_KEY_MGMT_IEEE8021X_SHA256 BIT(7)
-#define WPA_KEY_MGMT_PSK_SHA256 BIT(8)
-#define WPA_KEY_MGMT_WPS BIT(9)
-#define WPA_KEY_MGMT_SAE BIT(10)
-#define WPA_KEY_MGMT_FT_SAE BIT(11)
-#define WPA_KEY_MGMT_WAPI_PSK BIT(12)
-#define WPA_KEY_MGMT_WAPI_CERT BIT(13)
-#define WPA_KEY_MGMT_CCKM BIT(14)
-#define WPA_KEY_MGMT_OSEN BIT(15)
-#define WPA_KEY_MGMT_IEEE8021X_SUITE_B BIT(16)
-#define WPA_KEY_MGMT_IEEE8021X_SUITE_B_192 BIT(17)
+#ifdef _PRE_WLAN_FEATURE_SAE
+#define MAC_RSN_CIPHER_SUITE_SAE                CIPHER_SUITE_SELECTOR(0x00, 0x0f, 0xac, 8)
+#define IS_ONLY_SUPPORT_SAE(_pul_suites)        ((MAC_RSN_CIPHER_SUITE_SAE == *(_pul_suites)) && (0 == *((_pul_suites) + 1)))
 #endif
 
 #define MAC_CALCULATE_HASH_VALUE(_puc_mac_addr)     \
@@ -162,17 +138,15 @@ extern "C" {
     + _puc_mac_addr[4] + _puc_mac_addr[5])          \
     & (MAC_VAP_USER_HASH_MAX_VALUE - 1))
 
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-#define MAC_VAP_PROXY_STA_HASH_MAX_VALUE     16       /* 硬件索引为16~31，最多16个,其实最多创建15个proxy sta */
-#define MAC_PROXYSTA_CALCULATE_HASH_VALUE(_puc_mac_addr)     \
-    ((_puc_mac_addr)[ETHER_ADDR_LEN - 1] & (MAC_VAP_PROXY_STA_HASH_MAX_VALUE - 1))
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_11AX
 #define IS_HAL_DEVICE_SUPPORT_11AX(_pst_mac_vap) (OAL_TRUE == (_pst_mac_vap)->en_11ax_hal_cap)
 #define IS_CUSTOM_OPEN_11AX_SWITCH(_pst_mac_vap) (OAL_TRUE == (_pst_mac_vap)->en_11ax_custom_switch)
 #define IS_11AX_VAP(_pst_mac_vap)                (IS_HAL_DEVICE_SUPPORT_11AX(_pst_mac_vap) && IS_CUSTOM_OPEN_11AX_SWITCH(_pst_mac_vap))
+#define IS_CUSTOM_OPEN_MULTI_BSSID_SWITCH(_pst_mac_vap) (OAL_TRUE == (_pst_mac_vap)->bit_multi_bssid_custom_switch)
+#define IS_NON_TRANSMITTED_BSSID_BSS(_pst_mbss_info)         ((OAL_TRUE == (_pst_mbss_info)->bit_is_non_transimitted_bss) && \
+                                                              (OAL_TRUE == (_pst_mbss_info)->bit_ext_cap_multi_bssid_activated))
 #endif
+
 
 #define IS_AP(_pst_mac_vap)  (WLAN_VAP_MODE_BSS_AP  == (_pst_mac_vap)->en_vap_mode)
 #define IS_STA(_pst_mac_vap) (WLAN_VAP_MODE_BSS_STA == (_pst_mac_vap)->en_vap_mode)
@@ -226,8 +200,8 @@ extern "C" {
 #define CUS_DY_CALI_2G_VAL_DPN_MIN         (-50) /* 动态校准2g dpn读取nvram最小值 */
 #define CUS_DY_CALI_5G_VAL_DPN_MAX         (50)  /* 动态校准5g dpn读取nvram最大值 */
 #define CUS_DY_CALI_5G_VAL_DPN_MIN         (-50) /* 动态校准5g dpn读取nvram最小值 */
-#define CUS_NUM_2G_DELTA_RSSI_NUM          (2)   /* 20M/40M */
-#define CUS_NUM_5G_DELTA_RSSI_NUM          (4)   /* 20M/40M/80M/160M */
+#define CUS_NUM_2G_DELTA_RSSI_NUM          3     /* 11B/40M/20M */
+#define CUS_NUM_5G_DELTA_RSSI_NUM          4     /* 160M/80M/40M/20M */
 #endif
 
 #ifdef _PRE_WLAN_ONLINE_DPD
@@ -261,11 +235,14 @@ extern "C" {
 #define MAC_ACTION_RPT_FIX_LEN                     3
 #define MAC_RADIO_MEAS_ACTION_REQ_FIX_LEN          5
 #define MAC_NEIGHBOR_REPORT_ACTION_REQ_FIX_LEN     3
+#define MAC_NEIGHBOR_REPORT_ACTION_RSP_FIX_LEN     3
 #define MAC_NEIGHBOR_RPT_FIX_LEN                   15
 #endif
 #define HMAC_RSP_MSG_MAX_LEN            128   /* get wid返回消息最大长度 */
 
 #define MAC_TEST_INCLUDE_FRAME_BODY_LEN            64
+
+#define MAC_STR_CMD_MAX_SIZE           16
 
 #define MAC_VAP_GET_CAP_BW(_pst_mac_vap) ((_pst_mac_vap)->st_channel.en_bandwidth)
 #define MAC_VAP_GET_CURREN_BW_STATE(_pst_mac_vap) (dmac_sta_bw_fsm_get_current_state(_pst_mac_vap))
@@ -291,7 +268,7 @@ extern "C" {
 #define MAC_GET_VAP_BAND(_pst_mac_vap)  ((_pst_mac_vap)->st_channel.en_band)
 
 /* 1103下工作在2G, STA模式band初始按照芯片最大能力来，然后join时候根据ap的band刷新  */
-#if(_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
+#if(((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV))) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
 /* 03只处理2G场景 */
 #define MAC_BTCOEX_CHECK_VALID_VAP(_pst_mac_vap)  \
     ((((_pst_mac_vap)->st_cap_flag.bit_bt20dbm)||(WLAN_BAND_2G == MAC_GET_VAP_BAND(_pst_mac_vap))) ? OAL_TRUE : OAL_FALSE)
@@ -385,6 +362,9 @@ typedef enum
     MAC_TAS_RSSI_CALI_DEBUG,        /* TAS天线测量  */
     MAC_TAS_ANT_SWITCH,             /* TAS天线切换  */
 #endif
+    MAC_SHOW_TPC_TABLE_GAIN,
+    MAC_POW_SAVE,
+
     MAC_SET_POW_BUTT
 } mac_set_pow_type_enum;
 typedef oal_uint8 mac_set_pow_type_enum_uint8;
@@ -631,9 +611,7 @@ typedef enum
     MAC_ALG_CFG_INTF_DET_NO_ADJRATIO_TH,
     MAC_ALG_CFG_INTF_DET_NO_ADJCYC_TH,
     MAC_ALG_CFG_INTF_DET_COLLISION_TH,
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-    MAC_ALG_CFG_INTF_DET_CH_BUSY_LOG,
-#endif
+
     MAC_ALG_CFG_NEG_DET_NONPROBE_TH,
 
     MAC_ALG_CFG_INTF_DET_END,
@@ -878,17 +856,6 @@ typedef struct
 
 #define WAL_HIPRIV_RATE_INVALID       255 /*  无效速率配置值  */
 
-#ifdef _PRE_WLAN_FEATURE_HILINK
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-#define MAC_HILINK_MAX_WHITE_LIST_MEMBER_CNT   (64)
-#define MAC_HILINK_MAX_ASSOCIATE_LIST_MEMBER_CNT   (64)
-#else
-#define MAC_HILINK_MAX_WHITE_LIST_MEMBER_CNT   (32)
-#endif
-
-#endif
-
 enum
 {
     PKT_STAT_SET_ENABLE                        = 0,
@@ -922,6 +889,7 @@ typedef enum
 }mac_ftm_mode_enum;
 typedef oal_uint8  mac_ftm_mode_enum_uint8;
 #endif
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -943,6 +911,20 @@ extern oal_bool_enum_uint8 g_en_mimo_blacklist_etc;
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
+#ifdef _PRE_WLAN_FEATURE_11AX
+/* TWT节能配置参数 */
+typedef struct
+{
+    oal_uint64      twt_start_time;
+    oal_uint32      twt_duration;
+    oal_uint32      twt_interval;
+    oal_uint8        twt_flow_id;
+    oal_uint8        twt_announce_bit;
+    oal_uint8        twt_trigger_bit;
+    oal_uint8        twt_session_enable;
+}mac_cfg_twt_param_stru;
+#endif
+
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 typedef struct                          /* hi1102-cb */
 {
@@ -1015,17 +997,6 @@ typedef struct
     oal_uint8                                  _rom[4];
 }mac_ch_switch_info_stru;
 
-#if 0
-typedef struct
-{
-    oal_bool_enum_uint8  en_include_opmode_notify_ie;     /* Beacon、关联请求帧中是否包含opmode_notify IE */
-    oal_bool_enum_uint8  en_bf_rx_nss_change;             /* Beamforming的Rx Nss改变 */
-    oal_uint8            uc_include_ie_count;             /* Beacon、关联请求帧中包含opmode_notify IE次数 */
-    oal_uint8            auc_resv[1];
-}mac_opmode_notify_info_stru;
-
-#endif
-
 typedef struct
 {
     oal_uint8           uc_rs_nrates;   /* 速率个数 */
@@ -1082,7 +1053,8 @@ typedef struct
                 bit_2g_custom_siso                 : 1,                 /* 2g是否定制化单天线siso,默认等于0,初始双天线 */
                 bit_5g_custom_siso                 : 1,                 /* 5g是否定制化单天线siso,默认等于0,初始双天线 */
                 bit_bt20dbm                        : 1,                 /* 20dbm是否使能，用于host做sta做删聚合判断 */
-                bit_resv                           : 3;
+                bit_icmp_filter                    : 1,                 /* rx方向icmp的过滤filter*/
+                bit_resv                           : 2;
 }mac_cap_flag_stru;
 
 /* VAP收发包统计 */
@@ -1191,6 +1163,9 @@ typedef struct
 #else
     oal_uint8                          auc_resv[1];
 #endif /* #ifdef _PRE_WLAN_FEATURE_TXOPPS */
+    oal_uint8                          bit_ap_chip_oui            : 3,
+                                       bit_resv                   : 5;
+    oal_uint8                          auc_resv1[3];
 }mac_h2d_vap_info_stru;
 
 typedef struct
@@ -1249,7 +1224,15 @@ typedef struct
     oal_bool_enum_uint8                 en_11n_txbf;
 
     oal_bool_enum_uint8                 en_40m_enable;
-    oal_uint8                           uc_rsv[3];
+    oal_uint8                           uc_bfer_num_sounding_dim;
+    oal_bool_enum_uint8                 en_su_bfee;
+#ifdef _PRE_WLAN_FEATURE_11AX
+    oal_uint8                           uc_he_ntx_sts_below_80m;
+    oal_uint8                           uc_he_ntx_sts_over_80m;
+    oal_uint8                           uc_he_num_dim_below_80m;
+    oal_uint8                           uc_he_num_dim_over_80m;
+#endif
+    oal_uint8                           uc_rsv[1];
 }mac_d2h_mib_update_info_stru;
 
 typedef struct
@@ -1367,124 +1350,6 @@ typedef struct
     oal_uint32                          ul_ie_max_len;                                  /* APP 信息元素最大长度 */
 } mac_app_ie_stru;
 
-#ifdef _PRE_WLAN_FEATURE_HILINK
-typedef struct
-{
-    oal_spin_lock_stru     st_lock;
-    oal_dlist_head_stru    st_list_head;
-    oal_uint8              uc_white_list_member_nums;   /* hilink白名单个数 */
-#ifndef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-    oal_uint8              auc_reserve[3];
-#else
-    oal_uint8              uc_assoc_sta_member_nums;    /* 已关连过的STA个数 */
-    oal_uint8              auc_reserve[2];
-#endif
-}mac_okc_ssid_hidden_white_list_stru;
-
-typedef struct
-{
-    oal_dlist_head_stru  st_dlist;
-    oal_uint8            auc_mac_addr[WLAN_MAC_ADDR_LEN];   /*对应的MAC地址 */
-#ifndef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-    oal_uint8            auc_reserve[2];
-#else
-    oal_uint8            uc_flag;                           /*flag标识，flag的bit0置1白名单；bit1置1已关联过*/
-    oal_uint8            uc_resp_nums;                      /*剩余回复probe resp帧个数*/
-#endif
-}mac_okc_white_list_member_stru;
-
-/* 记录剔除网卡信息结构体 */
-typedef struct
-{
-    oal_uint8  auc_user_mac_addr[6];     /* 保存已删除用户的MAC地址 */
-    oal_uint8  uc_mlme_phase_mask;
-    oal_uint8  uc_rev;
-} mac_fbt_disable_user_info_stru;
-
-/* 记录快速切换信息的结构体 */
-typedef struct
-{
-    oal_uint8  uc_fbt_mode;              /* 配置快速切换运行的模式。0：表示关闭，1：表示开启AC集中控制 */
-    oal_uint8  uc_disabled_user_cnt;     /* 记录禁止连接列表当前用户的个数 */
-    oal_uint8  auc_rev[2];
-    mac_fbt_disable_user_info_stru ast_fbt_disable_connect_user_list[HMAC_FBT_MAX_USER_NUM];  /* 保存32个禁止连接用户的信息，32个资源不够，暂时支持3个用户 */
-    frw_timeout_stru st_timer;           /* 已关联用户上报侦听结果使用的定时器 */
-} mac_fbt_mgmt_stru;
-
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-
-typedef struct mac_vap_status_diag_info
-{
-    oal_uint8 uc_channel_usage;                     //占空比：40%对应值40
-    oal_uint8 uc_offset_second_channel;    //备选信道
-    oal_uint8 auc_hisi_cca_shreshold[2];         //待确认含义
-    oal_uint32 ul_hisi_dig;                     //接收门限
-    oal_uint16 us_fa;                      /* invalid frame - crc err .etc*/  //1秒内无效帧计数，需要驱动统计
-    oal_uint16 us_cca;                     /* valid frame, can be recongnized*/ //1秒内有效帧计数,需要驱动统计
-    oal_uint32 ul_wait_agg_time;           //聚合等待时间（ms)
-    oal_uint32 ul_channel_busy;
-    /* buffer use status */
-    oal_uint32 ul_skb_remain_buffer;       //skb剩余buff   WLAN_TID_MPDU_NUM_LIMIT- mac_device_stru->us_total_mpdu_num
-    oal_uint32 ul_vo_remain_count;         //vo队列剩余buff WLAN_TID_MPDU_NUM_LIMIT- mac_device_stru->us_total_mpdu_num
-    oal_uint32 ul_vi_remain_count;         //vi队列剩余buff
-    oal_uint32 ul_be_remain_count;         //be队列剩余buff
-    oal_uint32 ul_bk_remain_count;         //bk队列剩余buff
-    /* edca setting  */
-    oal_uint32 ul_vo_edca;                 //1151的寄存器设置值
-    oal_uint32 ul_vi_edca;                 //hi1151_vap_get_edca_machw_cw  3.9.1
-    oal_uint32 ul_be_edca;
-    oal_uint32 ul_bk_edca;
-} mac_vap_status_diag_info_stru;
-
-typedef struct mac_sta_status_diag_info
-{
-    void *pst_mac_usr;
-    oal_uint8 uc_agg_mode;                 //有聚合1， 0无聚合
-    oal_uint8 uc_max_agg_num;              //最大聚合个数
-    oal_uint8 uc_rts_rate;                 /* MB/s*/ //芯片RTS帧速率
-    oal_uint8 uc_rts_retry_cnt;            //芯片RTS帧重发次数
-    oal_int8 c_rssi;
-    oal_int8 ac_reserved[3];
-    oal_uint32 ul_tx_unicast_bytes;        /* becareful invert */  //发送单播报文字节数
-    oal_uint32 ul_rx_unicast_bytes;        //接收单播报文字节数
-    oal_uint32 ul_tx_mcast_bytes;          /* 发送多播报文字节数: 已有组播转单播特性 */
-    oal_uint32 ul_rx_mcast_bytes;          /* 接收多播报文字节数: 已有组播转单播特性 */
-    oal_uint32 aul_sta_tx_mcs_cnt[16];     /* how many tx mcs count  两次读取间隔内的每个MCS统计值,读清0 */
-    oal_uint32 aul_sta_rx_mcs_cnt[16];     /* how many rx mcs count 两次读取间隔内的每个MCS统计值,读清0  */
-    oal_uint32 ul_sleep_times;             //累计休眠次数
-} mac_sta_status_diag_info_stru;
-
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-typedef enum
-{
-    PSTA_MODE_NONE = 0,
-    PSTA_MODE_MSTA,
-    PSTA_MODE_VSTA,
-    PSTA_MODE_PBSS,
-}psta_mode_enum;
-typedef oal_uint8 psta_mode_enum_uint8;
-
-typedef struct
-{
-    psta_mode_enum_uint8      en_psta_mode;
-    oal_uint8                 auc_res[3];
-}mac_vap_psta_stru;
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-typedef enum
-{
-    PROXYSTA_MODE_NONE = 0,
-    PROXYSTA_MODE_SSTA,     /* SINGLE STA */
-    PROXYSTA_MODE_RAP,      /* REPEATER AP */
-}proxysta_mode_enum;
-typedef oal_uint8 proxysta_mode_enum_uint8;
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_PROXY_ARP
 
 #ifdef _PRE_DEBUG_MODE
@@ -1506,13 +1371,6 @@ typedef struct
     oal_uint16                          us_ipv6_num;        /* 记录ipv6的条数 */
     oal_bool_enum_uint8                 en_is_proxyarp;
     oal_bool_enum_uint8                 en_2wlan;
-
-#if 0//def _PRE_DEBUG_MODE
-    /* 调试使用,最多记录MAC_VAP_USER_HASH_MAX_VALUE条记录 */
-    oal_uint16                          us_idx_cur; /* 循环指向当前记录的位置 */
-    oal_uint8                           auc_rsv[2];
-    mac_vap_proxyarp_debug_stru         ast_vap_proxyarp_dbg[MAC_VAP_USER_HASH_MAX_VALUE];
-#endif
 }mac_vap_proxyarp_stru;
 #endif
 
@@ -1761,23 +1619,134 @@ typedef struct
 }mac_qos_enhance_stru;
 #endif
 
+/* MAC TX RX common report命令对应枚举 */
+typedef enum
+{
+    MAC_TX_COMMON_REPORT_INDEX                     = 0 ,
+    MAC_TX_COMMON_REPORT_STATUS                        ,
+    MAC_TX_COMMON_REPORT_BW_MODE                       ,
+    MAC_TX_COMMON_REPORT_PROTOCOL_MODE                 ,
+    MAC_TX_COMMON_REPORT_FRAME_TYPE                    ,
+    MAC_TX_COMMON_REPORT_SUB_TYPE                  = 5 ,
+    MAC_TX_COMMON_REPORT_APMDU                         ,
+    MAC_TX_COMMON_REPORT_PSDU                          ,
+    MAC_TX_COMMON_REPORT_HW_RETRY                      ,
+    MAC_TX_COMMON_REPORT_CTRL_REG_CLEAR                ,
+
+    MAC_TX_COMMON_REPORT_DEBUG_BUTT
+}mac_tx_common_report_debug_type_enum;
+typedef oal_uint8 mac_tx_common_report_debug_type_enum_uint8;
+
+typedef enum
+{
+    MAC_RX_COMMON_REPORT_INDEX                     = 0 ,
+    MAC_RX_COMMON_REPORT_STATUS                        ,
+    MAC_RX_COMMON_REPORT_BW_MODE                       ,
+    MAC_RX_COMMON_REPORT_PROTOCOL_MODE                 ,
+    MAC_RX_COMMON_REPORT_FRAME_TYPE                    ,
+    MAC_RX_COMMON_REPORT_SUB_TYPE                  = 5 ,
+    MAC_RX_COMMON_REPORT_APMDU                         ,
+    MAC_RX_COMMON_REPORT_PSDU                          ,
+    MAC_RX_COMMON_REPORT_VAP_CHK                       ,
+    MAC_RX_COMMON_REPORT_BSS_CHK                       ,
+    MAC_RX_COMMON_REPORT_DIRECT_CHK                = 10,
+    MAC_RX_COMMON_REPORT_CTRL_REG_CLEAR                ,
+
+    MAC_RX_COMMON_REPORT_DEBUG_BUTT
+}mac_rx_common_report_debug_type_enum;
+typedef oal_uint8 mac_rx_common_report_debug_type_enum_uint8;
+
+typedef enum
+{
+    PG_EFFICIENCY_STATISTICS_ENABLE                =  0,
+    PG_EFFICIENCY_INFO,
+
+    MAC_VAP_COMMON_SET_TXQ,
+    MAC_VAP_COMMON_TX_INFO,
+
+}mac_common_debug_type_enum;
+typedef oal_uint8 mac_common_debug_type_enum_uint8;
+
 #ifdef _PRE_WLAN_FEATURE_11AX
+typedef enum
+{
+    MAC_VAP_11AX_DEBUG_PRINT_LOG,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_TID_NUM              ,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_HTC_ORGER            ,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_HTC_VALUE            ,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_FIX_POWER            ,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_POWER_VALUE          ,
+    MAC_VAP_11AX_DEBUG_HE_TB_PPDU_DISABLE_BA_CHECK     ,
+    MAC_VAP_11AX_DEBUG_DISABLE_MU_EDCA                 ,
+    MAC_VAP_11AX_DEBUG_MANUAL_CFO                      ,
+    MAC_VAP_11AX_DEBUG_BSRP_CFG                        ,
+    MAC_VAP_11AX_DEBUG_BSRP_TID                        ,
+    MAC_VAP_11AX_DEBUG_BSRP_QUEUE_SIZE                 ,
+    MAC_VAP_11AX_DEBUG_MAC_PADDING                     ,
+    MAC_VAP_11AX_DEBUG_POW_TEST                        ,
+    MAC_VAP_11AX_DEBUG_TB_PPDU_LEN                     ,
+    MAC_VAP_11AX_DEBUG_TB_PPDU_AC                      ,
+    MAC_VAP_11AX_DEBUG_PRINT_RX_TRIG_FRAME             ,
+
+    MAC_VAP_11AX_DEBUG_BUTT
+}mac_vap_11ax_debug_type_enum;
+typedef oal_uint8 mac_vap_11ax_debug_type_enum_uint8;
+
+
+typedef enum
+{
+    MAC_VAP_11AX_PARAM_CONFIG_INIT                     = 0,
+    MAC_VAP_11AX_PARAM_CONFIG_UPDAT                    = 1,
+
+    MAC_VAP_11AX_PARAM_CONFIG_BUTT
+}mac_vap_11ax_param_config_enum;
+typedef oal_uint8 mac_vap_11ax_param_config_enum_uint8;
+
+typedef enum
+{
+    MAC_VAP_11AX_HTC_CONFIG_NO_OPER                    = 0,
+    MAC_VAP_11AX_HTC_CONFIG_SOFT_ADD                   = 1,
+    MAC_VAP_11AX_HTC_CONFIG_UPH_TRIGGER_CAL            = 2,/**/
+    MAC_VAP_11AX_HTC_CONFIG_UPH_CMD_FIX                = 3,
+#ifdef _PRE_WLAN_FEATURE_UPH_AUTO
+    MAC_VAP_11AX_HTC_CONFIG_UPH_CMD_AUTO               = 4,
+#endif
+    MAC_VAP_11AX_HTC_CONFIG_BUTT
+}mac_vap_11ax_htc_config_enum;
+typedef oal_uint8 mac_vap_11ax_htc_config_enum_uint8;
+
 typedef struct
 {
     oal_uint8                               bit_new_bss_color_info             :6,
                                             bit_new_bss_color_exit             :2;
     oal_uint8                               uc_rsv[3];
 }mac_vap_he_config_info_stru;
+
+typedef struct
+{
+    oal_uint8                          uc_enable_flag;
+    oal_uint8                          auc_srg_bss_color_bitmap[MAC_HE_SRG_BSS_COLOR_BITMAP_LEN];
+    oal_uint8                          auc_srg_partial_bssid_bitmap[MAC_HE_SRG_PARTIAL_BSSID_BITMAP_LEN];
+
+}mac_vap_he_sr_config_info_stru;
+
 #endif
 
 typedef struct
 {
 #ifdef _PRE_WLAN_FEATURE_11AX
-    wlan_mib_Dot11EDCAEntry_stru            st_wlan_mib_mu_edca;
-    wlan_mid_Dot11HePhyCapability_rom_stru  st_wlan_rom_mib_he_phy_config;
-    mac_vap_he_config_info_stru             st_he_config_info;
+    wlan_mib_Dot11EDCAEntry_stru                  st_wlan_mib_mu_edca;
+    wlan_mid_Dot11HePhyCapability_rom_stru        st_wlan_rom_mib_he_phy_config;
+    wlan_mib_Dot11HEStationConfigEntry_rom_stru   st_wlan_rom_mib_he_sta_config;
+    mac_vap_he_config_info_stru                   st_he_config_info;
+    mac_vap_he_sr_config_info_stru                st_he_sr_config_info;
+    mac_cfg_twt_param_stru                        st_twt_param;
+    mac_multi_bssid_info                          st_mbssid_info;
 #endif
-    oal_uint8                          auc_rsv[4];
+    oal_uint32                                    ul_resv[10];/* 由于下面结构体被ROM化,偏移不可变 */
+    oal_bool_enum_uint8                           en_dot11VHTExtendedNSSBWCapable; /* VHT cap Extended NSS BW Support字段是否有效 */
+    mac_vap_state_enum_uint8                      en_last_vap_state;               /* wlan0 监听场景下保存VAP 进入监听前的状态 */
+    oal_uint8                          auc_rsv[2];
 
 }mac_vap_rom_stru;
 extern mac_vap_rom_stru g_mac_vap_rom[];
@@ -1830,10 +1799,7 @@ typedef struct
       DMAC OFFLOAD模式VAP被删除后过滤缓冲的帧*/
     oal_uint8                           uc_init_flag;
     oal_uint16                          us_mgmt_frame_filters;                    /* 管理帧过滤，参考 en_fbt_mgmt_frame_filter_enum */
-#ifdef _PRE_WLAN_FEATURE_BAND_STEERING
-    oal_uint8                           uc_bsd_switch;
-    oal_uint8                           auc_resv7[3];
-#endif
+
     /* word9 增加的SPE 端口号,一个VAP对应一个端口号 */
 #if (defined(CONFIG_BALONG_SPE) && defined(_PRE_WLAN_SPE_SUPPORT))
     oal_uint32                          ul_spe_portnum;                                 /* 用于保存netdev初始化的spe端口 */
@@ -1847,9 +1813,6 @@ typedef struct
     //mac_key_mgmt_stru                   st_key_mgmt;                                    /*用于保存自身ptk gtk等密钥信息，在AP/STA模式下均需要使用*/
 
     mac_cap_flag_stru                   st_cap_flag;                                    /* vap能力特性标识 */
-#if(_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    mac_vap_stats_stru                  st_vap_stats;                                   /* VAP收发包统计 */
-#endif
     wlan_mib_ieee802dot11_stru         *pst_mib_info;                                   /* mib信息(当时配置vap时，可以直接将指针值为NULL，节省空间)  */
 
     mac_curr_rateset_stru               st_curr_sup_rates;                              /* 当前支持的速率集 */
@@ -1859,10 +1822,6 @@ typedef struct
     /* user 链表维测 */
     oal_uint32          ul_dlist_cnt;     /* dlsit统计 */
     oal_uint32          ul_hash_cnt;     /* hash个数统计 */
-#if 0
-    mac_vap_dft_stru                    st_vap_dft;                                     /* vap吞吐统计信息，维测用 */
-#endif
-
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_TXBF
@@ -1887,17 +1846,9 @@ typedef struct
     mac_app_ie_stru                     ast_app_ie[OAL_APP_IE_NUM];
     oal_bool_enum_uint8                 en_40M_intol_user;                               /* ap下是否有关联的40M intolerant的user*/
     oal_bool_enum_uint8                 en_vap_wmm;                                      /* ap wmm 开关 */
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-    oal_uint8                           uc_1st_asoc_done;                               /* 第一次关联 */
-    oal_uint8                           uc_force_resp_mode_80M;                         /* sifs响应帧使用80M带宽 */
-#else
+
     oal_uint8                           uc_up_vap_shift_type;
     oal_uint8                           uc_random_mac;
-#endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    mac_okc_ssid_hidden_white_list_stru    st_okc_ssid_hidden_white_list;
-    mac_fbt_mgmt_stru                      st_fbt_mgmt;                               /* 记录fbt配置信息、禁止连接列表 */
-#endif
 
     /* VAP为AP特定成员， 定义结束*/
 
@@ -1910,12 +1861,8 @@ typedef struct
     oal_uint8                           bit_ap_11ntxbf              : 1,                /* sta要关联的用户的11n txbf能力信息 */
                                         bit_rsp_soft_ctl_launcher   : 1,
                                         bit_roam_scan_valid_rslt    : 1,
-                                        bit_resv5                   : 5;
-    /* VAP为STA特定成员， 定义结束*/
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    mac_vap_psta_stru                   st_psta;                                /* Proxy STA 特性相关结构体 */
-#endif
+                                        bit_ap_chip_oui             : 3,                /* sta要关联的用户的芯片类型 */
+                                        bit_resv5                   : 2;
 
 #ifdef _PRE_WLAN_FEATURE_PROXY_ARP
     mac_vap_proxyarp_stru              *pst_vap_proxyarp;
@@ -1925,23 +1872,19 @@ typedef struct
     mac_cfg_narrow_bw_stru              st_nb;
 #endif
 
-//#ifdef _PRE_WLAN_FEATURE_ALWAYS_TX
     /* 常发测试使用 */
     oal_uint8                           bit_al_tx_flag  :1; /* 常发标志 */
     oal_uint8                           bit_payload_flag:2; /* payload内容:0:全0  1:全1  2:random */
     oal_uint8                           bit_ack_policy:1;   /* ack_policy内容:0:normal 1:no ack , 目前不使用*/
 
     /* 常收测试使用 */
-    oal_uint8                           bit_al_rx_flag  :1; /* 常收标志 */
-    oal_uint8                           bit_reserved:3;
-//#endif
+    oal_uint8                           bit_al_rx_flag         :1; /* 常收标志 */
+    oal_uint8                           bit_bss_include_rrm_ie :1; /* 关联的bss 含有rrm ie */
+    oal_uint8                           bit_reserved           :2;
 
-//#ifdef _PRE_WLAN_FEATURE_P2P
     wlan_p2p_mode_enum_uint8            en_p2p_mode;                                    /* 0:非P2P设备; 1:P2P_GO; 2:P2P_Device; 3:P2P_CL */
     oal_uint8                           uc_p2p_gocl_hal_vap_id;                         /* p2p go / cl的hal vap id */
     oal_uint8                           uc_p2p_listen_channel;                          /* P2P Listen channel */
-    //oal_uint8                           auc_resv6[1];
-//#endif    /* _PRE_WLAN_FEATURE_P2P */
 
 #ifdef _PRE_WLAN_FEATURE_STA_PM
     mac_cfg_uapsd_sta_stru              st_sta_uapsd_cfg;     /* UAPSD的配置信息 */
@@ -1956,21 +1899,16 @@ typedef struct
     mac_vowifi_param_stru              *pst_vowifi_cfg_param;  /* 上层下发的"VoWiFi信号质量评估"参数结构体 */
 #endif /* _PRE_WLAN_FEATURE_VOWIFI */
     mac_fix_rate_cfg_para_stru          st_fix_rate_pre_para;
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-#ifdef _PRE_DEBUG_MODE
-    oal_work_stru                       reg_file_work;
-#endif
-    oal_work_stru                       debug_reg_work;
-    oal_work_stru                       show_pow_work;
-#endif
-#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_DEV)  ||( _PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV))
+#if (( ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV))))
     mac_beacon_include_test_ie_stru     st_ap_beacon_test_ie;
 #endif
 #if defined(_PRE_WLAN_FEATURE_11AX) || defined(_PRE_WLAN_FEATURE_11AX_ROM)
     oal_uint8                           uc_he_mu_edca_update_count;
-    oal_bool_enum_uint8                 en_11ax_custom_switch;
+    oal_uint8                           en_11ax_custom_switch         : 1,
+                                        bit_multi_bssid_custom_switch : 1,
+                                        bit_11ax_rsv                  : 6;
     oal_bool_enum_uint8                 en_11ax_hal_cap;
-    oal_uint8                           auc_resv9[1];            /* 4字节对齐 */
+    oal_uint8                           uc_11ax_debug;
 #endif
 #ifdef _PRE_WLAN_FEATURE_DFS
     oal_bool_enum_uint8                 en_radar_detector_is_supp;/*辅路hal device不支持雷达探测，增加判断*/
@@ -2006,10 +1944,6 @@ typedef struct
 
     oal_uint8                 uc_vap_id;                /* 需要添加的vap id */
     wlan_p2p_mode_enum_uint8  en_p2p_mode;              /* 0:非P2P设备; 1:P2P_GO; 2:P2P_Device; 3:P2P_CL */
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    psta_mode_enum_uint8      en_psta_mode;
-    oal_uint8                 uc_rep_id;
-#endif
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     oal_uint8                 bit_11ac2g_enable         :1;
@@ -2035,10 +1969,6 @@ typedef struct
     oal_uint8                 bit_reserve1        :7;
     oal_uint8                 auc_resv1[3];
 #endif
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-    proxysta_mode_enum_uint8  en_proxysta_mode;
-    oal_uint8                 auc_resv2[3];
-#endif
 #ifdef _PRE_WLAN_FEATURE_11AX
     oal_bool_enum_uint8       en_11ax_custom_switch;
 #endif
@@ -2055,8 +1985,6 @@ typedef struct
     oal_uint8            uc_protocol;
     oal_uint8            uc_band;
     oal_uint8            uc_bandwidth;
-#else
-    oal_uint8            auc_resv1[3];
 #endif
 #ifdef _PRE_WLAN_FEATURE_P2P
     wlan_p2p_mode_enum_uint8   en_p2p_mode;
@@ -2098,35 +2026,6 @@ typedef struct
     oal_int32   l_buff_len;
     oal_uint8   auc_buff[WLAN_IWPRIV_MAX_BUFF_LEN];
 }mac_cfg_param_char_stru;
-
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-/* iwpriv 获取的vap基本配置参数 */
-typedef struct
-{
-    oal_uint32  bit_uapsd                           : 1,
-                bit_short_gi_20m                    : 1,
-                bit_short_gi_40m                    : 1,
-                bit_hide_ssid                       : 1,                 /* AP开启隐藏ssid,  0-关闭, 1-开启*/
-                bit_11ntxbf                         : 1,                 /* 11n txbf能力 */
-                bit_tx_stbc                         : 1,
-                bit_rx_stbc                         : 1,
-                bit_ldpc                            : 1,
-                bit_qos                             : 1,
-                bit_short_preamble                  : 1,
-                bit_frameburst                      : 1,
-                bit_ampdu                           : 1,
-                bit_ampdu_amsdu                     : 1,
-                bit_resv                            : 19;
-}mac_vap_param_stru;
-
-/* 获取的支持信道列表 */
-typedef struct
-{
-    oal_uint8   uc_total_chan_num;
-    oal_uint8   auc_chan[MAC_MAX_SUPP_CHANNEL];
-}mac_chan_list_stru;
-
-#endif
 
 /* HOSTAPD 设置工作频段，信道和带宽参数 */
 typedef struct
@@ -2206,23 +2105,7 @@ typedef struct
 {
     oal_uint8               auc_mac_addr[WLAN_MAC_ADDR_LEN];    /* MAC地址 */
     oal_uint16              us_reason_code;                     /* 去关联 reason code */
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    oal_uint8               uc_rej_user;                        /* 禁止sta连接, TRUE:添加拒连STA, FALSE:删除拒连STA */
-    oal_uint8               uc_kick_user;                       /* 类型:允许/禁止连接 TRUE:踢掉sta, */
-    oal_uint8               uc_mlme_phase_mask;                 /* 拒连阶段掩码 */
-    oal_uint8               uc_rsv;
-#endif
 }mac_cfg_kick_user_param_stru;
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-/* 设置Proxy STA OMA配置命令参数 */
-typedef struct
-{
-    oal_uint8               auc_mac_addr[WLAN_MAC_ADDR_LEN];    /* Proxy STA OMA地址 */
-    oal_uint8               auc_resv[2];
-}mac_cfg_set_oma_param_stru;
-
-#endif
 
 /* 暂停tid配置命令参数 */
 typedef struct
@@ -2322,15 +2205,6 @@ typedef struct
     oal_uint8   auc_resv[3];
 }mac_cfg_resume_qempty_stru;
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-/* 使能rx intr fifo命令 */
-typedef struct
-{
-    oal_uint8   uc_is_on;
-    oal_uint8   auc_resv[3];
-}mac_cfg_resume_rx_intr_fifo_stru;
-#endif
-
 /* 发送mpdu/ampdu命令参数  */
 typedef struct
 {
@@ -2355,6 +2229,28 @@ typedef struct
 }mac_cfg_ampdu_start_param_stru;
 
 typedef mac_cfg_ampdu_start_param_stru mac_cfg_ampdu_end_param_stru;
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+typedef struct
+{
+    oal_uint8                       auc_mac_addr[WLAN_MAC_ADDR_LEN];    /* 用户的MAC ADDR */
+    oal_uint8                        uc_twt_setup_cmd;
+    oal_uint8                        uc_twt_flow_type;
+    oal_uint8                        uc_twt_flow_id;
+    oal_uint32                       ul_twt_arg;                               /* [setup_cmd/flow type/flow ID] */
+    oal_uint32                       ul_twt_start_time_offset;   /* us after TSF*/
+    oal_uint32                       ul_twt_exponent;                       /* interval_exponent */
+    oal_uint32                       ul_twt_duration;                       /* wake_duration */
+    oal_uint32                       ul_intrval_mantissa;                         /* interval_mantissa */
+}mac_cfg_twt_setup_req_param_stru;
+
+typedef struct
+{
+    oal_uint8                       auc_mac_addr[WLAN_MAC_ADDR_LEN];    /* 用户的MAC ADDR */
+    oal_uint8                        uc_twt_flow_id;                               /* flow ID */
+}mac_cfg_twt_teardown_req_param_stru;
+#endif
+
 
 /* BA会话相关的配置命令参数 */
 typedef struct
@@ -2467,35 +2363,6 @@ typedef struct
     wlan_tx_ack_policy_enum_uint8    en_ack_policy;
     oal_uint32                       ul_payload_len;
 }mac_cfg_tx_comp_stru;
-
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-typedef struct
-{
-    oal_uint8                        uc_ch;
-    oal_uint8                        uc_freq;
-    oal_int16                        as_power[WLAN_DYNC_CALI_POW_PD_PARAM_NUM];
-}mac_cfg_cali_power_stru;
-
-typedef struct
-{
-    oal_uint8                        uc_freq;
-    oal_uint8                        auc_reserve[3];     /* 保留 */
-    oal_int16                        as_polynomial_para[2][WLAN_DYNC_CALI_POW_PD_PARAM_NUM];
-}mac_cfg_polynomial_para_stru;
-
-typedef struct
-{
-    oal_int32                        l_length;
-    oal_int16                        as_polynomial_paras[WLAN_DYNC_CALI_5G_PD_PARAM_NUMS];
-}mac_cfg_show_pd_paras_stru;
-
-typedef struct
-{
-    oal_uint32                        ul_length;
-    oal_uint16                        aus_upc_paras[WLAN_DYNC_CALI_5G_UPC_PARAM_NUMS];
-}mac_cfg_show_upc_paras_stru;
-
-#endif
 
 typedef struct
 {
@@ -2734,12 +2601,12 @@ typedef struct
 
     oal_uint32                  *pul_channels_2G;
     oal_uint32                  *pul_channels_5G;
-    oal_uint8                   uc_scan_flag;
+    oal_uint32                   ul_scan_flag;
 
     /* WLAN/P2P 特性情况下，p2p0 和p2p-p2p0 cl 扫描时候，需要使用不同设备，增加bit_is_p2p0_scan来区分 */
     oal_uint8                    bit_is_p2p0_scan : 1;   /* 是否为p2p0 发起扫描 */
     oal_uint8                    bit_rsv          : 7;   /* 保留位 */
-    oal_uint8                    auc_rsv[2];             /* 保留位 */
+    oal_uint8                    auc_rsv[3];             /* 保留位 */
 }mac_cfg80211_scan_param_stru;
 
 
@@ -2756,10 +2623,6 @@ typedef struct
     oal_uint32              aul_pair_suite[WLAN_PAIRWISE_CIPHER_SUITES];
     oal_uint32              aul_akm_suite[WLAN_AUTHENTICATION_SUITES];
     oal_uint32              ul_group_mgmt_suite;
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-    oal_int                 n_pair_suite;
-    oal_int                 n_akm_suites;
-#endif
 }mac_crypto_settings_stru;
 
 /**
@@ -2953,7 +2816,6 @@ typedef struct mac_cfg_lpm_tx_data_tag
     oal_uint8   uc_psm;                               /*0:psm=0,1:psm=1*/
     oal_uint8   uc_rsv[1];
     oal_uint8   auc_da[WLAN_MAC_ADDR_LEN];            /*发送probe request时，复用为指定BSSID*/
-    //oal_uint8   auc_sa[WLAN_MAC_ADDR_LEN];
 }mac_cfg_lpm_tx_data_stru;
 
 typedef struct
@@ -3115,14 +2977,6 @@ typedef struct
     oal_uint8                   auc_resv[2];
 }mac_cfg_aggr_num_stru;
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-typedef struct
-{
-    oal_uint8                   uc_mmss_val;        /* 最小帧间距 */
-    oal_uint8                   auc_resv[3];
-}mac_cfg_ampdu_mmss_stru;
-#endif
-
 #ifdef _PRE_DEBUG_MODE
 typedef struct
 {
@@ -3175,6 +3029,16 @@ typedef struct
     oal_uint16  us_cfg_id;
     oal_uint32  ul_value;
 }mac_cfg_set_tlv_stru;
+
+typedef struct
+{
+    oal_uint16  us_cfg_id;
+    oal_uint8   uc_cmd_cnt;
+    oal_uint8   uc_len;
+    oal_uint16  us_set_id[MAC_STR_CMD_MAX_SIZE];
+    oal_uint32  ul_value[MAC_STR_CMD_MAX_SIZE];
+}mac_cfg_set_str_stru;
+
 
 typedef struct
 {
@@ -3266,14 +3130,10 @@ typedef struct
 
 typedef struct
 {
-    //oal_net_device_stru     *pst_netdev;
     oal_uint8                  uc_key_index;
     oal_bool_enum_uint8        en_pairwise;
-    //oal_uint8                auc_resv1[2];
     oal_uint8                  auc_mac_addr[OAL_MAC_ADDR_LEN];
-    //oal_uint8                  uc_usridx;       /*  */
     oal_uint8                  cipher;
-    //oal_uint8                  uc_type;        /* 1-key 2-seq */
     oal_uint8                  auc_rsv[3];
     mac_key_stru               st_key;
     mac_seq_stru               st_seq;
@@ -3292,16 +3152,13 @@ typedef struct
 
 typedef struct
 {
-    //oal_net_device_stru     *pst_netdev;
     oal_uint8                uc_key_index;
     oal_bool_enum_uint8      en_pairwise;
-    //oal_uint8                auc_resv1[2];
     oal_uint8                auc_mac_addr[OAL_MAC_ADDR_LEN];
 }mac_removekey_param_stru;
 
 typedef struct
 {
-    //oal_net_device_stru     *pst_netdev;
     oal_uint8                uc_key_index;
     oal_bool_enum_uint8      en_unicast;
     oal_bool_enum_uint8      en_multicast;
@@ -3774,12 +3631,7 @@ typedef struct
 typedef struct
 {
     oal_int8     c_rf_gain_db_mult4;      /*外部PA/LNA bypass时的增益(精度0.25dB)*/
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    oal_int8     c_rf_gain_db_mult10;     /*外部PA/LNA bypass时的增益(精度0.1dB)*/
-    oal_uint8    auc_resv[2];
-#else
     oal_uint8    auc_resv[3];
-#endif
 }mac_cfg_gain_db_per_band;
 
 typedef struct
@@ -3793,6 +3645,7 @@ typedef struct
 typedef struct
 {
     oal_int8   c_cfg_delta_pwr_ref_rssi_2g[CUS_NUM_2G_DELTA_RSSI_NUM];
+    oal_uint8  auc_resv[1];
     oal_int8   c_cfg_delta_pwr_ref_rssi_5g[CUS_NUM_5G_DELTA_RSSI_NUM];
 }mac_cfg_custom_delta_pwr_ref_stru;
 
@@ -3807,12 +3660,16 @@ typedef struct
     oal_uint8                   uc_ext_switch_isexist;        /* 是否使用外部switch */
 
     oal_uint8                   uc_ext_pa_isexist;            /* 是否使用外部pa */
+    oal_fem_lp_state_enum_uint8 en_fem_lp_enable;             /* 是否支持fem低功耗标志*/
+    oal_int8                    c_fem_spec_value;             /* fem spec功率点*/
     oal_uint8                   uc_ext_lna_isexist;           /* 是否使用外部lna */
+
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
     oal_int8                    c_pa_gain_b1_db;              /* 外部PA b1增益(dB) */
     oal_uint8                   uc_pa_gain_lvl_num;            /* 外部PA 增益档位数 */
-#else
     oal_uint8                   auc_resv[2];
+#else
+    oal_uint8                   auc_resv[4];
 #endif
 }mac_cfg_custom_ext_rf_stru;
 
@@ -3899,32 +3756,6 @@ typedef struct
 }mac_dpd_cus_cali_stru;
 #endif
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-typedef struct
-{
-    /* bt tmp */
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band1;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band2;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band3;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band4;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band5;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band6;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band7;
-    oal_int16                  us_cali_bt_txpwr_pa_ref_band8;
-    oal_int16                  us_cali_bt_txpwr_numb;
-    oal_int16                  us_cali_bt_txpwr_pa_fre1;
-    oal_int16                  us_cali_bt_txpwr_pa_fre2;
-    oal_int16                  us_cali_bt_txpwr_pa_fre3;
-    oal_int16                  us_cali_bt_txpwr_pa_fre4;
-    oal_int16                  us_cali_bt_txpwr_pa_fre5;
-    oal_int16                  us_cali_bt_txpwr_pa_fre6;
-    oal_int16                  us_cali_bt_txpwr_pa_fre7;
-    oal_int16                  us_cali_bt_txpwr_pa_fre8;
-    oal_uint8                  uc_bt_tone_amp_grade;
-    oal_uint8                  auc_resv_bt_cali[1];
-}mac_cus_bt_cali_stru;
-#endif //#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
 typedef struct
 {
@@ -3946,9 +3777,6 @@ typedef struct
 #ifdef _PRE_WLAN_ONLINE_DPD
     mac_dpd_cus_cali_stru      ast_dpd_cali_para[WLAN_RF_CHANNEL_NUMS];
 #endif
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-    mac_cus_bt_cali_stru       st_cali_bt;
-#endif //#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
     oal_uint16                 aus_dyn_cali_dscr_interval[WLAN_BAND_BUTT];   /* 动态校准开关2.4g 5g */
     oal_int16                  as_gm0_dB10_amend[WLAN_RF_CHANNEL_NUMS];
@@ -4010,7 +3838,17 @@ typedef struct
     oal_bool_enum_uint8     en_vht_su_beamformer_optionimplemented;
     oal_bool_enum_uint8     en_tx_vht_stbc_optionimplemented;
     oal_bool_enum_uint8     en_support_opmode;
-    oal_uint8               auc_reserved[1];
+    oal_uint8               uc_vht_ntx_sts;
+    oal_bool_enum_uint8     en_su_bfee;
+    oal_uint8               auc_reserved1[3];
+#ifdef _PRE_WLAN_FEATURE_11AX
+    oal_bool_enum_uint8     en_he_su_bfer;
+    oal_uint8               uc_he_num_dim_below_80m;
+    oal_uint8               uc_he_num_dim_over_80m;
+    oal_uint8               uc_he_ntx_sts_below_80m;
+    oal_uint8               uc_he_ntx_sts_over_80m;
+    oal_uint8               auc_reserved2[3];
+#endif
 }mac_vap_m2s_stru;
 
 typedef struct
@@ -4029,30 +3867,12 @@ typedef struct
 
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-typedef enum mac_sensing_bssid_operate
-{
-    OAL_SENSING_BSSID_OPERATE_DEL = 0,
-    OAL_SENSING_BSSID_OPERATE_ADD = 1,
-
-    OAL_SENSING_BSSID_OPERATE_BUTT
-} mac_sensing_bssid_operate_en;
-typedef oal_uint8 oal_en_sensing_bssid_operate_uint8;
-
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
 typedef struct
 {
-    oal_uint8            auc_mac_addr[WLAN_MAC_ADDR_LEN];   /*对应的MAC地址 */
-    oal_int8             c_rssi;
-    oal_uint8            uc_reserved;
-    oal_uint32           ul_timestamp;
-} dmac_query_sensing_bssid_stru;
-
-typedef struct mac_sensing_bssid
-{
-    oal_uint8  auc_mac_addr[OAL_MAC_ADDR_LEN];
-    oal_en_sensing_bssid_operate_uint8  en_operation;   /** 0删除， 1添加 */
-    oal_uint8  reserved;
-} dmac_sensing_bssid_cfg_stru;
+    oal_bool_enum_uint8     en_mac_mib_dot11RSNAMFPC;
+    oal_bool_enum_uint8     en_mac_mib_dot11RSNAMFPR;
+}mac_vap_pmf_mab_stru;
 #endif
 
 
@@ -4150,7 +3970,7 @@ typedef struct
     /* 定制化是否打开amsdu大包聚合 */
     oal_uint8    uc_host_large_amsdu_en;
     /* 当前聚合是否为amsdu聚合 */
-    oal_uint8    uc_cur_amsdu_enable;
+    wlan_tx_amsdu_enum_uint8 en_tx_amsdu_level[WLAN_VAP_SUPPORT_MAX_NUM_LIMIT];
     oal_uint16   us_amsdu_throughput_high;
     oal_uint16   us_amsdu_throughput_low;
     oal_uint16   us_resv;
@@ -4176,7 +3996,8 @@ typedef struct
     /* 是否使能手动配置接收聚合个数 */
     oal_uint8    uc_rx_buffer_size_set_en;
     oal_uint8    uc_rx_buffer_size;     /* addba rsp回复的聚合个数 */
-    oal_uint16   us_resv;
+    oal_bool_enum_uint8    en_rx_buffer_size_extend_set_en;
+    oal_uint8    uc_resv;
 }mac_rx_buffer_size_stru;
 extern mac_rx_buffer_size_stru g_st_rx_buffer_size_stru;
 
@@ -4197,7 +4018,7 @@ extern mac_small_amsdu_switch_stru g_st_small_amsdu_switch;
 typedef struct
 {
     oal_uint8    uc_ini_tcp_ack_buf_en;
-    oal_uint8    uc_cur_tcp_ack_buf_en;
+    oal_uint8 uc_cur_tcp_ack_buf_en[2];// 2代表2个vap
     oal_uint16   us_tcp_ack_buf_throughput_high;
     oal_uint16   us_tcp_ack_buf_throughput_low;
     oal_uint16   us_tcp_ack_buf_throughput_high_40M;
@@ -4220,13 +4041,6 @@ typedef struct
 }mac_rx_dyn_bypass_extlna_stru;
 extern mac_rx_dyn_bypass_extlna_stru g_st_rx_dyn_bypass_extlna_switch;
 
-
-#if 0
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_get_excludeunencrypted(mac_vap_stru *pst_mac_vap)
-{
-  return pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.en_dot11ExcludeUnencrypted;
-}
-#endif
 
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_pre_auth_actived(mac_vap_stru *pst_mac_vap)
 {
@@ -4454,6 +4268,139 @@ OAL_STATIC OAL_INLINE oal_uint8 mac_mib_get_rsn_akm_suites(mac_vap_stru *pst_mac
     oal_uint8   uc_loop;
 
     for (uc_loop = 0; uc_loop < WLAN_AUTHENTICATION_SUITES; uc_loop++)
+    {
+        if (0 != pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_akm_suites[uc_loop])
+        {
+            pul_suites[uc_num++] = pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_akm_suites[uc_loop];
+        }
+    }
+
+    return uc_num;
+}
+
+OAL_STATIC OAL_INLINE oal_uint32 mac_mib_wpa_pair_match_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8 uc_idx_local;
+    oal_uint8 uc_idx_peer;
+
+    for (uc_idx_local = 0; uc_idx_local < uc_cipher_len/sizeof(oal_uint32); uc_idx_local++)
+    {
+        for (uc_idx_peer = 0; uc_idx_peer < uc_cipher_len/sizeof(oal_uint32); uc_idx_peer++)
+        {
+            if (pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_pair_suites[uc_idx_local] == pul_suites[uc_idx_peer])
+            {
+                return pul_suites[uc_idx_peer];
+            }
+        }
+    }
+    return 0;
+}
+
+OAL_STATIC OAL_INLINE oal_uint32 mac_mib_rsn_pair_match_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8 uc_idx_local;
+    oal_uint8 uc_idx_peer;
+
+    for (uc_idx_local = 0; uc_idx_local < uc_cipher_len/sizeof(oal_uint32); uc_idx_local++)
+    {
+        for (uc_idx_peer = 0; uc_idx_peer < uc_cipher_len/sizeof(oal_uint32); uc_idx_peer++)
+        {
+            if (pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_pair_suites[uc_idx_local] == pul_suites[uc_idx_peer])
+            {
+                return pul_suites[uc_idx_peer];
+            }
+        }
+    }
+    return 0;
+}
+
+OAL_STATIC OAL_INLINE oal_uint32 mac_mib_wpa_akm_match_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8 uc_idx_local;
+    oal_uint8 uc_idx_peer;
+
+    for (uc_idx_local = 0; uc_idx_local < uc_cipher_len/sizeof(oal_uint32); uc_idx_local++)
+    {
+        for (uc_idx_peer = 0; uc_idx_peer < uc_cipher_len/sizeof(oal_uint32); uc_idx_peer++)
+        {
+            if (pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_akm_suites[uc_idx_local] == pul_suites[uc_idx_peer])
+            {
+                return pul_suites[uc_idx_peer];
+            }
+        }
+    }
+    return 0;
+}
+
+OAL_STATIC OAL_INLINE oal_uint32 mac_mib_rsn_akm_match_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8 uc_idx_local;
+    oal_uint8 uc_idx_peer;
+
+    for (uc_idx_local = 0; uc_idx_local < uc_cipher_len/sizeof(oal_uint32); uc_idx_local++)
+    {
+        for (uc_idx_peer = 0; uc_idx_peer < uc_cipher_len/sizeof(oal_uint32); uc_idx_peer++)
+        {
+            if (pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_akm_suites[uc_idx_local] == pul_suites[uc_idx_peer])
+            {
+                return pul_suites[uc_idx_peer];
+            }
+        }
+    }
+    return 0;
+}
+OAL_STATIC OAL_INLINE oal_uint8 mac_mib_get_wpa_pair_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8   uc_loop;
+    oal_uint8   uc_num = 0;
+
+    for (uc_loop = 0; uc_loop < uc_cipher_len/sizeof(oal_uint32); uc_loop++)
+    {
+        if (0 != pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_pair_suites[uc_loop])
+        {
+            pul_suites[uc_num++] = pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_pair_suites[uc_loop];
+        }
+    }
+    return uc_num;
+}
+
+OAL_STATIC OAL_INLINE oal_uint8  mac_mib_get_rsn_pair_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8   uc_loop;
+    oal_uint8   uc_num = 0;
+
+    for (uc_loop = 0; uc_loop < uc_cipher_len/sizeof(oal_uint32); uc_loop++)
+    {
+        if (0 != pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_pair_suites[uc_loop])
+        {
+            pul_suites[uc_num++] = pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_pair_suites[uc_loop];
+        }
+    }
+    return uc_num;
+}
+
+OAL_STATIC OAL_INLINE oal_uint8 mac_mib_get_wpa_akm_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8   uc_num = 0;
+    oal_uint8   uc_loop;
+
+    for (uc_loop = 0; uc_loop < uc_cipher_len/sizeof(oal_uint32); uc_loop++)
+    {
+        if (0 != pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_akm_suites[uc_loop])
+        {
+            pul_suites[uc_num++] = pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_wpa_akm_suites[uc_loop];
+        }
+    }
+
+    return uc_num;
+}
+
+OAL_STATIC OAL_INLINE oal_uint8 mac_mib_get_rsn_akm_suites_s(mac_vap_stru *pst_mac_vap, oal_uint32 *pul_suites, oal_uint8 uc_cipher_len)
+{
+    oal_uint8   uc_num = 0;
+    oal_uint8   uc_loop;
+
+    for (uc_loop = 0; uc_loop < uc_cipher_len/sizeof(oal_uint32); uc_loop++)
     {
         if (0 != pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.st_wlan_mib_rsna_cfg.aul_rsn_akm_suites[uc_loop])
         {
@@ -4698,54 +4645,6 @@ OAL_STATIC OAL_INLINE oal_void mac_mib_set_ft_resource_req(mac_vap_stru *pst_mac
 }
 #endif //_PRE_WLAN_FEATURE_11R
 
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-#define mac_vap_is_msta(vap) ((vap)->st_psta.en_psta_mode == PSTA_MODE_MSTA)
-#define mac_vap_is_vsta(vap) ((vap)->st_psta.en_psta_mode == PSTA_MODE_VSTA)
-#define mac_vap_is_pbss(vap) ((vap)->st_psta.en_psta_mode == PSTA_MODE_PBSS)
-
-#define mac_param_is_msta(param) ((param)->en_psta_mode == PSTA_MODE_MSTA)
-#define mac_param_is_vsta(param) ((param)->en_psta_mode == PSTA_MODE_VSTA)
-#define mac_param_is_pbss(param) ((param)->en_psta_mode == PSTA_MODE_PBSS)
-
-
-OAL_STATIC OAL_INLINE  oal_uint32 mac_psta_init_vap(mac_vap_stru *pst_mac_vap, mac_cfg_add_vap_param_stru *pst_param)
-{
-    /* init role for any vap */
-    pst_mac_vap->st_psta.en_psta_mode = pst_param->en_psta_mode;
-
-    return OAL_SUCC;
-}
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-
-OAL_STATIC OAL_INLINE  oal_uint32 mac_hilink_init_vap(mac_vap_stru *pst_mac_vap)
-{
-    OAL_MEMZERO(&(pst_mac_vap->st_okc_ssid_hidden_white_list), OAL_SIZEOF(mac_okc_ssid_hidden_white_list_stru));
-    oal_spin_lock_init(&(pst_mac_vap->st_okc_ssid_hidden_white_list.st_lock));
-    oal_dlist_init_head(&(pst_mac_vap->st_okc_ssid_hidden_white_list.st_list_head));
-    return OAL_SUCC;
-}
-
-
-OAL_STATIC OAL_INLINE  oal_uint32 mac_hilink_exit_vap(mac_vap_stru *pst_mac_vap)
-{
-    mac_okc_white_list_member_stru *pst_white_list;
-    oal_dlist_head_stru             *pst_entry = OAL_PTR_NULL;
-    oal_dlist_head_stru             *pst_dlist_tmp = OAL_PTR_NULL;
-
-    OAL_DLIST_SEARCH_FOR_EACH_SAFE(pst_entry, pst_dlist_tmp, &(pst_mac_vap->st_okc_ssid_hidden_white_list.st_list_head))
-    {
-        pst_white_list = OAL_DLIST_GET_ENTRY(pst_entry, mac_okc_white_list_member_stru, st_dlist);
-        oal_dlist_delete_entry(&pst_white_list->st_dlist);
-        OAL_MEM_FREE(pst_white_list, OAL_TRUE);
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
-
 
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_privacyinvoked(mac_vap_stru *pst_mac_vap)
 {
@@ -4866,7 +4765,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_is_tkip_only(mac_vap_stru *pst_ma
 
     if (OAL_TRUE == pst_mac_vap->st_cap_flag.bit_wpa)
     {
-        uc_pair_suites_num       = mac_mib_get_wpa_pair_suites(pst_mac_vap, aul_pcip);
+        uc_pair_suites_num       = mac_mib_get_wpa_pair_suites(pst_mac_vap, &aul_pcip[0]);
         if((1 != uc_pair_suites_num) || (MAC_WPA_CHIPER_TKIP != aul_pcip[0]))
         {//wpa加密时，若非tkip only，返回false
             return OAL_FALSE;
@@ -4875,7 +4774,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_is_tkip_only(mac_vap_stru *pst_ma
 
     if (OAL_TRUE == pst_mac_vap->st_cap_flag.bit_wpa2)
     {
-        uc_pair_suites_num       = mac_mib_get_rsn_pair_suites(pst_mac_vap, aul_pcip);
+        uc_pair_suites_num       = mac_mib_get_rsn_pair_suites(pst_mac_vap, &aul_pcip[0]);
         if((1 != uc_pair_suites_num) || (MAC_RSN_CHIPER_TKIP != aul_pcip[0]))
         {//wpa2加密时，若非tkip only，返回false
             return OAL_FALSE;
@@ -4884,47 +4783,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_is_tkip_only(mac_vap_stru *pst_ma
 
     return OAL_TRUE;
 }
-
-#if 0
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_DeauthenticateReason(mac_vap_stru *pst_mac_vap, oal_uint16 us_err_code)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.ul_dot11DeauthenticateReason = (oal_uint32)us_err_code;
-}
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_DeauthenticateStation(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_da)
-{
-    oal_memcopy(pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11DeauthenticateStation, puc_da, 6);
-}
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_AuthenticateFailStation(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_da)
-{
-    oal_memcopy(pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11AuthenticateFailStation, puc_da, 6);
-}
-
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_AuthenticateFailStatus(mac_vap_stru *pst_mac_vap, oal_uint16 us_err_code)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.ul_dot11AuthenticateFailStatus = (oal_uint32)us_err_code;
-}
-
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_DisassocStation(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_da)
-{
-    oal_memcopy(pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11DisassociateStation, puc_da, 6);
-}
-
-
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_DisassocReason(mac_vap_stru *pst_mac_vap, oal_uint16 us_err_code)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.ul_dot11DisassociateReason = (oal_uint32)us_err_code;
-}
-#endif
 
 
 OAL_STATIC OAL_INLINE oal_uint8 *mac_mib_get_StationID(mac_vap_stru *pst_mac_vap)
@@ -5047,6 +4905,20 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_VHTOptionImplemented(mac_
 }
 
 #if defined(_PRE_WLAN_FEATURE_11AX) || defined(_PRE_WLAN_FEATURE_11AX_ROM)
+#ifdef _PRE_WLAN_FEATURE_UPH_AUTO
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_HEUPHControlActivated(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11HEUPHControlActivated = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_HEUPHControlActivated(mac_vap_stru *pst_mac_vap)
+{
+    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11HEUPHControlActivated;
+}
+#endif
+
 
 OAL_STATIC OAL_INLINE oal_void  mac_mib_set_HEOptionImplemented(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
 {
@@ -5060,15 +4932,15 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_HEOptionImplemented(mac_v
 }
 
 
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_HTControlFieldSupported(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_OMIOptionImplemented(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
 {
-    pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11HEHTControlFieldSupported = en_val;
+        pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11OMIOptionImplemented = en_val;
 }
 
 
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_HTControlFieldSupported(mac_vap_stru *pst_mac_vap)
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_OMIOptionImplemented(mac_vap_stru *pst_mac_vap)
 {
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11HEHTControlFieldSupported;
+        return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11OMIOptionImplemented;
 }
 
 
@@ -5105,6 +4977,18 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_BSRSupport(mac_vap_str
 OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_BSRSupport(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
 {
     pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11BSRSupport = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_BQRSupport(mac_vap_stru *pst_mac_vap)
+{
+    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11BQRSupport;
+}
+
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_BQRSupport(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.en_dot11BQRSupport = en_val;
 }
 
 
@@ -5169,17 +5053,6 @@ OAL_STATIC OAL_INLINE oal_void* mac_mib_get_ptr_he_rx_mcs_map(mac_vap_stru *pst_
 {
     return &(pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HERxMCSMap);
 }
-
-OAL_STATIC OAL_INLINE oal_uint32 mac_mib_get_he_us_rx_highest_rate(mac_vap_stru *pst_mac_vap)
-{
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HERxHighestDataRateSupported;
-}
-
-OAL_STATIC OAL_INLINE oal_void mac_mib_set_he_us_rx_highest_rate(mac_vap_stru *pst_mac_vap, oal_uint32 ul_rx_highest_rate)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HERxHighestDataRateSupported = ul_rx_highest_rate;
-}
-
 OAL_STATIC OAL_INLINE oal_void mac_mib_set_he_tx_mcs_map(mac_vap_stru *pst_mac_vap, oal_uint32 ul_he_mcs_map)
 {
     pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HETxMCSMap = ul_he_mcs_map;
@@ -5193,16 +5066,6 @@ OAL_STATIC OAL_INLINE oal_uint32 mac_mib_get_he_tx_mcs_map(mac_vap_stru *pst_mac
 OAL_STATIC OAL_INLINE oal_void* mac_mib_get_ptr_he_tx_mcs_map(mac_vap_stru *pst_mac_vap)
 {
     return &(pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HETxMCSMap);
-}
-
-OAL_STATIC OAL_INLINE oal_uint32 mac_mib_get_he_us_tx_highest_rate(mac_vap_stru *pst_mac_vap)
-{
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HETxHighestDataRateSupported;
-}
-
-OAL_STATIC OAL_INLINE oal_void mac_mib_set_he_us_tx_highest_rate(mac_vap_stru *pst_mac_vap, oal_uint32 ul_tx_highest_rate)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_he_sta_config.ul_dot11HETxHighestDataRateSupported = ul_tx_highest_rate;
 }
 
 
@@ -5253,7 +5116,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_SUBeamformee(mac_vap_s
     return pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11SUBeamformee;
 }
 
-
 OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_MUBeamformer(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
 {
     pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11MUBeamformer = en_val;
@@ -5266,28 +5128,139 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_MUBeamformer(mac_vap_s
 }
 
 
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_SUBeamformingFeedback(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+#ifdef _PRE_WLAN_FEATURE_11AX
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_BeamformeeSTSBelow80Mhz(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
 {
-    pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11SUBeamformingFeedback = en_val;
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HEBeamformeeSTSBelow80Mhz = en_val;
 }
 
 
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_SUBeamformingFeedback(mac_vap_stru *pst_mac_vap)
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_BeamformeeSTSBelow80Mhz(mac_vap_rom_stru *pst_mac_vap_rom)
 {
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11SUBeamformingFeedback;
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HEBeamformeeSTSBelow80Mhz;
+}
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_BeamformeeSTSOver80Mhz(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HEBeamformeeSTSOver80Mhz = en_val;
 }
 
 
-OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_MUBeamformingFeedback(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_BeamformeeSTSOver80Mhz(mac_vap_rom_stru *pst_mac_vap_rom)
 {
-    pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11MUBeamformingFeedback = en_val;
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HEBeamformeeSTSOver80Mhz;
+}
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HENumberSoundingDimensionsBelow80Mhz(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HENumberSoundingDimensionsBelow80Mhz  = en_val;
+}
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HENumberSoundingDimensionsBelow80Mhz(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HENumberSoundingDimensionsBelow80Mhz;
+}
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HENumberSoundingDimensionsOver80Mhz(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HENumberSoundingDimensionsOver80Mhz  = en_val;
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HENumberSoundingDimensionsOver80Mhz(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.uc_dot11HENumberSoundingDimensionsOver80Mhz;
 }
 
 
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_MUBeamformingFeedback(mac_vap_stru *pst_mac_vap)
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HENg16SUFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
 {
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_he_phy_config.en_dot11MUBeamformingFeedback;
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Ng16SUFeedback  = en_val;
 }
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HENg16SUFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Ng16SUFeedback;
+}
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HENg16MUFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Ng16MUFeedback  = en_val;
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HENg16MUFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Ng16MUFeedback;
+}
+
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HECodebook42SUFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Codebook42SUFeedback  = en_val;
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HECodebook42SUFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Codebook42SUFeedback;
+}
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_HECodebook75MUFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Codebook75MUFeedback  = en_val;
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_HECodebook75MUFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11Codebook75MUFeedback;
+}
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_TriggeredSUBeamformingFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredSUBeamformingFeedback = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_TriggeredSUBeamformingFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredSUBeamformingFeedback;
+}
+
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_TriggeredMUBeamformingPartialBWFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredMUBeamformingPartialBWFeedback = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_TriggeredMUBeamformingPartialBWFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredMUBeamformingPartialBWFeedback;
+}
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_TriggeredCQIFeedback(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredCQIFeedback = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_TriggeredCQIFeedback(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_phy_config.en_dot11TriggeredCQIFeedback;
+}
+
+
+OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_MultiBSSIDActived(mac_vap_rom_stru *pst_mac_vap_rom, oal_bool_enum_uint8 en_val)
+{
+    pst_mac_vap_rom->st_wlan_rom_mib_he_sta_config.en_dot11MultiBSSIDActived = en_val;
+}
+
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_he_MultiBSSIDActived(mac_vap_rom_stru *pst_mac_vap_rom)
+{
+    return pst_mac_vap_rom->st_wlan_rom_mib_he_sta_config.en_dot11MultiBSSIDActived;
+}
+
+#endif
 
 
 OAL_STATIC OAL_INLINE oal_void  mac_mib_set_he_SRPBaseSR(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
@@ -5343,7 +5316,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_FortyMHzOperationImplemen
 {
     return (WLAN_BAND_2G == pst_mac_vap->st_channel.en_band) ?
             pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot112GFortyMHzOperationImplemented :
-            pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot115GFortyMHzOperationImplemented;/* [false alarm]:返回值是oal_bool_enum_uint8 和函数类型一致*/
+            pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot115GFortyMHzOperationImplemented;
 }
 
 
@@ -5418,13 +5391,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_2040BSSCoexistenceManagem
     return pst_mac_vap->pst_mib_info->st_wlan_mib_operation.en_dot112040BSSCoexistenceManagementSupport;
 }
 
-#if 0
-
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_dot11RSNAProtectedManagementFramesActivated(mac_vap_stru *pst_mac_vap)
-{
-    return pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RSNAProtectedManagementFramesActivated;
-}
-#endif
 
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_dot11RSNAMFPC(mac_vap_stru *pst_mac_vap)
 {
@@ -5435,13 +5401,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_mib_get_dot11RSNAMFPR(mac_vap_str
 {
     return pst_mac_vap->pst_mib_info->st_wlan_mib_privacy.en_dot11RSNAMFPR;
 }
-#if 0
 
-OAL_STATIC OAL_INLINE oal_void mac_mib_set_dot11RSNAProtectedManagementFramesActivated(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 ul_val)
-{
-    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RSNAProtectedManagementFramesActivated = ul_val;
-}
-#endif
 
 OAL_STATIC OAL_INLINE oal_void mac_mib_set_dot11RSNAMFPC(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 ul_val)
 {
@@ -5506,6 +5466,16 @@ OAL_STATIC OAL_INLINE oal_void mac_mib_set_dot11QBSSLoadImplemented(mac_vap_stru
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_dot11QBSSLoadImplemented(mac_vap_stru *pst_mac_vap)
 {
     return pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11QBSSLoadImplemented;
+}
+
+OAL_STATIC OAL_INLINE oal_void mac_mib_set_dot11VHTExtendedNSSBWCapable(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
+{
+    ((mac_vap_rom_stru *)pst_mac_vap->_rom)->en_dot11VHTExtendedNSSBWCapable = en_val;
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_dot11VHTExtendedNSSBWCapable(mac_vap_stru *pst_mac_vap)
+{
+    return ((mac_vap_rom_stru *)pst_mac_vap->_rom)->en_dot11VHTExtendedNSSBWCapable;
 }
 
 OAL_STATIC OAL_INLINE oal_void mac_mib_set_dot11APSDOptionImplemented(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
@@ -5918,6 +5888,11 @@ OAL_STATIC OAL_INLINE oal_uint8* mac_mib_get_DesiredSSID(mac_vap_stru *pst_mac_v
     return pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11DesiredSSID;
 }
 
+OAL_STATIC OAL_INLINE oal_uint8 mac_mib_get_DesiredSSID_Size(mac_vap_stru *pst_mac_vap)
+{
+    return sizeof(pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11DesiredSSID);
+}
+
 OAL_STATIC OAL_INLINE oal_void  mac_mib_set_AuthenticationResponseTimeOut(mac_vap_stru *pst_mac_vap, oal_uint32 ul_val)
 {
     pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.ul_dot11AuthenticationResponseTimeOut = ul_val;
@@ -6165,7 +6140,7 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_mib_get_ShortGIOptionInFortyImplem
 {
     return (WLAN_BAND_2G == pst_mac_vap->st_channel.en_band) ?
             pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot112GShortGIOptionInFortyImplemented :
-            pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot115GShortGIOptionInFortyImplemented;/* [false alarm]:返回值是oal_bool_enum_uint8 和函数类型一致*/
+            pst_mac_vap->pst_mib_info->st_wlan_mib_phy_ht.en_dot115GShortGIOptionInFortyImplemented;
 }
 
 
@@ -6213,9 +6188,6 @@ OAL_STATIC OAL_INLINE oal_uint32 mac_mib_get_RTSThreshold(mac_vap_stru *pst_mac_
 {
     return pst_mac_vap->pst_mib_info->st_wlan_mib_operation.ul_dot11RTSThreshold;
 }
-
-
-
 
 
 OAL_STATIC OAL_INLINE oal_void mac_mib_set_AntennaSelectionOptionImplemented(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_val)
@@ -6958,11 +6930,6 @@ OAL_STATIC OAL_INLINE oal_void mac_mib_set_QAPMUEDCATableIndex(mac_vap_rom_stru 
     pst_mac_vap_rom->st_wlan_mib_mu_edca.ast_wlan_mib_qap_edac[uc_index].ul_dot11QAPEDCATableIndex = ul_val;
 }
 
-//OAL_STATIC OAL_INLINE oal_uint32  mac_mib_get_QAPMUEDCATableIndex(mac_vap_stru *pst_mac_vap, oal_uint8 uc_index)
-//{
-    //return pst_mac_vap->pst_mib_info->st_wlan_mib_mu_edca.ast_wlan_mib_qap_edac[uc_index].ul_dot11QAPEDCATableIndex;
-//}
-
 OAL_STATIC OAL_INLINE oal_void mac_mib_set_QAPMUEDCATableCWmin(mac_vap_rom_stru *pst_mac_vap_rom, oal_uint8 uc_index, oal_uint32 ul_val)
 {
     pst_mac_vap_rom->st_wlan_mib_mu_edca.ast_wlan_mib_qap_edac[uc_index].ul_dot11QAPEDCATableCWmin  = ul_val;
@@ -7043,22 +7010,19 @@ extern oal_uint32 mac_vap_exit_etc(mac_vap_stru *pst_vap);
 extern oal_uint32  mac_vap_del_user_etc(mac_vap_stru *pst_vap, oal_uint16 us_user_idx);
 extern oal_uint32  mac_vap_find_user_by_macaddr_etc(
                 mac_vap_stru        *pst_vap,
-                oal_uint8           *puc_sta_mac_addr,
+                const unsigned char *puc_sta_mac_addr,
                 oal_uint16          *pus_user_idx);
 extern oal_uint32  mac_device_find_user_by_macaddr_etc(
                 oal_uint8           uc_device_id,
-                oal_uint8           *puc_sta_mac_addr,
+                const unsigned char *puc_sta_mac_addr,
                 oal_uint16          *pus_user_idx);
 extern oal_uint32  mac_chip_find_user_by_macaddr(
                 oal_uint8           uc_chip_id,
-                oal_uint8           *puc_sta_mac_addr,
+                const unsigned char *puc_sta_mac_addr,
                 oal_uint16          *pus_user_idx);
 extern oal_uint32  mac_board_find_user_by_macaddr(
-                oal_uint8           *puc_sta_mac_addr,
+                const unsigned char *puc_sta_mac_addr,
                 oal_uint16          *pus_user_idx);
-#if 0
-extern oal_uint32  mac_vap_update_user(mac_vap_stru *pst_vap, oal_uint32   ul_user_dix);
-#endif
 extern oal_uint32  mac_vap_add_assoc_user_etc(mac_vap_stru *pst_vap, oal_uint16 us_user_idx);
 
 extern oal_uint8 mac_vap_get_bandwith(wlan_bw_cap_enum_uint8 en_dev_cap, wlan_channel_bandwidth_enum_uint8 en_bss_cap);
@@ -7110,31 +7074,12 @@ OAL_STATIC  OAL_INLINE oal_uint8  mac_fcs_get_protect_cnt(mac_vap_stru *pst_mac_
 extern oal_uint32  mac_mib_get_beacon_period_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_get_dtim_period_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_get_bss_type_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
-#if 0
-extern oal_uint32  mac_mib_get_GroupReceivedFrameCount(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_group_count);
-#endif
 extern oal_uint32  mac_mib_get_ssid_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
-#if 0
-extern oal_uint32  mac_mib_get_station_id(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
-#endif
 extern oal_uint32  mac_mib_set_beacon_period_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_set_dtim_period_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_set_bss_type_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
-#if 0
-extern oal_uint32  mac_mib_set_GroupReceivedFrameCount(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_group_count);
-#endif
 extern oal_uint32  mac_mib_set_ssid_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_set_station_id_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
-#if 0
-extern oal_uint32  mac_vap_get_user_wme_info(
-                       mac_vap_stru               *pst_vap,
-                       wlan_wme_ac_type_enum_uint8 en_wme_type,
-                       mac_wme_param_stru         *pst_wme_info);
-extern oal_uint32  mac_vap_set_user_wme_info(
-                       mac_vap_stru               *pst_vap,
-                       wlan_wme_ac_type_enum_uint8 en_wme_type,
-                       mac_wme_param_stru         *pst_wme_info);
-#endif
 extern oal_uint32  mac_mib_get_shpreamble_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param);
 extern oal_uint32  mac_mib_set_shpreamble_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
 extern oal_uint32 mac_vap_set_bssid_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_bssid);
@@ -7171,11 +7116,6 @@ extern oal_void  mac_vap_init_rx_nss_by_protocol_etc(mac_vap_stru *pst_mac_vap);
 extern oal_uint8  mac_vap_get_ap_usr_opern_bandwidth(mac_vap_stru *pst_mac_sta, mac_user_stru *pst_mac_user);
 extern oal_uint32  mac_vap_check_ap_usr_opern_bandwidth(mac_vap_stru *pst_mac_sta, mac_user_stru *pst_mac_user);
 extern oal_uint8  mac_vap_set_bw_check(mac_vap_stru *pst_mac_sta, wlan_channel_bandwidth_enum_uint8 en_sta_new_bandwidth);
-#if 0
-#ifdef _PRE_WLAN_DFT_STAT
-extern oal_uint32  mac_vap_dft_stat_clear(mac_vap_stru *pst_vap);
-#endif
-#endif
 extern oal_void mac_dec_p2p_num_etc(mac_vap_stru *pst_vap);
 extern oal_void mac_inc_p2p_num_etc(mac_vap_stru *pst_vap);
 extern oal_void mac_vap_set_p2p_mode_etc(mac_vap_stru *pst_vap, wlan_p2p_mode_enum_uint8 en_p2p_mode);
@@ -7193,10 +7133,7 @@ extern oal_void mac_vap_set_uapsd_para_etc(mac_vap_stru *pst_mac_vap, mac_cfg_ua
 #endif
 extern oal_void mac_vap_set_wmm_params_update_count_etc(mac_vap_stru *pst_vap, oal_uint8 uc_update_count);
 extern oal_void mac_vap_set_rifs_tx_on_etc(mac_vap_stru *pst_vap, oal_uint8 uc_value);
-#if 0
-extern oal_void mac_vap_set_tdls_prohibited(mac_vap_stru *pst_vap, oal_uint8 uc_value);
-extern oal_void mac_vap_set_tdls_channel_switch_prohibited(mac_vap_stru *pst_vap, oal_uint8 uc_value);
-#endif
+/* 后续tdls功能可能会打开 */
 extern oal_void mac_vap_set_11ac2g_etc(mac_vap_stru *pst_vap, oal_uint8 uc_value);
 extern oal_void mac_vap_set_hide_ssid_etc(mac_vap_stru *pst_vap, oal_uint8 uc_value);
 extern oal_uint8 mac_vap_get_peer_obss_scan_etc(mac_vap_stru *pst_vap);
@@ -7246,12 +7183,7 @@ extern oal_uint32  mac_fcs_dbac_state_check_etc(mac_device_stru *pst_mac_device)
 #endif
 extern oal_uint32  mac_device_find_up_sta_etc(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap);
 extern oal_uint32  mac_device_is_p2p_connected_etc(mac_device_stru *pst_mac_device);
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-extern mac_vap_stru *mac_find_main_proxysta(mac_device_stru *pst_mac_device);
-#endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-extern oal_uint32 mac_vap_update_hilink_white_list(mac_vap_stru *pst_mac_vap, oal_hilink_white_node_stru *pst_white_node);
-#endif
+
 #ifdef _PRE_WLAN_FEATURE_SMPS
 extern oal_uint32 mac_device_find_smps_mode_en(mac_device_stru *pst_mac_device,
                                                                  wlan_mib_mimo_power_save_enum_uint8 en_smps_mode);
@@ -7259,15 +7191,12 @@ extern oal_uint32 mac_device_find_smps_mode_en(mac_device_stru *pst_mac_device,
 extern oal_void mac_device_set_channel_etc(mac_device_stru *pst_mac_device, mac_cfg_channel_param_stru * pst_channel_param);
 extern oal_void mac_device_get_channel_etc(mac_device_stru *pst_mac_device, mac_cfg_channel_param_stru * pst_channel_param);
 extern oal_uint32  mac_fcs_get_prot_datarate(mac_vap_stru *pst_src_vap);
-extern oal_uint32  mac_fcs_get_prot_mode(mac_vap_stru *pst_src_vap);
 
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
+extern oal_uint32  mac_fcs_get_prot_mode(mac_vap_stru *pst_src_vap);
+#endif
 #if (_PRE_WLAN_FEATURE_BLACKLIST_LEVEL == _PRE_WLAN_FEATURE_BLACKLIST_VAP)
 extern oal_void mac_blacklist_free_pointer(mac_vap_stru *pst_mac_vap, mac_blacklist_info_stru *pst_blacklist_info);
-#endif
-
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_uint32  mac_oui_to_cipher_group(oal_uint32 cipher_oui);
-extern oal_uint32  mac_oui_to_akm_suite(oal_uint32 cipher_oui);
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_DFS
@@ -7296,6 +7225,7 @@ extern oal_void mac_tx_qos_enhance_list_init(mac_vap_stru *pst_mac_vap);
 extern oal_void mac_tx_clean_qos_enhance_list(mac_vap_stru *pst_mac_vap);
 extern mac_qos_enhance_sta_stru* mac_tx_find_qos_enhance_list(mac_vap_stru *pst_mac_vap ,oal_uint8 *puc_sta_member_addr);
 #endif
+
 extern oal_void  mac_init_mib_etc(mac_vap_stru *pst_mac_vap);
 extern oal_void mac_vap_free_mib_etc(mac_vap_stru  *pst_vap);
 #ifdef __cplusplus

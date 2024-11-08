@@ -82,6 +82,21 @@ typedef struct
 /*****************************************************************************
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
+#ifdef _PRE_WLAN_FEATURE_11AX
+extern oal_uint32  hmac_mgmt_tx_twt_setup_etc(
+                       hmac_vap_stru              *pst_hmac_vap,
+                       hmac_user_stru             *pst_hmac_user,
+                       mac_twt_action_mgmt_args_stru  *pst_twt_action_args);
+extern oal_uint32  hmac_mgmt_tx_twt_teardown_etc(
+                       hmac_vap_stru              *pst_hmac_vap,
+                       hmac_user_stru             *pst_hmac_user,
+                       mac_twt_action_mgmt_args_stru  *pst_twt_action_args);
+extern oal_uint32  hmac_mgmt_rx_twt_setup_resp_etc(
+                hmac_vap_stru              *pst_hmac_vap,
+                hmac_user_stru             *pst_hmac_user,
+                oal_uint8                  *puc_payload);
+#endif
+
 extern oal_uint16  hmac_mgmt_encap_addba_req_etc(
                        hmac_vap_stru          *pst_vap,
                        oal_uint8              *puc_data,
@@ -166,7 +181,7 @@ extern oal_void    hmac_send_mgmt_to_host_etc(hmac_vap_stru  *pst_hmac_vap,
                                                 oal_uint16       us_len,
                                                 oal_int          l_freq);
 
-#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P) || defined(_PRE_WLAN_FEATURE_HILINK) || defined(_PRE_WLAN_FEATURE_11R_AP)
+#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P) || defined(_PRE_WLAN_FEATURE_11R_AP)
 extern oal_void hmac_rx_mgmt_send_to_host_etc(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_netbuf);
 #endif
 #if defined(_PRE_WLAN_FEATURE_LOCATION) || defined(_PRE_WLAN_FEATURE_PSD_ANALYSIS)

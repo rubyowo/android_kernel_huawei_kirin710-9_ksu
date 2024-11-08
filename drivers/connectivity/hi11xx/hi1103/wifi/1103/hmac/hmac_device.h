@@ -45,6 +45,11 @@ typedef enum
     HMAC_ACS_TYPE_FREE  = 2,         /* 空闲的自动信道选择 */
 }hmac_acs_type_enum;
 typedef oal_uint8 hmac_acs_type_enum_uint8;
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+#define PMF_BLACK_LIST_MAX_CNT 6
+#endif
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -145,11 +150,38 @@ typedef struct
     oal_bool_enum_uint8 en_dscr_opt_enable;
 }hmac_rx_dscr_opt_stru;
 
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+typedef struct
+{
+    oal_wait_queue_head_stru st_wait_queue;
+    oal_bool_enum_uint8 auc_complete_flag[MAC_PSM_QUERY_TYPE_BUTT];
+    mac_psm_query_stat_stru ast_psm_stat[MAC_PSM_QUERY_TYPE_BUTT];
+}hmac_psm_flt_stat_query_stru;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+typedef struct
+{
+    oal_wait_queue_head_stru         st_wait_queue;
+    mac_nrcoex_stat_stru             st_nrcoex_stat;
+    oal_bool_enum_uint8              en_query_completed_flag;
+}hmac_nrcoex_stat_query_stru;
+#endif
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+typedef struct
+{
+    oal_uint8   uc_cnt;
+    oal_uint8   uc_first_idx;   /* 用于记录最早的黑名单下标 */
+    oal_uint8   auc_black_list[PMF_BLACK_LIST_MAX_CNT][WLAN_MAC_ADDR_LEN];
+}hmac_pmf_black_list_stru;
+#endif
+
 /* hmac device结构体，记录只保存在hmac的device公共信息 */
 typedef struct
 {
     hmac_scan_stru                      st_scan_mgmt;                           /* 扫描管理结构体 */
-#if  defined(_PRE_WIFI_DMT ) || (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
+#if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
     oal_uint8                           uc_desired_bss_num;                         /* 扫描到的期望的bss个数 */
     oal_uint8                           auc_resv[3];
     oal_uint8                           auc_desired_bss_idx[WLAN_MAX_SCAN_BSS_NUM]; /* 期望加入的bss在bss list中的位置 */
@@ -213,8 +245,18 @@ typedef struct
 #endif
 
     frw_timeout_stru                    st_scan_timer;                          /* host扫描定时器用于切换信道 */
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-    frw_timeout_stru                    st_proxysta_map_timer;                  /* 定时器，用于老化proxysta ip-mac map表格 */
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+    hmac_psm_flt_stat_query_stru        st_psm_flt_stat_query;
+#endif
+
+    oal_bool_enum_uint8                 en_ap_support_160m;
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+    hmac_pmf_black_list_stru            st_pmf_black_list;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+    hmac_nrcoex_stat_query_stru        st_nrcoex_stat_query;
 #endif
 }hmac_device_stru;
 
@@ -232,9 +274,14 @@ extern oal_uint32  hmac_board_exit_etc(mac_board_stru *pst_board);
 extern oal_uint32 hmac_config_host_dev_init_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 extern oal_uint32 hmac_config_host_dev_exit_etc(mac_vap_stru *pst_mac_vap);
 extern oal_uint32  hmac_board_init_etc(mac_board_stru *pst_board);
-#else
-extern oal_uint32  hmac_board_init_etc(oal_uint32 ul_chip_max_num);
 #endif
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+extern oal_bool_enum_uint8 hmac_device_pmf_find_black_list(hmac_device_stru *pst_hmac_dev, oal_uint8 *puc_mac_addr);
+extern oal_void hmac_device_pmf_add_black_list(hmac_device_stru *pst_hmac_dev, oal_uint8 *puc_mac_addr);
+#endif
+
+extern oal_void hmac_device_create_random_mac_addr_etc(mac_device_stru *pst_mac_dev, mac_vap_stru *pst_mac_vap);
 
 #ifdef __cplusplus
     #if __cplusplus

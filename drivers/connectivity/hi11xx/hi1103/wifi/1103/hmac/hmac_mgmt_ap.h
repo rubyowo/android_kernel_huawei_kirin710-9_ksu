@@ -72,6 +72,11 @@ extern oal_uint32  hmac_mgmt_timeout_ap_etc(oal_void *p_param);
 extern oal_void    hmac_handle_disconnect_rsp_ap_etc(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user);
 extern oal_bool_enum hmac_go_is_auth(mac_vap_stru *pst_mac_vap);
 extern oal_uint32  hmac_ap_clean_bss_etc(hmac_vap_stru *pst_hmac_vap);
+extern oal_uint32 hmac_ap_send_assoc_rsp(hmac_vap_stru    *pst_hmac_vap,
+                                         hmac_user_stru   *pst_hmac_user,
+                                         const unsigned char *puc_sta_addr,
+                                         oal_uint8         uc_mgmt_frm_type,
+                                         mac_status_code_enum_uint16    *pen_status_code);
 extern oal_uint32  hmac_ap_save_user_assoc_req(hmac_user_stru *pst_hmac_user, oal_uint8 *puc_payload, oal_uint32 ul_payload_len, oal_uint8 uc_mgmt_frm_type);
 extern oal_void    hmac_handle_connect_rsp_ap(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user);
 extern oal_void    hmac_mgmt_update_auth_mib(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_auth_rsp);

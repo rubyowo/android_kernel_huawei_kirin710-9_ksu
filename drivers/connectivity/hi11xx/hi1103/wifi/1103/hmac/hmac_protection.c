@@ -18,6 +18,8 @@ extern "C" {
 #include "mac_vap.h"
 #include "mac_ie.h"
 #include "hmac_config.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_PROTECTION_C
@@ -31,7 +33,7 @@ oal_uint32 hmac_user_protection_sync_data(mac_vap_stru *pst_mac_vap)
     oal_bool_enum_uint8               en_rifs_mode;
     oal_bool_enum_uint8               en_ht_protection;
 
-    OAL_MEMZERO(&st_h2d_prot, OAL_SIZEOF(st_h2d_prot));
+    memset_s(&st_h2d_prot, OAL_SIZEOF(st_h2d_prot), 0, OAL_SIZEOF(st_h2d_prot));
 
     /*¸üÐÂvapµÄen_dot11NonGFEntitiesPresent×Ö¶Î*/
     en_non_gf_entities_present = (0 != pst_mac_vap->st_protection.uc_sta_non_gf_num) ? OAL_TRUE : OAL_FALSE;
@@ -67,8 +69,10 @@ oal_uint32 hmac_user_protection_sync_data(mac_vap_stru *pst_mac_vap)
      mac_mib_set_HtProtection(pst_mac_vap, en_ht_protection);
      mac_mib_set_RifsMode(pst_mac_vap, en_rifs_mode);
 
-    oal_memcopy((oal_uint8*)&st_h2d_prot.st_protection, (oal_uint8*)&pst_mac_vap->st_protection,
-                OAL_SIZEOF(mac_protection_stru));
+    memcpy_s((oal_uint8*)&st_h2d_prot.st_protection,
+             OAL_SIZEOF(mac_protection_stru),
+             (oal_uint8*)&pst_mac_vap->st_protection,
+             OAL_SIZEOF(mac_protection_stru));
 
     st_h2d_prot.en_dot11HTProtection         = mac_mib_get_HtProtection(pst_mac_vap);
     st_h2d_prot.en_dot11RIFSMode             = mac_mib_get_RifsMode(pst_mac_vap);
@@ -206,7 +210,7 @@ oal_uint32 hmac_protection_del_user_etc(mac_vap_stru *pst_mac_vap, mac_user_stru
 {
     oal_uint32 ul_ret = OAL_SUCC;
 
-    if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_mac_user))
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,pst_mac_user))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }

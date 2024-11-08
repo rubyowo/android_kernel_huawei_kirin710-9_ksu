@@ -17,6 +17,8 @@ extern "C" {
 #include "wlan_types.h"
 #include "mac_vap.h"
 #include "frw_ext_if.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_CONFIG_H
@@ -25,6 +27,14 @@ extern "C" {
 *****************************************************************************/
 typedef oal_uint32  (*wal_config_get_func)(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 typedef oal_uint32  (*wal_config_set_func)(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
+#define WAL_MSG_REQ_RESP_MEM_FREE(_st_msg_request)     \
+    do                                                 \
+    {                                                  \
+        if (NULL != (_st_msg_request).pst_resp_mem) {  \
+            oal_free((_st_msg_request).pst_resp_mem);  \
+        }                                              \
+    } while(0)
 
 /* ÃÓ–¥≈‰÷√œ˚œ¢Õ∑ */
 #define WAL_CFG_MSG_HDR_INIT(_pst_cfg_msg_hdr, _en_type, _us_len, _uc_sn) \
@@ -190,7 +200,7 @@ typedef struct
 }wal_msg_rep_hdr;
 
 #define DECLARE_WAL_MSG_REQ_STRU(name)  wal_msg_request_stru name;
-#define WAL_MSG_REQ_STRU_INIT(name) do{oal_memset((oal_void*)(&name), 0,OAL_SIZEOF(name));name.ul_request_address = (oal_ulong)&name;}while(0)
+#define WAL_MSG_REQ_STRU_INIT(name) do{memset_s((oal_void*)(&name), OAL_SIZEOF(name), 0, OAL_SIZEOF(name));name.ul_request_address = (oal_ulong)(uintptr_t)&name;}while(0)
 
 typedef struct
 {
@@ -221,17 +231,7 @@ extern oal_uint32  wal_config_process_pkt_etc(frw_event_mem_stru *pst_event_mem)
 extern oal_uint32  wal_acs_netlink_recv_handle(frw_event_mem_stru *pst_event_mem);
 #endif
 extern oal_uint32  wal_config_get_wmm_params_etc(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_param);
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_int32   wal_config_get_sta_rssi(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param);
-extern oal_int32   wal_config_get_neighb_info(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data);
-extern oal_int32   wal_config_get_hw_flow_stat(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data);
-extern oal_int32   wal_config_get_wme_stat(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data);
-#ifdef _PRE_WLAN_11K_STAT
-extern oal_uint32* wal_config_get_sta_drop_num(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param);
-extern oal_uint32* wal_config_get_sta_tx_delay(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param);
-extern oal_int32   wal_config_get_tx_delay_ac(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data);
-#endif
-#endif
+
 #if defined(_PRE_WLAN_FEATURE_MCAST) || defined(_PRE_WLAN_FEATURE_HERA_MCAST)
 extern oal_int32  wal_config_get_snoop_table(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data);
 #endif
@@ -240,14 +240,6 @@ extern oal_uint32  wal_config_get_wds_vap_info(oal_net_device_stru *pst_net_dev,
 #endif
 extern oal_int32   wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len);
 extern oal_uint32  wal_config_get_assoc_req_ie_etc(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-#ifdef _PRE_WLAN_FEATURE_HILINK
-extern oal_uint32 wal_config_get_cur_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32 wal_config_set_stay_time(mac_vap_stru *pst_mac_vap,oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32 wal_config_get_sta_11k_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32 wal_config_get_sta_11v_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32 wal_config_change_to_other_ap(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-extern oal_uint32 wal_config_set_sta_bcn_request(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#endif
 extern oal_uint32 wal_config_get_sta_11h_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_11R_AP
 extern oal_uint32 wal_config_get_sta_11r_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -282,6 +274,13 @@ extern oal_uint32 wal_autocali_report2sdt(frw_event_mem_stru *pst_event_mem);
 #ifdef _PRE_WLAN_FEATURE_DFS
 extern oal_uint32  wal_config_get_dfs_chn_status(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_param);
 #endif
+
+extern oal_uint32  wal_config_fem_lp_flag(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+extern oal_uint32  wal_config_softap_mimo_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#ifdef _PRE_WLAN_FEATURE_IP_FILTER
+extern oal_uint32  wal_config_assigned_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif
+
 #ifdef __cplusplus
     #if __cplusplus
         }

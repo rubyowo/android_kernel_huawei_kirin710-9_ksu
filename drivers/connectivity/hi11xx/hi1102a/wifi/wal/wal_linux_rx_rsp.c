@@ -31,6 +31,7 @@ extern "C" {
 #include "hmac_resource.h"
 #include "hmac_device.h"
 #include "hmac_scan.h"
+
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 #include "hmac_user.h"
 #endif
@@ -84,13 +85,13 @@ OAL_STATIC oal_void wal_schedule_scan_report(oal_wiphy_stru *pst_wiphy, hmac_sca
 
 oal_uint32  wal_scan_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru                 *pst_event;
-    hmac_scan_rsp_stru             *pst_scan_rsp;
-    hmac_device_stru               *pst_hmac_device;
+    frw_event_stru                 *pst_event = OAL_PTR_NULL;
+    hmac_scan_rsp_stru             *pst_scan_rsp = OAL_PTR_NULL;
+    hmac_device_stru               *pst_hmac_device = OAL_PTR_NULL;
     hmac_vap_stru                  *pst_hmac_vap = OAL_PTR_NULL;
-    hmac_bss_mgmt_stru             *pst_bss_mgmt;
-    hmac_scan_stru                 *pst_scan_mgmt;
-    oal_wiphy_stru                 *pst_wiphy;
+    hmac_bss_mgmt_stru             *pst_bss_mgmt = OAL_PTR_NULL;
+    hmac_scan_stru                 *pst_scan_mgmt = OAL_PTR_NULL;
+    oal_wiphy_stru                 *pst_wiphy = OAL_PTR_NULL;
     oal_bool_enum_uint8             en_is_aborted;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -199,10 +200,10 @@ oal_uint32  wal_scan_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_asoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
     oal_connet_result_stru       st_connet_result;
-    oal_net_device_stru         *pst_net_device;
-    hmac_asoc_rsp_stru          *pst_asoc_rsp;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    hmac_asoc_rsp_stru          *pst_asoc_rsp = OAL_PTR_NULL;
     oal_uint32                   ul_ret;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -224,7 +225,7 @@ oal_uint32  wal_asoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memset(&st_connet_result, 0, OAL_SIZEOF(oal_connet_result_stru));
+    memset_s(&st_connet_result, OAL_SIZEOF(oal_connet_result_stru), 0, OAL_SIZEOF(oal_connet_result_stru));
 
     /* 准备上报内核的关联结果结构体 */
     oal_memcopy(st_connet_result.auc_bssid, pst_asoc_rsp->auc_addr_ap, WLAN_MAC_ADDR_LEN);
@@ -238,8 +239,8 @@ oal_uint32  wal_asoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
     if (st_connet_result.us_status_code == MAC_SUCCESSFUL_STATUSCODE)
     {
         hmac_device_stru    *pst_hmac_device;
-        oal_wiphy_stru      *pst_wiphy;
-        hmac_bss_mgmt_stru  *pst_bss_mgmt;
+        oal_wiphy_stru      *pst_wiphy = OAL_PTR_NULL;
+        hmac_bss_mgmt_stru  *pst_bss_mgmt = OAL_PTR_NULL;
         pst_hmac_device = hmac_res_get_mac_dev(pst_event->st_event_hdr.uc_device_id);
         if ((OAL_PTR_NULL == pst_hmac_device)
             || (OAL_PTR_NULL == pst_hmac_device->pst_device_base_info)
@@ -303,12 +304,16 @@ oal_uint32  wal_asoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_roam_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
-    oal_net_device_stru         *pst_net_device;
-    mac_device_stru             *pst_mac_device;
-    hmac_roam_rsp_stru          *pst_roam_rsp;
-    struct ieee80211_channel    *pst_channel;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    mac_device_stru             *pst_mac_device = OAL_PTR_NULL;
+    hmac_roam_rsp_stru          *pst_roam_rsp = OAL_PTR_NULL;
+    struct ieee80211_channel    *pst_channel = OAL_PTR_NULL;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    enum nl80211_band            en_band = NUM_NL80211_BANDS;
+#else
     enum ieee80211_band          en_band = IEEE80211_NUM_BANDS;
+#endif
     oal_uint32                   ul_ret;
     oal_int                      l_freq;
 
@@ -347,6 +352,16 @@ oal_uint32  wal_roam_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
         pst_roam_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
         return OAL_FAIL;
     }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    if (WLAN_BAND_2G == pst_roam_rsp->st_channel.en_band)
+    {
+        en_band = NL80211_BAND_2GHZ;
+    }
+    if (WLAN_BAND_5G == pst_roam_rsp->st_channel.en_band)
+    {
+        en_band = NL80211_BAND_5GHZ;
+    }
+#else
     if (WLAN_BAND_2G == pst_roam_rsp->st_channel.en_band)
     {
         en_band = IEEE80211_BAND_2GHZ;
@@ -355,13 +370,14 @@ oal_uint32  wal_roam_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
     {
         en_band = IEEE80211_BAND_5GHZ;
     }
+#endif
 
     /* for test, flush 192.168.1.1 arp */
-    //arp_invalidate(pst_net_device, 0xc0a80101);
 
-    //oal_memcopy(pst_net_device->ieee80211_ptr->ssid, "ROAM_ATURBO_EXT_2G", 18);
-    //pst_net_device->ieee80211_ptr->ssid_len = 18;
-    //pst_net_device->ieee80211_ptr->conn->params.ssid_len = 18;
+
+
+
+
 
     l_freq = oal_ieee80211_channel_to_frequency(pst_roam_rsp->st_channel.uc_chan_number, en_band);
 
@@ -381,7 +397,7 @@ oal_uint32  wal_roam_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
         OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta::oal_cfg80211_roamed fail[%d]!}\r\n", ul_ret);
     }
     OAM_WARNING_LOG4(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta::oal_cfg80211_roamed OK asoc_req_ie[%p] len[%d] asoc_rsp_ie[%p] len[%d]!}\r\n",
-                   pst_roam_rsp->puc_asoc_req_ie_buff, pst_roam_rsp->ul_asoc_req_ie_len, pst_roam_rsp->puc_asoc_rsp_ie_buff, pst_roam_rsp->ul_asoc_rsp_ie_len);
+                   (uintptr_t)(pst_roam_rsp->puc_asoc_req_ie_buff), pst_roam_rsp->ul_asoc_req_ie_len, (uintptr_t)(pst_roam_rsp->puc_asoc_rsp_ie_buff), pst_roam_rsp->ul_asoc_rsp_ie_len);
 
     oal_free(pst_roam_rsp->puc_asoc_rsp_ie_buff);
     pst_roam_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
@@ -420,6 +436,8 @@ oal_uint32  wal_ft_event_proc_sta(frw_event_mem_stru *pst_event_mem)
     if (OAL_PTR_NULL == pst_net_device)
     {
         OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_ft_event_proc_sta::get net device ptr is null!}\r\n");
+        oal_free(pst_ft_event->puc_ft_ie_buff);
+        pst_ft_event->puc_ft_ie_buff = OAL_PTR_NULL;
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -427,7 +445,7 @@ oal_uint32  wal_ft_event_proc_sta(frw_event_mem_stru *pst_event_mem)
     st_cfg_ft_event.ies_len       = pst_ft_event->us_ft_ie_len;
     st_cfg_ft_event.target_ap     = pst_ft_event->auc_bssid;
     st_cfg_ft_event.ric_ies       = OAL_PTR_NULL;
-    st_cfg_ft_event.ric_ies_len   = 0;
+    st_cfg_ft_event.ric_ies_len   = pst_ft_event->us_ft_ie_len;
 
     /* 调用内核接口，上报关联结果 */
     ul_ret = oal_cfg80211_ft_event(pst_net_device, &st_cfg_ft_event);
@@ -436,6 +454,9 @@ oal_uint32  wal_ft_event_proc_sta(frw_event_mem_stru *pst_event_mem)
         OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_ft_event_proc_sta::oal_cfg80211_ft_event fail[%d]!}\r\n", ul_ret);
     }
 
+    oal_free(pst_ft_event->puc_ft_ie_buff);
+    pst_ft_event->puc_ft_ie_buff = OAL_PTR_NULL;
+
     return OAL_SUCC;
 }
 #endif //_PRE_WLAN_FEATURE_11R
@@ -443,10 +464,10 @@ oal_uint32  wal_ft_event_proc_sta(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_disasoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
     oal_disconnect_result_stru    st_disconnect_result;
-    oal_net_device_stru         *pst_net_device;
-    oal_uint16                  *pus_disasoc_reason_code;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    oal_uint16                  *pus_disasoc_reason_code = OAL_PTR_NULL;
     oal_uint32                   ul_ret;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -468,7 +489,7 @@ oal_uint32  wal_disasoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
     /* 获取去关联原因码指针 */
     pus_disasoc_reason_code = (oal_uint16 *)pst_event->auc_event_data;
 
-    oal_memset(&st_disconnect_result, 0, OAL_SIZEOF(oal_disconnect_result_stru));
+    memset_s(&st_disconnect_result, OAL_SIZEOF(oal_disconnect_result_stru), 0, OAL_SIZEOF(oal_disconnect_result_stru));
 
     /* 准备上报内核的关联结果结构体 */
     st_disconnect_result.us_reason_code = *pus_disasoc_reason_code;
@@ -494,13 +515,13 @@ oal_uint32  wal_disasoc_comp_proc_sta(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_connect_new_sta_proc_ap(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
-    oal_net_device_stru         *pst_net_device;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
     oal_uint8                    auc_connect_user_addr[WLAN_MAC_ADDR_LEN];
     oal_station_info_stru        st_station_info;
     oal_uint32                   ul_ret;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    hmac_asoc_user_req_ie_stru  *pst_asoc_user_req_info;
+    hmac_asoc_user_req_ie_stru  *pst_asoc_user_req_info = OAL_PTR_NULL;
 #endif
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -521,7 +542,7 @@ oal_uint32  wal_connect_new_sta_proc_ap(frw_event_mem_stru *pst_event_mem)
 
 
 
-    oal_memset(&st_station_info, 0, OAL_SIZEOF(oal_station_info_stru));
+    memset_s(&st_station_info, OAL_SIZEOF(oal_station_info_stru), 0, OAL_SIZEOF(oal_station_info_stru));
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     /* 向内核标记填充了关联请求帧的ie信息 */
@@ -567,8 +588,8 @@ oal_uint32  wal_connect_new_sta_proc_ap(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_disconnect_sta_proc_ap(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru            *pst_event;
-    oal_net_device_stru       *pst_net_device;
+    frw_event_stru            *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru       *pst_net_device = OAL_PTR_NULL;
     oal_uint8                  auc_disconn_user_addr[WLAN_MAC_ADDR_LEN];
     oal_uint32                 ul_ret;
 
@@ -608,9 +629,9 @@ oal_uint32  wal_disconnect_sta_proc_ap(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_mic_failure_proc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru               *pst_event;
-    oal_net_device_stru          *pst_net_device;
-    hmac_mic_event_stru          *pst_mic_event;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru          *pst_net_device = OAL_PTR_NULL;
+    hmac_mic_event_stru          *pst_mic_event = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -642,15 +663,15 @@ oal_uint32  wal_mic_failure_proc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_send_mgmt_to_host(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru               *pst_event;
-    oal_net_device_stru          *pst_net_device;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru          *pst_net_device = OAL_PTR_NULL;
     oal_int32                     l_freq;
     oal_uint8                     uc_rssi;
-    oal_uint8                    *puc_buf;
+    oal_uint8                    *puc_buf = OAL_PTR_NULL;
     oal_uint16                    us_len;
     oal_uint32                    ul_ret;
-    hmac_rx_mgmt_event_stru      *pst_mgmt_frame;
-    oal_ieee80211_mgmt           *pst_ieee80211_mgmt;
+    hmac_rx_mgmt_event_stru      *pst_mgmt_frame = OAL_PTR_NULL;
+    oal_ieee80211_mgmt           *pst_ieee80211_mgmt = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -663,7 +684,7 @@ oal_uint32  wal_send_mgmt_to_host(frw_event_mem_stru *pst_event_mem)
 
     /* 获取net_device*/
     pst_net_device = oal_dev_get_by_name(pst_mgmt_frame->ac_name);
-    //pst_net_device = hmac_vap_get_net_device(pst_event->st_event_hdr.uc_vap_id);
+
     if (OAL_PTR_NULL == pst_net_device)
     {
         OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host::get net device ptr is null!}\r\n");
@@ -682,7 +703,7 @@ oal_uint32  wal_send_mgmt_to_host(frw_event_mem_stru *pst_event_mem)
     ul_ret = oal_cfg80211_rx_mgmt(pst_net_device, l_freq, uc_rssi, puc_buf, us_len, GFP_ATOMIC);
     if (OAL_SUCC != ul_ret)
     {
-        //OAL_IO_PRINT("wal_send_mgmt_to_host::net_device_name:%s\r\n", pst_mgmt_frame->ac_name);
+
         OAM_WARNING_LOG2(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host::fc[0x%04x], if_type[%d]!}\r\n",
                         pst_ieee80211_mgmt->frame_control, pst_net_device->ieee80211_ptr->iftype);
         OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host::oal_cfg80211_rx_mgmt fail[%d]!len[%d], freq[%d]}\r\n",
@@ -700,12 +721,12 @@ oal_uint32  wal_send_mgmt_to_host(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32 wal_p2p_listen_timeout(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru               *pst_event;
-    oal_wireless_dev_stru        *pst_wdev;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_wireless_dev_stru        *pst_wdev = OAL_PTR_NULL;
     oal_uint64                    ull_cookie;
     oal_ieee80211_channel_stru    st_listen_channel;
-    hmac_p2p_listen_expired_stru *pst_p2p_listen_expired;
-    mac_device_stru              *pst_mac_device;
+    hmac_p2p_listen_expired_stru *pst_p2p_listen_expired = OAL_PTR_NULL;
+    mac_device_stru              *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -736,6 +757,63 @@ oal_uint32 wal_p2p_listen_timeout(frw_event_mem_stru *pst_event_mem)
     return OAL_SUCC;
 }
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+/*
+ * 函 数 名  : wal_report_external_auth_req
+ * 功能描述  : HMAC上报external auth request处理
+ */
+oal_uint32 wal_report_external_auth_req(frw_event_mem_stru *pst_event_mem)
+{
+    frw_event_stru *pst_event;
+    oal_net_device_stru *pst_net_device;
+    hmac_external_auth_req_stru *pst_ext_auth_req;
+    oal_cfg80211_external_auth_stru st_external_auth_req;
+    oal_int l_ret;
+
+    if (OAL_UNLIKELY(pst_event_mem == OAL_PTR_NULL)) {
+        OAM_ERROR_LOG0(0, OAM_SF_SAE, "{wal_report_external_auth_req::pst_event_mem is null!}");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    pst_event = frw_get_event_stru(pst_event_mem);
+
+    /* 获取net_device*/
+    pst_net_device = hmac_vap_get_net_device(pst_event->st_event_hdr.uc_vap_id);
+    if (pst_net_device == OAL_PTR_NULL) {
+        OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_SAE,
+                        "{wal_report_external_auth_req::get net device ptr is null! vap_id %d}",
+                        pst_event->st_event_hdr.uc_vap_id);
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    pst_ext_auth_req = (hmac_external_auth_req_stru *)(pst_event->auc_event_data);
+
+    st_external_auth_req.action         = pst_ext_auth_req->en_action;
+    st_external_auth_req.key_mgmt_suite = pst_ext_auth_req->ul_key_mgmt_suite;
+    st_external_auth_req.status         = pst_ext_auth_req->us_status;
+    st_external_auth_req.ssid.ssid_len  = OAL_MIN(pst_ext_auth_req->st_ssid.uc_ssid_len, OAL_IEEE80211_MAX_SSID_LEN);
+    oal_memcopy(st_external_auth_req.ssid.ssid, pst_ext_auth_req->st_ssid.auc_ssid, st_external_auth_req.ssid.ssid_len);
+    oal_memcopy(st_external_auth_req.bssid, pst_ext_auth_req->auc_bssid, OAL_ETH_ALEN);
+
+    l_ret = oal_cfg80211_external_auth_request(pst_net_device,
+                                        &st_external_auth_req,
+                                        GFP_ATOMIC);
+
+    OAM_WARNING_LOG4(0, OAM_SF_SAE, "{wal_report_external_auth_req::action %x, status %d, key_mgmt 0x%X, ssid_len %d}",
+                        st_external_auth_req.action,
+                        st_external_auth_req.status,
+                        st_external_auth_req.key_mgmt_suite,
+                        st_external_auth_req.ssid.ssid_len);
+
+    OAM_WARNING_LOG4(0, OAM_SF_SAE, "{wal_report_external_auth_req::mac[%02X:XX:XX:XX:%02X:%02X], ret[%d]}",
+                    st_external_auth_req.bssid[0],
+                    st_external_auth_req.bssid[4],
+                    st_external_auth_req.bssid[5],
+                    l_ret);
+
+    return l_ret;
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
 #ifdef __cplusplus
     #if __cplusplus

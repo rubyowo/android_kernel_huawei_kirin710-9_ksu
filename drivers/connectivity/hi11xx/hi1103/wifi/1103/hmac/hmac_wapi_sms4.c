@@ -14,6 +14,8 @@ extern "C" {
 #include "oal_ext_if.h"
 #include "oal_types.h"
 #include "hmac_wapi_sms4.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_WAPI_SMS4_C
@@ -59,14 +61,16 @@ OAL_STATIC oal_uint32 gaul_ck[32] = {
 *****************************************************************************/
 
 
-oal_void  hmac_sms4_crypt_etc(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_uint32 *puc_rk)
+oal_void  hmac_sms4_crypt_etc(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_uint32 *puc_rk, oal_uint32 ul_rk_len)
 {
      oal_uint32         r;
      oal_uint32         mid;
      oal_uint32         x[4];
-     oal_uint32        *p;
+     oal_uint32        *p = OAL_PTR_NULL;
 
-     oal_memcopy(x,puc_input,16);
+     if (EOK != memcpy_s(x, sizeof(x), puc_input,16)) {
+         return;
+     }
 #if (_PRE_LITTLE_CPU_ENDIAN == _PRE_CPU_ENDIAN)
      x[0] = Rotl(x[0], 16); x[0] = ((x[0] & 0x00FF00FF) << 8) ^ ((x[0] & 0xFF00FF00) >> 8);
      x[1] = Rotl(x[1], 16); x[1] = ((x[1] & 0x00FF00FF) << 8) ^ ((x[1] & 0xFF00FF00) >> 8);
@@ -74,7 +78,7 @@ oal_void  hmac_sms4_crypt_etc(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_u
      x[3] = Rotl(x[3], 16); x[3] = ((x[3] & 0x00FF00FF) << 8) ^ ((x[3] & 0xFF00FF00) >> 8);
 #endif
 
-     for (r = 0; r < 32; r += 4)
+     for (r = 0; r < ul_rk_len/sizeof(oal_uint32); r += 4)
      {
         mid = x[1] ^ x[2] ^ x[3] ^ puc_rk[r + 0];
         mid = ByteSub(gaul_sbox, mid);
@@ -104,13 +108,15 @@ oal_void  hmac_sms4_crypt_etc(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_u
 
 
 
-oal_void  hmac_sms4_keyext_etc(oal_uint8 *puc_Key, oal_uint32 *puc_rk)
+oal_void  hmac_sms4_keyext_etc(oal_uint8 *puc_Key, oal_uint32 *puc_rk, oal_uint32 ul_rk_len)
 {
     oal_uint32 r;
     oal_uint32 mid;
     oal_uint32 x[4];
 
-    oal_memcopy(x, puc_Key, 16);                       /* 注意输入参数地址对齐问题 */
+    if (EOK != memcpy_s(x, OAL_SIZEOF(x), puc_Key, OAL_SIZEOF(x))) {
+        return ;
+    }                       /* 注意输入参数地址对齐问题 */
 #if (_PRE_LITTLE_CPU_ENDIAN == _PRE_CPU_ENDIAN)
     x[0] = Rotl(x[0], 16); x[0] = ((x[0] & 0xFF00FF) << 8) ^ ((x[0] & 0xFF00FF00) >> 8);
     x[1] = Rotl(x[1], 16); x[1] = ((x[1] & 0xFF00FF) << 8) ^ ((x[1] & 0xFF00FF00) >> 8);
@@ -123,7 +129,7 @@ oal_void  hmac_sms4_keyext_etc(oal_uint8 *puc_Key, oal_uint32 *puc_rk)
     x[3] ^= 0xb27022dc;
 
     /*lint -e661 -e662*/
-    for (r = 0; r < 32; r += 4)
+    for (r = 0; r < ul_rk_len / OAL_SIZEOF(oal_uint32); r += 4)
     {
         mid = x[1] ^ x[2] ^ x[3] ^ gaul_ck[r + 0];
         mid = ByteSub(gaul_sbox, mid);

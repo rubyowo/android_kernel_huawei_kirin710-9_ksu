@@ -109,7 +109,7 @@ OAL_STATIC OAL_INLINE oal_uint32 get_le32_split(oal_uint8 b0, oal_uint8 b1, oal_
     return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
 }
 
-OAL_STATIC OAL_INLINE oal_uint32 get_le32(const oal_uint8 *p)
+OAL_STATIC OAL_INLINE oal_uint32 get_le32(const unsigned char *p)
 {
     return get_le32_split(p[0], p[1], p[2], p[3]);
 }

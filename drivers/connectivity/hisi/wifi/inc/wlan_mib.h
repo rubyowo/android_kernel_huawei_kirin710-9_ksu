@@ -929,7 +929,6 @@ typedef enum
     WLAN_CFGID_SET_STA_PM_ON                = 232,      /* STA低功耗开关接口 */
 #endif
 
-    WLAN_CFGID_PACKET_XMIT                  = 240,      /* 发指定个数的报文 */
     WLAN_CFGID_DUMP_BA_BITMAP               = 241,      /* 发指定个数的报文 */
     WLAN_CFGID_VAP_PKT_STAT                 = 242,      /* vap统计信息 */
     WLAN_CFGID_TIMER_START                  = 244,

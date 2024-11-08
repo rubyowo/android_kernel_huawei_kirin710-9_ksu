@@ -19,6 +19,8 @@ extern "C" {
 #include "hmac_scan.h"
 #include "hmac_resource.h"
 #include "hmac_vap.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_DFS_C
@@ -60,17 +62,12 @@ OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_opern_ch_dwell_timeout(oal_void *p_
 
 oal_void  hmac_dfs_init_etc(mac_device_stru *pst_mac_device)
 {
-    mac_dfs_info_stru   *pst_dfs_info;
+    mac_dfs_info_stru   *pst_dfs_info = OAL_PTR_NULL;
 
     /* 初始化Non-Occupancy List链表 */
     oal_dlist_init_head(&(pst_mac_device->st_dfs.st_dfs_nol));
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    /* CAC检测默认不使能 */
-    mac_dfs_set_cac_enable(pst_mac_device, OAL_TRUE);
-    /* OFFCHAN-CAC检测默认不使能 */
-    mac_dfs_set_offchan_cac_enable(pst_mac_device, OAL_FALSE);
-#else
     /* CAC检测默认不使能 */
     mac_dfs_set_cac_enable(pst_mac_device, OAL_TRUE);
     /* OFFCHAN-CAC检测默认不使能 */
@@ -99,13 +96,7 @@ oal_void  hmac_dfs_channel_list_init_etc(mac_device_stru *pst_mac_device)
     mac_chan_status_enum_uint8    en_ch_status;
     oal_uint8                     uc_idx;
     oal_uint32                    ul_ret;
-#if 0
-    if (WLAN_BAND_5G != pst_mac_device->en_max_band)
-    {
-        OAL_IO_PRINT("[DFS]hmac_dfs_channel_list_init_etc::band is not 5G.\n.");
-        return;
-    }
-#endif
+
     for (uc_idx = 0; uc_idx < MAC_MAX_SUPP_CHANNEL; uc_idx++)
     {
         ul_ret = mac_is_channel_idx_valid_etc(MAC_RC_START_FREQ_5, uc_idx);
@@ -175,7 +166,7 @@ oal_uint32  hmac_dfs_recalculate_channel_etc(
     ul_ret = mac_get_channel_idx_from_num_etc(pst_mac_device->en_max_band, *puc_freq, &uc_chan_idx);
     if (OAL_SUCC != ul_ret)
     {
-        OAM_ERROR_LOG2(pst_mac_device->uc_device_id, OAM_SF_DFS, "{hmac_dfs_recalculate_channel_etc::mac_get_channel_idx_from_num_etc fail.max_band:%d  freq:%x}",pst_mac_device->en_max_band,puc_freq);
+        OAM_ERROR_LOG2(pst_mac_device->uc_device_id, OAM_SF_DFS, "{hmac_dfs_recalculate_channel_etc::mac_get_channel_idx_from_num_etc fail.max_band:%d  freq:%x}",pst_mac_device->en_max_band,(uintptr_t)puc_freq);
         return ul_ret;
     }
 
@@ -211,7 +202,7 @@ static OAL_INLINE oal_uint32  hmac_dfs_cac_event_report(mac_vap_stru *pst_mac_va
                                                         hmac_cac_event_stru *pst_cac_event)
 {
     frw_event_mem_stru       *pst_event_mem;
-    frw_event_stru           *pst_event;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
 
     pst_event_mem = FRW_EVENT_ALLOC(OAL_SIZEOF(hmac_cac_event_stru));
     if (OAL_PTR_NULL == pst_event_mem)
@@ -233,7 +224,12 @@ static OAL_INLINE oal_uint32  hmac_dfs_cac_event_report(mac_vap_stru *pst_mac_va
                        pst_mac_vap->uc_vap_id);
 
     /* cac事件 */
-    oal_memcopy(frw_get_event_payload(pst_event_mem), (const oal_void*)pst_cac_event,OAL_SIZEOF(hmac_cac_event_stru));
+    if (EOK != memcpy_s(frw_get_event_payload(pst_event_mem), OAL_SIZEOF(hmac_cac_event_stru),
+             (const oal_void*)pst_cac_event, OAL_SIZEOF(hmac_cac_event_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hwifi_config_init_fcc_ce_txpwr_nvram::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        return OAL_FAIL;
+    }
 
     /* 分发事件 */
     frw_event_dispatch_event_etc(pst_event_mem);
@@ -245,9 +241,10 @@ static OAL_INLINE oal_uint32  hmac_dfs_cac_event_report(mac_vap_stru *pst_mac_va
 
 oal_uint32  hmac_dfs_radar_detect_event_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru         *pst_event;
-    hmac_vap_stru          *pst_hmac_vap;
+    frw_event_stru         *pst_event = OAL_PTR_NULL;
+    hmac_vap_stru          *pst_hmac_vap = OAL_PTR_NULL;
     hmac_misc_input_stru    st_misc_input;
+    oal_uint8               fem_enable = 0;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -266,6 +263,9 @@ oal_uint32  hmac_dfs_radar_detect_event_etc(frw_event_mem_stru *pst_event_mem)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
+    /* 检测到雷达，关闭fem低功耗 */
+    hmac_config_fem_lp_flag(&pst_hmac_vap->st_vap_base_info, OAL_SIZEOF(oal_uint8), &fem_enable);
+
     st_misc_input.en_type = HMAC_MISC_RADAR;
 
     hmac_fsm_call_func_ap_etc(pst_hmac_vap, HMAC_FSM_INPUT_MISC, &st_misc_input);
@@ -275,7 +275,7 @@ oal_uint32  hmac_dfs_radar_detect_event_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  hmac_dfs_radar_detect_event_test(oal_uint8 uc_vap_id)
 {
-    hmac_vap_stru          *pst_hmac_vap;
+    hmac_vap_stru          *pst_hmac_vap = OAL_PTR_NULL;
     hmac_misc_input_stru    st_misc_input;
 
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(uc_vap_id);
@@ -312,7 +312,6 @@ OAL_STATIC oal_uint32  hmac_dfs_update_available_channel_list(
     if (MAC_CHAN_AVAILABLE_ALWAYS == pst_mac_device->st_ap_channel_list[uc_chan_idx].en_ch_status)
     {
         OAM_WARNING_LOG1(0, OAM_SF_DFS, "{hmac_dfs_update_available_channel_list::Radar detected in Non-Radar Channel(%d)!}", uc_chan_idx);
-        //OAL_IO_PRINT("[DFS]hmac_dfs_update_available_channel_list::ch status is always available.\n");
         return OAL_ERR_CODE_INVALID_CONFIG;
     }
 
@@ -336,12 +335,12 @@ OAL_STATIC oal_uint32  hmac_dfs_update_available_channel_list(
 
 oal_uint32  hmac_dfs_cac_timeout_fn_etc(oal_void *p_arg)
 {
-    mac_device_stru          *pst_mac_device;
-    hmac_device_stru         *pst_hmac_device;
-    hmac_vap_stru            *pst_hmac_vap;
+    mac_device_stru          *pst_mac_device = OAL_PTR_NULL;
+    hmac_device_stru         *pst_hmac_device = OAL_PTR_NULL;
+    hmac_vap_stru            *pst_hmac_vap = OAL_PTR_NULL;
     mac_channel_list_stru    st_chan_info;
     oal_uint8                 uc_idx;
-    mac_dfs_info_stru        *pst_dfs_info;
+    mac_dfs_info_stru        *pst_dfs_info = OAL_PTR_NULL;
     oal_uint32                ul_ret;
     hmac_cac_event_stru       st_cac_event;
 
@@ -358,7 +357,7 @@ oal_uint32  hmac_dfs_cac_timeout_fn_etc(oal_void *p_arg)
                  pst_hmac_vap->st_vap_base_info.st_channel.uc_chan_number);
 
     pst_hmac_device = hmac_res_get_mac_dev_etc(pst_hmac_vap->st_vap_base_info.uc_device_id);
-    if (OAL_PTR_NULL == pst_hmac_device || OAL_PTR_NULL == pst_hmac_device->pst_device_base_info)
+    if (OAL_ANY_NULL_PTR2(pst_hmac_device,pst_hmac_device->pst_device_base_info))
     {
         OAM_WARNING_LOG0(0, OAM_SF_DFS, "{hmac_dfs_cac_timeout_fn_etc::pst_mac_device is null.}");
 
@@ -407,7 +406,6 @@ oal_uint32  hmac_dfs_cac_timeout_fn_etc(oal_void *p_arg)
     else if ((MAC_VAP_STATE_PAUSE == pst_hmac_vap->st_vap_base_info.en_vap_state) ||
              (MAC_VAP_STATE_UP    == pst_hmac_vap->st_vap_base_info.en_vap_state))
     {
-        //hmac_vap_resume_tx_by_chl(pst_hmac_vap);
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
         /*cac超时后把vap状态置为up,恢复发送队列*/
         hmac_cac_chan_ctrl_machw_tx(&(pst_hmac_vap->st_vap_base_info), OAL_TRUE);
@@ -446,7 +444,7 @@ oal_uint32  hmac_dfs_cac_timeout_fn_etc(oal_void *p_arg)
 
 oal_uint32  hmac_dfs_start_bss_etc(hmac_vap_stru *pst_hmac_vap)
 {
-    mac_device_stru          *pst_mac_device;
+    mac_device_stru          *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_hmac_vap))
     {
@@ -472,7 +470,7 @@ oal_uint32  hmac_dfs_start_bss_etc(hmac_vap_stru *pst_hmac_vap)
 
 OAL_STATIC oal_uint32  hmac_chan_get_cac_time(mac_device_stru *pst_mac_device, mac_vap_stru *pst_mac_vap)
 {
-    mac_regdomain_info_stru   *pst_rd_info;
+    mac_regdomain_info_stru   *pst_rd_info = OAL_PTR_NULL;
     mac_channel_list_stru     st_chan_info;
     oal_uint8                  uc_idx;
     oal_uint32                 ul_ret;
@@ -652,7 +650,7 @@ oal_void  hmac_dfs_cac_start_etc(mac_device_stru *pst_mac_device, hmac_vap_stru 
 
 oal_void  hmac_dfs_radar_wait_etc(mac_device_stru *pst_mac_device, hmac_vap_stru *pst_hmac_vap)
 {
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8       uc_vap_idx;
     oal_uint8       uc_5g_vap_cnt = 0;
 
@@ -698,8 +696,8 @@ oal_void  hmac_dfs_radar_wait_etc(mac_device_stru *pst_mac_device, hmac_vap_stru
 
 OAL_STATIC oal_uint32  hmac_dfs_nol_timeout_fn(oal_void *p_arg)
 {
-    mac_device_stru         *pst_mac_device;
-    mac_dfs_nol_node_stru   *pst_nol_node;
+    mac_device_stru         *pst_mac_device = OAL_PTR_NULL;
+    mac_dfs_nol_node_stru   *pst_nol_node = OAL_PTR_NULL;
     oal_uint8                uc_chan_num = 0;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == p_arg))
@@ -721,7 +719,7 @@ OAL_STATIC oal_uint32  hmac_dfs_nol_timeout_fn(oal_void *p_arg)
 
     mac_get_channel_num_from_idx_etc(pst_mac_device->en_max_band, pst_nol_node->uc_chan_idx, &uc_chan_num);
 
-    OAM_INFO_LOG1(0, OAM_SF_DFS, "{[DFS]hmac_dfs_nol_timeout_fn, Non-Occupancy Period expired, remove channel %d from NOL.}", uc_chan_num);
+    OAM_WARNING_LOG1(0, OAM_SF_DFS, "{[DFS]hmac_dfs_nol_timeout_fn, Non-Occupancy Period expired, remove channel %d from NOL.}", uc_chan_num);
 
     return hmac_dfs_nol_delchan(pst_mac_device, pst_nol_node);
 }
@@ -729,37 +727,34 @@ OAL_STATIC oal_uint32  hmac_dfs_nol_timeout_fn(oal_void *p_arg)
 
 OAL_STATIC oal_uint32  hmac_dfs_nol_addchan(mac_device_stru *pst_mac_device, oal_uint8 uc_chan_idx)
 {
-    mac_dfs_nol_node_stru   *pst_nol_node;
+    mac_dfs_nol_node_stru   *pst_nol_node = OAL_PTR_NULL;
     oal_uint8                uc_chan_num = 0;
     oal_uint32               ul_ret;
 
     /*如果不可占用周期为0，则不添加新的nol信道*/
-    if(0 == pst_mac_device->st_dfs.st_dfs_info.ul_dfs_non_occupancy_period_time_ms)
-    {
+    if (pst_mac_device->st_dfs.st_dfs_info.ul_dfs_non_occupancy_period_time_ms == 0) {
         return OAL_SUCC;
     }
 
-    pst_nol_node = (mac_dfs_nol_node_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(mac_dfs_nol_node_stru), OAL_TRUE);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_nol_node))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_DFS, "{hmac_dfs_nol_addchan::memory not enough.}");
-
-        return OAL_ERR_CODE_ALLOC_MEM_FAIL;
-    }
-    OAL_MEMZERO(pst_nol_node, OAL_SIZEOF(mac_dfs_nol_node_stru));
-
-    pst_nol_node->uc_chan_idx  = uc_chan_idx;
-    pst_nol_node->uc_device_id = pst_mac_device->uc_device_id;
-
-    oal_dlist_add_tail(&(pst_nol_node->st_entry), &(pst_mac_device->st_dfs.st_dfs_nol));
-
-    mac_get_channel_num_from_idx_etc(pst_mac_device->en_max_band, uc_chan_idx, &uc_chan_num);
-    OAM_WARNING_LOG1(0, OAM_SF_DFS, "{[DFS]hmac_dfs_nol_addchan, add channel %d to NOL.}", uc_chan_num);
-
     /* 更新可用信道列列表 */
     ul_ret = hmac_dfs_update_available_channel_list(pst_mac_device, uc_chan_idx, OAL_TRUE);
-    if(OAL_SUCC == ul_ret)
-    {
+    if (ul_ret == OAL_SUCC) {
+        pst_nol_node = (mac_dfs_nol_node_stru *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAL_SIZEOF(mac_dfs_nol_node_stru), OAL_TRUE);
+        if (OAL_UNLIKELY(pst_nol_node == OAL_PTR_NULL)) {
+            OAM_ERROR_LOG0(0, OAM_SF_DFS, "{hmac_dfs_nol_addchan::memory not enough.}");
+
+            pst_mac_device->st_ap_channel_list[uc_chan_idx].en_ch_status = MAC_CHAN_DFS_REQUIRED;
+            return OAL_ERR_CODE_ALLOC_MEM_FAIL;
+        }
+
+        memset_s(pst_nol_node, OAL_SIZEOF(mac_dfs_nol_node_stru), 0, OAL_SIZEOF(mac_dfs_nol_node_stru));
+        pst_nol_node->uc_chan_idx  = uc_chan_idx;
+        pst_nol_node->uc_device_id = pst_mac_device->uc_device_id;
+        oal_dlist_add_tail(&(pst_nol_node->st_entry), &(pst_mac_device->st_dfs.st_dfs_nol));
+        mac_get_channel_num_from_idx_etc(pst_mac_device->en_max_band, uc_chan_idx, &uc_chan_num);
+
+        OAM_WARNING_LOG1(0, OAM_SF_DFS, "{[DFS]hmac_dfs_nol_addchan, add channel %d to NOL.}", uc_chan_num);
+
         /* 启动Non-Occupancy Peroid定时器 */
         FRW_TIMER_CREATE_TIMER(&pst_nol_node->st_dfs_nol_timer,
                                 hmac_dfs_nol_timeout_fn,
@@ -793,8 +788,8 @@ OAL_STATIC oal_uint32  hmac_dfs_nol_delchan(mac_device_stru *pst_mac_device, mac
 
 OAL_STATIC oal_uint32  hmac_dfs_nol_clear(oal_dlist_head_stru *pst_dlist_head)
 {
-    mac_device_stru         *pst_mac_device;
-    mac_dfs_nol_node_stru   *pst_nol_node;
+    mac_device_stru         *pst_mac_device = OAL_PTR_NULL;
+    mac_dfs_nol_node_stru   *pst_nol_node = OAL_PTR_NULL;
     oal_dlist_head_stru     *pst_dlist_pos = OAL_PTR_NULL;
     oal_dlist_head_stru     *pst_dlist_temp = OAL_PTR_NULL;
 
@@ -1085,12 +1080,33 @@ hmac_dfs_is_channel_support_bw_update:
 }
 
 
+OAL_STATIC oal_void hmac_dfs_160m_select_new_chan(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_new_channel,
+                                                                    wlan_channel_bandwidth_enum_uint8 *pen_new_bandwidth)
+{
+    if (pst_mac_vap->st_channel.uc_chan_idx < MAC_CHANNEL52) {
+        *puc_new_channel    = pst_mac_vap->st_channel.uc_chan_number;
+        *pen_new_bandwidth  = mac_vap_get_bandwith(WLAN_BW_CAP_80M, pst_mac_vap->st_channel.en_bandwidth);
+    }
+    else {
+        *puc_new_channel    = 36;
+        *pen_new_bandwidth  = WLAN_BAND_WIDTH_80PLUSPLUS;
+
+         OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CHAN,
+                     "{hmac_dfs_160m_select_new_chan::chan idx error [%d]}", pst_mac_vap->st_channel.uc_chan_idx);
+    }
+
+    OAM_WARNING_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_CHAN,
+                "{hmac_dfs_160m_select_new_chan::[DFS]select_channel::bandwidth = %d, channelnum = %d!}",
+                *pen_new_bandwidth, *puc_new_channel);
+}
+
+
 OAL_STATIC oal_uint32 hmac_dfs_select_random_channel(
                 mac_vap_stru                        *pst_mac_vap,
                 oal_uint8                           *puc_new_channel,
                 wlan_channel_bandwidth_enum_uint8   *pen_new_bandwidth)
 {
-    mac_device_stru   *pst_mac_device;
+    mac_device_stru   *pst_mac_device = OAL_PTR_NULL;
     oal_uint8          uc_num_supp_chan = mac_get_num_supp_channel(pst_mac_vap->st_channel.en_band);
     oal_uint32         ul_chan_bitmap = 0;
     oal_uint32         ul_window = 0;
@@ -1103,7 +1119,7 @@ OAL_STATIC oal_uint32 hmac_dfs_select_random_channel(
     oal_uint8          uc_cur_sub;
     wlan_channel_bandwidth_enum_uint8   en_try_bandwidth;
 
-    OAL_MEMZERO(auc_available_chan_idx, OAL_SIZEOF(auc_available_chan_idx));
+    memset_s(auc_available_chan_idx, OAL_SIZEOF(auc_available_chan_idx), 0, OAL_SIZEOF(auc_available_chan_idx));
 
     pst_mac_device = mac_res_get_dev_etc(pst_mac_vap->uc_device_id);
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_device))
@@ -1221,9 +1237,8 @@ hmac_dfs_select_random_channel_update:
     else
     {
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-        /*160MHz上检测到有问题,固定选择主信道36,带宽80M*/
-        auc_available_chan_idx[uc_available_chan_cnt++] = MAC_CHANNEL36;
-        en_try_bandwidth = WLAN_BAND_WIDTH_80PLUSPLUS;
+        hmac_dfs_160m_select_new_chan(pst_mac_vap, puc_new_channel, pen_new_bandwidth);
+        return OAL_SUCC;
 #endif
     }
 
@@ -1293,8 +1308,8 @@ hmac_dfs_select_random_channel_update:
 
 oal_uint32  hmac_dfs_ap_wait_start_radar_handler_etc(hmac_vap_stru *pst_hmac_vap)
 {
-    mac_device_stru                     *pst_mac_device;
-    mac_vap_stru                        *pst_mac_vap;
+    mac_device_stru                     *pst_mac_device = OAL_PTR_NULL;
+    mac_vap_stru                        *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                            uc_new_channel   = 0;
     wlan_channel_bandwidth_enum_uint8    en_new_bandwidth = WLAN_BAND_WIDTH_BUTT;
     oal_uint32                           ul_ret;
@@ -1374,8 +1389,6 @@ oal_uint32  hmac_dfs_ap_wait_start_radar_handler_etc(hmac_vap_stru *pst_hmac_vap
 
     /* mayuan TBD 只需要设置硬件寄存器一次，然后同步一下软件vap的配置即可 */
     hmac_chan_multi_select_channel_mac_etc(pst_mac_vap, uc_new_channel, en_new_bandwidth);
-
-    //hmac_chan_select_channel_mac(&(pst_hmac_vap->st_vap_base_info), uc_new_channel, en_new_bandwidth);
 
     /* 判断是否需要进行 */
     if (OAL_TRUE == hmac_dfs_need_for_cac(pst_mac_device, &pst_hmac_vap->st_vap_base_info))
@@ -1467,9 +1480,9 @@ oal_uint32 hmac_dfs_switch_channel_for_radar_etc(mac_device_stru *pst_mac_device
 
 OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_timeout_fn(oal_void *p_arg)
 {
-    mac_device_stru     *pst_mac_device;
-    hmac_vap_stru       *pst_hmac_vap;
-    mac_dfs_info_stru   *pst_dfs_info;
+    mac_device_stru     *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
+    mac_dfs_info_stru   *pst_dfs_info = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == p_arg))
     {
@@ -1526,8 +1539,8 @@ OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_timeout_fn(oal_void *p_arg)
 
 oal_uint32  hmac_dfs_ap_up_radar_handler_etc(hmac_vap_stru *pst_hmac_vap)
 {
-    mac_device_stru                     *pst_mac_device;
-    mac_vap_stru                        *pst_mac_vap;
+    mac_device_stru                     *pst_mac_device = OAL_PTR_NULL;
+    mac_vap_stru                        *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                            uc_offchan_flag;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_hmac_vap))
@@ -1674,8 +1687,8 @@ OAL_STATIC oal_uint32  hmac_scan_switch_channel_back(mac_vap_stru *pst_mac_vap)
 
 OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_opern_ch_dwell_timeout(oal_void *p_arg)
 {
-    mac_device_stru   *pst_mac_device;
-    hmac_vap_stru     *pst_hmac_vap;
+    mac_device_stru   *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru     *pst_hmac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == p_arg))
     {
@@ -1693,13 +1706,6 @@ OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_opern_ch_dwell_timeout(oal_void *p_
 
         return OAL_ERR_CODE_PTR_NULL;
     }
-
-#if 0
-    pst_mac_device->st_scan_params.en_scan_mode = WLAN_SCAN_MODE_BACKGROUND_AP;
-    pst_mac_device->st_scan_params.us_scan_time = pst_mac_device->st_dfs.st_dfs_info.us_dfs_off_chan_cac_off_chan_dwell_time;
-    pst_mac_device->uc_scan_chan_idx = 0;
-    /* pst_mac_device->st_scan_params.ast_channel_list[pst_mac_device->uc_scan_chan_idx] = st_channel; mayuan TBD */
-#endif
 
     /* 当前信道为offchan 标志 */
     pst_mac_device->st_dfs.st_dfs_info.uc_offchan_flag = (BIT0|BIT1);
@@ -1725,8 +1731,8 @@ OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_opern_ch_dwell_timeout(oal_void *p_
 
 OAL_STATIC oal_uint32  hmac_dfs_off_chan_cac_off_ch_dwell_timeout(oal_void *p_arg)
 {
-    mac_device_stru   *pst_mac_device;
-    hmac_vap_stru     *pst_hmac_vap;
+    mac_device_stru   *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru     *pst_hmac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == p_arg))
     {
@@ -1799,11 +1805,11 @@ oal_void  hmac_dfs_off_chan_cac_start_etc(mac_device_stru *pst_mac_device, hmac_
 
 oal_bool_enum_uint8 hmac_dfs_try_cac_etc(hmac_device_stru *pst_hmac_device, mac_vap_stru *pst_mac_vap)
 {
-    hmac_vap_stru    *pst_hmac_vap;
-    mac_device_stru  *pst_mac_device;
-    mac_channel_stru *pst_channel;
+    hmac_vap_stru    *pst_hmac_vap = OAL_PTR_NULL;
+    mac_device_stru  *pst_mac_device = OAL_PTR_NULL;
+    mac_channel_stru *pst_channel = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_hmac_device || OAL_PTR_NULL == pst_mac_vap))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_device,pst_mac_vap)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_dfs_try_cac_etc::pst_device_base_info null!}");
         return OAL_ERR_CODE_PTR_NULL;

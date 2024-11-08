@@ -80,7 +80,7 @@ typedef struct
 /* 认证结果 */
 typedef struct
 {
-    oal_uint8                   auc_peer_sta_addr[6];   /* mesh下peer station的地址 */
+    oal_uint8                   auc_peer_sta_addr[WLAN_MAC_ADDR_LEN];   /* mesh下peer station的地址 */
     oal_uint16                  us_status_code;         /* 认证结果 */
 }hmac_auth_rsp_stru;
 
@@ -110,15 +110,15 @@ typedef struct
   10 函数声明
 *****************************************************************************/
 extern oal_uint32  hmac_sta_wait_join(hmac_vap_stru *pst_sta, oal_void *pst_msg);
-//extern oal_uint32  hmac_sta_wait_join_rx(hmac_vap_stru *pst_sta, oal_void *pst_msg);
+
 extern oal_uint32  hmac_sta_wait_auth(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_asoc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_asoc_rx(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_auth_seq2_rx(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_auth_seq4_rx(hmac_vap_stru *pst_sta, oal_void *p_msg);
 extern oal_uint32  hmac_sta_auth_timeout(hmac_vap_stru *pst_hmac_sta, oal_void *p_param);
-//extern oal_uint32  hmac_sta_wait_join_misc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
-//extern oal_uint32  hmac_sta_wait_join_timeout(hmac_vap_stru *pst_sta, oal_void *pst_msg);
+
+
 extern oal_uint32  hmac_sta_wait_join_timeout(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_beacon_before_auth(hmac_vap_stru *pst_hmac_sta, oal_void *pst_msg);
 

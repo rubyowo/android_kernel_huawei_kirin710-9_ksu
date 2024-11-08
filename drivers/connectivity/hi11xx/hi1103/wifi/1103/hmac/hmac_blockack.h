@@ -239,8 +239,6 @@ OAL_STATIC OAL_INLINE oal_void  hmac_ba_update_rx_bitmap(hmac_user_stru *pst_hma
 
     hmac_ba_addto_rx_bitmap(pst_ba_rx_hdl, mac_get_seq_num((oal_uint8 *)pst_frame_hdr));
 
-    //OAL_IO_PRINT("hmac_ba_filter_serv_etc::head_seq:%d, bit_map:%x %x.\n", pst_ba_rx_hdl->us_baw_head, pst_ba_rx_hdl->aul_rx_buf_bitmap[0], pst_ba_rx_hdl->aul_rx_buf_bitmap[1]);
-
     oal_spin_unlock(&pst_ba_rx_hdl->st_ba_lock);
 
     return;
@@ -291,13 +289,6 @@ OAL_STATIC OAL_INLINE hmac_rx_buf_stru *hmac_remove_frame_from_reorder_q(hmac_ba
     pst_rx_buff->in_use = 0;
 
     oal_spin_unlock(&pst_ba_rx_hdl->st_ba_lock);
-#else
-    if((pst_rx_buff->in_use == 0) || (pst_rx_buff->us_seq_num != us_seq_num))
-    {
-        return OAL_PTR_NULL;
-    }
-
-    pst_rx_buff->in_use = 0;
 #endif
 
     return pst_rx_buff;

@@ -143,9 +143,6 @@ extern oal_uint8 mac_get_data_type_from_8023_etc(oal_uint8 *puc_frame_hdr, mac_n
 oal_bool_enum_uint8 mac_is_eapol_key_ptk_etc(mac_eapol_header_stru  *pst_eapol_header);
 extern  oal_uint8 mac_get_data_type_from_80211_etc(oal_netbuf_stru *pst_netbuff, oal_uint16 us_mac_hdr_len);
 extern oal_uint16 mac_get_eapol_keyinfo_etc(oal_netbuf_stru *pst_netbuff);
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-extern oal_uint16 mac_rx_get_eapol_keyinfo_51(oal_netbuf_stru *pst_netbuff);
-#endif
 extern oal_uint8 mac_get_eapol_type_etc(oal_netbuf_stru *pst_netbuff);
 extern oal_bool_enum_uint8 mac_is_eapol_key_ptk_4_4_etc(oal_netbuf_stru *pst_netbuff);
 #ifdef _PRE_WLAN_FEATURE_DHCP_REQ_DISABLE
@@ -153,8 +150,9 @@ extern oal_bool_enum_uint8 mac_dhcp_frame_should_drop(oal_uint8 *puc_frame_hdr, 
 #endif
 extern pkt_trace_type_enum_uint8 mac_pkt_should_trace(oal_uint8 *puc_frame_hdr, mac_netbuff_payload_type uc_hdr_type);
 extern pkt_trace_type_enum_uint8 wifi_pkt_should_trace(oal_netbuf_stru *pst_netbuff, oal_uint16 us_mac_hdr_len);
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 extern oal_bool_enum mac_snap_is_protocol_type(oal_uint8 ul_snap_type);
-
+#endif
 #ifdef __cplusplus
     #if __cplusplus
         }

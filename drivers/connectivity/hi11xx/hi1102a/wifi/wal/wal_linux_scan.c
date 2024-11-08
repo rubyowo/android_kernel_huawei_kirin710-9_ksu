@@ -54,9 +54,9 @@ extern "C" {
 
 OAL_STATIC oal_void  wal_inform_bss_frame(wal_scanned_bss_info_stru *pst_scanned_bss_info, oal_void *p_data)
 {
-    oal_cfg80211_bss_stru        *pst_cfg80211_bss;
-    oal_wiphy_stru               *pst_wiphy;
-    oal_ieee80211_channel_stru   *pst_ieee80211_channel;
+    oal_cfg80211_bss_stru        *pst_cfg80211_bss = OAL_PTR_NULL;
+    oal_wiphy_stru               *pst_wiphy = OAL_PTR_NULL;
+    oal_ieee80211_channel_stru   *pst_ieee80211_channel = OAL_PTR_NULL;
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39))
@@ -69,7 +69,7 @@ OAL_STATIC oal_void  wal_inform_bss_frame(wal_scanned_bss_info_stru *pst_scanned
     if ((OAL_PTR_NULL == pst_scanned_bss_info) || (OAL_PTR_NULL == p_data))
     {
         OAM_ERROR_LOG2(0, OAM_SF_SCAN, "{wal_inform_bss_frame::input param pointer is null, pst_scanned_bss_info[%p], p_data[%p]!}",
-                       pst_scanned_bss_info, p_data);
+                       (uintptr_t)pst_scanned_bss_info, (uintptr_t)p_data);
         return;
     }
 
@@ -115,18 +115,23 @@ oal_void wal_update_bss(oal_wiphy_stru      *pst_wiphy,
                         oal_uint8           *puc_bssid)
 {
     wal_scanned_bss_info_stru     st_scanned_bss_info;
-    oal_cfg80211_bss_stru        *pst_cfg80211_bss;
-    hmac_scanned_bss_info        *pst_scanned_bss;
-    mac_ieee80211_frame_stru     *pst_frame_hdr;
-    oal_dlist_head_stru          *pst_entry;
-    mac_bss_dscr_stru            *pst_bss_dscr;
+    oal_cfg80211_bss_stru        *pst_cfg80211_bss = OAL_PTR_NULL;
+    hmac_scanned_bss_info        *pst_scanned_bss = OAL_PTR_NULL;
+    mac_ieee80211_frame_stru     *pst_frame_hdr = OAL_PTR_NULL;
+    oal_dlist_head_stru          *pst_entry = OAL_PTR_NULL;
+    mac_bss_dscr_stru            *pst_bss_dscr = OAL_PTR_NULL;
     oal_uint8                     uc_chan_number;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    enum nl80211_band             en_band;
+#else
     enum ieee80211_band           en_band;
+#endif
+    oal_int32                     l_channel;
+    oal_bool_enum_uint8           en_inform_bss = OAL_TRUE;
 
-    if (pst_wiphy == OAL_PTR_NULL || pst_bss_mgmt == OAL_PTR_NULL || puc_bssid == OAL_PTR_NULL)
-    {
+    if (pst_wiphy == OAL_PTR_NULL || pst_bss_mgmt == OAL_PTR_NULL || puc_bssid == OAL_PTR_NULL) {
         OAM_WARNING_LOG3(0, OAM_SF_ASSOC, "{wal_update_bss::null pointer.wiphy %p, bss_mgmt %p, bssid %p.",
-                        pst_wiphy, pst_bss_mgmt, puc_bssid);
+                        (uintptr_t)pst_wiphy, (uintptr_t)pst_bss_mgmt, (uintptr_t)puc_bssid);
         return;
     }
 
@@ -168,15 +173,34 @@ oal_void wal_update_bss(oal_wiphy_stru      *pst_wiphy,
 
     if (pst_cfg80211_bss != OAL_PTR_NULL)
     {
-        oal_cfg80211_put_bss(pst_wiphy, pst_cfg80211_bss);
+        l_channel = (oal_int32)oal_ieee80211_frequency_to_channel((oal_int32)pst_cfg80211_bss->channel->center_freq);
+
+        /* 如果内核保存的信道和新扫描到的信道不一致，需要重新将新的bss info通知内核，并且将老的bss从内核删除，避免更改信道无法重新关联的问题 */
+        if (pst_bss_dscr->st_channel.uc_chan_number != l_channel)
+        {
+            OAM_WARNING_LOG2(0, OAM_SF_ASSOC, "{wal_update_bss:: Channel is changed!! Current kernel bss channel[%d] need to update to channel[%d].}",
+                            l_channel, pst_bss_dscr->st_channel.uc_chan_number);
+            oal_cfg80211_unlink_bss(pst_wiphy, pst_cfg80211_bss);
+        }
+        else
+        {
+            oal_cfg80211_put_bss(pst_wiphy, pst_cfg80211_bss);
+            en_inform_bss = OAL_FALSE;
+        }
     }
-    else
+
+    if (OAL_TRUE == en_inform_bss)
     {
         uc_chan_number = pst_bss_dscr->st_channel.uc_chan_number;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+        en_band        = (enum nl80211_band)pst_bss_dscr->st_channel.en_band;
+#else
         en_band        = (enum ieee80211_band)pst_bss_dscr->st_channel.en_band;
+#endif
 
         /* 初始化 */
-        oal_memset(&st_scanned_bss_info, 0, OAL_SIZEOF(wal_scanned_bss_info_stru));
+        memset_s(&st_scanned_bss_info, OAL_SIZEOF(wal_scanned_bss_info_stru), 
+            0, OAL_SIZEOF(wal_scanned_bss_info_stru));
 
         /* 填写BSS 信号强度 */
         st_scanned_bss_info.l_signal    = pst_bss_dscr->c_rssi;
@@ -209,24 +233,27 @@ oal_void wal_update_bss(oal_wiphy_stru      *pst_wiphy,
 
 oal_void  wal_inform_all_bss(oal_wiphy_stru  *pst_wiphy, hmac_bss_mgmt_stru  *pst_bss_mgmt, oal_uint8   uc_vap_id)
 {
-    mac_bss_dscr_stru              *pst_bss_dscr;
-    hmac_scanned_bss_info          *pst_scanned_bss;
-    oal_dlist_head_stru            *pst_entry;
-    mac_ieee80211_frame_stru       *pst_frame_hdr;
+    mac_bss_dscr_stru              *pst_bss_dscr = OAL_PTR_NULL;
+    hmac_scanned_bss_info          *pst_scanned_bss = OAL_PTR_NULL;
+    oal_dlist_head_stru            *pst_entry = OAL_PTR_NULL;
+    mac_ieee80211_frame_stru       *pst_frame_hdr = OAL_PTR_NULL;
     wal_scanned_bss_info_stru       st_scanned_bss_info;
     oal_uint32                      ul_ret;
     oal_uint32                      ul_bss_num_not_in_regdomain = 0;
     oal_uint32                      ul_bss_num = 0;
     oal_uint8                       uc_chan_number;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    enum nl80211_band               en_band;
+#else
     enum ieee80211_band             en_band;
+#endif
 
 #if defined(_PRE_WLAN_FEATURE_11K) || defined(_PRE_WLAN_FEATURE_11R)
     hmac_vap_stru                  *pst_hmac_vap;
     oal_uint8                       uc_voe_11r_auth;
     /* 获取hmac vap */
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
+    if (OAL_PTR_NULL == pst_hmac_vap) {
         OAM_WARNING_LOG0(uc_vap_id, OAM_SF_SCAN,
                          "{wal_inform_all_bss::hmac_vap is null, vap_id[%d]!}");
         return;
@@ -262,7 +289,11 @@ oal_void  wal_inform_all_bss(oal_wiphy_stru  *pst_wiphy, hmac_bss_mgmt_stru  *ps
         }
 
         uc_chan_number = pst_bss_dscr->st_channel.uc_chan_number;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+        en_band        = (enum nl80211_band)pst_bss_dscr->st_channel.en_band;
+#else
         en_band        = (enum ieee80211_band)pst_bss_dscr->st_channel.en_band;
+#endif
 
         /* 判断信道是不是在管制域内，如果不在，则不上报内核 */
         ul_ret = mac_is_channel_num_valid(en_band, uc_chan_number);
@@ -287,7 +318,8 @@ oal_void  wal_inform_all_bss(oal_wiphy_stru  *pst_wiphy, hmac_bss_mgmt_stru  *ps
         }
 
         /* 初始化 */
-        oal_memset(&st_scanned_bss_info, 0, OAL_SIZEOF(wal_scanned_bss_info_stru));
+        memset_s(&st_scanned_bss_info, OAL_SIZEOF(wal_scanned_bss_info_stru), 
+            0, OAL_SIZEOF(wal_scanned_bss_info_stru));
 
         st_scanned_bss_info.l_signal    = pst_bss_dscr->c_rssi;
 
@@ -358,7 +390,7 @@ OAL_STATIC oal_uint32  wal_set_scan_channel(
     if (OAL_PTR_NULL == pst_request || OAL_PTR_NULL == pst_scan_param)
     {
         OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_get_scan_channel_num::set scan channel from scan request failed, pst_request[%p] null ptr or pst_scan_param[%p] null ptr.}",
-            pst_request, pst_scan_param);
+            (uintptr_t)pst_request, (uintptr_t)pst_scan_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -432,7 +464,7 @@ OAL_STATIC oal_void wal_set_scan_ssid(oal_cfg80211_scan_request_stru *pst_reques
     if ((OAL_PTR_NULL == pst_request) || (OAL_PTR_NULL == pst_scan_param))
     {
         OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_set_scan_ssid::scan failed, null ptr, pst_request[%p], pst_scan_param[%p].}",
-          pst_request, pst_scan_param);
+          (uintptr_t)pst_request, (uintptr_t)pst_scan_param);
 
         return;
     }
@@ -475,10 +507,10 @@ OAL_STATIC oal_uint32  wal_wait_for_scan_timeout_fn(void *p_arg)
 {
     hmac_vap_stru                  *pst_hmac_vap = (hmac_vap_stru *)p_arg;
     mac_vap_stru                   *pst_mac_vap  = &(pst_hmac_vap->st_vap_base_info);
-    hmac_device_stru               *pst_hmac_device;
-    hmac_bss_mgmt_stru             *pst_bss_mgmt;
-    hmac_scan_stru                 *pst_scan_mgmt;
-    oal_wiphy_stru                 *pst_wiphy;
+    hmac_device_stru               *pst_hmac_device = OAL_PTR_NULL;
+    hmac_bss_mgmt_stru             *pst_bss_mgmt = OAL_PTR_NULL;
+    hmac_scan_stru                 *pst_scan_mgmt = OAL_PTR_NULL;
+    oal_wiphy_stru                 *pst_wiphy = OAL_PTR_NULL;
 
     OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_SCAN, "{wal_wait_for_scan_timeout_fn:: 5 seconds scan timeout proc.}");
 
@@ -577,7 +609,7 @@ oal_uint32 wal_scan_work_func(hmac_scan_stru                     *pst_scan_mgmt,
     oal_uint32                   ul_ret;
     mac_vap_stru                *pst_mac_vap = OAL_NET_DEV_PRIV(pst_netdev);
     oal_uint8                    uc_vap_id;
-    oal_uint8                   *puc_ie;
+    oal_uint8                   *puc_ie = OAL_PTR_NULL;
 
     if(NULL == pst_mac_vap)
     {
@@ -587,7 +619,7 @@ oal_uint32 wal_scan_work_func(hmac_scan_stru                     *pst_scan_mgmt,
 
     uc_vap_id = pst_mac_vap->uc_vap_id;
 
-    oal_memset(&st_scan_param, 0, sizeof(mac_cfg80211_scan_param_stru));
+    memset_s(&st_scan_param, OAL_SIZEOF(mac_cfg80211_scan_param_stru), 0, OAL_SIZEOF(mac_cfg80211_scan_param_stru));
 
     /* 解析内核下发的扫描信道列表 */
     ul_ret = wal_set_scan_channel(pst_request, &st_scan_param);
@@ -693,9 +725,9 @@ oal_int32 wal_force_scan_complete(oal_net_device_stru   *pst_net_dev,
                                          oal_bool_enum          en_is_aborted)
 {
     mac_vap_stru            *pst_mac_vap;
-    hmac_vap_stru           *pst_hmac_vap;
-    hmac_device_stru        *pst_hmac_device;
-    hmac_scan_stru          *pst_scan_mgmt;
+    hmac_vap_stru           *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_device_stru        *pst_hmac_device = OAL_PTR_NULL;
+    hmac_scan_stru          *pst_scan_mgmt = OAL_PTR_NULL;
 
     pst_mac_vap  = OAL_NET_DEV_PRIV(pst_net_dev);
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -787,11 +819,77 @@ oal_int32 wal_force_scan_complete(oal_net_device_stru   *pst_net_dev,
 }
 
 
+
+oal_int32 wal_force_scan_complete_for_disconnect_scene(oal_net_device_stru   *pst_net_dev)
+{
+    mac_vap_stru            *pst_mac_vap;
+    hmac_vap_stru           *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_device_stru        *pst_hmac_device = OAL_PTR_NULL;
+    hmac_scan_stru          *pst_scan_mgmt = OAL_PTR_NULL;
+
+    pst_mac_vap  = OAL_NET_DEV_PRIV(pst_net_dev);
+    if (OAL_PTR_NULL == pst_mac_vap)
+    {
+        OAM_WARNING_LOG1(0, OAM_SF_SCAN, "{wal_force_scan_complete_for_disconnect_scene:: mac_vap of net_dev is deleted!iftype:[%d]}",pst_net_dev->ieee80211_ptr->iftype);
+        return OAL_SUCC;
+    }
+
+    /* 获取hmac device */
+    pst_hmac_device = hmac_res_get_mac_dev(pst_mac_vap->uc_device_id);
+    if (OAL_PTR_NULL == pst_hmac_device)
+    {
+        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_SCAN,
+                         "{wal_force_scan_complete_for_disconnect_scene::pst_hmac_device[%d] is null!}",
+                         pst_mac_vap->uc_device_id);
+        return -OAL_EINVAL;
+    }
+
+    /* 获取hmac vap */
+    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
+    if (OAL_PTR_NULL == pst_hmac_vap)
+    {
+        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_SCAN,
+                         "{wal_force_scan_complete_for_disconnect_scene::hmac_vap is null, vap_id[%d]!}", pst_mac_vap->uc_vap_id);
+        return -OAL_EINVAL;
+    }
+
+    pst_scan_mgmt = &(pst_hmac_device->st_scan_mgmt);
+
+    /* 如果是来自内部的扫描 */
+    if (OAL_PTR_NULL == pst_scan_mgmt->pst_request)
+    {
+        /* 判断是否存在内部扫描，如果存在，也需要停止 */
+        if ((OAL_TRUE == pst_scan_mgmt->en_is_scanning) &&
+            (pst_mac_vap->uc_vap_id == pst_scan_mgmt->st_scan_record_mgmt.uc_vap_id))
+        {
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_SCAN,
+                             "{wal_force_scan_complete_for_disconnect_scene::may be internal scan, stop scan!}");
+            /* 终止扫描 */
+            wal_send_scan_abort_msg(pst_net_dev);
+        }
+
+        return OAL_SUCC;
+    }
+
+    if ((OAL_PTR_NULL != pst_scan_mgmt->pst_request) && (pst_net_dev->ieee80211_ptr == pst_scan_mgmt->pst_request->wdev))
+    {
+        /* 下发device终止扫描 */
+        wal_send_scan_abort_msg(pst_net_dev);
+        pst_scan_mgmt->st_scan_record_mgmt.en_scan_rsp_status = MAC_SCAN_ABORT_SYNC;
+        OAM_WARNING_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_SCAN,
+                         "{wal_force_scan_complete_for_disconnect_scene::vap_id[%d] notify kernel scan abort, and scan_rsp_status is [%d]!}",
+                         pst_mac_vap->uc_vap_id, pst_scan_mgmt->st_scan_record_mgmt.en_scan_rsp_status);
+    }
+
+    return OAL_SUCC;
+}
+
+
 oal_int32 wal_stop_sched_scan(oal_net_device_stru *pst_netdev)
 {
-    hmac_device_stru               *pst_hmac_device;
-    hmac_scan_stru                 *pst_scan_mgmt;
-    mac_vap_stru                   *pst_mac_vap;
+    hmac_device_stru               *pst_hmac_device = OAL_PTR_NULL;
+    hmac_scan_stru                 *pst_scan_mgmt = OAL_PTR_NULL;
+    mac_vap_stru                   *pst_mac_vap = OAL_PTR_NULL;
     wal_msg_write_stru              st_write_msg;
     oal_uint32                      ul_pedding_data = 0;       /* 填充数据，不使用，只是为了复用接口 */
     oal_int32                       l_ret = 0;
@@ -821,13 +919,13 @@ oal_int32 wal_stop_sched_scan(oal_net_device_stru *pst_netdev)
 
     pst_scan_mgmt = &(pst_hmac_device->st_scan_mgmt);
 
-    OAM_WARNING_LOG2(0, OAM_SF_SCAN, "{wal_stop_sched_scan::sched scan req[0x%x],sched scan complete[%d]}",pst_scan_mgmt->pst_sched_scan_req,pst_scan_mgmt->en_sched_scan_complete);
+    OAM_WARNING_LOG2(0, OAM_SF_SCAN, "{wal_stop_sched_scan::sched scan req[0x%x],sched scan complete[%d]}", (uintptr_t)pst_scan_mgmt->pst_sched_scan_req, pst_scan_mgmt->en_sched_scan_complete);
 
     if ((OAL_PTR_NULL != pst_scan_mgmt->pst_sched_scan_req) &&
         (OAL_TRUE != pst_scan_mgmt->en_sched_scan_complete))
     {
         /* 如果正常扫描请求未执行，则上报调度扫描结果 */
-        if (OAL_PTR_NULL == pst_scan_mgmt->pst_request)
+        //if (OAL_PTR_NULL == pst_scan_mgmt->pst_request)
         {
             oal_cfg80211_sched_scan_result(pst_hmac_device->pst_device_base_info->pst_wiphy);
         }

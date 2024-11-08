@@ -293,8 +293,8 @@ oal_void mac_user_set_bandwidth_info(mac_user_stru *pst_mac_user,
 
 oal_void  mac_user_get_sta_cap_bandwidth(mac_user_stru *pst_mac_user, wlan_bw_cap_enum_uint8 *pen_bandwidth_cap)
 {
-    mac_user_ht_hdl_stru         *pst_mac_ht_hdl;
-    mac_vht_hdl_stru             *pst_mac_vht_hdl;
+    mac_user_ht_hdl_stru         *pst_mac_ht_hdl = OAL_PTR_NULL;
+    mac_vht_hdl_stru             *pst_mac_vht_hdl = OAL_PTR_NULL;
     wlan_bw_cap_enum_uint8        en_bandwidth_cap;
     mac_vap_stru                 *pst_mac_vap;
 
@@ -398,8 +398,8 @@ oal_void  mac_user_get_ap_opern_bandwidth(mac_user_stru *pst_mac_user, wlan_bw_c
 
 oal_uint32  mac_user_update_bandwidth(mac_user_stru *pst_mac_user, wlan_bw_cap_enum_uint8 en_bwcap)
 {
-    mac_user_ht_hdl_stru           *pst_mac_ht_hdl;
-    mac_vht_hdl_stru               *pst_mac_vht_hdl;
+    mac_user_ht_hdl_stru           *pst_mac_ht_hdl = OAL_PTR_NULL;
+    mac_vht_hdl_stru               *pst_mac_vht_hdl = OAL_PTR_NULL;
     ;
 
     if (OAL_PTR_NULL == pst_mac_user)
@@ -638,7 +638,7 @@ oal_void*  mac_res_get_mac_user(oal_uint16 us_idx)
 #else
         OAM_WARNING_LOG1(0, OAM_SF_UM, "{mac_res_get_mac_user::[E]user has been freed,user_idx=%d.}", us_idx);
 #endif
-        //return OAL_PTR_NULL;
+
     }
 
     return  (void*)pst_mac_user;

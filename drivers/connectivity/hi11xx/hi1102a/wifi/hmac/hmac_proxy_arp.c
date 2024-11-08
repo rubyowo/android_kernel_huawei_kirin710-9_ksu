@@ -18,6 +18,8 @@ extern "C" {
 #include "hmac_ext_if.h"
 #include "hmac_proxy_arp.h"
 #include "hmac_rx_data.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_PROXYARP_C
@@ -37,8 +39,8 @@ extern "C" {
 oal_err_code_enum_uint32 hmac_proxy_get_mac_by_ipv4(mac_vap_stru *pst_mac_vap, oal_uint32 ul_ipv4, oal_uint8 *puc_mac)
 {
     oal_uint32                  ul_user_hash_value;
-    hmac_proxy_ipv4_hash_stru  *pst_hash;
-    oal_dlist_head_stru        *pst_entry;
+    hmac_proxy_ipv4_hash_stru  *pst_hash = OAL_PTR_NULL;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap)
                   || (OAL_PTR_NULL == puc_mac)))
@@ -71,8 +73,8 @@ oal_err_code_enum_uint32 hmac_proxy_get_mac_by_ipv4(mac_vap_stru *pst_mac_vap, o
 oal_err_code_enum_uint32 hmac_proxy_remove_ipv4(mac_vap_stru *pst_mac_vap, oal_uint32 ul_ipv4)
 {
     oal_uint32                  ul_user_hash_value;
-    oal_dlist_head_stru        *pst_entry;
-    hmac_proxy_ipv4_hash_stru  *pst_hash;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
+    hmac_proxy_ipv4_hash_stru  *pst_hash = OAL_PTR_NULL;
     oal_dlist_head_stru        *pst_dlist_tmp      = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
@@ -110,7 +112,7 @@ oal_err_code_enum_uint32 hmac_proxy_remove_ipv4(mac_vap_stru *pst_mac_vap, oal_u
 oal_err_code_enum_uint32 hmac_proxy_add_ipv4(mac_vap_stru *pst_mac_vap, oal_uint32 ul_ipv4, oal_uint8 *puc_mac)
 {
     oal_uint32                  ul_user_hash_value;
-    hmac_proxy_ipv4_hash_stru  *pst_hash;
+    hmac_proxy_ipv4_hash_stru  *pst_hash = OAL_PTR_NULL;
     oal_err_code_enum_uint32    en_exist;
     oal_uint8                   auc_mac[OAL_MAC_ADDR_LEN];
 
@@ -163,8 +165,8 @@ oal_err_code_enum_uint32 hmac_proxy_add_ipv4(mac_vap_stru *pst_mac_vap, oal_uint
 oal_err_code_enum_uint32 hmac_proxy_get_mac_by_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_addr *pst_ipv6, oal_uint8 *puc_mac)
 {
     oal_uint32                  ul_user_hash_value;
-    hmac_proxy_ipv6_hash_stru  *pst_hash;
-    oal_dlist_head_stru        *pst_entry;
+    hmac_proxy_ipv6_hash_stru  *pst_hash = OAL_PTR_NULL;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap)
                   || (OAL_PTR_NULL == pst_ipv6)
@@ -195,8 +197,8 @@ oal_err_code_enum_uint32 hmac_proxy_get_mac_by_ipv6(mac_vap_stru *pst_mac_vap, o
 oal_err_code_enum_uint32 hmac_proxy_remove_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_addr *pst_ipv6)
 {
     oal_uint32                  ul_user_hash_value;
-    oal_dlist_head_stru        *pst_entry;
-    hmac_proxy_ipv6_hash_stru  *pst_hash;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
+    hmac_proxy_ipv6_hash_stru  *pst_hash = OAL_PTR_NULL;
     oal_dlist_head_stru        *pst_dlist_tmp      = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
@@ -234,7 +236,7 @@ oal_err_code_enum_uint32 hmac_proxy_remove_ipv6(mac_vap_stru *pst_mac_vap, oal_i
 oal_err_code_enum_uint32 hmac_proxy_add_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_addr *pst_ipv6, oal_uint8 *puc_mac)
 {
     oal_uint32                  ul_user_hash_value;
-    hmac_proxy_ipv6_hash_stru  *pst_hash;
+    hmac_proxy_ipv6_hash_stru  *pst_hash = OAL_PTR_NULL;
     oal_err_code_enum_uint32    en_exist;
     oal_uint8                   auc_mac[OAL_MAC_ADDR_LEN];
     oal_uint8                   auc_ipv6_zero_addr[16] = {0};
@@ -247,7 +249,7 @@ oal_err_code_enum_uint32 hmac_proxy_add_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_
         return OAL_ERR_CODE_PROXY_ND_LEARN_USR_FAIL_INCOMP;
     }
 
-    if (!oal_memcmp(auc_ipv6_zero_addr, pst_ipv6, OAL_SIZEOF(oal_in6_addr)))
+    if (!memcmp(auc_ipv6_zero_addr, pst_ipv6, OAL_SIZEOF(oal_in6_addr)))
     {
         return OAL_ERR_CODE_PROXY_ND_LEARN_USR_SUCC_COMP;
     }
@@ -256,7 +258,7 @@ oal_err_code_enum_uint32 hmac_proxy_add_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_
     en_exist = hmac_proxy_get_mac_by_ipv6(pst_mac_vap, pst_ipv6, auc_mac);
     if (OAL_SUCC == en_exist)
     {
-        if (!oal_memcmp(auc_mac, puc_mac, OAL_MAC_ADDR_LEN))
+        if (!memcmp(auc_mac, puc_mac, OAL_MAC_ADDR_LEN))
         {
             return OAL_ERR_CODE_PROXY_ND_LEARN_USR_SUCC_COMP;
         }
@@ -292,9 +294,9 @@ oal_err_code_enum_uint32 hmac_proxy_add_ipv6(mac_vap_stru *pst_mac_vap, oal_in6_
 
 oal_err_code_enum_uint32 hmac_proxy_remove_mac(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac)
 {
-    oal_dlist_head_stru        *pst_entry;
-    hmac_proxy_ipv4_hash_stru  *pst_hash_ipv4;
-    hmac_proxy_ipv6_hash_stru  *pst_hash_ipv6;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
+    hmac_proxy_ipv4_hash_stru  *pst_hash_ipv4 = OAL_PTR_NULL;
+    hmac_proxy_ipv6_hash_stru  *pst_hash_ipv6 = OAL_PTR_NULL;
     oal_dlist_head_stru        *pst_dlist_tmp      = OAL_PTR_NULL;
     oal_uint32                  ul_loop = 0;
 
@@ -362,7 +364,7 @@ oal_err_code_enum_uint32 hmac_proxy_remove_mac(mac_vap_stru *pst_mac_vap, oal_ui
 #ifdef _PRE_DEBUG_MODE
 oal_void hmac_proxy_debug_record(mac_vap_stru *pst_mac_vap, mac_ether_header_stru *pst_eth_hdr, oal_uint16 us_type, oal_err_code_enum_uint32 en_rst)
 {
-    mac_vap_proxyarp_stru           *pst_vap_proxyarp;
+    mac_vap_proxyarp_stru           *pst_vap_proxyarp = OAL_PTR_NULL;
     oal_uint32                       ul_idx;
     if(OAL_ERR_CODE_PROXY_OTHER_INCOMP == en_rst)
     {
@@ -396,7 +398,7 @@ oal_err_code_enum_uint32 hmac_proxy_arp_rcv_req(mac_vap_stru *pst_mac_vap, oal_n
     oal_uint8                   auc_tgt_mac[ETHER_ADDR_LEN];
     oal_uint16                  us_usr_idx;
     oal_err_code_enum_uint32    en_err = OAL_SUCC;
-    oal_netbuf_stru            *pst_netbuff;
+    oal_netbuf_stru            *pst_netbuff = OAL_PTR_NULL;
     oal_uint32                  ul_ret = 0;
 
     oal_err_code_enum_uint32    en_rst = 0;
@@ -408,7 +410,7 @@ oal_err_code_enum_uint32 hmac_proxy_arp_rcv_req(mac_vap_stru *pst_mac_vap, oal_n
     /* GARP,进行地址学习 */
     if (ul_src_ipv4 == ul_tgt_ipv4)
     {
-        //hmac_proxy_learn();
+
         if (OAL_SUCC != mac_vap_find_user_by_macaddr(pst_mac_vap, auc_src_mac, &us_usr_idx))
         {
             return OAL_ERR_CODE_PROXY_ARP_LEARN_USR_NOTEXIST_COMP;
@@ -429,7 +431,7 @@ oal_err_code_enum_uint32 hmac_proxy_arp_rcv_req(mac_vap_stru *pst_mac_vap, oal_n
 
     pst_netbuff = oal_arp_create(OAL_ARPOP_REPLY, ETHER_TYPE_ARP, ul_src_ipv4, pst_dev, ul_tgt_ipv4,
                                          auc_src_mac, auc_tgt_mac, auc_src_mac);
-    if (!pst_netbuff)
+    if (pst_netbuff == OAL_PTR_NULL)
     {
         return OAL_ERR_CODE_PROXY_ARP_CREATE_FAIL_COMP;
     }
@@ -565,7 +567,7 @@ oal_err_code_enum_uint32 hmac_proxy_nd_learn_from_ns(mac_vap_stru *pst_mac_vap, 
     /* 检查ipv6的地址已经存在,并且mac地址不相等，则将此帧发送出去，进行DAD检测 */
     en_err = hmac_proxy_get_mac_by_ipv6(pst_mac_vap, pst_ipv6_src, auc_mac);
     if ((OAL_SUCC == en_err)
-        && (oal_memcmp(puc_mac_src, auc_mac, OAL_MAC_ADDR_LEN)))
+        && (memcmp(puc_mac_src, auc_mac, OAL_MAC_ADDR_LEN)))
     {
         return OAL_ERR_CODE_PROXY_ND_LEARN_USR_ALREADY_EXIST_INCOMP;
     }
@@ -578,8 +580,8 @@ oal_err_code_enum_uint32 hmac_proxy_nd_learn_from_ns(mac_vap_stru *pst_mac_vap, 
 {
     oal_netbuf_stru             *pst_netbuff = OAL_PTR_NULL;
     oal_uint32                   ul_size = 0;
-    oal_ipv6hdr_stru            *pst_ipv6;
-    oal_nd_msg_stru             *pst_nd;
+    oal_ipv6hdr_stru            *pst_ipv6 = OAL_PTR_NULL;
+    oal_nd_msg_stru             *pst_nd = OAL_PTR_NULL;
 
     ul_size = OAL_LL_ALLOCATED_SPACE(pst_net_dev) + sizeof(oal_ipv6hdr_stru) + (sizeof(oal_nd_msg_stru) - 4) + 8;
     pst_netbuff  = oal_netbuf_alloc(ul_size, 0, WLAN_MEM_NETBUF_ALIGN);
@@ -615,7 +617,7 @@ oal_err_code_enum_uint32 hmac_proxy_nd_learn_from_ns(mac_vap_stru *pst_mac_vap, 
     oal_ipv6_addr_copy(&pst_ipv6->saddr, (oal_in6_addr *)puc_src_ipv6);
 
     /* 3. 填写ICMPV6 邻居发现协议的NA*/
-    OAL_MEMZERO(&pst_nd->icmph, OAL_SIZEOF(oal_icmp6hdr_stru));
+    memset_s(&pst_nd->icmph, OAL_SIZEOF(oal_icmp6hdr_stru), 0, OAL_SIZEOF(oal_icmp6hdr_stru));
     pst_nd->icmph.icmp6_type = OAL_NDISC_NEIGHBOUR_ADVERTISEMENT;
     pst_nd->icmph.icmp6_solicited = 1;
     oal_ipv6_addr_copy(&pst_nd->target, (oal_in6_addr *)puc_src_ipv6);
@@ -701,9 +703,9 @@ oal_err_code_enum_uint32 hmac_proxy_nd_rcv_ns(mac_vap_stru *pst_mac_vap, oal_net
     oal_int32                l_src_type;
     oal_int32                l_dst_type;
     oal_nd_msg_stru         *pst_msg;
-    oal_uint8               *pst_src_mac;
+    oal_uint8               *pst_src_mac = OAL_PTR_NULL;
     oal_uint8                ast_dst_mac[ETHER_ADDR_LEN];
-    oal_netbuf_stru         *pst_netbuff;
+    oal_netbuf_stru         *pst_netbuff = OAL_PTR_NULL;
     oal_uint16               us_idx;
     oal_uint32               ul_ret;
     oal_int32                l_netifrx_rst;
@@ -801,7 +803,7 @@ oal_err_code_enum_uint32 hmac_proxy_nd_rcv_na(mac_vap_stru *pst_mac_vap, mac_eth
     oal_icmp6hdr_stru           *pst_icmp6;
     oal_bool_enum_uint8          en_solicited;
     oal_nd_msg_stru             *pst_nd;
-    oal_uint8                   *puc_src_mac;
+    oal_uint8                   *puc_src_mac = OAL_PTR_NULL;
     oal_err_code_enum_uint32     en_err;
     oal_uint16                   us_usr_idx = 0;
 
@@ -950,10 +952,10 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_proxy_is_need_drop(oal_err_code_e
 
 oal_bool_enum_uint8 hmac_proxy_arp_proc(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_buf)
 {
-    mac_ether_header_stru      *pst_ether_hdr; /* 以太网头 */
+    mac_ether_header_stru      *pst_ether_hdr = OAL_PTR_NULL; /* 以太网头 */
     oal_uint16                  us_ether_type;
     oal_err_code_enum_uint32    en_rst = OAL_SUCC;
-    mac_vap_stru               *pst_mac_vap;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
 #ifdef _PRE_DEBUG_MODE
     mac_ether_header_stru       st_eth_hdr;
 #endif
@@ -1020,7 +1022,7 @@ oal_void hmac_proxy_arp_init(mac_vap_stru *pst_mac_vap)
         return;
     }
 
-    OAL_MEMZERO(pst_mac_vap->pst_vap_proxyarp, OAL_SIZEOF(mac_vap_proxyarp_stru));
+    memset_s(pst_mac_vap->pst_vap_proxyarp, OAL_SIZEOF(mac_vap_proxyarp_stru), 0, OAL_SIZEOF(mac_vap_proxyarp_stru));
 
     for (ul_loop = 0; ul_loop < MAC_VAP_USER_HASH_MAX_VALUE; ul_loop++)
     {
@@ -1036,9 +1038,9 @@ oal_void hmac_proxy_arp_init(mac_vap_stru *pst_mac_vap)
 
 oal_void hmac_proxy_exit(mac_vap_stru *pst_mac_vap)
 {
-    oal_dlist_head_stru        *pst_entry;
-    hmac_proxy_ipv4_hash_stru  *pst_hash_ipv4;
-    hmac_proxy_ipv6_hash_stru  *pst_hash_ipv6;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
+    hmac_proxy_ipv4_hash_stru  *pst_hash_ipv4 = OAL_PTR_NULL;
+    hmac_proxy_ipv6_hash_stru  *pst_hash_ipv6 = OAL_PTR_NULL;
     oal_dlist_head_stru        *pst_dlist_tmp      = OAL_PTR_NULL;
     oal_uint32                  ul_loop = 0;
 
@@ -1100,13 +1102,13 @@ oal_void hmac_proxyarp_on(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_on)
 oal_uint32 hmac_proxy_display_info(mac_vap_stru *pst_mac_vap)
 {
 
-    oal_dlist_head_stru             *pst_entry;
-    hmac_proxy_ipv4_hash_stru       *pst_hash_ipv4;
-    hmac_proxy_ipv6_hash_stru       *pst_hash_ipv6;
+    oal_dlist_head_stru             *pst_entry = OAL_PTR_NULL;
+    hmac_proxy_ipv4_hash_stru       *pst_hash_ipv4 = OAL_PTR_NULL;
+    hmac_proxy_ipv6_hash_stru       *pst_hash_ipv6 = OAL_PTR_NULL;
     oal_dlist_head_stru             *pst_dlist_tmp      = OAL_PTR_NULL;
     oal_uint32                       ul_loop = 0;
     oal_uint32                       ul_idx = 0;
-    mac_vap_proxyarp_debug_stru     *pst_dbg;
+    mac_vap_proxyarp_debug_stru     *pst_dbg = OAL_PTR_NULL;
 
     if (WLAN_VAP_MODE_BSS_AP != pst_mac_vap->en_vap_mode)
     {

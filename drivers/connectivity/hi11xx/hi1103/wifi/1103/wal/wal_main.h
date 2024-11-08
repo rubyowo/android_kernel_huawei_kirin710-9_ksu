@@ -24,9 +24,10 @@ extern "C" {
 *****************************************************************************/
 
 #ifdef _PRE_WLAN_DFT_EVENT
-#define WAL_EVENT_WID(_puc_macaddr, _uc_vap_id, en_event_type, _puc_string)  oam_event_report_etc(_puc_macaddr, _uc_vap_id, OAM_MODULE_ID_WAL, en_event_type, _puc_string)
+#define WAL_EVENT_WID(_puc_macaddr, _uc_vap_id, en_event_type, output_data, data_len) \
+                oam_event_report_etc(_puc_macaddr, _uc_vap_id, OAM_MODULE_ID_WAL, en_event_type, output_data, data_len)
 #else
-#define WAL_EVENT_WID(_puc_macaddr, _uc_vap_id, en_event_type, _puc_string)
+#define WAL_EVENT_WID(_puc_macaddr, _uc_vap_id, en_event_type, output_data, data_len)
 #endif
 
 /*****************************************************************************

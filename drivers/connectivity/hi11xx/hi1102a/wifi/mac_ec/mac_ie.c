@@ -215,9 +215,9 @@ oal_uint32  mac_ie_proc_ht_sta(
     oal_uint8                           uc_mcs_bmp_index;
     oal_uint8                           uc_smps;
     oal_uint16                          us_offset;
-    mac_user_ht_hdl_stru               *pst_ht_hdl;
+    mac_user_ht_hdl_stru               *pst_ht_hdl = OAL_PTR_NULL;
     mac_user_ht_hdl_stru                st_ht_hdl;
-    mac_user_stru                      *pst_mac_user;
+    mac_user_stru                      *pst_mac_user = OAL_PTR_NULL;
     oal_uint16                          us_tmp_info_elem;
     oal_uint16                          us_tmp_txbf_low;
     oal_uint32                          ul_tmp_txbf_elem;
@@ -357,7 +357,7 @@ oal_uint32  mac_ie_proc_ht_sta(
 
 oal_bool_enum_uint8 mac_ie_check_p2p_action(oal_uint8 *puc_payload)
 {
-    //oal_uint8   auc_p2p_oui[MAC_OUI_LEN] = {0x50, 0x6F, 0x9A};
+
 
     /* 找到WFA OUI */
     if ((0 == oal_memcmp(puc_payload, g_auc_p2p_oui, MAC_OUI_LEN)) &&
@@ -424,7 +424,7 @@ oal_uint8  mac_ie_get_chan_num(oal_uint8 *puc_frame_body, oal_uint16 us_frame_le
 
 oal_uint32  mac_ie_proc_ext_cap_ie(mac_user_stru *pst_mac_user, oal_uint8 *puc_payload)
 {
-    mac_user_cap_info_stru   *pst_cap_info;
+    mac_user_cap_info_stru   *pst_cap_info = OAL_PTR_NULL;
     oal_uint8                 uc_len;
     oal_uint8                 auc_cap[8] = {0};
 
@@ -459,117 +459,131 @@ oal_uint32  mac_check_is_assoc_frame(oal_uint8 uc_mgmt_frm_type)
     return OAL_FALSE;
 }
 #endif
-#if 0
 
-oal_uint32  mac_set_channel_switch_wrapper_ie(
-                oal_uint8                            uc_channel,
-                wlan_channel_bandwidth_enum_uint8    en_bw,
-                oal_uint8                           *pauc_buffer,
-                oal_uint8                           *puc_output_len)
-{
-    oal_bool_enum_uint8  en_need_wideband_sub_ie;
-    oal_uint8            uc_total_len = 0, uc_sub_len;
-    oal_uint8           *puc_wrapper_ie_len;
 
-    if ((OAL_PTR_NULL == pauc_buffer) || (OAL_PTR_NULL == puc_output_len))
-    {
 
-        OAM_ERROR_LOG0(0, OAM_SF_SCAN, "{mac_set_channel_switch_wrapper_ie::null param.}");
 
-        return OAL_ERR_CODE_PTR_NULL;
-    }
 
-    /* 默认输出为空 */
-    *pauc_buffer    = '\0';
-    *puc_output_len = 0;
 
-    /* 11ac 设置Channel Switch Wrapper IE                             */
-    /******************************************************************/
-    /* -------------------------------------------------------------- */
-    /* |ID |Length |New Country IE|Wideband IE |VHT power IE          */
-    /* -------------------------------------------------------------- */
-    /* |1  |1      |None          |5           |None                  */
-    /*                                                                */
-    /******************************************************************/
-    pauc_buffer[0] = 196;
-    pauc_buffer[1] = 0;
-    puc_wrapper_ie_len = &pauc_buffer[1];
-    pauc_buffer += 2;
 
-    /* COUNTRY SUB ELEMENT --- N/A                       */
-    /* 当前的信道切换仅考虑由DFS触发，不会导致管制域切换 */
 
-    /* WIDEBAND SUB ELEMENT  */
-    /* 仅对20M以上带宽才有效 */
-    en_need_wideband_sub_ie = OAL_TRUE;
-    uc_sub_len = 0;
-    if (WLAN_BAND_WIDTH_20M == en_bw)
-    {
-        en_need_wideband_sub_ie = OAL_FALSE;
-    }
 
-    if (OAL_TRUE == en_need_wideband_sub_ie)
-    {
-        uc_sub_len = 0;
-        /* 填写Wideband 子IE */
-        pauc_buffer[0] = 194;
-        pauc_buffer[1] = 3;
-        switch(en_bw)
-        {
-            case WLAN_BAND_WIDTH_40PLUS:
-                pauc_buffer[2] = 0;
-                pauc_buffer[3] = uc_channel + 2;
-                break;
 
-            case WLAN_BAND_WIDTH_40MINUS:
-                pauc_buffer[2] = 0;
-                pauc_buffer[3] = uc_channel - 2;
-                break;
 
-            case WLAN_BAND_WIDTH_80PLUSPLUS:
-                pauc_buffer[2] = 1;
-                pauc_buffer[3] = uc_channel + 6;
-                break;
 
-            case WLAN_BAND_WIDTH_80PLUSMINUS:
-                pauc_buffer[2] = 1;
-                pauc_buffer[3] = uc_channel - 2;
-                break;
 
-            case WLAN_BAND_WIDTH_80MINUSPLUS:
-                pauc_buffer[2] = 1;
-                pauc_buffer[3] = uc_channel + 2;
-                break;
 
-            case WLAN_BAND_WIDTH_80MINUSMINUS:
-                pauc_buffer[2] = 1;
-                pauc_buffer[3] = uc_channel - 6;
-                break;
 
-            default:
-                OAM_ERROR_LOG0(0, OAM_SF_SCAN, "{mac_set_channel_switch_wrapper_ie::invalid bandwidth.}");
 
-                return OAL_FAIL;
-        }
 
-        pauc_buffer[4] = 0; /* reserved. Not support 80M + 80M */
 
-        uc_sub_len = 5;
-    }
-    pauc_buffer += uc_sub_len;
-    uc_total_len += uc_sub_len;
 
-    /* VHT POWER SUB ELEMENT --- N/A  */
-    /* 目前的切换不会导致功率改变     */
 
-    /* 回填WRAPPER IE LEN */
-    *puc_wrapper_ie_len = uc_total_len;
 
-    *puc_output_len = uc_total_len + 2;
 
-    return OAL_SUCC;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 oal_uint32  mac_set_second_channel_offset_ie(
                 wlan_channel_bandwidth_enum_uint8    en_bw,
@@ -709,7 +723,7 @@ oal_uint32  mac_ie_proc_chwidth_field(mac_vap_stru *pst_mac_vap, mac_user_stru *
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_user) || (OAL_PTR_NULL == pst_mac_vap)))
     {
         OAM_ERROR_LOG2(0, OAM_SF_2040, "{mac_ie_proc_opmode_field::pst_mac_user = [%x], pst_opmode_notify = [%x], pst_mac_vap = [%x]!}\r\n",
-                       pst_mac_user, pst_mac_vap);
+                       (uintptr_t)pst_mac_user, (uintptr_t)pst_mac_vap);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -770,7 +784,7 @@ oal_uint32  mac_ie_proc_sec_chan_offset_2040(mac_vap_stru *pst_mac_vap, mac_sec_
 
 oal_uint32  mac_proc_ht_opern_ie(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user)
 {
-    mac_ht_opern_stru       *pst_ht_opern;
+    mac_ht_opern_stru       *pst_ht_opern = OAL_PTR_NULL;
     mac_user_ht_hdl_stru     st_ht_hdl;
 /* #ifdef _PRE_WLAN_FEATURE_20_40_80_COEXIST */
     wlan_bw_cap_enum_uint8   en_bwcap_vap;
@@ -960,16 +974,19 @@ oal_uint32  mac_ie_proc_vht_opern_ie(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_p
     /* 只有切换至>=80MHz才进行处理，从80MHz+切换至更低等级的带宽，这里无需处理(在解析HT Operation IE中处理) */
     if (pst_vht_hdl->uc_channel_width >= 1)
     {
-        en_bandwidth = mac_get_bandwith_from_center_freq_seg0(pst_mac_vap->st_channel.uc_chan_number, pst_vht_hdl->uc_channel_center_freq_seg0);
-
-        /* VHT Operation IE计算出的"带宽模式"与当前STA的"带宽模式"不符 */
-        if (en_bandwidth != pst_mac_vap->st_channel.en_bandwidth && WLAN_MIB_VHT_SUPP_WIDTH_80 == mac_mib_get_VHTChannelWidthOptionImplemented(pst_mac_vap))
+        if (pst_vht_hdl->uc_channel_width == 1)
         {
-            /* 更新带宽模式 */
-            pst_mac_vap->st_channel.en_bandwidth = en_bandwidth;
+            en_bandwidth = mac_get_bandwith_from_center_freq_seg0(pst_mac_vap->st_channel.uc_chan_number, pst_vht_hdl->uc_channel_center_freq_seg0);
 
-            /* 需要设置硬件以切换带宽 */
-            return MAC_BW_CHANGE;
+            /* VHT Operation IE计算出的"带宽模式"与当前STA的"带宽模式"不符 */
+            if (en_bandwidth != pst_mac_vap->st_channel.en_bandwidth && WLAN_MIB_VHT_SUPP_WIDTH_80 == mac_mib_get_VHTChannelWidthOptionImplemented(pst_mac_vap))
+            {
+                /* 更新带宽模式 */
+                pst_mac_vap->st_channel.en_bandwidth = en_bandwidth;
+
+                /* 需要设置硬件以切换带宽 */
+                return MAC_BW_CHANGE;
+            }
         }
 
         /* 用户与VAP带宽能力取交集 */
@@ -978,7 +995,7 @@ oal_uint32  mac_ie_proc_vht_opern_ie(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_p
 
         mac_vap_get_bandwidth_cap(pst_mac_vap, &en_bwcap_vap);
 
-        //en_bwcap_vap = OAL_MIN(pst_mac_user->en_bandwidth_cap, en_bwcap_vap);
+
         en_bwcap_vap = OAL_MIN(pst_mac_user->en_avail_bandwidth, en_bwcap_vap);
         mac_user_set_bandwidth_info(pst_mac_user, en_bwcap_vap, en_bwcap_vap);
     }
@@ -1033,7 +1050,7 @@ oal_uint32  mac_ie_proc_opmode_field(mac_vap_stru *pst_mac_vap, mac_user_stru *p
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_user) || (OAL_PTR_NULL == pst_opmode_notify)|| (OAL_PTR_NULL == pst_mac_vap)))
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY, "{mac_ie_proc_opmode_field::pst_mac_user = [%x], pst_opmode_notify = [%x], pst_mac_vap = [%x]!}\r\n",
-                       pst_mac_user, pst_opmode_notify, pst_mac_vap);
+                       (uintptr_t)pst_mac_user, (uintptr_t)pst_opmode_notify, (uintptr_t)pst_mac_vap);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1100,9 +1117,9 @@ oal_module_symbol(mac_ie_get_chan_num);
 oal_module_symbol(mac_ie_proc_ht_supported_channel_width);
 oal_module_symbol(mac_ie_proc_lsig_txop_protection_support);
 oal_module_symbol(mac_ie_proc_ext_cap_ie);
-#if 0
-oal_module_symbol(mac_set_channel_switch_wrapper_ie);
-#endif
+
+
+
 oal_module_symbol(mac_set_second_channel_offset_ie);
 oal_module_symbol(mac_set_11ac_wideband_ie);
 oal_module_symbol(mac_ie_proc_ht_sta);

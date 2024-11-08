@@ -62,6 +62,14 @@ extern "C" {
 /*****************************************************************************
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
+#ifdef  _PRE_WLAN_FEATURE_11AX
+extern oal_uint32  hmac_mgmt_tx_twt_action_etc(
+                hmac_vap_stru              *pst_hmac_vap,
+                hmac_user_stru             *pst_hmac_user,
+                mac_twt_action_mgmt_args_stru  *pst_twt_action_args);
+#endif
+
+
 extern oal_uint32  hmac_rx_process_mgmt_event_etc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  hmac_mgmt_rx_delba_event_etc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  hmac_mgmt_tx_action_etc(

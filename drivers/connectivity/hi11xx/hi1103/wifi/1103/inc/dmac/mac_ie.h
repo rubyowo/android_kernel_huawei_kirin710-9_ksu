@@ -40,8 +40,8 @@ extern "C" {
 *****************************************************************************/
 typedef oal_void (*opmode_field)(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user, mac_opmode_notify_stru *pst_opmode_notify);
 
-typedef oal_uint32  (*vht_opern)(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user, oal_uint8 *pst_ch);
-typedef oal_uint32  (*ht_opern)(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user, oal_uint32 *pst_ch);
+typedef oal_void  (*vht_opern)(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user, oal_uint8 *pst_ch);
+typedef oal_void  (*ht_opern)(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user, oal_uint32 *pst_ch);
 
 typedef struct
 {
@@ -51,6 +51,37 @@ typedef struct
 
 }mac_ie_cb;
 extern mac_ie_cb g_st_mac_ie_rom_cb;
+
+typedef struct
+{
+    wlan_channel_bandwidth_enum_uint8   en_bw;
+    oal_uint8                           uc_ch_width;
+    oal_int8                            c_center_freq_seg1;
+    oal_int8                            c_center_freq_seg2;
+}mac_bw_center_freq_map_stru;
+
+
+typedef struct
+{
+    oal_int8                                            auc_non_transmitted_ssid[WLAN_SSID_MAX_LEN];
+    oal_uint8                                           uc_non_transmitted_ssid_len;
+    oal_uint16                                          us_non_tramsmitted_bssid_cap;
+
+    oal_uint8                                           auc_transmitted_bssid[WLAN_MAC_ADDR_LEN];    /*transmitted bssid*/
+    oal_uint8                                           auc_non_transmitted_bssid[WLAN_MAC_ADDR_LEN];    /*transmitted bssid*/
+
+
+    oal_uint8                                           uc_maxbssid_indicator;
+    oal_uint8                                           uc_bssid_index;
+    oal_uint8                                           uc_dtim_period;
+    oal_uint8                                           uc_dtim_count;
+
+    oal_uint8                                           bit_is_non_transimitted_bss        : 1,
+                                                        bit_rsv                            : 7;
+    oal_uint8                                           auc_rcv[3];
+}mac_multi_bssid_frame_info_stru;
+
+
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
@@ -73,6 +104,7 @@ extern mac_ie_cb g_st_mac_ie_rom_cb;
 /*****************************************************************************
   9 OTHERS定义
 *****************************************************************************/
+extern oal_void mac_proc_ht_opern_ie_cb(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user, oal_uint32 *pst_ch);
 
 /*****************************************************************************
   10 inline函数定义
@@ -387,13 +419,6 @@ extern oal_uint8  mac_ie_get_chan_num_etc(
 extern oal_uint32  mac_ie_proc_chwidth_field_etc(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user,oal_uint8 uc_chwidth);
 #endif
 
-#if 0
-extern oal_uint32  mac_set_channel_switch_wrapper_ie(
-                oal_uint8                            uc_channel,
-                wlan_channel_bandwidth_enum_uint8    en_bw,
-                oal_uint8                           *pauc_buffer,
-                oal_uint8                           *puc_output_len);
-#endif
 extern oal_uint32  mac_set_second_channel_offset_ie_etc(
                 wlan_channel_bandwidth_enum_uint8    en_bw,
                 oal_uint8                           *pauc_buffer,
@@ -420,6 +445,8 @@ extern oal_uint32  mac_ie_parse_he_oper(oal_uint8 *puc_he_oper_ie,mac_frame_he_o
 extern oal_uint32  mac_ie_parse_mu_edca_parameter(oal_uint8 *puc_he_edca_ie,mac_frame_he_mu_edca_parameter_ie_stru *pst_he_mu_edca_value);
 extern oal_uint32 mac_ie_parse_spatial_reuse_parameter(oal_uint8 *puc_he_cap_ie,mac_frame_he_spatial_reuse_parameter_set_ie_stru *pst_he_srp_value);
 extern oal_uint32  mac_ie_parse_he_bss_color_change_announcement_ie(oal_uint8 *puc_payload, mac_frame_bss_color_change_annoncement_ie_stru *pst_bss_color);
+extern oal_uint32  mac_ie_parse_he_ndp_feedback_report_ie(oal_uint8 *puc_he_ndp_ie, oal_uint8 *puc_resource_req_buff_threshold_exp);
+extern oal_uint32  mac_ie_parse_multi_bssid_ie(oal_uint8 *puc_frame_data, mac_multi_bssid_frame_info_stru *pst_mbssid_info, oal_uint8 *puc_mbssid_body_ie_len);
 
 #endif
 extern oal_uint32  mac_proc_ht_opern_ie_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_payload, mac_user_stru *pst_mac_user);

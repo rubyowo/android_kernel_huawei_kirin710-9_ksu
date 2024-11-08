@@ -60,8 +60,6 @@ extern "C" {
 #define hmac_config_get_mode                              hmac_config_get_mode_etc2
 #define hmac_config_set_concurrent                        hmac_config_set_concurrent_etc2
 #define hmac_config_get_concurrent                        hmac_config_get_concurrent_etc2
-#define hmac_config_set_bss_type                          hmac_config_set_bss_type_etc2
-#define hmac_config_get_bss_type                          hmac_config_get_bss_type_etc2
 #define hmac_config_set_ssid                              hmac_config_set_ssid_etc2
 #define hmac_config_get_ssid                              hmac_config_get_ssid_etc2
 #define hmac_config_set_shpreamble                        hmac_config_set_shpreamble_etc2
@@ -91,8 +89,6 @@ extern "C" {
 #define hmac_config_chip_check                            hmac_config_chip_check_etc2
 #define hmac_config_set_freq                              hmac_config_set_freq_etc2
 #define hmac_config_get_freq                              hmac_config_get_freq_etc2
-#define hmac_config_get_wmm_params                        hmac_config_get_wmm_params_etc2
-#define hmac_config_set_wmm_params                        hmac_config_set_wmm_params_etc2
 #define hmac_config_vap_info                              hmac_config_vap_info_etc2
 #define hmac_config_user_info                             hmac_config_user_info_etc2
 #define hmac_config_add_user                              hmac_config_add_user_etc2
@@ -612,7 +608,7 @@ extern "C" {
 #define mac_protection_set_rts_tx_param                   mac_protection_set_rts_tx_param_etc2
 #define mac_vap_get_bandwith                              mac_vap_get_bandwith_etc2
 #define mac_vap_set_vowifi_param                          mac_vap_set_vowifi_param_etc2
-#define g_wal_config_seq_num                              g_wal_config_seq_num_etc2
+#define wal_config_seq_num                                wal_config_seq_num_etc2
 #define wal_drv_cfg_func_hook_init                        wal_drv_cfg_func_hook_init_etc2
 #define wal_drv_cfg_func_hook_deinit                      wal_drv_cfg_func_hook_deinit_etc2
 #define wal_config_set_okc_ie                             wal_config_set_okc_ie_etc2
@@ -652,7 +648,7 @@ extern "C" {
 #define g_ast_atcmdsrv_mode_table                         g_ast_atcmdsrv_mode_table_etc2
 #define past_atcmdsrv_non_ht_rate_table                   past_atcmdsrv_non_ht_rate_table_etc2
 #define g_auc_channel_idx                                 g_auc_channel_idx_etc2
-#define ul_chipcheck_total_time                           ul_chipcheck_total_time_etc2
+#define ull_chipcheck_total_time                          ull_chipcheck_total_time_etc2
 #define g_us_efuse_buffer                                 g_us_efuse_buffer_etc2
 #define st_efuse_bits                                     st_efuse_bits_etc2
 #define g_l_bandwidth                                     g_l_bandwidth_etc2
@@ -677,6 +673,7 @@ extern "C" {
 #define wal_cfg80211_set_default_mgmt_key                 wal_cfg80211_set_default_mgmt_key_etc2
 #define wal_cfg80211_change_virtual_intf                  wal_cfg80211_change_virtual_intf_etc2
 #define wal_cfg80211_get_station_filter                   wal_cfg80211_get_station_filter_etc2
+#define wal_cfg80211_get_station                          wal_cfg80211_get_station_etc2
 #define wal_del_p2p_group                                 wal_del_p2p_group_etc2
 #define wal_cfg80211_unregister_netdev                    wal_cfg80211_unregister_netdev_etc2
 #define wal_del_p2p_group                                 wal_del_p2p_group_etc2
@@ -697,6 +694,7 @@ extern "C" {
 #define wal_cfgvendor_dbg_trigger_mem_dump                wal_cfgvendor_dbg_trigger_mem_dump_etc2
 #define wal_cfgvendor_init                                wal_cfgvendor_init_etc2
 #define wal_cfgvendor_deinit                              wal_cfgvendor_deinit_etc2
+#define wal_cfg80211_do_external_auth                     wal_cfg80211_do_external_auth_etc2
 #define wal_cfg80211_start_req                            wal_cfg80211_start_req_etc2
 #define wal_cfg80211_start_scan                           wal_cfg80211_start_scan_etc2
 #define wal_cfg80211_start_sched_scan                     wal_cfg80211_start_sched_scan_etc2
@@ -708,7 +706,7 @@ extern "C" {
 #define g_ast_hmac_tcp_ack_buf_cfg_table                  g_ast_hmac_tcp_ack_buf_cfg_table_etc2
 #define g_ast_hmac_ps_params_cfg_table                    g_ast_hmac_ps_params_cfg_table_etc2
 #define gp_sys_kobject                                    gp_sys_kobject_etc2
-#define g_uc_custom_cali_done                             g_uc_custom_cali_done_etc2
+#define custom_cali_done                                  custom_cali_done_etc2
 #define g_st_wal_net_dev_ops                              g_st_wal_net_dev_ops_etc2
 #define g_st_wal_ethtool_ops                              g_st_wal_ethtool_ops_etc2
 #define g_st_iw_handler_def                               g_st_iw_handler_def_etc2
@@ -742,9 +740,8 @@ extern "C" {
 #define wal_set_custom_process_func                       wal_set_custom_process_func_etc2
 #define wal_netdev_stop_ap                                wal_netdev_stop_ap_etc2
 #define wal_netdev_stop                                   wal_netdev_stop_etc2
-#define wal_android_priv_cmd                              wal_android_priv_cmd_etc2
+#define wal_vendor_priv_cmd                               wal_vendor_priv_cmd_etc2
 #define wal_net_device_ioctl                              wal_net_device_ioctl_etc2
-#define wal_ioctl_set_essid                               wal_ioctl_set_essid_etc2
 #define wal_regdomain_get_band                            wal_regdomain_get_band_etc2
 #define wal_regdomain_get_bw                              wal_regdomain_get_bw_etc2
 #define wal_regdomain_get_channel_2g                      wal_regdomain_get_channel_2g_etc2
@@ -820,6 +817,7 @@ extern "C" {
 #define wal_scan_work_func                                wal_scan_work_func_etc2
 #define wal_send_scan_abort_msg                           wal_send_scan_abort_msg_etc2
 #define wal_force_scan_complete                           wal_force_scan_complete_etc2
+#define wal_force_scan_complete_for_disconnect_scene      wal_force_scan_complete_for_disconnect_scene_etc2
 #define wal_stop_sched_scan                               wal_stop_sched_scan_etc2
 #define g_st_wal_drv_func_hook                            g_st_wal_drv_func_hook_etc2
 #define g_st_wal_wakelock                                 g_st_wal_wakelock_etc2
@@ -835,22 +833,22 @@ extern "C" {
 #define reg_regdb                                         reg_regdb_etc2
 #define reg_regdb_size                                    reg_regdb_size_etc2
 #define g_al_host_init_params                             g_al_host_init_params_etc2
-#define g_al_dts_params                                   g_al_dts_params_etc2
+#define al_dts_params                                     al_dts_params_etc2
 #define g_auc_nv_params                                   g_auc_nv_params_etc2
-#define g_al_nvram_init_params                            g_al_nvram_init_params_etc2
+#define al_nvram_init_params                              al_nvram_init_params_etc2
 #define g_al_priv_cust_init_params                        g_al_priv_cust_init_params_etc2
 #define g_ac_country_code                                 g_ac_country_code_etc2
 #define g_auc_wifimac                                     g_auc_wifimac_etc2
-#define g_as_pro_line_params                              g_as_pro_line_params_etc2
+#define as_pro_line_params                                as_pro_line_params_etc2
 #define g_auc_cust_nvram_info                             g_auc_cust_nvram_info_etc2
-#define g_en_nv_dp_init_is_null                           g_en_nv_dp_init_is_null_etc2
-#define g_al_priv_cust_params                             g_al_priv_cust_params_etc2
+#define en_nv_dp_init_is_null                             en_nv_dp_init_is_null_etc2
+#define al_priv_cust_params                               al_priv_cust_params_etc2
 #define gs_extre_point_vals                               gs_extre_point_vals_etc2
-#define g_st_cust_nv_params                               g_st_cust_nv_params_etc2
-#define g_auc_sar_params                                  g_auc_sar_params_etc2
-#define g_en_fact_cali_completed                          g_en_fact_cali_completed_etc2
-#define g_st_wlan_customize                               g_st_wlan_customize_etc2
-#define g_ast_country_info_table                          g_ast_country_info_table_etc2
+#define cust_nv_params                                    cust_nv_params_etc2
+#define auc_sar_params                                    auc_sar_params_etc2
+#define en_fact_cali_completed                            en_fact_cali_completed_etc2
+#define wlan_customize                                    wlan_customize_etc2
+#define country_info_table                                country_info_table_etc2
 #define hwifi_get_init_priv_value                         hwifi_get_init_priv_value_etc2
 #define hwifi_get_regdomain_from_country_code             hwifi_get_regdomain_from_country_code_etc2
 #define hwifi_is_regdomain_changed                        hwifi_is_regdomain_changed_etc2
@@ -870,11 +868,11 @@ extern "C" {
 #define hwifi_atcmd_update_host_nv_params                 hwifi_atcmd_update_host_nv_params_etc2
 #define file_mutex                                        file_mutex_etc2
 #define g_ini_file_name                                   g_ini_file_name_etc2
-#define g_ini_spec_file_name                              g_ini_spec_file_name_etc2
-#define g_ini_comm_file_name                              g_ini_comm_file_name_etc2
-#define g_board_version                                   g_board_version_etc2
-#define g_param_version                                   g_param_version_etc2
-#define g_ini_file_time_sec                               g_ini_file_time_sec_etc2
+#define ini_spec_file_name                                ini_spec_file_name_etc2
+#define ini_comm_file_name                                ini_comm_file_name_etc2
+#define board_version                                     board_version_etc2
+#define param_version                                     param_version_etc2
+#define ini_file_time_sec                                 ini_file_time_sec_etc2
 #define ini_check_str                                     ini_check_str_etc2
 #define print_device_version                              print_device_version_etc2
 #define find_download_channel                             find_download_channel_etc2
@@ -923,10 +921,10 @@ extern "C" {
 #define LUT_Theta                                         LUT_Theta_etc2
 #define DPD_Theta                                         DPD_Theta_etc2
 #define hi1102_rf_cali_dpd_corr_calc                      hi1102_rf_cali_dpd_corr_calc_etc2
-#define g_as_rxiq_h_comp_80M                              g_as_rxiq_h_comp_80M_etc2
-#define g_as_rxiq_h_comp_160M                             g_as_rxiq_h_comp_160M_etc2
-#define g_as_txiq_h_comp_320M                             g_as_txiq_h_comp_320M_etc2
-#define g_as_txiq_h_comp_160M                             g_as_txiq_h_comp_160M_etc2
+#define rxiq_h_comp_80M                                   rxiq_h_comp_80M_etc2
+#define rxiq_h_comp_160M                                  rxiq_h_comp_160M_etc2
+#define txiq_h_comp_320M                                  txiq_h_comp_320M_etc2
+#define txiq_h_comp_160M                                  txiq_h_comp_160M_etc2
 #define hmac_add_bound                                    hmac_add_bound_etc2
 #define hmac_send_cali_matrix_data                        hmac_send_cali_matrix_data_etc2
 #define hmac_dump_cali_result                             hmac_dump_cali_result_etc2
@@ -1216,6 +1214,9 @@ extern "C" {
 #define hmac_config_set_acs_cmd                           hmac_config_set_acs_cmd_etc2
 #define hmac_event_acs_response                           hmac_event_acs_response_etc2
 #define hmac_set_pmf_cap                                  hmac_set_pmf_cap_etc2
+#define hmac_pmf_update_pmf_black_list                    hmac_pmf_update_pmf_black_list_etc2
+#define hmac_device_pmf_add_black_list                    hmac_device_pmf_add_black_list_etc2
+#define hmac_device_pmf_find_black_list                   hmac_device_pmf_find_black_list_etcs
 #define hmac_handle_disconnect_rsp_ap                     hmac_handle_disconnect_rsp_ap_etc2
 #define hmac_go_is_auth                                   hmac_go_is_auth_etc2
 #define hmac_ap_rx_obss_beacon                            hmac_ap_rx_obss_beacon_etc2
@@ -1376,6 +1377,7 @@ extern "C" {
 #define hmac_roam_show_info                               hmac_roam_show_info_etc2
 #define hmac_roam_org                                     hmac_roam_org_etc2
 #define hmac_roam_band                                    hmac_roam_band_etc2
+#define hmac_roam_sae_config_reassoc_req                  hmac_roam_sae_config_reassoc_req_etc2
 #define hmac_roam_start                                   hmac_roam_start_etc2
 #define hmac_roam_show                                    hmac_roam_show_etc2
 #define hmac_roam_check_bkscan_result                     hmac_roam_check_bkscan_result_etc2
@@ -1475,6 +1477,7 @@ extern "C" {
 #define hmac_handle_scan_rsp_sta                          hmac_handle_scan_rsp_sta_etc2
 #define hmac_handle_join_rsp_sta                          hmac_handle_join_rsp_sta_etc2
 #define hmac_report_connect_failed_result                 hmac_report_connect_failed_result_etc2
+#define hmac_handle_connect_failed_result                 hmac_handle_connect_failed_result_etc2
 #define hmac_handle_auth_rsp_sta                          hmac_handle_auth_rsp_sta_etc2
 #define hmac_handle_asoc_rsp_sta                          hmac_handle_asoc_rsp_sta_etc2
 #define hmac_send_rsp_to_sme_sta                          hmac_send_rsp_to_sme_sta_etc2
@@ -1811,6 +1814,14 @@ extern "C" {
 #define g_bw_mode_table_5g                                g_bw_mode_table_5g_etc2
 #define g_pd_bss_expire_time                              g_pd_bss_expire_time_etc2
 #define wal_hipriv_sta_pm_on                              wal_hipriv_sta_pm_on_etc2
+#define hmac_mgmt_tx_roc_comp_cb                          hmac_mgmt_tx_roc_comp_cb_etc2
+#define wal_drv_remain_on_channel                         wal_drv_remain_on_channel_etc2
+#define wal_p2p_stop_roc                                  wal_p2p_stop_roc_etc2
+#define wal_find_oldest_cookie                            wal_find_oldest_cookie_etc2
+#define hmac_scan_btcoex_backlist_check_by_oui            hmac_scan_btcoex_backlist_check_by_oui_etc2
+#define g_ast_cpufreq                                     g_ast_cpufreq_etc2
+#define g_aul_cpumaxfreq                                  g_aul_cpumaxfreq_etc2
+#define hisi_cpufreq_get_maxfreq                          hisi_cpufreq_get_maxfreq_etc2
 #endif /* #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST)*/
 
 #ifdef __cplusplus

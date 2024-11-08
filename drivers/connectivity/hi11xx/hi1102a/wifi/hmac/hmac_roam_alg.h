@@ -116,6 +116,8 @@ typedef struct
 typedef struct
 {
     roam_connect_state_enum_uint8   en_state;
+    mac_status_code_enum_uint16     en_status_code;     /* auth/assoc rsp frame status code */
+    oal_uint8                       uc_rsv[1];
     oal_uint8                       uc_auth_num;
     oal_uint8                       uc_assoc_num;
     oal_uint8                       uc_ft_num;
@@ -156,18 +158,21 @@ typedef struct
     oal_uint8                       uc_cur_num_spatial_stream;
     oal_uint8                       uc_avail_bf_num_spatial_stream;
     oal_uint16                      us_cap_info;        /* 旧的bss的能力位信息 */
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+    oal_bool_enum_uint8             en_pmf_required;    /* 原BSS是否强制要求pmf */
+#endif
 }hmac_roam_old_bss_stru;
 
-#if 0
-/* 漫游缓存结构体 */
-typedef struct
-{
-    struct sk_buff_head         st_data_queue;
-    struct workqueue_struct    *pst_wq;
-    struct work_struct          st_work;
-    struct hcc_handler         *pst_hcc;
-}hmac_roam_buf_stru;
-#endif
+
+
+
+
+
+
+
+
+
+
 /* 漫游主结构体 */
 typedef struct
 {
@@ -177,6 +182,7 @@ typedef struct
     oal_uint8                       uc_rssi_ignore;     /* 忽略rssi触发漫游 */
     oal_uint8                       uc_invalid_scan_cnt;/* 无效扫描统计 */
     oal_bool_enum_uint8             en_current_bss_ignore;  /* 是否支持漫游回自己(支持驱动发起重关联) */
+    oal_uint8                       auc_target_bssid[WLAN_MAC_ADDR_LEN];
 #ifdef _PRE_WLAN_FEATURE_11V_ENABLE
     hmac_bsst_rsp_info_stru         st_bsst_rsp_info;   /* 11v漫游协议response帧相关信息 */
 #endif
@@ -191,9 +197,9 @@ typedef struct
     frw_timeout_stru                st_timer;           /* 漫游使用的定时器 */
     wpas_connect_state_enum_uint32  ul_connected_state; /* 外部关联的状态进度 */
     oal_uint32                      ul_ip_addr_obtained;/* IP地址是否获取 */
-#if 0
-    hmac_roam_buf_stru              st_buf;             /* 漫游缓存信息 */
-#endif
+
+
+
 }hmac_roam_info_stru;
 typedef oal_uint32  (*hmac_roam_fsm_func)(hmac_roam_info_stru *pst_roam_info, oal_void *p_param);
 
@@ -221,6 +227,11 @@ oal_bool_enum_uint8 hmac_roam_alg_find_in_blacklist(hmac_roam_info_stru *pst_roa
 oal_bool_enum_uint8 hmac_roam_alg_find_in_history(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid);
 oal_bool_enum_uint8 hmac_roam_alg_need_to_stop_roam_trigger(hmac_roam_info_stru *pst_roam_info);
 oal_uint32 hmac_roam_alg_bss_in_ess(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr);
+oal_uint32 hmac_roam_check_cipher_limit(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr);
+
+#ifdef _PRE_WLAN_1102A_CHR
+oal_void hmac_chr_roam_info_report(hmac_roam_info_stru *pst_roam_info, oal_uint8 ul_result);
+#endif
 #endif //_PRE_WLAN_FEATURE_ROAM
 
 #ifdef __cplusplus

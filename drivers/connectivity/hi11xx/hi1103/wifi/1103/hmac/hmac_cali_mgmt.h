@@ -18,6 +18,7 @@ extern "C" {
 #include "dmac_ext_if.h"
 #include "hmac_vap.h"
 #include "plat_cali.h"
+#include "wlan_spec.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_CALI_MGMT_H
@@ -41,7 +42,8 @@ extern "C" {
 #define HI1103_CALI_MIMO_TXDC_GAIN_LVL_NUM (8)       /* MIMO tx dc补偿值档位数目 */
 #define HI1103_CALI_TXDC_GAIN_LVL_NUM      (HI1103_CALI_SISO_TXDC_GAIN_LVL_NUM + HI1103_CALI_MIMO_TXDC_GAIN_LVL_NUM)
 #define HI1103_CALI_IQ_TONE_NUM            (16)
-#define HI1103_CALI_RXDC_GAIN_LVL_NUM      (8)      /* rx dc补偿值档位数目 */
+#define HI1103_CALI_RXDC_GAIN_LVL_NUM      (8)       /* rx dc补偿值档位数目 */
+#define HI1103_CALI_ADC_CH_NUM             (4)       /* 4路ADC */
 #define HI1103_CALI_2G_OTHER_CHANNEL_NUM   (1)
 #define HI1103_2G_CHANNEL_NUM              (3)
 #define HI1103_5G_20M_CHANNEL_NUM          (7)
@@ -62,11 +64,12 @@ extern "C" {
 #define HI1103_CALI_TXIQ_LS_FILTER_FEQ_NUM_320M    128
 #define HI1103_CALI_TXIQ_LS_FILTER_FEQ_NUM_160M    64
 
+#define NUM_80M_SNGL_TONE_1_4_CIRCLE    16                          /* DAC 80M时1/4周期1.25M单音点采样点个数 */
 #define NUM_160M_SNGL_TONE_1_4_CIRCLE    16                          /* DAC 80M时1/4周期2.5M单音点采样点个数 */
 #define NUM_320M_SNGL_TONE_1_4_CIRCLE    32                          /* DAC 160M时1/4周期2.5M单音点采样点个数 */
 #define NUM_640M_SNGL_TONE_1_4_CIRCLE    64                          /* DAC 320M时1/4周期2.5M单音点采样点个数 */
 
-#define HI1103_CALI_MATRIX_DATA_NUMS     (15)
+#define HI1103_CALI_MATRIX_DATA_NUMS     (21)
 
 /*****************************************************************************
   3 枚举定义
@@ -91,18 +94,7 @@ extern "C" {
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-/* 校准数据结构 */
-#if 0 //暂时和rx gain复用结构
-typedef struct
- {
-    oal_uint8   uc_tx_mimo_cmp;
-    oal_uint8   uc_rx_mimo_cmp;
-    oal_uint8   uc_dpd_siso_cmp;
-    oal_uint8   uc_dpd_mimo_cmp;
-}hi1103_lodiv_comp_val_stru;
-#endif
-
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV)) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
 typedef enum
 {
     HI1103_CALI_SISO,
@@ -215,10 +207,22 @@ typedef struct
 
 typedef struct
 {
+    /* 乘2为IQ两路数据 */
+    oal_uint8   uc_cmp_cali[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint32  ul_cap_cali_w1[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint32  ul_cap_cali_w2[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint32  ul_cap_cali_w3[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint32  ul_cap_cali_w4[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint32  ul_cap_cali_w5[HI1103_CALI_ADC_CH_NUM*2];
+    oal_int32   l_moec[HI1103_CALI_ADC_CH_NUM*2];
+    oal_uint16  us_mgec[HI1103_CALI_ADC_CH_NUM*2];
+}hi1103_adc_cali_param_stru;
+
+typedef struct
+{
     hi1103_rx_dc_comp_val_stru         st_cali_rx_dc_cmp[HI1103_CALI_2G_OTHER_CHANNEL_NUM];
     hi1103_rx_gain_comp_val_stru       st_cali_rx_gain_cmp[HI1103_CALI_2G_OTHER_CHANNEL_NUM];
     hi1103_logen_comp_val_stru         st_cali_logen_cmp[HI1103_2G_CHANNEL_NUM];
-    //hi1103_lodiv_comp_val_stru         st_cali_lodiv_cmp[HI1103_CALI_2G_OTHER_CHANNEL_NUM];
     hi1103_2G_tx_power_comp_val_stru   st_cali_tx_power_cmp_2G[HI1103_2G_CHANNEL_NUM];
     hi1103_txdc_comp_val_stru          ast_txdc_cmp_val[HI1103_2G_CHANNEL_NUM][HI1103_CALI_TXDC_GAIN_LVL_NUM];
 #ifdef _PRE_WLAN_NEW_IQ
@@ -311,7 +315,9 @@ typedef struct
     oal_bool_enum_uint8             en_use_lpf_10M_for_2grx_20m;
     oal_bool_enum_uint8             en_save_all;
     oal_uint8                       uc_last_cali_fail_status;
-    oal_uint8                       auc_resv[3];
+    oal_bool_enum_uint8             en_need_close_fem_cali;
+    oal_uint8                       auc_resv[2];
+    hi1103_adc_cali_param_stru      st_adc_cali_data;
 }hi1103_cali_param_stru;
 
 //added for bt 20dbm cali
@@ -352,7 +358,11 @@ typedef struct
 extern oal_uint32  hmac_save_cali_event_etc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32 hmac_send_cali_data_etc(mac_vap_stru *pst_mac_vap);
 extern oal_uint32 hmac_send_cali_matrix_data(mac_vap_stru *pst_mac_vap);
+extern oal_uint32 hmac_send_1105_cali_matrix_data(mac_vap_stru *pst_mac_vap);
 extern void hmac_get_cali_data_for_bt20dbm(void);
+extern void hmac_get_1105_cali_data_for_bt20dbm(void);
+extern oal_void hmac_set_close_fem_cali_status(oal_bool_enum_uint8 en_switch);
+
 
 #endif
 

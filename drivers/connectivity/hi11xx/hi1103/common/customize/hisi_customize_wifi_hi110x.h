@@ -3,165 +3,293 @@
 #ifndef __HISI_CUSTOMIZE_WIFI_HI110X_H__
 #define __HISI_CUSTOMIZE_WIFI_HI110X_H__
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
-//#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-/*****************************************************************************
-  1 其他头文件包含
-*****************************************************************************/
+/* 其他头文件包含 */
 #include "mac_vap.h"
 
-/*****************************************************************************
-  2 宏定义
-*****************************************************************************/
-#define NVRAM_PARAMS_ARRAY      "nvram_params"
+/* 宏定义 */
+#define NVRAM_PARAMS_ARRAY "nvram_params"
 
-#define MAC_LEN                 6
-#define NV_WLAN_NUM             193
-#define NV_WLAN_VALID_SIZE      12
-#define MAC2STR(a)              (a)[0], "**", "**", "**", (a)[4], (a)[5]
-#define MACFMT                  "%02x:%s:%s:%s:%02x:%02x"
-#define MAC2STR_ALL(a)          (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
-#define MACFMT_ALL              "%02x:%02x:%02x:%02x:%02x:%02x"
-#define CUS_TAG_INI                     0x11
-#define CUS_TAG_DTS                     0x12
-#define CUS_TAG_NV                      0x13
-#define CUS_TAG_PRIV_INI                0x14
-#define CUS_TAG_PRO_LINE_INI            0x15
-#define CALI_TXPWR_PA_DC_REF_MIN        (1000)
-#define CALI_TXPWR_PA_DC_REF_MAX        (0x8000)
-#define CALI_TXPWR_PA_DC_FRE_MIN        (0)
-#define CALI_TXPWR_PA_DC_FRE_MAX        (78)
-#define CALI_BT_TXPWR_PA_DC_REF_MAX     (15000)
-#define RF_LINE_TXRX_GAIN_DB_2G_MIN     (-100)
-#define RF_LINE_TXRX_GAIN_DB_MAX        (40)
-#define RF_LINE_TXRX_GAIN_DB_5G_MIN     (-48)
-#define PSD_THRESHOLD_MIN               (-15)
-#define PSD_THRESHOLD_MAX               (-10)
-#define LNA_GAIN_DB_MIN                 (-40)
-#define LNA_GAIN_DB_MAX                 (80)
+#define MAC_LEN                     6
+#define NV_WLAN_NUM                 193
+#define NV_WLAN_VALID_SIZE          12
+#define MAC2STR(a)                  (a)[0], "**", "**", "**", (a)[4], (a)[5]
+#define MACFMT                      "%02x:%s:%s:%s:%02x:%02x"
+#define MAC2STR_ALL(a)              (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#define MACFMT_ALL                  "%02x:%02x:%02x:%02x:%02x:%02x"
+#define CUS_TAG_INI                 0x11
+#define CUS_TAG_DTS                 0x12
+#define CUS_TAG_NV                  0x13
+#define CUS_TAG_PRIV_INI            0x14
+#define CUS_TAG_PRO_LINE_INI        0x15
+#define CALI_TXPWR_PA_DC_REF_MIN    1000
+#define CALI_TXPWR_PA_DC_REF_MAX    0x8000
+#define CALI_TXPWR_PA_DC_FRE_MIN    0
+#define CALI_TXPWR_PA_DC_FRE_MAX    78
+#define CALI_BT_TXPWR_PA_DC_REF_MAX 15000
+#define RF_LINE_TXRX_GAIN_DB_2G_MIN (-100)
+#define RF_LINE_TXRX_GAIN_DB_MAX     40
+#define RF_LINE_TXRX_GAIN_DB_5G_MIN (-48)
+#define PSD_THRESHOLD_MIN           (-15)
+#define PSD_THRESHOLD_MAX           (-10)
+#define LNA_GAIN_DB_MIN             (-40)
+#define LNA_GAIN_DB_MAX             80
 
-#define MAC_NUM_2G_BAND                 3   /* 2g band数 */
-#define MAC_NUM_5G_BAND                 7   /* 5g band数 */
-#define MAC_2G_CHANNEL_NUM              13
-#define NUM_OF_NV_PARAMS                (NUM_OF_NV_MAX_TXPOWER + NUM_OF_NV_DPD_MAX_TXPOWER + NUM_OF_NV_11B_DELTA_TXPOWER + NUM_OF_NV_5G_UPPER_UPC + 4)     /* NVRAM中存储的参数值的总个数，包括4个基准功率 */
-#define TX_RATIO_MAX                    (2000)                          /* tx占空比的最大有效值 */
-#define TX_PWR_COMP_VAL_MAX             (50)                            /* 发射功率补偿值的最大有效值 */
-#define MORE_PWR_MAX                    (50)                            /* 根据温度额外补偿的发射功率的最大有效值 */
-#define COUNTRY_CODE_LEN                (3)                             /* 国家码位数 */
-#define MAX_COUNTRY_COUNT               (300)                           /* 支持定制的国家的最大个数 */
-#define DELTA_CCA_ED_HIGH_TH_RANGE      15                              /* δ调整上限，最大向上或向下调整15dB */
-#define CUS_NUM_5G_BW                   4   /* 定制化5g带宽数 */
-#define CUS_NUM_FCC_CE_2G_PRO           3   /* 定制化2g FCC/CE 11B+OFDM_20M+OFDM_40M */
-#define CUS_NUM_5G_20M_SIDE_BAND        6   /* 定制化5g边带数 */
+#define MAC_NUM_2G_BAND    3 /* 2g band数 */
+#define MAC_NUM_5G_BAND    7 /* 5g band数 */
+#define MAC_2G_CHANNEL_NUM 13
+
+/* NVRAM中存储的参数值的总个数，包括4个基准功率 */
+#define NUM_OF_NV_PARAMS (NUM_OF_NV_MAX_TXPOWER + NUM_OF_NV_DPD_MAX_TXPOWER + \
+                          NUM_OF_NV_11B_DELTA_TXPOWER + NUM_OF_NV_5G_UPPER_UPC + 4)
+#define TX_RATIO_MAX                    2000 /* tx占空比的最大有效值 */
+#define TX_PWR_COMP_VAL_MAX             50   /* 发射功率补偿值的最大有效值 */
+#define MORE_PWR_MAX                    50   /* 根据温度额外补偿的发射功率的最大有效值 */
+#define COUNTRY_CODE_LEN                3    /* 国家码位数 */
+#define MAX_COUNTRY_COUNT               300  /* 支持定制的国家的最大个数 */
+#define DELTA_CCA_ED_HIGH_TH_RANGE      15   /* δ调整上限，最大向上或向下调整15dB */
+#define CUS_NUM_5G_BW                   4    /* 定制化5g带宽数 */
+#define CUS_NUM_FCC_CE_2G_PRO           3    /* 定制化2g FCC/CE 11B+OFDM_20M+OFDM_40M */
+#define CUS_NUM_5G_20M_SIDE_BAND        6    /* 定制化5g边带数 */
 #define CUS_NUM_5G_40M_SIDE_BAND        6
 #define CUS_NUM_5G_80M_SIDE_BAND        5
 #define CUS_NUM_5G_160M_SIDE_BAND       2
-#define CUS_NUM_OF_SAR_PARAMS           8   /* 定制化降SAR参数 5G_BAND1~7 2.4G */
-#define CUS_NUM_OF_SAR_PER_BAND_PAR_NUM 5   /* 每个band降SAR定制项数 */
-#define CUS_NUM_OF_SAR_LVL              20  /* 定制化降SAR档位数 */
+#define CUS_NUM_OF_SAR_PARAMS           8  /* 定制化降SAR参数 5G_BAND1~7 2.4G */
+#define CUS_NUM_OF_SAR_PER_BAND_PAR_NUM 5  /* 每个band降SAR定制项数 */
+#define CUS_NUM_OF_SAR_LVL              20 /* 定制化降SAR档位数 */
 #define CUS_NUM_OF_SAR_ONE_PARAM_NUM    4
 
-#define CUS_MIN_OF_SAR_VAL              (0x28)  /* 定制化降SAR最小值 4dbm */
-#define CUS_PARAMS_LEN_MAX              (104)   /* 定制项最大长度 */
-#define DY_2G_CALI_PARAMS_NUM           (4)    /* 动态校准参数个数,2.4g */
-#define DY_CALI_PARAMS_NUM              (15)   /* 动态校准参数个数,2.4g 4个(ofdm 20/40 11b cw),5g 5*2(high & low)个band,2.4g(ppa cw) */
-#define DY_CALI_PARAMS_BASE_NUM         (9)    /* 动态校准参数个数,2.4g 4个(ofdm 20/40 11b cw),5g 5(high)个band */
-#define DY_CALI_PARAMS_TIMES            (3)    /* 动态校准参数二次项系数个数 */
-#define DY_CALI_NUM_5G_BAND             (5)    /* 动态校准5g band1 2&3 4&5 6 7 */
-#define DY_CALI_FIT_PRECISION_A1        (6)
-#define DY_CALI_FIT_PRECISION_A0        (16)
-#define CUS_MAX_BASE_TXPOWER_VAL        (250)  /* 最大基准发送功率的最大有效值 */
-#define CUS_MIN_BASE_TXPOWER_VAL        (50)   /* 最小基准发送功率的最大有效值 */
-#define CUS_NUM_2G_DELTA_RSSI_NUM       (2)    /* 20M/40M */
-#define CUS_NUM_5G_DELTA_RSSI_NUM       (4)    /* 20M/40M/80M/160M */
-#define CUS_BASE_PWR_NUM_5G              DY_CALI_NUM_5G_BAND    /* 5g Base power 5个 band1 2&3 4&5 6 7 */
-#define CUS_BASE_PWR_NUM_2G             (1)
+#define PRO_LINE_2G_TO_5G_OFFSET        2 /* 定制化读取的顺序和底层解析的顺序差异导致 */
+
+/* 同device侧定义 */
+#define WLAN_DEV_ALL_ENABLE             1 /* 平台开低功耗+业务控rf和mac pa */
+#define WLAN_DEV_LIGHT_SLEEP_SWITCH_EN  4 /* 平台关深睡+业务控mac pa+rf常开 */
+
+/* 这种情况每个level占有3个定义，所以每次偏移3 */
+#define WLAN_CFG_ID_OFFSET              3
+
+#define CUS_MIN_OF_SAR_VAL    0x28 /* 定制化降SAR最小值 4dbm */
+#define CUS_PARAMS_LEN_MAX    104  /* 定制项最大长度 */
+#define DY_2G_CALI_PARAMS_NUM 4    /* 动态校准参数个数,2.4g */
+
+/* 动态校准参数个数,2.4g 4个(ofdm 20/40 11b cw),5g 5*2(high & low)个band,2.4g(ppa cw) */
+#define DY_CALI_PARAMS_NUM        15
+#define DY_CALI_PARAMS_BASE_NUM   9 /* 动态校准参数个数,2.4g 4个(ofdm 20/40 11b cw),5g 5(high)个band */
+#define DY_CALI_PARAMS_TIMES      3 /* 动态校准参数二次项系数个数 */
+#define DY_CALI_NUM_5G_BAND       5 /* 动态校准5g band1 2&3 4&5 6 7 */
+#define DY_CALI_FIT_PRECISION_A1  6
+#define DY_CALI_FIT_PRECISION_A0  16
+#define CUS_MAX_BASE_TXPOWER_VAL  250                 /* 最大基准发送功率的最大有效值 */
+#define CUS_MIN_BASE_TXPOWER_VAL  50                  /* 最小基准发送功率的最大有效值 */
+#define CUS_BASE_PWR_NUM_5G       DY_CALI_NUM_5G_BAND /* 5g Base power 5个 band1 2&3 4&5 6 7 */
+#define CUS_BASE_PWR_NUM_2G       1
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
-#define CUS_MAX_OF_TAS_PWR_CTRL_VAL     (40)    /* TAS控制抬升功率最大值4db */
+#define CUS_MAX_OF_TAS_PWR_CTRL_VAL 40 /* TAS控制抬升功率最大值4db */
 #endif
-#define CUS_AGC_FEM_OFF_IQ_CAL_POWER_MIN       160
-#define CUS_AGC_FEM_OFF_IQ_CAL_POWER_MAX       230
-#define CUS_2G_LOW_POW_AMEND_ABS_VAL_MAX       30
+#define CUS_AGC_FEM_OFF_IQ_CAL_POWER_MIN 160
+#define CUS_AGC_FEM_OFF_IQ_CAL_POWER_MAX 230
+#define CUS_2G_LOW_POW_AMEND_ABS_VAL_MAX 30
+#define CUS_IQ_CALI_LPF_MIN       0x11
+#define CUS_IQ_CALI_LPF_MAX       0x13
+
+#define WLAN_CALI_TXPWR_REF_2G_CH1_VAL    6250
+#define WLAN_CALI_TXPWR_REF_2G_CH2_VAL    5362
+#define WLAN_CALI_TXPWR_REF_2G_CH3_VAL    4720
+#define WLAN_CALI_TXPWR_REF_2G_CH4_VAL    4480
+#define WLAN_CALI_TXPWR_REF_2G_CH5_VAL    4470
+#define WLAN_CALI_TXPWR_REF_2G_CH6_VAL    4775
+#define WLAN_CALI_TXPWR_REF_2G_CH7_VAL    5200
+#define WLAN_CALI_TXPWR_REF_2G_CH8_VAL    5450
+#define WLAN_CALI_TXPWR_REF_2G_CH9_VAL    5600
+#define WLAN_CALI_TXPWR_REF_2G_CH10_VAL   6100
+#define WLAN_CALI_TXPWR_REF_2G_CH11_VAL   6170
+#define WLAN_CALI_TXPWR_REF_2G_CH12_VAL   6350
+#define WLAN_CALI_TXPWR_REF_2G_CH13_VAL   6530
+#define WLAN_CALI_TXPWR_REF_5G_BAND1_VAL  2500
+#define WLAN_CALI_TXPWR_REF_5G_BAND2_VAL  2800
+#define WLAN_CALI_TXPWR_REF_5G_BAND3_VAL  3100
+#define WLAN_CALI_TXPWR_REF_5G_BAND4_VAL  3600
+#define WLAN_CALI_TXPWR_REF_5G_BAND5_VAL  3600
+#define WLAN_CALI_TXPWR_REF_5G_BAND6_VAL  3700
+#define WLAN_CALI_TXPWR_REF_5G_BAND7_VAL  3800
+#define WLAN_CALI_TONE_GRADE_AMP          1
+#define WLAN_BT_PA_REF_BAND1              11000
+#define WLAN_BT_PA_REF_BAND2              10000
+#define WLAN_BT_PA_REF_BAND3              7000
+#define WLAN_BT_PA_REF_BAND4              8000
+#define WLAN_BT_PA_REF_BAND5              7000
+#define WLAN_BT_PA_REF_BAND6              7000
+#define WLAN_BT_PA_REF_BAND7              12000
+#define WLAN_BT_PA_REF_BAND8              12000
+#define WLAN_BT_PA_NUM                    7
+#define WLAN_BT_PA_FRE1                   0
+#define WLAN_BT_PA_FRE2                   10
+#define WLAN_BT_PA_FRE3                   28
+#define WLAN_BT_PA_FRE4                   45
+#define WLAN_BT_PA_FRE5                   53
+#define WLAN_BT_PA_FRE6                   63
+#define WLAN_BT_PA_FRE7                   76
+#define WLAN_BT_PA_FRE8                   78
+#define WLAN_BT_AMP_GRADE                 2
+#define WLAN_ROAM_SWITCH_MODE             1
+#define WLAN_SCAN_ORTHOGONAL_VAL          4
+#define WLAN_TRIGGER_B_VAL                (-70)
+#define WLAN_TRIGGER_A_VAL                (-70)
+#define WLAN_DELTA_B_VAL                  10
+#define WLAN_DELTA_A_VAL                  10
+#define WLAN_MEM_FOR_START                45
+#define WLAN_MEM_FOR_STOP                 25
+#define WLAN_RX_ACK_LIMIT_VAL             10
+#define WLAN_SDIO_H2D_ASSEMBLE_COUNT_VAL  16
+#define WLAN_LOSS_THRESHOLD_WLAN_BT       80
+#define WLAN_LOSS_THRESHOLD_WLAN_DBAC     80
+#define WLAN_LOSS_THRESHOLD_WLAN_NORMAL   40
+#define WLAN_IRQ_TH_HIGH                  250
+#define WLAN_IRQ_TH_LOW                   150
+#define WLAN_IRQ_PPS_TH_HIGH              25000
+#define WLAN_IRQ_PPS_TH_LOW               5000
+#define WLAN_HW_AMPDU_TH_HIGH             300
+#define WLAN_HW_AMPDU_TH_LOW              200
+#define WLAN_AMSDU_AMPDU_TH_HIGH          300
+#define WLAN_AMSDU_AMPDU_TH_LOW           200
+#define WLAN_TCP_ACK_FILTER_TH_HIGH       60
+#define WLAN_TCP_ACK_FILTER_TH_LOW        20
+#define WLAN_SMALL_AMSDU_HIGH             300
+#define WLAN_SMALL_AMSDU_LOW              200
+#define WLAN_SMALL_AMSDU_PPS_HIGH         25000
+#define WLAN_SMALL_AMSDU_PPS_LOW          5000
+#define WLAN_TCP_ACK_BUF_HIGH             90
+#define WLAN_TCP_ACK_BUF_LOW              50
+#define WLAN_TCP_ACK_BUF_HIGH_40M         300
+#define WLAN_TCP_ACK_BUF_LOW_40M          150
+#define WLAN_TCP_ACK_BUF_HIGH_80M         550
+#define WLAN_TCP_ACK_BUF_LOW_80M          450
+#define WLAN_TCP_ACK_BUF_HIGH_160M        800
+#define WLAN_TCP_ACK_BUF_LOW_160M         700
+#define WLAN_RX_DYN_BYPASS_EXTLNA_HIGH    100
+#define WLAN_RX_DYN_BYPASS_EXTLNA_LOW     50
+#define WLAN_PS_MODE                      1
+#define WLAN_MIN_FAST_PS_IDLE             1
+#define WLAN_MAX_FAST_PS_IDLE             10
+#define WLAN_AUTO_FAST_PS_SCREENON        5
+#define WLAN_AUTO_FAST_PS_SCREENOFF       5
+#define WLAN_RF_LNA_BYPASS_GAIN_DB_2G     (-12)
+#define WLAN_RF_LNA_GAIN_DB_2G            20
+#define WLAN_RF_PA_GAIN_DB_B0_2G          (-12)
+#define WLAN_EXT_SWITCH_ISEXIST_2G        0
+#define WLAN_EXT_PA_ISEXIST_2G            0
+#define WLAN_EXT_LNA_ISEXIST_2G           0
+#define WLAN_LNA_ON2OFF_TIME_NS_2G        630
+#define WLAN_LNA_OFF2ON_TIME_NS_2G        320
+#define WLAN_RF_LNA_BYPASS_GAIN_DB_5G     (-12)
+#define WLAN_RF_LNA_GAIN_DB_5G            20
+#define WLAN_RF_PA_GAIN_DB_B0_5G          (-12)
+#define WLAN_EXT_SWITCH_ISEXIST_5G        1
+#define WLAN_EXT_PA_ISEXIST_5G            1
+#define WLAN_EXT_LNA_ISEXIST_5G           1
+#define WLAN_LNA_ON2OFF_TIME_NS_5G        630
+#define WLAN_LNA_OFF2ON_TIME_NS_5G        320
+#define WLAN_TX_RATIO_LEVEL_0             900
+#define WLAN_TX_PWR_COMP_VAL_LEVEL_0      17
+#define WLAN_TX_RATIO_LEVEL_1             650
+#define WLAN_TX_PWR_COMP_VAL_LEVEL_1      13
+#define WLAN_TX_RATIO_LEVEL_2             280
+#define WLAN_TX_PWR_COMP_VAL_LEVEL_2      5
+#define WLAN_MORE_PWR                     7
+#define WLAN_STA_KEEPALIVE_CNT_TH         3
+#define WLAN_LDAC_THRESHOLD_M2S           (-45)
+#define WLAN_LDAC_THRESHOLD_S2M           (-75)
+#define WLAN_RF_RX_INSERTION_LOSS_2G_BAND1  (-12)
+#define WLAN_RF_RX_INSERTION_LOSS_2G_BAND2  (-12)
+#define WLAN_RF_RX_INSERTION_LOSS_2G_BAND3  (-12)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND1  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND2  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND3  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND4  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND5  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND6  (-8)
+#define WLAN_RF_RX_INSERTION_LOSS_5G_BAND7  (-8)
 
 /* 根据产线delt power更新系数 */
-#define CUS_FLUSH_NV_RATIO_BY_DELT_POW(_s_pow_par2, _s_pow_par1, _s_pow_par0, _s_delt_power) \
-do {(_s_pow_par0) = (((oal_int32)(_s_delt_power)*(_s_delt_power)*(_s_pow_par2))+(((oal_int32)(_s_pow_par1)<<DY_CALI_FIT_PRECISION_A1)*(_s_delt_power)) \
-                                                               +((oal_int32)(_s_pow_par0)<<DY_CALI_FIT_PRECISION_A0))>>DY_CALI_FIT_PRECISION_A0;                    \
-    (_s_pow_par1) = (((oal_int32)(_s_delt_power)*(_s_pow_par2)*2)+((oal_int32)(_s_pow_par1)<<DY_CALI_FIT_PRECISION_A1))>>DY_CALI_FIT_PRECISION_A1;      \
-    }while(0)
+#define CUS_FLUSH_NV_RATIO_BY_DELT_POW(_s_pow_par2, _s_pow_par1, _s_pow_par0, _s_delt_power)             \
+    do {                                                                                                 \
+        (_s_pow_par0) = (((oal_int32)(_s_delt_power) * (_s_delt_power) * (_s_pow_par2)) +                \
+                            (((oal_int32)(_s_pow_par1) << DY_CALI_FIT_PRECISION_A1) * (_s_delt_power)) + \
+                            ((oal_int32)(_s_pow_par0) << DY_CALI_FIT_PRECISION_A0)) >>                   \
+                        DY_CALI_FIT_PRECISION_A0;                                                        \
+        (_s_pow_par1) = (((oal_int32)(_s_delt_power) * (_s_pow_par2)*2) +                                \
+                            ((oal_int32)(_s_pow_par1) << DY_CALI_FIT_PRECISION_A1)) >>                   \
+                        DY_CALI_FIT_PRECISION_A1;                                                        \
+    } while (0)
 
 /* 判断当前值是否在合理范围 */
-#define CUS_VAL_INVALID(val, upper_val, low_val)  (((val) > (upper_val)) || ((val) < (low_val)))
+#define CUS_VAL_INVALID(val, upper_val, low_val) (((val) > (upper_val)) || ((val) < (low_val)))
+#define CUS_VAL_VALID(val, upper_val, low_val) (((val) <= (upper_val)) && ((val) >= (low_val)))
 
 /* 计算绝对值 */
-#define CUS_ABS(val)                    ((val) > 0 ? (val) : -(val))
+#define CUS_ABS(val) ((val) > 0 ? (val) : -(val))
 
 /* 判断CCA能量门限调整值是否超出范围, 最大调整幅度:DELTA_CCA_ED_HIGH_TH_RANGE */
-#define CUS_DELTA_CCA_ED_HIGH_TH_OUT_OF_RANGE(val)  (CUS_ABS(val) > DELTA_CCA_ED_HIGH_TH_RANGE ? 1 : 0)
+#define CUS_DELTA_CCA_ED_HIGH_TH_OUT_OF_RANGE(val) (CUS_ABS(val) > DELTA_CCA_ED_HIGH_TH_RANGE ? 1 : 0)
 
 /* 取16位数 */
-#define CUS_GET_LOW_16BIT(val)    ((oal_uint16)((oal_uint32)val & 0x0000FFFF))
-#define CUS_GET_HIGH_16BIT(val)   ((oal_uint16)(((oal_uint32)val & 0xFFFF0000) >> 16))
+#define CUS_GET_LOW_16BITS(val)  ((oal_uint16)((oal_uint32)val & 0x0000FFFF))
+#define CUS_GET_HIGH_16BITS(val) ((oal_uint16)(((oal_uint32)val & 0xFFFF0000) >> 16))
+/* 取8位数 */
+#define CUS_GET_FIRST_BYTE(val)  (((oal_uint32)val) & 0xFF)
+#define CUS_GET_SECOND_BYTE(val) (((oal_uint32)val >> 8) & 0xFF)
+#define CUS_GET_THIRD_BYTE(val)  (((oal_uint32)val >> 16) & 0xFF)
+#define CUS_GET_FOURTH_BYTE(val) (((oal_uint32)val >> 24) & 0xFF)
 
 #define HWIFI_GET_5G_PRO_LINE_DELT_POW_PER_BAND(_ps_nv_params, _ps_ini_params) \
-    (oal_int16)(((oal_int32)(((_ps_nv_params)[1]) - ((_ps_ini_params)[1]))<<DY_CALI_FIT_PRECISION_A1)/(2*((_ps_nv_params)[0])))
+    (oal_int16)(((oal_int32)(((_ps_nv_params)[1]) -                            \
+                             ((_ps_ini_params)[1]))                            \
+                    << DY_CALI_FIT_PRECISION_A1) /                             \
+                (2 * ((_ps_nv_params)[0])))
 
-#define HWIFI_DYN_CALI_GET_EXTRE_POINT(_ps_ini_params)  \
-    (-(((_ps_ini_params)[1]) << DY_CALI_FIT_PRECISION_A1) / (2*((_ps_ini_params)[0])))
-
+#define HWIFI_DYN_CALI_GET_EXTRE_POINT(_ps_ini_params) \
+    (-(((_ps_ini_params)[1]) << DY_CALI_FIT_PRECISION_A1) / (2 * ((_ps_ini_params)[0])))
 
 /* 开机校准MASK */
-#define HI1103_CALI_FIST_POWER_ON_MASK      BIT(2)
+#define HI1103_CALI_FIST_POWER_ON_MASK BIT(2)
 /* 读取NVRAM MASK */
-#define HI1103_CUST_READ_NVRAM_MASK         BIT(4)
+#define HI1103_CUST_READ_NVRAM_MASK BIT(4)
 
-/*****************************************************************************
-  3 枚举定义
-*****************************************************************************/
-
-typedef enum
-{
-    HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_11B      = 0,
+/* 枚举定义 */
+typedef enum {
+    HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_11B = 0,
     HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_OFDM20,
     HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_OFDM40,
     HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_CW,
     HWIFI_CFG_DYN_PWR_CALI_2G_SNGL_MODE_BUTT,
-}hwifi_dyn_2g_pwr_sngl_mode_enum;
-
+} hwifi_dyn_2g_pwr_sngl_mode_enum;
 
 /* NV map idx */
-typedef enum
-{
-    HWIFI_CFG_NV_WINVRAM_NUMBER           = 340,
-    HWIFI_CFG_NV_WITXNVCCK_NUMBER         = 367,
-    HWIFI_CFG_NV_WITXNVC1_NUMBER          = 368,
-    HWIFI_CFG_NV_WITXNVBWC0_NUMBER        = 369,
-    HWIFI_CFG_NV_WITXNVBWC1_NUMBER        = 370,
-    HWIFI_CFG_NV_WITXL2G5G0_NUMBER        = 384,
-    HWIFI_CFG_NV_WITXL2G5G1_NUMBER        = 385,
+typedef enum {
+    HWIFI_CFG_NV_WINVRAM_NUMBER = 340,
+    HWIFI_CFG_NV_WITXNVCCK_NUMBER = 367,
+    HWIFI_CFG_NV_WITXNVC1_NUMBER = 368,
+    HWIFI_CFG_NV_WITXNVBWC0_NUMBER = 369,
+    HWIFI_CFG_NV_WITXNVBWC1_NUMBER = 370,
+    HWIFI_CFG_NV_WITXL2G5G0_NUMBER = 384,
+    HWIFI_CFG_NV_WITXL2G5G1_NUMBER = 385,
     HWIFI_CFG_NV_MUFREQ_5G160_C0_NUMBER,
     HWIFI_CFG_NV_MUFREQ_5G160_C1_NUMBER,
-    HWIFI_CFG_NV_MUFREQ_2G20_C0_NUMBER    = 396,
+    HWIFI_CFG_NV_MUFREQ_2G20_C0_NUMBER = 396,
     HWIFI_CFG_NV_MUFREQ_2G20_C1_NUMBER,
     HWIFI_CFG_NV_MUFREQ_2G40_C0_NUMBER,
     HWIFI_CFG_NV_MUFREQ_2G40_C1_NUMBER,
     HWIFI_CFG_NV_MUFREQ_CCK_C0_NUMBER,
     HWIFI_CFG_NV_MUFREQ_CCK_C1_NUMBER,
-}wlan_nvram_idx;
+} wlan_nvram_idx;
 
 /* 定制化 DTS CONFIG ID */
-typedef enum
-{
+typedef enum {
     /* 校准 */
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN1,
-    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_START = WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN1,     /* 校准 2g TXPWR_REF起始配置ID */
+    /* 校准 2g TXPWR_REF起始配置ID */
+    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_START = WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN1,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN2,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN3,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN4,
@@ -175,8 +303,9 @@ typedef enum
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN12,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_2G_VAL_CHAN13,
 
-    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND1,     //13
-    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_START = WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND1,    /* 校准 5g TXPWR_REF起始配置ID */
+    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND1,  // 13
+    /* 校准 5g TXPWR_REF起始配置ID */
+    WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_START = WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND1,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND2,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND3,
     WLAN_CFG_DTS_CALI_TXPWR_PA_DC_REF_5G_VAL_BAND4,
@@ -187,7 +316,7 @@ typedef enum
 
     /* DPD校准 */
     WLAN_CFG_DTS_DPD_CALI_CH_CORE0,
-    WLAN_CFG_DTS_DPD_CALI_START = WLAN_CFG_DTS_DPD_CALI_CH_CORE0,               /* DPD校准定制化配置起始ID */
+    WLAN_CFG_DTS_DPD_CALI_START = WLAN_CFG_DTS_DPD_CALI_CH_CORE0, /* DPD校准定制化配置起始ID */
     WLAN_CFG_DTS_DPD_USE_CALI_CH_IDX0_CORE0,
     WLAN_CFG_DTS_DPD_USE_CALI_CH_IDX1_CORE0,
     WLAN_CFG_DTS_DPD_USE_CALI_CH_IDX2_CORE0,
@@ -240,49 +369,16 @@ typedef enum
     WLAN_CFG_DTS_5G_CORE1_DPN_B3,
     WLAN_CFG_DTS_5G_CORE1_DPN_B4,
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-    /* rf register */
-    WLAN_CFG_DTS_RF_REG117,                     //33
-    WLAN_CFG_DTS_RF_FIRST = WLAN_CFG_DTS_RF_REG117,
-    WLAN_CFG_DTS_RF_REG123,
-    WLAN_CFG_DTS_RF_REG124,
-    WLAN_CFG_DTS_RF_REG125,
-    WLAN_CFG_DTS_RF_REG126,
-    WLAN_CFG_DTS_RF_LAST = WLAN_CFG_DTS_RF_REG126,
-    /* bt tmp */
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND1,    //37
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND2,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND3,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND4,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND5,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND6,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND7,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_REF_BAND8,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_NUM,          //45
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE1,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE2,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE3,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE4,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE5,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE6,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE7,
-    WLAN_CFG_DTS_BT_CALI_TXPWR_PA_FRE8,         //53
-    WLAN_CFG_DTS_BT_CALI_TONE_AMP_GRADE,
-#endif //#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-
     WLAN_CFG_DTS_BUTT,
-}WLAN_CFG_DTS;
-
+} WLAN_CFG_DTS;
 
 /* 私有定制化 PRIV CONFIG ID */
-typedef enum
-{
+typedef enum {
     /* 校准开关 */
     WLAN_CFG_PRIV_CALI_MASK,
     WLAN_CFG_PRIV_CALI_DATA_MASK,
     WLAN_CFG_PRIV_CALI_AUTOCALI_MASK,
 
-    /* TBD:hal_cfg_customize_info_stru/mac_device_capability_stru */
     WLAN_CFG_PRIV_BW_MAX_WITH,
     WLAN_CFG_PRIV_LDPC_CODING,
     WLAN_CFG_PRIV_RX_STBC,
@@ -307,6 +403,11 @@ typedef enum
     /* linkloss门限固定开关 */
     WLAN_CFG_PRRIV_LINKLOSS_THRESHOLD_FIXED,
 
+    /* 160M APUT使能 */
+    WLAN_CFG_APUT_160M_ENABLE,
+    /* 屏蔽硬件上报的雷达信号 */
+    WLAN_CFG_RADAR_ISR_FORBID,
+
     /* 限流 */
 #ifdef _PRE_WLAN_DOWNLOAD_PM
     WLAN_CFG_PRIV_DOWNLOAD_RATE_LIMIT_PPS,
@@ -324,10 +425,14 @@ typedef enum
     WLAN_DSSS2OFDM_DBB_PWR_BO_VAL,
     WLAN_CFG_PRIV_EVM_PLL_REG_FIX,
 
-    /*VOE*/
+    /* VOE */
     WLAN_CFG_PRIV_VOE_SWITCH,
-    /*11ax*/
+
+    /* 11ax */
     WLAN_CFG_PRIV_11AX_SWITCH,
+
+    /* M_BSSID */
+    WLAN_CFG_PRIV_MULTI_BSSID_SWITCH,
 
     /* 动态bypass外置LNA方案 */
     WLAN_CFG_PRIV_DYN_BYPASS_EXTLNA,
@@ -336,14 +441,27 @@ typedef enum
 
     WLAN_CFG_PRIV_CTRL_UPC_FOR_18DBM_CO,
     WLAN_CFG_PRIV_CTRL_UPC_FOR_18DBM_C1,
+    WLAN_CFG_PRIV_CTRL_11B_DOUBLE_CHAIN_BO_POW,
+
+    /* 非高优先级hcc流控类型 0:SDIO 1:GPIO */
+    WLAN_CFG_PRIV_HCC_FLOWCTRL_TYPE,
+
+    /* 锁cpu最大频率 0:不使能 1:使能 */
+    WLAN_CFG_PRIV_LOCK_MAX_CPU_FREQ,
+
+    /* DC流控特性定制化开关 */
+    WLAN_CFG_PRIV_DC_FLOWCTL_SWITCH,
+
+    /* ddr */
+    WLAN_CFG_PRIV_DDR_SWITCH,
+
 
     WLAN_CFG_PRIV_BUTT,
-}WLAN_CFG_PRIV;
+} WLAN_CFG_PRIV;
 typedef oal_uint8 wlan_cfg_priv_id_uint8;
 
 /* 定制化 INI CONFIG ID */
-typedef enum
-{
+typedef enum {
     /* ROAM */
     WLAN_CFG_INIT_ROAM_SWITCH = 0,
     WLAN_CFG_INIT_SCAN_ORTHOGONAL,
@@ -360,19 +478,19 @@ typedef enum
     WLAN_CFG_INIT_INTERVAL_VARIABLE,
 
     /* 性能 */
-    WLAN_CFG_INIT_AMPDU_TX_MAX_NUM,       //7
+    WLAN_CFG_INIT_AMPDU_TX_MAX_NUM,  // 7
     WLAN_CFG_INIT_USED_MEM_FOR_START,
     WLAN_CFG_INIT_USED_MEM_FOR_STOP,
     WLAN_CFG_INIT_RX_ACK_LIMIT,
     WLAN_CFG_INIT_SDIO_D2H_ASSEMBLE_COUNT,
     WLAN_CFG_INIT_SDIO_H2D_ASSEMBLE_COUNT,
     /* LINKLOSS */
-    WLAN_CFG_INIT_LINK_LOSS_THRESHOLD_BT,    //13,这里不能直接赋值
+    WLAN_CFG_INIT_LINK_LOSS_THRESHOLD_BT,  // 13,这里不能直接赋值
     WLAN_CFG_INIT_LINK_LOSS_THRESHOLD_DBAC,
     WLAN_CFG_INIT_LINK_LOSS_THRESHOLD_NORMAL,
     /* 自动调频 */
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
-    WLAN_CFG_INIT_PSS_THRESHOLD_LEVEL_0,            //16
+    WLAN_CFG_INIT_PSS_THRESHOLD_LEVEL_0,  // 16
     WLAN_CFG_INIT_CPU_FREQ_LIMIT_LEVEL_0,
     WLAN_CFG_INIT_DDR_FREQ_LIMIT_LEVEL_0,
     WLAN_CFG_INIT_PSS_THRESHOLD_LEVEL_1,
@@ -415,7 +533,6 @@ typedef enum
     WLAN_CFG_INIT_SMALL_AMSDU_PPS_HIGH,
     WLAN_CFG_INIT_SMALL_AMSDU_PPS_LOW,
 
-
     WLAN_CFG_INIT_TX_TCP_ACK_BUF,
     WLAN_CFG_INIT_TCP_ACK_BUF_HIGH,
     WLAN_CFG_INIT_TCP_ACK_BUF_LOW,
@@ -434,22 +551,23 @@ typedef enum
     WLAN_CFG_INIT_RX_AMPDU_AMSDU_SKB,
 
     /* 低功耗 */
-    WLAN_CFG_INIT_POWERMGMT_SWITCH,                 //31
+    WLAN_CFG_INIT_POWERMGMT_SWITCH,  // 31
     WLAN_CFG_INIT_PS_MODE,
-    WLAN_CFG_INIT_MIN_FAST_PS_IDLE,               //How many 20ms
+    WLAN_CFG_INIT_MIN_FAST_PS_IDLE,  // How many 20ms
     WLAN_CFG_INIT_MAX_FAST_PS_IDLE,
-    WLAN_CFG_INIT_AUTO_FAST_PS_THRESH,
+    WLAN_CFG_INIT_AUTO_FAST_PS_THRESH_SCREENON,
+    WLAN_CFG_INIT_AUTO_FAST_PS_THRESH_SCREENOFF,
 
     /* 可维可测 */
     WLAN_CFG_INIT_LOGLEVEL,
     /* 2G RF前端 */
-    WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND_START,    //33
+    WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND_START,  // 33
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND1 = WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND_START,
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND2,
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND3,
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND_END = WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_2G_BAND3,
     /* 5G RF前端 */
-    WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND_START,     //37
+    WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND_START,  // 37
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND1 = WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND_START,
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND2,
     WLAN_CFG_INIT_RF_RX_INSERTION_LOSS_5G_BAND3,
@@ -488,30 +606,21 @@ typedef enum
     WLAN_CFG_INIT_EXT_LNA_ISEXIST_5G,
     WLAN_CFG_INIT_LNA_ON2OFF_TIME_NS_5G,
     WLAN_CFG_INIT_LNA_OFF2ON_TIME_NS_5G,
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
-    /* 温度上升导致发射功率下降过多的功率补偿 */
-    WLAN_CFG_INIT_TX_RATIO_LEVEL_0,                 /* tx占空比 */                      //48
-    WLAN_CFG_INIT_TX_PWR_COMP_VAL_LEVEL_0,          /* 发射功率补偿值 */
-    WLAN_CFG_INIT_TX_RATIO_LEVEL_1,
-    WLAN_CFG_INIT_TX_PWR_COMP_VAL_LEVEL_1,
-    WLAN_CFG_INIT_TX_RATIO_LEVEL_2,
-    WLAN_CFG_INIT_TX_PWR_COMP_VAL_LEVEL_2,
-    WLAN_CFG_INIT_MORE_PWR,                         /* 根据温度额外补偿的发射功率 */
-#endif //#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_HOST)
     /* SCAN */
     WLAN_CFG_INIT_RANDOM_MAC_ADDR_SCAN,
     /* 11AC2G */
-    WLAN_CFG_INIT_11AC2G_ENABLE,                    /* 11ac2g开关 */                    //56
-    WLAN_CFG_INIT_DISABLE_CAPAB_2GHT40,             /* 2ght40禁止开关 */
-    WLAN_CFG_INIT_DUAL_ANTENNA_ENABLE,              /* 双天线开关 */
-    /* sta keepalive*/
-    WLAN_CFG_INIT_STA_KEEPALIVE_CNT_TH,               /* sta keepalive th*/
+    WLAN_CFG_INIT_11AC2G_ENABLE,
+    /* 11ac2g开关 */                    // 56
+    WLAN_CFG_INIT_DISABLE_CAPAB_2GHT40, /* 2ght40禁止开关 */
+    WLAN_CFG_INIT_DUAL_ANTENNA_ENABLE,  /* 双天线开关 */
+    /* sta keepalive */
+    WLAN_CFG_INIT_STA_KEEPALIVE_CNT_TH, /* sta keepalive th */
     WLAN_CFG_INIT_FAR_DIST_POW_GAIN_SWITCH,
     WLAN_CFG_INIT_FAR_DIST_DSSS_SCALE_PROMOTE_SWITCH, /* 超远距11b 1m 2m dbb scale提升使能开关 */
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    WLAN_CFG_INIT_CHANN_RADIO_CAP,                    /* 通道0、1 2g 5g频道能力 */
+    WLAN_CFG_INIT_CHANN_RADIO_CAP, /* 通道0、1 2g 5g频道能力 */
 
-    WLAN_CFG_LTE_GPIO_CHECK_SWITCH,                 /* lte?????? */
+    WLAN_CFG_LTE_GPIO_CHECK_SWITCH, /* lte?????? */
     WLAN_ATCMDSRV_ISM_PRIORITY,
     WLAN_ATCMDSRV_LTE_RX,
     WLAN_ATCMDSRV_LTE_TX,
@@ -581,17 +690,68 @@ typedef enum
     WLAN_CFG_INIT_DELTA_CCA_ED_HIGH_80TH_5G,
     WLAN_CFG_INIT_VOE_SWITCH,
     WLAN_CFG_INIT_11AX_SWITCH,
+    WLAN_CFG_INIT_MULTI_BSSID_SWITCH,
 
     /* ldac m2s rssi */
     WLAN_CFG_INIT_LDAC_THRESHOLD_M2S,
     WLAN_CFG_INIT_LDAC_THRESHOLD_S2M,
+    /* CONNECT */
+    WLAN_CFG_INIT_RANDOM_MAC_ADDR_CONNECT,
+
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+    /* 5g nr coex */
+    WLAN_CFG_INIT_NRCOEX_ENABLE,
+    WLAN_CFG_INIT_NRCOEX_RULE0_FREQ,
+    WLAN_CFG_INIT_NRCOEX_RULE0_40M_20M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE0_160M_80M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE0_40M_20M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE0_160M_80M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE0_40M_20M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE0_160M_80M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE0_SMALLGAP0_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE0_GAP01_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE0_GAP12_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE0_RXSLOT_RSSI,
+    WLAN_CFG_INIT_NRCOEX_RULE1_FREQ,
+    WLAN_CFG_INIT_NRCOEX_RULE1_40M_20M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE1_160M_80M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE1_40M_20M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE1_160M_80M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE1_40M_20M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE1_160M_80M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE1_SMALLGAP0_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE1_GAP01_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE1_GAP12_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE1_RXSLOT_RSSI,
+    WLAN_CFG_INIT_NRCOEX_RULE2_FREQ,
+    WLAN_CFG_INIT_NRCOEX_RULE2_40M_20M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE2_160M_80M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE2_40M_20M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE2_160M_80M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE2_40M_20M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE2_160M_80M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE2_SMALLGAP0_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE2_GAP01_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE2_GAP12_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE2_RXSLOT_RSSI,
+    WLAN_CFG_INIT_NRCOEX_RULE3_FREQ,
+    WLAN_CFG_INIT_NRCOEX_RULE3_40M_20M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE3_160M_80M_GAP0,
+    WLAN_CFG_INIT_NRCOEX_RULE3_40M_20M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE3_160M_80M_GAP1,
+    WLAN_CFG_INIT_NRCOEX_RULE3_40M_20M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE3_160M_80M_GAP2,
+    WLAN_CFG_INIT_NRCOEX_RULE3_SMALLGAP0_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE3_GAP01_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE3_GAP12_ACT,
+    WLAN_CFG_INIT_NRCOEX_RULE3_RXSLOT_RSSI,
+#endif
 
     WLAN_CFG_INIT_BUTT,
-}WLAN_CFG_INIT;
+} WLAN_CFG_INIT;
 
 /* 定制化 NVRAM PARAMS INDEX */
-typedef enum
-{
+typedef enum {
     NVRAM_PARAMS_INDEX_0,
     NVRAM_PARAMS_INDEX_1,
     NVRAM_PARAMS_INDEX_2,
@@ -636,8 +796,8 @@ typedef enum
     NVRAM_PARAMS_INDEX_23_RSV,
     NVRAM_PARAMS_INDEX_24_RSV,
     /* FCC边带最大目标发射功率 */
-    NVRAM_PARAMS_FCC_START_INDEX_BUTT,
-    NVRAM_PARAMS_INDEX_25 = NVRAM_PARAMS_FCC_START_INDEX_BUTT,
+    NVRAM_PARAMS_FCC_START_INDEX,
+    NVRAM_PARAMS_INDEX_25 = NVRAM_PARAMS_FCC_START_INDEX,
     NVRAM_PARAMS_INDEX_26,
     NVRAM_PARAMS_INDEX_27,
     NVRAM_PARAMS_INDEX_28,
@@ -659,8 +819,8 @@ typedef enum
     NVRAM_PARAMS_INDEX_44,
     NVRAM_PARAMS_FCC_END_INDEX_BUTT,
     /* CE边带最大目标发射功率 */
-    NVRAM_PARAMS_CE_START_INDEX_BUTT,
-    NVRAM_PARAMS_INDEX_CE_0 = NVRAM_PARAMS_CE_START_INDEX_BUTT,
+    NVRAM_PARAMS_CE_START_INDEX,
+    NVRAM_PARAMS_INDEX_CE_0 = NVRAM_PARAMS_CE_START_INDEX,
     NVRAM_PARAMS_INDEX_CE_1,
     NVRAM_PARAMS_INDEX_CE_2,
     NVRAM_PARAMS_INDEX_CE_3,
@@ -681,9 +841,55 @@ typedef enum
     NVRAM_PARAMS_INDEX_CE_18,
     NVRAM_PARAMS_INDEX_CE_19,
     NVRAM_PARAMS_CE_END_INDEX_BUTT,
+    /* FCC C1边带最大目标发射功率 */
+    NVRAM_PARAMS_FCC_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_25_C1 = NVRAM_PARAMS_FCC_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_26_C1,
+    NVRAM_PARAMS_INDEX_27_C1,
+    NVRAM_PARAMS_INDEX_28_C1,
+    NVRAM_PARAMS_INDEX_29_C1,
+    NVRAM_PARAMS_INDEX_30_C1,
+    NVRAM_PARAMS_INDEX_31_C1,
+    NVRAM_PARAMS_INDEX_32_C1,
+    NVRAM_PARAMS_INDEX_33_C1,
+    NVRAM_PARAMS_INDEX_34_C1,
+    NVRAM_PARAMS_INDEX_35_C1,
+    NVRAM_PARAMS_INDEX_36_C1,
+    NVRAM_PARAMS_INDEX_37_C1,
+    NVRAM_PARAMS_INDEX_38_C1,
+    NVRAM_PARAMS_INDEX_39_C1,
+    NVRAM_PARAMS_INDEX_40_C1,
+    NVRAM_PARAMS_INDEX_41_C1,
+    NVRAM_PARAMS_INDEX_42_C1,
+    NVRAM_PARAMS_INDEX_43_C1,
+    NVRAM_PARAMS_INDEX_44_C1,
+    NVRAM_PARAMS_FCC_C1_END_INDEX_BUTT,
+    /* CE C1边带最大目标发射功率 */
+    NVRAM_PARAMS_CE_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_CE_0_C1 = NVRAM_PARAMS_CE_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_CE_1_C1,
+    NVRAM_PARAMS_INDEX_CE_2_C1,
+    NVRAM_PARAMS_INDEX_CE_3_C1,
+    NVRAM_PARAMS_INDEX_CE_4_C1,
+    NVRAM_PARAMS_INDEX_CE_5_C1,
+    NVRAM_PARAMS_INDEX_CE_6_C1,
+    NVRAM_PARAMS_INDEX_CE_7_C1,
+    NVRAM_PARAMS_INDEX_CE_8_C1,
+    NVRAM_PARAMS_INDEX_CE_9_C1,
+    NVRAM_PARAMS_INDEX_CE_10_C1,
+    NVRAM_PARAMS_INDEX_CE_11_C1,
+    NVRAM_PARAMS_INDEX_CE_12_C1,
+    NVRAM_PARAMS_INDEX_CE_13_C1,
+    NVRAM_PARAMS_INDEX_CE_14_C1,
+    NVRAM_PARAMS_INDEX_CE_15_C1,
+    NVRAM_PARAMS_INDEX_CE_16_C1,
+    NVRAM_PARAMS_INDEX_CE_17_C1,
+    NVRAM_PARAMS_INDEX_CE_18_C1,
+    NVRAM_PARAMS_INDEX_CE_19_C1,
+    NVRAM_PARAMS_CE_C1_END_INDEX_BUTT,
     /* SAR CONTROL */
-    NVRAM_PARAMS_SAR_START_INDEX_BUTT,
-    NVRAM_PARAMS_INDEX_45 = NVRAM_PARAMS_SAR_START_INDEX_BUTT,
+    NVRAM_PARAMS_SAR_START_INDEX,
+    NVRAM_PARAMS_INDEX_45 = NVRAM_PARAMS_SAR_START_INDEX,
     NVRAM_PARAMS_INDEX_46,
     NVRAM_PARAMS_INDEX_47,
     NVRAM_PARAMS_INDEX_48,
@@ -724,19 +930,63 @@ typedef enum
     NVRAM_PARAMS_INDEX_83,
     NVRAM_PARAMS_INDEX_84,
     NVRAM_PARAMS_SAR_END_INDEX_BUTT,
+    /* SAR CONTROL C1 */
+    NVRAM_PARAMS_SAR_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_45_C1 = NVRAM_PARAMS_SAR_C1_START_INDEX,
+    NVRAM_PARAMS_INDEX_46_C1,
+    NVRAM_PARAMS_INDEX_47_C1,
+    NVRAM_PARAMS_INDEX_48_C1,
+    NVRAM_PARAMS_INDEX_49_C1,
+    NVRAM_PARAMS_INDEX_50_C1,
+    NVRAM_PARAMS_INDEX_51_C1,
+    NVRAM_PARAMS_INDEX_52_C1,
+    NVRAM_PARAMS_INDEX_53_C1,
+    NVRAM_PARAMS_INDEX_54_C1,
+    NVRAM_PARAMS_INDEX_55_C1,
+    NVRAM_PARAMS_INDEX_56_C1,
+    NVRAM_PARAMS_INDEX_57_C1,
+    NVRAM_PARAMS_INDEX_58_C1,
+    NVRAM_PARAMS_INDEX_59_C1,
+    NVRAM_PARAMS_INDEX_60_C1,
+    NVRAM_PARAMS_INDEX_61_C1,
+    NVRAM_PARAMS_INDEX_62_C1,
+    NVRAM_PARAMS_INDEX_63_C1,
+    NVRAM_PARAMS_INDEX_64_C1,
+    NVRAM_PARAMS_INDEX_65_C1,
+    NVRAM_PARAMS_INDEX_66_C1,
+    NVRAM_PARAMS_INDEX_67_C1,
+    NVRAM_PARAMS_INDEX_68_C1,
+    NVRAM_PARAMS_INDEX_69_C1,
+    NVRAM_PARAMS_INDEX_70_C1,
+    NVRAM_PARAMS_INDEX_71_C1,
+    NVRAM_PARAMS_INDEX_72_C1,
+    NVRAM_PARAMS_INDEX_73_C1,
+    NVRAM_PARAMS_INDEX_74_C1,
+    NVRAM_PARAMS_INDEX_75_C1,
+    NVRAM_PARAMS_INDEX_76_C1,
+    NVRAM_PARAMS_INDEX_77_C1,
+    NVRAM_PARAMS_INDEX_78_C1,
+    NVRAM_PARAMS_INDEX_79_C1,
+    NVRAM_PARAMS_INDEX_80_C1,
+    NVRAM_PARAMS_INDEX_81_C1,
+    NVRAM_PARAMS_INDEX_82_C1,
+    NVRAM_PARAMS_INDEX_83_C1,
+    NVRAM_PARAMS_INDEX_84_C1,
+    NVRAM_PARAMS_SAR_C1_END_INDEX_BUTT,
+
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
     NVRAM_PARAMS_TAS_ANT_SWITCH_EN,
     /* TAS PWR CONTROL */
     NVRAM_PARAMS_TAS_PWR_CTRL,
 #endif
     NVRAM_PARAMS_5G_FCC_CE_HIGH_BAND_MAX_PWR,
+    NVRAM_PARAMS_INDEX_IQ_LPF_LVL,
 
     NVRAM_PARAMS_PWR_INDEX_BUTT,
-}NVRAM_PARAMS_INDEX;
+} NVRAM_PARAMS_INDEX;
 
 /* 03产侧nvram参数 */
-typedef enum
-{
+typedef enum {
 #ifdef _PRE_WLAN_DPINIT_CALI
     /* DP init */
     WLAN_CFG_NVRAM_DP2G_INIT0,
@@ -751,7 +1001,7 @@ typedef enum
     WLAN_CFG_DTS_NVRAM_RATIO_PA2GA1,
     WLAN_CFG_DTS_NVRAM_RATIO_PA2G40A1,
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA1,
-    /* add 5g low power part*/
+    /* add 5g low power part */
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA0_LOW,
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA1_LOW,
 
@@ -772,7 +1022,7 @@ typedef enum
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA1_BAND1,
     WLAN_CFG_DTS_NVRAM_RATIO_PA2GCWA0,
     WLAN_CFG_DTS_NVRAM_RATIO_PA2GCWA1,
-    /* add 5g low power part*/
+    /* add 5g low power part */
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA0_BAND1_LOW,
     WLAN_CFG_DTS_NVRAM_RATIO_PA5GA1_BAND1_LOW,
 
@@ -781,149 +1031,157 @@ typedef enum
 
     WLAN_CFG_DTS_NVRAM_PARAMS_BUTT,
     /* 新增系数依次往后添加 */
-}PRO_LINE_NVRAM_PARAMS_INDEX;
+} PRO_LINE_NVRAM_PARAMS_INDEX;
 
-
-/*****************************************************************************
+/*
   7 STRUCT定义
-*****************************************************************************/
+ */
 typedef unsigned char countrycode_t[COUNTRY_CODE_LEN];
-typedef struct
-{
-   regdomain_enum_uint8       en_regdomain;
-   countrycode_t        auc_country_code;
+typedef struct {
+    regdomain_enum_uint8 en_regdomain;
+    countrycode_t auc_country_code;
 } countryinfo_stru;
 
-/**
- *  regdomain <-> plat_tag map structure
- *
- **/
-typedef struct regdomain_plat_tag_map
-{
-    regdomain_enum_uint8  en_regdomain;
-    int             plat_tag;
+/* regdomain <-> plat_tag map structure */
+typedef struct regdomain_plat_tag_map {
+    regdomain_enum_uint8 en_regdomain;
+    int plat_tag;
 } regdomain_plat_tag_map_stru;
 
-typedef struct
-{
-    char*   name;
-    int     case_entry;
+typedef struct {
+    char *name;
+    int case_entry;
 } wlan_cfg_cmd;
 
-typedef struct
-{
-    oal_int32               l_val;
-    oal_bool_enum_uint8     en_value_state;
-}wlan_customize_private_stru;
+typedef struct {
+    oal_int32 l_val;
+    oal_bool_enum_uint8 en_value_state;
+} wlan_customize_private_stru;
 
-typedef struct wlan_cus_pwr_fit_para_stru
-{
-    oal_int32 l_pow_par2;   /* 二次项系数 */
-    oal_int32 l_pow_par1;   /* 一次 */
-    oal_int32 l_pow_par0;   /* 常数项 */
-}wlan_customize_pwr_fit_para_stru;
+typedef struct wlan_cus_pwr_fit_para_stru {
+    oal_int32 l_pow_par2; /* 二次项系数 */
+    oal_int32 l_pow_par1; /* 一次 */
+    oal_int32 l_pow_par0; /* 常数项 */
+} wlan_customize_pwr_fit_para_stru;
 
-typedef struct
-{
-    oal_uint8*   puc_nv_name;
-    oal_uint8*   puc_param_name;
-    oal_uint32   ul_nv_map_idx;
-    oal_uint8    uc_param_idx;
-    oal_uint8    auc_rsv[3];
+typedef struct {
+    oal_uint8 *puc_nv_name;
+    oal_uint8 *puc_param_name;
+    oal_uint32 ul_nv_map_idx;
+    oal_uint8 uc_param_idx;
+    oal_uint8 auc_rsv[3];
 } wlan_cfg_nv_map_handler;
 
 /* 定制化HOST全局变量结构体 */
-typedef struct
-{
+typedef struct {
     /* ba tx 聚合数 */
-    unsigned int    ul_ampdu_tx_max_num;
+    unsigned int ul_ampdu_tx_max_num;
     /* 漫游 */
-    unsigned char   uc_roam_switch;
-    unsigned char   uc_roam_scan_orthogonal;
-    signed char     c_roam_trigger_b;
-    signed char     c_roam_trigger_a;
-    signed char     c_roam_delta_b;
-    signed char     c_roam_delta_a;
+    unsigned char uc_roam_switch;
+    unsigned char uc_roam_scan_orthogonal;
+    signed char c_roam_trigger_b;
+    signed char c_roam_trigger_a;
+    signed char c_roam_delta_b;
+    signed char c_roam_delta_a;
     /* 漫游场景识别 */
-    signed char     c_dense_env_roam_trigger_b;
-    signed char     c_dense_env_roam_trigger_a;
-    oal_bool_enum_uint8    uc_scenario_enable;
-    signed char     c_candidate_good_rssi;
-    unsigned char   uc_candidate_good_num;
-    unsigned char   uc_candidate_weak_num;
+    signed char c_dense_env_roam_trigger_b;
+    signed char c_dense_env_roam_trigger_a;
+    oal_bool_enum_uint8 uc_scenario_enable;
+    signed char c_candidate_good_rssi;
+    unsigned char uc_candidate_good_num;
+    unsigned char uc_candidate_weak_num;
     /* 漫游间隔动态触发 */
-    oal_uint16      us_roam_interval;
+    oal_uint16 us_roam_interval;
 
     /* scan */
-    unsigned char   uc_random_mac_addr_scan;
+    unsigned char uc_random_mac_addr_scan;
     /* capab */
-    unsigned char   uc_disable_capab_2ght40;
+    unsigned char uc_disable_capab_2ght40;
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    unsigned int   ul_lte_gpio_check_switch;
-    unsigned int   ul_ism_priority;
-    unsigned int   ul_lte_rx;
-    unsigned int   ul_lte_tx;
-    unsigned int   ul_lte_inact;
-    unsigned int   ul_ism_rx_act;
-    unsigned int   ul_bant_pri;
-    unsigned int   ul_bant_status;
-    unsigned int   ul_want_pri;
-    unsigned int   ul_want_status;
+    unsigned int ul_lte_gpio_check_switch;
+    unsigned int ul_ism_priority;
+    unsigned int ul_lte_rx;
+    unsigned int ul_lte_tx;
+    unsigned int ul_lte_inact;
+    unsigned int ul_ism_rx_act;
+    unsigned int ul_bant_pri;
+    unsigned int ul_bant_status;
+    unsigned int ul_want_pri;
+    unsigned int ul_want_status;
+    /* connect */
+    unsigned char uc_random_mac_addr_connect;
 #endif
 } wlan_customize_stru;
 
-/* 不接受cust下发的切换国家码的命令
+/*
+ * 不接受cust下发的切换国家码的命令
  * 1、ini文件中国家码被配置成99
  * 2、维测需要:使用hipriv命令修改过国家码
-*/
+ */
+typedef struct {
+    oal_bool_enum_uint8 en_country_code_ingore_ini_flag;
+    oal_bool_enum_uint8 en_country_code_ingore_hipriv_flag;
+} wlan_cust_country_code_ingore_flag_stru;
+
+typedef struct {
+    oal_uint8 auc_sar_ctrl_params_c0;
+    oal_uint8 auc_sar_ctrl_params_c1;
+} wlan_cust_sar_ctrl_stru;
+
+/* FCC/CE边带功率定制项 */
 typedef struct
 {
-    oal_bool_enum_uint8     en_country_code_ingore_ini_flag;
-    oal_bool_enum_uint8     en_country_code_ingore_hipriv_flag;
-}wlan_cust_country_code_ingore_flag_stru;
-
-/* 1字节对齐 */
-#pragma pack(push,1)
-struct wlan_cust_nvram
-{
-    oal_int8  ac_delt_txpwr_params[NUM_OF_NV_MAX_TXPOWER];
-    oal_int8  ac_dpd_delt_txpwr_params[NUM_OF_NV_DPD_MAX_TXPOWER];
-    oal_int8  ac_11b_delt_txpwr_params[NUM_OF_NV_11B_DELTA_TXPOWER];
-    oal_uint8 auc_fem_off_iq_cal_pow_params[NUM_OF_IQ_CAL_POWER];
-    oal_uint8 auc_5g_upper_upc_params[NUM_OF_NV_5G_UPPER_UPC];
-    oal_int8  ac_2g_low_pow_amend_params[NUM_OF_NV_2G_LOW_POW_DELTA_VAL];
-    oal_uint8 auc_2g_txpwr_base_params[WLAN_RF_CHANNEL_NUMS][CUS_BASE_PWR_NUM_2G];
-    oal_uint8 auc_5g_txpwr_base_params[WLAN_RF_CHANNEL_NUMS][CUS_BASE_PWR_NUM_5G];
-    /* FCC/CE边带功率定制项 */
     oal_uint8 auc_5g_fcc_txpwr_limit_params_20M[CUS_NUM_5G_20M_SIDE_BAND];
     oal_uint8 auc_5g_fcc_txpwr_limit_params_40M[CUS_NUM_5G_40M_SIDE_BAND];
     oal_uint8 auc_5g_fcc_txpwr_limit_params_80M[CUS_NUM_5G_80M_SIDE_BAND];
     oal_uint8 auc_5g_fcc_txpwr_limit_params_160M[CUS_NUM_5G_160M_SIDE_BAND];
     oal_uint8 auc_2g_fcc_txpwr_limit_params[MAC_2G_CHANNEL_NUM][CUS_NUM_FCC_CE_2G_PRO];
+}wlan_cust_cfg_custom_fcc_ce_txpwr_limit_stru;
+
+/* 1字节对齐 */
+#pragma pack(push, 1)
+struct wlan_cust_nvram {
+    oal_int8 ac_delt_txpwr_params[NUM_OF_NV_MAX_TXPOWER];
+    oal_int8 ac_dpd_delt_txpwr_params[NUM_OF_NV_DPD_MAX_TXPOWER];
+    oal_int8 ac_11b_delt_txpwr_params[NUM_OF_NV_11B_DELTA_TXPOWER];
+    oal_uint8 auc_fem_off_iq_cal_pow_params[NUM_OF_IQ_CAL_POWER];
+    oal_uint8 auc_5g_upper_upc_params[NUM_OF_NV_5G_UPPER_UPC];
+    oal_int8 ac_2g_low_pow_amend_params[NUM_OF_NV_2G_LOW_POW_DELTA_VAL];
+    oal_uint8 auc_2g_txpwr_base_params[WLAN_RF_CHANNEL_NUMS][CUS_BASE_PWR_NUM_2G];
+    oal_uint8 auc_5g_txpwr_base_params[WLAN_RF_CHANNEL_NUMS][CUS_BASE_PWR_NUM_5G];
+    /* FCC/CE边带功率定制项 */
+    wlan_cust_cfg_custom_fcc_ce_txpwr_limit_stru ast_fcc_ce_param[WLAN_RF_CHANNEL_NUMS];
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
     /* TAS CTRL */
     oal_uint8 auc_tas_ctrl_params[WLAN_RF_CHANNEL_NUMS][WLAN_BAND_BUTT];
 #endif
     /* 5g ce/fcc国家高band的最大发射功率 */
     oal_uint8 uc_5g_max_pwr_fcc_ce_for_high_band;
-
-    /* SAR CTRL */
-    oal_uint8 auc_sar_ctrl_params[CUS_NUM_OF_SAR_LVL][CUS_NUM_OF_SAR_PARAMS];
-}__OAL_DECLARE_PACKED;
+    oal_uint8 auc_5g_iq_cali_lpf_params[NUM_OF_NV_5G_LPF_LVL];
+    oal_uint8 auc_rsv[2];
+} __OAL_DECLARE_PACKED;
 typedef struct wlan_cust_nvram wlan_cust_nvram_params;
 #pragma pack(pop)
 
-extern wlan_customize_pwr_fit_para_stru g_ast_pro_line_params[WLAN_RF_CHANNEL_NUMS][DY_CALI_PARAMS_NUM];
-extern wlan_cust_country_code_ingore_flag_stru g_st_cust_country_code_ignore_flag;
-extern wlan_customize_stru g_st_wlan_customize_etc;
-extern oal_bool_enum_uint8 g_en_nv_dp_init_is_null;      /* NVRAM中dp init置空标志 */
+typedef struct {
+    wlan_cust_nvram_params st_pow_ctrl_custom_param;
+    /* SAR CTRL */
+    wlan_cust_sar_ctrl_stru st_sar_ctrl_params[CUS_NUM_OF_SAR_LVL][CUS_NUM_OF_SAR_PARAMS];
+} wlan_init_cust_nvram_params;
+
+
+extern wlan_customize_pwr_fit_para_stru pro_line_params[WLAN_RF_CHANNEL_NUMS][DY_CALI_PARAMS_NUM];
+extern wlan_cust_country_code_ingore_flag_stru cust_country_code_ignore_flag;
+extern wlan_customize_stru wlan_customize_etc;
+extern oal_bool_enum_uint8 en_nv_dp_init_is_null; /* NVRAM中dp init置空标志 */
 extern oal_int16 gs_extre_point_vals[WLAN_RF_CHANNEL_NUMS][DY_CALI_NUM_5G_BAND];
 
 extern int hwifi_config_init_etc(int);
 extern int hwifi_get_init_value_etc(int, int);
 extern char *hwifi_get_country_code_etc(void);
-extern void hwifi_set_country_code_etc(char*, const unsigned int);
+extern void hwifi_set_country_code_etc(const char *, const unsigned int);
 extern int hwifi_get_mac_addr_etc(unsigned char *);
+extern void *hwifi_get_init_nvram_params_etc(void);
 extern void *hwifi_get_nvram_params_etc(void);
 extern int hwifi_is_regdomain_changed_etc(const countrycode_t, const countrycode_t);
 extern int hwifi_get_cfg_params(void);
@@ -932,16 +1190,7 @@ extern int hwifi_custom_host_read_cfg_init(void);
 extern int32 hwifi_get_init_priv_value(oal_int32 l_cfg_id, oal_int32 *pl_priv_value);
 extern regdomain_enum_uint8 hwifi_get_regdomain_from_country_code(const countrycode_t country_code);
 extern oal_uint8 *hwifi_get_nvram_param(oal_uint32 ul_nvram_param_idx);
-//#endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
-#endif //#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
+#endif  // #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
-
-#ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
-#endif
-
-#endif //hisi_customize_wifi.h
-
+#endif  // hisi_customize_wifi.h

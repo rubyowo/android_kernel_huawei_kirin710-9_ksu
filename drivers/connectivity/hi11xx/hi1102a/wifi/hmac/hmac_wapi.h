@@ -56,7 +56,7 @@ extern "C" {
 /*wapi key len*/
 
 
-//typedef void (* wapi_func)(void);
+
 
 
 
@@ -170,7 +170,7 @@ typedef struct
 *****************************************************************************/
 extern oal_uint32 hmac_wapi_deinit(hmac_wapi_stru *pst_wapi);
 extern oal_uint32 hmac_wapi_init(hmac_wapi_stru *pst_wapi, oal_uint8 uc_pairwise);
-//extern oal_uint32 hmac_wapi_en(hmac_vap_stru *pst_hmac_vap, oal_bool_enum_uint8 en_on);
+
 #ifdef _PRE_WAPI_DEBUG
 oal_uint32 hmac_wapi_display_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_usr_idx);
 #endif /* #ifdef _PRE_DEBUG_MODE */

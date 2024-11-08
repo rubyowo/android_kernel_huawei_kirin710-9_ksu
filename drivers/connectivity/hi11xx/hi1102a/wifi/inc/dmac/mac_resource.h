@@ -35,11 +35,7 @@ extern "C" {
 #endif
 
         /* mac_user_stru, hmac_user_stru私有部分, dmac_user_stru私有部分总规格，必须四字节对齐 */
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
 #define FEATURE_TX_CLASSIFY_LAN_TO_WLAN_RES_SIZE 1700 /* 增加业务识别功能后，hmac_user_stru结构体中增加用户业务信息，扩充规格为1700 */
-#else
-#define FEATURE_TX_CLASSIFY_LAN_TO_WLAN_RES_SIZE 0
-#endif  /* end of _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN */
 
 #define MAC_RES_USER_SIZE       (3724 + FEATURE_TX_CLASSIFY_LAN_TO_WLAN_RES_SIZE + 240) /* 原来为3560,后增大结构体成员后为3640,预留60（原因：51双核加载dmac出现改结构体过大）*/
 
@@ -164,7 +160,7 @@ OAL_STATIC OAL_INLINE oal_uint32  mac_res_alloc_hmac_vap(oal_uint8 *puc_idx, oal
         return OAL_FAIL;
     }
 
-    ul_idx_temp = (oal_uint)oal_queue_dequeue(&(g_st_mac_res.st_vap_res.st_queue));
+    ul_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_st_mac_res.st_vap_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_idx_temp)
@@ -261,7 +257,7 @@ OAL_STATIC OAL_INLINE oal_uint32  mac_res_alloc_hmac_user(oal_uint16 *pus_idx, o
         return OAL_FAIL;
     }
 
-    ul_idx_temp = (oal_uint)oal_queue_dequeue(&(g_st_mac_res.st_user_res.st_queue));
+    ul_idx_temp = (oal_uint)(uintptr_t)oal_queue_dequeue(&(g_st_mac_res.st_user_res.st_queue));
 
     /* 0为无效值 */
     if (0 == ul_idx_temp)

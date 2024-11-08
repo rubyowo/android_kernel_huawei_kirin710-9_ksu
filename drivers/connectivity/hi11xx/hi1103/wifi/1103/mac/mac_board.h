@@ -32,7 +32,7 @@ extern "C" {
 /*****************************************************************************
   DFX 宏定义
 *****************************************************************************/
-#if ((_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION) || (_PRE_OS_VERSION_WIN32_RAW == _PRE_OS_VERSION) || defined(_PRE_WIFI_DMT))&&(!defined(_PRE_PC_LINT))
+#if ((_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION) || (_PRE_OS_VERSION_WIN32_RAW == _PRE_OS_VERSION))&&(!defined(_PRE_PC_LINT))
 #define DFX_GET_PERFORMANCE_LOG_SWITCH_ENABLE(_uc_type) (0)
 #define DFX_SET_PERFORMANCE_LOG_SWITCH_ENABLE(_uc_type, _uc_value)
 #else
@@ -86,7 +86,7 @@ extern frw_event_sub_table_item_stru g_ast_dmac_wlan_ctx_event_sub_table_etc[DMA
 /* DMAC模块,WLAN_DRX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru g_ast_dmac_wlan_drx_event_sub_table_etc[HAL_WLAN_DRX_EVENT_SUB_TYPE_BUTT];
 
-#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST))
+#if (((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1105_DEV)) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST))
 /* DMAC模块，高优先级事件处理函数注册结构体定义 */
 extern frw_event_sub_table_item_stru g_ast_dmac_high_prio_event_sub_table_etc[HAL_EVENT_DMAC_HIGH_PRIO_SUB_TYPE_BUTT];
 #else
@@ -123,11 +123,6 @@ extern frw_event_sub_table_item_stru g_ast_hmac_wlan_ctx_event_sub_table_etc[DMA
 
 /* HMAC模块 MISC杂散事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru g_ast_hmac_wlan_misc_event_sub_table_etc[DMAC_MISC_SUB_TYPE_BUTT];
-
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-/* HMAC模块 IPC事件处理函数注册结构定义 */
-extern frw_event_sub_table_item_stru g_ast_hmac_host_drx_event_sub_table[DMAC_TX_HOST_DRX_BUTT];
-#endif
 
 extern hisi_device_board_enum_uint8 g_en_chip_type;
 

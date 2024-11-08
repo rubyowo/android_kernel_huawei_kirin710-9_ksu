@@ -188,20 +188,63 @@ extern "C" {
 /*****************************************************************************
   2.14 安全相关宏定义
 *****************************************************************************/
-    /* cipher suite selectors */
+/* 内核如果已经定义则使用内核的宏定义，但要注意内核宏定义值是否符合预期!! */
+/* cipher suite selectors */
+#ifndef WLAN_CIPHER_SUITE_USE_GROUP
 #define WLAN_CIPHER_SUITE_USE_GROUP 0x000FAC00
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_WEP40
 #define WLAN_CIPHER_SUITE_WEP40     0x000FAC01
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_TKIP
 #define WLAN_CIPHER_SUITE_TKIP      0x000FAC02
-    /* reserved:                0x000FAC03 */
+#endif
+
+/* reserved:                0x000FAC03 */
+#ifndef WLAN_CIPHER_SUITE_CCMP
 #define WLAN_CIPHER_SUITE_CCMP      0x000FAC04
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_WEP104
 #define WLAN_CIPHER_SUITE_WEP104    0x000FAC05
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_AES_CMAC
 #define WLAN_CIPHER_SUITE_AES_CMAC  0x000FAC06
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_GCMP
+#define WLAN_CIPHER_SUITE_GCMP      0x000FAC08
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_GCMP_256
+#define WLAN_CIPHER_SUITE_GCMP_256  0x000FAC09
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_CCMP_256
+#define WLAN_CIPHER_SUITE_CCMP_256  0x000FAC0A
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_GMAC_128
+#define WLAN_CIPHER_SUITE_BIP_GMAC_128  0x000FAC0B
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_GMAC_256
+#define WLAN_CIPHER_SUITE_BIP_GMAC_256  0x000FAC0C
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_CMAC_256
+#define WLAN_CIPHER_SUITE_BIP_CMAC_256  0x000FAC0D
+#endif
+
 #undef  WLAN_CIPHER_SUITE_SMS4
 #define WLAN_CIPHER_SUITE_SMS4      0x00147201
 
 /* AKM suite selectors */
-#define WITP_WLAN_AKM_SUITE_8021X	     0x000FAC01
-#define WITP_WLAN_AKM_SUITE_PSK		     0x000FAC02
+#define WITP_WLAN_AKM_SUITE_8021X        0x000FAC01
+#define WITP_WLAN_AKM_SUITE_PSK          0x000FAC02
 #define WITP_WLAN_AKM_SUITE_WAPI_PSK     0x000FAC04
 #define WITP_WLAN_AKM_SUITE_WAPI_CERT    0x000FAC12
 
@@ -326,6 +369,7 @@ typedef enum
     WLAN_RTS_RATE_SELECT_MODE_BUTT
 }wlan_rts_rate_select_mode_enum;
 
+#if IS_HOST
 typedef enum
 {
     WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
@@ -333,12 +377,29 @@ typedef enum
     WLAN_WITP_AUTH_FT,
     WLAN_WITP_AUTH_NETWORK_EAP,
     WLAN_WITP_AUTH_SAE,
-    WLAN_WITP_AUTH_NUM,
-    WLAN_WITP_AUTH_MAX = WLAN_WITP_AUTH_NUM - 1,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+    /* 4.10以上版本新增3个FILS相关认证类型 */
+    WLAN_WITP_AUTH_FILS_SK,
+    WLAN_WITP_AUTH_FILS_SK_PFS,
+    WLAN_WITP_AUTH_FILS_PK,
+#endif
     WLAN_WITP_AUTH_AUTOMATIC,
 
     WLAN_WITP_ALG_AUTH_BUTT
 }wlan_auth_alg_mode_enum;
+#else
+typedef enum
+{
+    WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
+    WLAN_WITP_AUTH_SHARED_KEY,
+    WLAN_WITP_AUTH_FT,
+    WLAN_WITP_AUTH_NETWORK_EAP,
+    WLAN_WITP_AUTH_SAE,
+    WLAN_WITP_AUTH_FILS_SK,
+    WLAN_WITP_AUTH_FILS_SK_PFS,
+    WLAN_WITP_AUTH_FILS_PK,
+}wlan_auth_alg_mode_enum;
+#endif
 typedef oal_uint8 wlan_auth_alg_enum_uint8;
 
 typedef enum

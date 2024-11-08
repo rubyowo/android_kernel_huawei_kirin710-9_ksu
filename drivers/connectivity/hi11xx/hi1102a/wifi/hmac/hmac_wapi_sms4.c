@@ -64,7 +64,7 @@ oal_void  hmac_sms4_crypt(oal_uint8 *puc_input, oal_uint8 *puc_output, oal_uint3
      oal_uint32         r;
      oal_uint32         mid;
      oal_uint32         x[4];
-     oal_uint32        *p;
+     oal_uint32        *p = OAL_PTR_NULL;
 
      oal_memcopy(x,puc_input,16);
 #if (_PRE_LITTLE_CPU_ENDIAN == _PRE_CPU_ENDIAN)

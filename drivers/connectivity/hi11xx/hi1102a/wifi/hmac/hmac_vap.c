@@ -27,6 +27,7 @@ extern "C" {
 #include "hmac_fsm.h"
 #include "hmac_ext_if.h"
 #include "hmac_chan_mgmt.h"
+#include "hmac_sme_sta.h"
 
 #include "hmac_edca_opt.h"
 #ifdef _PRE_WLAN_FEATURE_MCAST
@@ -49,6 +50,7 @@ extern "C" {
 #endif
 #include "hmac_mgmt_sta.h"
 #include "hmac_mgmt_ap.h"
+#include "hmac_tcp_ack_filter.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_VAP_C
@@ -102,6 +104,9 @@ oal_uint8  g_uc_host_rx_ampdu_amsdu = OAL_FALSE;
 extern oal_void hmac_del_virtual_inf_worker(oal_work_stru *pst_del_virtual_inf_work);
 #endif
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_void hmac_report_ext_auth_worker(oal_work_stru *pst_sae_report_ext_auth_worker);
+#endif
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -115,8 +120,7 @@ oal_uint32  hmac_vap_init(
 {
     oal_uint32      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_hmac_vap))
-    {
+    if (OAL_UNLIKELY(pst_hmac_vap == OAL_PTR_NULL)) {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_vap_init::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -126,8 +130,7 @@ oal_uint32  hmac_vap_init(
                           uc_device_id,
                           uc_vap_id,
                           pst_param);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
-    {
+    if (OAL_UNLIKELY(OAL_SUCC != ul_ret)) {
         OAM_WARNING_LOG1(uc_vap_id, OAM_SF_ANY, "{hmac_vap_init::mac_vap_init failed[%d].}", ul_ret);
         return ul_ret;
     }
@@ -143,13 +146,11 @@ oal_uint32  hmac_vap_init(
     pst_hmac_vap->st_preset_para.en_band       = pst_hmac_vap->st_vap_base_info.st_channel.en_band;
 #ifdef _PRE_WLAN_FEATURE_PROXYSTA
     /* ProxySTA起来后一段时间ap信号消失,原因是AP踢出用户后，用户重新关联后采用en_band设置tcp值 */
-    if(1 == pst_hmac_vap->st_vap_base_info.uc_chip_id)  /* 目前835产品2G芯片都是在芯片1上 后续如果其他产品有变动，需要增加修改 TODO */
-    {
-       pst_hmac_vap->st_preset_para.en_band = WLAN_BAND_2G;
-    }
-    else
-    {
-       pst_hmac_vap->st_preset_para.en_band = WLAN_BAND_5G;
+    if(1 == pst_hmac_vap->st_vap_base_info.uc_chip_id) {
+        /* 目前835产品2G芯片都是在芯片1上 后续如果其他产品有变动，需要增加修改 TODO */
+        pst_hmac_vap->st_preset_para.en_band = WLAN_BAND_2G;
+    } else {
+        pst_hmac_vap->st_preset_para.en_band = WLAN_BAND_5G;
     }
 #endif
     /* 初始化配置私有结构体 */
@@ -168,7 +169,7 @@ oal_uint32  hmac_vap_init(
 #ifdef _PRE_WLAN_FEATURE_MULTI_NETBUF_AMSDU
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
     /* 从定制化获取是否开启AMSDU_AMPDU*/
-    pst_hmac_vap->en_amsdu_ampdu_active = g_st_tx_large_amsdu.uc_tx_amsdu_ampdu_en;
+    pst_hmac_vap->en_amsdu_ampdu_active = tx_large_amsdu.uc_tx_amsdu_ampdu_en;
     //1102A默认支持接收方向的AMPDU+AMSDU联合聚合,通过定制化决定
     pst_hmac_vap->en_rx_ampduplusamsdu_active = g_uc_host_rx_ampdu_amsdu;
 #endif
@@ -202,9 +203,10 @@ oal_uint32  hmac_vap_init(
     pst_hmac_vap->en_updata_rd_by_ie_switch = OAL_FALSE;
 #endif
     OAL_WAIT_QUEUE_INIT_HEAD(&pst_hmac_vap->query_wait_q);
+    OAL_WAIT_QUEUE_INIT_HEAD(&pst_hmac_vap->st_chr_wifi_ext_info_query.st_query_chr_wait_q);
+
     /* 根据配置VAP，将对应函数挂接在业务VAP，区分AP、STA和WDS模式 */
-    switch(pst_param->en_vap_mode)
-    {
+    switch(pst_param->en_vap_mode) {
         case WLAN_VAP_MODE_BSS_AP:
          /* 组播转单播初始化函数 */
         #ifdef _PRE_WLAN_FEATURE_MCAST
@@ -219,13 +221,9 @@ oal_uint32  hmac_vap_init(
             FRW_TIMER_RESTART_TIMER(&(pst_hmac_vap->st_edca_opt_timer), pst_hmac_vap->ul_edca_opt_time_ms, OAL_TRUE);
         #endif
 
-        #ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-            pst_hmac_vap->uc_tx_traffic_classify_flag = OAL_SWITCH_ON;  /* AP模式默认业务识别功能开启 */
-        #endif  /* _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN */
-
- 		#ifdef _PRE_WLAN_FEATURE_HILINK
+        #ifdef _PRE_WLAN_FEATURE_HILINK
             hmac_fbt_init(pst_hmac_vap);    /* 快速切换特性初始化 */
-		#endif
+        #endif
 
             break;
 
@@ -248,9 +246,6 @@ oal_uint32  hmac_vap_init(
             pst_hmac_vap->uc_cfg_sta_pm_manual = 0xFF;
         #endif
 
-        #ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-            pst_hmac_vap->uc_tx_traffic_classify_flag = OAL_SWITCH_ON;  /* STA模式默认业务识别功能开启 */
-        #endif  /* _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN */
             break;
 
         case WLAN_VAP_MODE_CONFIG:
@@ -295,14 +290,16 @@ oal_uint32  hmac_vap_init(
     pst_hmac_vap->pst_del_net_device    = OAL_PTR_NULL;
     pst_hmac_vap->pst_p2p0_net_device   = OAL_PTR_NULL;
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+    OAL_INIT_WORK(&(pst_hmac_vap->st_sae_report_ext_auth_worker), hmac_report_ext_auth_worker);
+#endif
 #ifdef _PRE_WLAN_TCP_OPT
     pst_hmac_vap->ast_hmac_tcp_ack[HCC_TX].filter_info.ul_ack_limit = DEFAULT_TX_TCP_ACK_THRESHOLD;
     pst_hmac_vap->ast_hmac_tcp_ack[HCC_RX].filter_info.ul_ack_limit = DEFAULT_RX_TCP_ACK_THRESHOLD;
     hmac_tcp_opt_init_filter_tcp_ack_pool(pst_hmac_vap);
 #endif
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    if(IS_LEGACY_STA(&pst_hmac_vap->st_vap_base_info))
-    {
+    if(IS_LEGACY_STA(&pst_hmac_vap->st_vap_base_info)) {
 #ifdef _PRE_WLAN_FEATURE_11K
         //pst_hmac_vap->bit_voe_enable    = OAL_FALSE;
         pst_hmac_vap->bit_11k_enable   = g_st_mac_voe_custom_param.en_11k;
@@ -320,13 +317,17 @@ oal_uint32  hmac_vap_init(
 #endif
     }
 #endif
+
+    g_aus_tcp_ack_filter_th[0][0] = g_ul_2G_tx_large_pps_th;
+    g_aus_tcp_ack_filter_th[1][0] = g_ul_5G_tx_large_pps_th;
+
     return OAL_SUCC;
 }
 
 
 oal_uint32  hmac_vap_get_priv_cfg(mac_vap_stru *pst_mac_vap, hmac_vap_cfg_priv_stru **ppst_cfg_priv)
 {
-    hmac_vap_stru   *pst_hmac_vap;
+    hmac_vap_stru   *pst_hmac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
     {
@@ -421,17 +422,22 @@ oal_uint32  hmac_vap_free_asoc_req_ie_ptr(oal_uint8 uc_vap_id)
 
 
 
-oal_uint32  hmac_vap_creat_netdev(hmac_vap_stru *pst_hmac_vap, oal_int8 *puc_netdev_name, oal_int8 *puc_mac_addr)
-
+oal_uint32  hmac_vap_creat_netdev(hmac_vap_stru *pst_hmac_vap, oal_int8 *puc_netdev_name,
+    oal_uint32 ul_netdev_name_len, oal_int8 *puc_mac_addr)
 {
-    oal_net_device_stru *pst_net_device;
+    oal_net_device_stru *pst_net_device = OAL_PTR_NULL;
     oal_uint32           ul_return;
-    mac_vap_stru        *pst_vap;
+    mac_vap_stru        *pst_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == puc_netdev_name)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ASSOC, "{hmac_vap_creat_netdev::param null %d %d.}", pst_hmac_vap, puc_netdev_name);
+        OAM_ERROR_LOG2(0, OAM_SF_ASSOC, "{hmac_vap_creat_netdev::param null %x %x.}", (uintptr_t)pst_hmac_vap, (uintptr_t)puc_netdev_name);
         return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    if (ul_netdev_name_len > MAC_NET_DEVICE_NAME_LENGTH) {
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_vap_creat_netdev::netdev_name_len[%d] is over max limit!}", ul_netdev_name_len);
+        return OAL_FAIL;
     }
 
     pst_vap = &pst_hmac_vap->st_vap_base_info;
@@ -541,9 +547,9 @@ oal_uint16 hmac_vap_check_ht_capabilities_ap(
     oal_bool_enum           en_prev_asoc_ht = OAL_FALSE;
     oal_bool_enum           en_prev_asoc_non_ht = OAL_FALSE;
     mac_user_ht_hdl_stru   *pst_ht_hdl      = &(pst_hmac_user_sta->st_user_base_info.st_ht_hdl);
-    hmac_amsdu_stru        *pst_amsdu;
+    hmac_amsdu_stru        *pst_amsdu = OAL_PTR_NULL;
     oal_uint32              ul_amsdu_idx;
-    mac_protection_stru    *pst_protection;
+    mac_protection_stru    *pst_protection = OAL_PTR_NULL;
     oal_uint8              *puc_ie          = OAL_PTR_NULL;
 
     if (OAL_FALSE == mac_mib_get_HighThroughputOptionImplemented(&pst_hmac_vap->st_vap_base_info))
@@ -678,38 +684,38 @@ oal_uint16 hmac_vap_check_vht_capabilities_ap(
                 oal_uint32                       ul_msg_len,
                 hmac_user_stru                  *pst_hmac_user_sta)
 {
-    oal_uint8              *puc_vht_cap_ie;
-    mac_vap_stru           *pst_mac_vap;
+    oal_uint8              *puc_vht_cap_ie = OAL_PTR_NULL;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
     //mac_user_stru          *pst_mac_user;
-    oal_uint8              *puc_vendor_vht_ie;
+    oal_uint8              *puc_vendor_vht_ie = OAL_PTR_NULL;
     oal_uint32              ul_vendor_vht_ie_offset = MAC_WLAN_OUI_VENDOR_VHT_HEADER + MAC_IE_HDR_LEN;
-    oal_uint8              *puc_ie_tmp;
+    oal_uint8              *puc_ie_tmp = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == puc_payload || OAL_PTR_NULL == pst_hmac_user_sta)
     {
         OAM_ERROR_LOG3(0, OAM_SF_ANY,
-                                 "{hmac_vap_check_vht_capabilities_ap::param null,%d %d %d.}",
-                                 pst_hmac_vap, puc_payload, pst_hmac_user_sta);
+                                 "{hmac_vap_check_vht_capabilities_ap::param null,%x %x %x.}",
+                                 (uintptr_t)pst_hmac_vap, (uintptr_t)puc_payload, (uintptr_t)pst_hmac_user_sta);
         return MAC_UNSPEC_FAIL;
 
     }
     pst_mac_vap   = &(pst_hmac_vap->st_vap_base_info);
     //pst_mac_user  = &(pst_hmac_user_sta->st_user_base_info);
 
-    //puc_vht_cap_ie  = mac_get_vht_cap_ie(puc_payload, (oal_uint16)ul_msg_len, us_info_elem_offset);
+
     puc_vht_cap_ie = mac_find_ie(MAC_EID_VHT_CAP, puc_payload + us_info_elem_offset, (oal_int32)(ul_msg_len - us_info_elem_offset));
     if (OAL_PTR_NULL != puc_vht_cap_ie)
     {
-        #if 0
-        /* 不允许VHT STA 使用 TKIP/WEP 加密 */
-        if (mac_is_wep_enabled(pst_mac_vap))
-        {
-            OAM_WARNING_LOG1(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_ANY,
-                                 "{hmac_vap_check_vht_capabilities_ap::Rejecting a VHT STA because of its Pairwise Cipher[%]d.}",
-                                 pst_mac_user->st_key_info.en_cipher_type);
-            return MAC_MISMATCH_HTCAP;
-        }
-        #endif
+
+
+
+
+
+
+
+
+
+
 
         hmac_proc_vht_cap_ie(pst_mac_vap, pst_hmac_user_sta, puc_vht_cap_ie);
     }
@@ -789,15 +795,15 @@ oal_uint32  hmac_search_ht_cap_ie_ap(
     oal_uint8                   uc_ht_green_field;
     oal_uint8                   uc_lsig_txop_protection_support;
     oal_uint8                   uc_mcs_bmp_index;
-    oal_uint8				   *puc_tmp_payload;
+    oal_uint8				   *puc_tmp_payload = OAL_PTR_NULL;
     oal_uint16					us_tmp_info_elem = 0;
 	oal_uint16					us_tmp_txbf_low = 0;
 	oal_uint32					ul_tmp_txbf_elem = 0;
 
-    mac_user_ht_hdl_stru        *pst_ht_hdl;
+    mac_user_ht_hdl_stru        *pst_ht_hdl = OAL_PTR_NULL;
     mac_user_ht_hdl_stru         st_ht_hdl;
-    mac_vap_stru                *pst_mac_vap;
-    mac_user_stru               *pst_mac_user;
+    mac_vap_stru                *pst_mac_vap = OAL_PTR_NULL;
+    mac_user_stru               *pst_mac_user = OAL_PTR_NULL;
     mac_device_stru             *pst_mac_device;
 
     pst_mac_device = mac_res_get_dev(pst_hmac_vap->st_vap_base_info.uc_device_id);
@@ -974,8 +980,8 @@ oal_bool_enum_uint8 hmac_vap_addba_check(
                 hmac_user_stru   *pst_hmac_user,
                 oal_uint8         uc_tidno)
 {
-    mac_device_stru   *pst_mac_device;
-    hmac_tid_stru     *pst_hmac_tid_info;
+    mac_device_stru   *pst_mac_device = OAL_PTR_NULL;
+    hmac_tid_stru     *pst_hmac_tid_info = OAL_PTR_NULL;
 
     /* 判断HMAC VAP的是否支持聚合 */
     if (!((pst_hmac_vap->en_tx_aggr_on) || (pst_hmac_vap->st_vap_base_info.st_cap_flag.bit_rifs_tx_on)))
@@ -1061,7 +1067,7 @@ oal_void hmac_vap_net_stopall(oal_void)
             break;
 
         oal_net_tx_stop_all_queues(pst_net_device);
-        //OAL_IO_PRINT("stop net device:%p\n", pst_net_device);
+
     }
 }
 
@@ -1117,12 +1123,12 @@ OAL_STATIC oal_void hmac_vap_wake_subq(oal_uint8 uc_vap_id, oal_uint16 us_queue_
         return;
     }
 
-#if 0
-    if ((MAC_VAP_STATE_UP != pst_hmac_vap->st_vap_base_info.en_vap_state))
-    {
-        return;
-    }
-#endif
+
+
+
+
+
+
 
     pst_net_device = pst_hmac_vap->pst_net_device;
     if(NULL == pst_net_device)
@@ -1176,12 +1182,12 @@ OAL_STATIC oal_void  hmac_vap_stop_subq(oal_uint8 uc_vap_id, oal_uint16 us_queue
         return;
     }
 
-#if 0
-    if ((MAC_VAP_STATE_UP != pst_hmac_vap->st_vap_base_info.en_vap_state))
-    {
-        return;
-    }
-#endif
+
+
+
+
+
+
 
     pst_net_device = pst_hmac_vap->pst_net_device;
     if(NULL == pst_net_device)
@@ -1241,7 +1247,7 @@ oal_void hmac_vap_net_startall(oal_void)
             break;
 
         oal_net_tx_wake_all_queues(pst_net_device);
-        //OAL_IO_PRINT("start net device:%p\n", pst_net_device);
+
     }
 }
 
@@ -1265,9 +1271,9 @@ oal_uint32 hmac_check_opmode_notify(
     if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == puc_payload) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == puc_mac_hdr))
     {
         OAM_ERROR_LOG4(0, OAM_SF_ANY, "{hmac_check_opmode_notify::pst_hmac_vap = [%x], puc_payload = [%x], pst_hmac_user = [%x],puc_mac_hdr = [%x]!}\r\n",
-                        pst_hmac_vap, puc_payload, pst_hmac_user, puc_mac_hdr);
-        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{hmac_check_opmode_notify::param null, %d %d %d %d.}",
-                       pst_hmac_vap, puc_payload, pst_hmac_user, puc_mac_hdr);
+                        (uintptr_t)pst_hmac_vap, (uintptr_t)puc_payload, (uintptr_t)pst_hmac_user, (uintptr_t)puc_mac_hdr);
+        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{hmac_check_opmode_notify::param null, %x %x %x %x.}",
+                       (uintptr_t)pst_hmac_vap, (uintptr_t)puc_payload, (uintptr_t)pst_hmac_user, (uintptr_t)puc_mac_hdr);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1280,7 +1286,7 @@ oal_uint32 hmac_check_opmode_notify(
         return OAL_SUCC;
     }
 
-    //puc_opmode_notify_ie = mac_get_opmode_notify_ie(puc_payload, (oal_uint16)ul_msg_len, us_info_elem_offset);
+
     puc_opmode_notify_ie = mac_find_ie(MAC_EID_OPMODE_NOTIFY, puc_payload + us_info_elem_offset, (oal_int32)(ul_msg_len - us_info_elem_offset));
     if ((OAL_PTR_NULL != puc_opmode_notify_ie) && (puc_opmode_notify_ie[1] >= MAC_OPMODE_NOTIFY_LEN))
     {
@@ -1358,6 +1364,28 @@ oal_void hmac_del_virtual_inf_worker(oal_work_stru *pst_del_virtual_inf_work)
 }
 #endif	/* _PRE_WLAN_FEATURE_P2P */
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+/*
+ * 函 数 名  : hmac_report_ext_auth_worker
+ * 功能描述  : 上报EXTERNAL_AUTH_START事件到wal
+ */
+oal_void hmac_report_ext_auth_worker(oal_work_stru *pst_sae_report_ext_auth_worker)
+{
+    hmac_vap_stru *pst_hmac_vap;
+
+    pst_hmac_vap = OAL_CONTAINER_OF(pst_sae_report_ext_auth_worker, hmac_vap_stru, st_sae_report_ext_auth_worker);
+    if (pst_hmac_vap == OAL_PTR_NULL) {
+        OAM_ERROR_LOG0(0, OAM_SF_CFG, "{hmac_report_ext_auth_worker:: hmac_vap is null}");
+        return;
+    }
+
+    OAM_WARNING_LOG0(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_CFG,
+                    "{hmac_report_ext_auth_worker:: hmac_report_external_auth_req_etc auth start}");
+
+    hmac_report_external_auth_req(pst_hmac_vap, NL80211_EXTERNAL_AUTH_START);
+}
+#endif
+
 
 oal_void hmac_handle_disconnect_rsp(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user,
                                                   mac_reason_code_enum_uint16  en_disasoc_reason)
@@ -1388,14 +1416,20 @@ oal_void hmac_handle_disconnect_rsp(hmac_vap_stru *pst_hmac_vap, hmac_user_stru 
 oal_uint8 * hmac_vap_get_pmksa(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_bssid)
 {
     hmac_pmksa_cache_stru              *pst_pmksa_cache = OAL_PTR_NULL;
-    oal_dlist_head_stru                *pst_pmksa_entry;
-    oal_dlist_head_stru                *pst_pmksa_entry_tmp;
+    oal_dlist_head_stru                *pst_pmksa_entry = OAL_PTR_NULL;
+    oal_dlist_head_stru                *pst_pmksa_entry_tmp = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_hmac_vap || OAL_PTR_NULL == puc_bssid)
     {
         OAM_ERROR_LOG0(0, OAM_SF_CFG, "{hmac_vap_get_pmksa param null}\r\n");
         return OAL_PTR_NULL;
     }
+
+#ifdef _PRE_WLAN_FEATURE_SAE
+    if (pst_hmac_vap->en_auth_mode == WLAN_WITP_AUTH_SAE) {
+        return OAL_PTR_NULL;
+    }
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
     if (oal_dlist_is_empty(&(pst_hmac_vap->st_pmksa_list_head)))
     {
@@ -1417,7 +1451,7 @@ oal_uint8 * hmac_vap_get_pmksa(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_bssid
         pst_pmksa_cache = OAL_PTR_NULL;
     }
 
-    if (pst_pmksa_cache)
+    if (pst_pmksa_cache != OAL_PTR_NULL)
     {
         oal_dlist_add_head(&(pst_pmksa_cache->st_entry), &(pst_hmac_vap->st_pmksa_list_head));
         return pst_pmksa_cache->auc_pmkid;

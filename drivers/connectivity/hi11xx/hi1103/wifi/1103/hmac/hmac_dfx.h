@@ -30,7 +30,38 @@ extern "C" {
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+#ifdef _PRE_WLAN_1103_CHR
+typedef enum
+{
+    HMAC_CHR_ROAM_SUCCESS= 0,
+    HMAC_CHR_ROAM_SCAN_FAIL =1,
+    HMAC_CHR_ROAM_HANDSHAKE_FAIL =2,
+    HMAC_CHR_ROAM_CONNECT_FAIL = 3,
+    HMAC_CHR_ROAM_TIMEOUT_FAIL =4,
 
+    HMAC_CHR_ROAM_REASON_BUTT
+}hmac_chr_roam_fail_reason;
+typedef oal_uint8 roam_fail_reason_enum_uint8;
+
+typedef enum
+{
+    HMAC_CHR_ROAM_NORMAL = 0,
+    HMAC_CHR_OVER_DS = 1,
+    HMAC_CHR_OVER_THE_AIR = 2,
+
+    HMAC_CHR_ROAM_MODE_BUTT
+}hmac_chr_roam_mode;
+typedef oal_uint8 roam_mode_enum_uint8;
+
+typedef enum
+{
+    HMAC_CHR_NON_11K_SCAN= 0,
+    HMAC_CHR_11K_SCAN = 1,
+
+    HMAC_CHR_SCAN_MODE_BUTT
+}hmac_chr_scan_mode;
+typedef oal_uint8 scan_mode_enum_uint8;
+#endif
 
 /*****************************************************************************
   4 全局变量声明
@@ -89,6 +120,18 @@ typedef struct tag_hmac_chr_connect_fail_report_stru
     oal_uint16   us_err_code;
     oal_uint8    _resv[2];
 }mac_chr_connect_fail_report_stru;
+
+typedef struct
+{
+    oal_uint8  uc_trigger;
+    oal_uint8  uc_roam_result;
+    oal_uint8  uc_scan_mode;
+    oal_uint8  uc_roam_mode;
+    oal_uint32 uc_scan_time;
+    oal_uint32 uc_connect_time;
+    oal_uint8  _resv[4];
+}hmac_chr_roam_info_stru;
+
 #endif
 /*****************************************************************************
   5 消息头定义

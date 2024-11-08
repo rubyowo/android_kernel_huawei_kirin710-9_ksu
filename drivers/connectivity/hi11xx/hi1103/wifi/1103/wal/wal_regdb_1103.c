@@ -2162,6 +2162,18 @@ static const struct ieee80211_regdomain regdom_MM = {
     .n_reg_rules = 5
 };
 
+/* Ãÿ ‚π‹÷∆”Ú £¨2g channel 1~11 5g channel 36~48 52~64 100~140*/
+static const struct ieee80211_regdomain regdom_ZZ = {
+    .alpha2 = "ZZ",
+    .reg_rules = {
+        REG_RULE(2402, 2472, 40, 0, 20, 0),
+        REG_RULE(5170, 5250, 80, 0, 20, 0),
+        REG_RULE(5250, 5330, 80, 0, 20, 0),
+        REG_RULE(5490, 5710, 80, 0, 20, 0),
+    },
+    .n_reg_rules = 4
+};
+
 /* country alpha2 code can search from http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 */
 const struct ieee80211_regdomain *reg_regdb_etc[] = {
     &regdom_AA,
@@ -2316,6 +2328,7 @@ const struct ieee80211_regdomain *reg_regdb_etc[] = {
     &regdom_ZA,
     &regdom_ZM,
     &regdom_ZW,
+    &regdom_ZZ,
 };
 
 int reg_regdb_size_etc = ARRAY_SIZE(reg_regdb_etc);

@@ -18,6 +18,7 @@
 #include "hmac_ext_if.h"
 #include "mac_data.h"
 #include "hmac_resource.h"
+#include "hmac_user.h"
 #include "hmac_btcoex.h"
 #include "hmac_fsm.h"
 #include "hmac_mgmt_sta.h"
@@ -28,7 +29,7 @@
 /*****************************************************************************
   2 函数声明
 *****************************************************************************/
-
+oal_bool_enum_uint8 g_en_btcoex_reject_addba = OAL_FALSE;
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -61,7 +62,7 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hma
 
     if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_hmac_user))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_COEX, "hmac_btcoex_delba_from_user:pst_mac_vap=%x,pst_hmac_user=%x",pst_mac_vap,pst_hmac_user);
+        OAM_ERROR_LOG2(0, OAM_SF_COEX, "hmac_btcoex_delba_from_user:pst_mac_vap=%x,pst_hmac_user=%x", (uintptr_t)pst_mac_vap, (uintptr_t)pst_hmac_user);
         return OAL_ERR_CODE_PTR_NULL;
     }
     st_mac_cfg_delba_param.en_direction = MAC_RECIPIENT_DELBA;
@@ -85,7 +86,7 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hma
             OAM_WARNING_LOG0(0, OAM_SF_COEX, "{hmac_btcoex_delba_from_user::need to reassoc to READDBA.}");
 
             /* 发起reassoc req */
-            //hmac_roam_trigger_handle(pst_hmac_vap, -122, OAL_TRUE);
+
             hmac_roam_start(pst_hmac_vap, ROAM_SCAN_CHANNEL_ORG_0, OAL_FALSE, ROAM_TRIGGER_COEX);
 
             /* 重关联之后，刷新为允许建立聚合 */
@@ -100,9 +101,11 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hma
     else if(OAL_TRUE == hmac_btcoex_check_exception_in_list(pst_hmac_vap, pst_hmac_user->st_user_base_info.auc_user_mac_addr))
     {
         /* 在黑名单之中，例如845N上行跑流，即使上行跑流没有进入黑名单，蓝牙结束仍然需要采用重关联，不然对端不回复arp rsp */
-        if(WLAN_AMPDU_RX_BA_LUT_WSIZE == pst_hmac_user->st_hmac_user_btcoex.uc_ba_size)
+        if((WLAN_AMPDU_RX_BA_LUT_WSIZE == pst_hmac_user->st_hmac_user_btcoex.uc_ba_size) ||
+            (pst_hmac_user->st_hmac_user_btcoex.uc_rx_no_pkt_count > 2))
         {
-            OAM_WARNING_LOG0(0, OAM_SF_COEX, "{hmac_btcoex_delba_from_user::blacklist user need to reassoc when bt is over.}");
+            OAM_WARNING_LOG2(0, OAM_SF_COEX, "{hmac_btcoex_delba_from_user::blacklist user ba_size[%d],rx_no_pkt_count[%d].}",
+                pst_hmac_user->st_hmac_user_btcoex.uc_ba_size, pst_hmac_user->st_hmac_user_btcoex.uc_rx_no_pkt_count);
             hmac_roam_start(pst_hmac_vap, ROAM_SCAN_CHANNEL_ORG_0, OAL_FALSE, ROAM_TRIGGER_COEX);
             return OAL_FAIL;
         }
@@ -258,7 +261,7 @@ oal_void hmac_btcoex_arp_fail_delba_process(oal_netbuf_stru *pst_netbuf, mac_vap
 
             FRW_TIMER_CREATE_TIMER(&(pst_hmac_btcoex_arp_req_process->st_delba_opt_timer),
                        hmac_delba_send_timeout,
-                       300,
+                       500,
                        pst_hmac_user,
                        OAL_FALSE,
                        OAM_MODULE_ID_HMAC,
@@ -277,7 +280,7 @@ oal_uint32 hmac_btcoex_check_exception_in_list(oal_void *p_arg, oal_uint8 *auc_a
 
     if ((OAL_PTR_NULL == p_arg) || (OAL_PTR_NULL == auc_addr))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_COEX, "hmac_btcoex_check_exception_in_list:p_arg=%x,auc_addr=%x",p_arg,auc_addr);
+        OAM_ERROR_LOG2(0, OAM_SF_COEX, "hmac_btcoex_check_exception_in_list:p_arg=%x,auc_addr=%x", (uintptr_t)p_arg, (uintptr_t)auc_addr);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -483,6 +486,122 @@ oal_uint32 hmac_btcoex_check_by_ba_size(hmac_user_stru *pst_hmac_user)
     }
 
     return OAL_FALSE;
+}
+
+
+oal_void hmac_btcoex_process_btble_status(
+                                                 mac_device_stru              *pst_mac_device,
+                                                 hal_btcoex_btble_status_stru *pst_btble_status_old,
+                                                 hal_btcoex_btble_status_stru *pst_btble_status_new)
+{
+    hmac_user_stru   *pst_hmac_user;
+    mac_vap_stru     *pst_mac_vap  = OAL_PTR_NULL;
+
+    mac_device_find_legacy_sta(pst_mac_device, &pst_mac_vap);
+    if (OAL_PTR_NULL == pst_mac_vap)
+    {
+        return;
+    }
+    pst_hmac_user = mac_res_get_hmac_user(pst_mac_vap->uc_assoc_vap_id);
+    if (OAL_PTR_NULL == pst_hmac_user)
+    {
+         return;
+    }
+    /* BT由关闭到打开 */
+    if ((OAL_TRUE == pst_btble_status_new->un_bt_status.st_bt_status.bit_bt_on) &&
+        (OAL_FALSE == pst_btble_status_old->un_bt_status.st_bt_status.bit_bt_on))
+    {
+        /* 如果共存场景下是拒绝建立BA的则在BT打开时触发删BA的动作 */
+        if (BTCOEX_BA_TYPE_REJECT == pst_hmac_user->st_hmac_user_btcoex.en_ba_type)
+        {
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id,OAM_SF_COEX,"hmac_btcoex_process_btble_status:reject addba");
+            hmac_btcoex_delba_from_user(pst_mac_vap, pst_hmac_user);
+        }
+    }
+    return;
+}
+
+
+oal_void hmac_btcoex_ap_tpye_identify(
+                                    mac_vap_stru            *pst_mac_vap,
+                                    oal_uint8               *puc_mac_addr,
+                                    mac_bss_dscr_stru       *pst_bss_dscr,
+                                    mac_ap_type_enum_uint8  *pen_ap_type)
+{
+    mac_ap_type_enum_uint8  en_ap_type = 0;
+
+    if (MAC_IS_APPLE_AP(puc_mac_addr) || MAC_IS_TPLINK_7500(puc_mac_addr) || MAC_IS_FEIXUN_K3(puc_mac_addr) || MAC_IS_LINKSYS_1900(puc_mac_addr))
+    {
+        /* 对AP的识别,这些路由器在02A上验证后再决定要不要将保护帧由null帧改为self_cts */
+        if (OAL_TRUE == pst_bss_dscr->en_btcoex_blacklist_chip_oui)
+        {
+            en_ap_type |= MAC_AP_TYPE_BTCOEX_PS_BLACKLIST;
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_COEX, "hmac_btcoex_ap_tpye_identify: btcoex add ps blacklist!");
+        }
+    }
+    /* JCG路由器为了兼容aptxHD和660,需要关闭cts回复功能 */
+    if (MAC_IS_JCG_AP(puc_mac_addr))
+    {
+        if (OAL_TRUE == pst_bss_dscr->en_btcoex_blacklist_chip_oui)
+        {
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_COEX, "hmac_btcoex_ap_tpye_identify: btcoex disable cts blacklist!");
+            en_ap_type |= MAC_AP_TYPE_BTCOEX_DISABLE_CTS;
+        }
+    }
+    /* 荣耀路由器H1 5G场景和360行车记录仪才realteks芯片时共存场景下拒绝建立BA会话 */
+    if ((MAC_IS_HIROUTER_H1(puc_mac_addr) && (WLAN_BAND_5G == pst_mac_vap->st_channel.en_band)) &&
+        (WLAN_AP_CHIP_OUI_REALTEKS == pst_bss_dscr->en_is_tplink_oui))
+    {
+        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_COEX, "hmac_btcoex_ap_tpye_identify: the ap reject addba when btcoex!");
+        en_ap_type |= MAC_AP_TYPE_BTCOEX_BA;
+    }
+    /* 对于单流的AP,为了提升共存场景下的用户体验,在共存场景下就不再建立聚合了 */
+    if (MAC_IS_360_AP(puc_mac_addr) && (WLAN_SINGLE_NSS == pst_bss_dscr->en_support_max_nss))
+    {
+        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id,OAM_SF_COEX,"hmac_btcoex_ap_tpye_identify:the ap is single nss!!!");
+        en_ap_type |= MAC_AP_TYPE_BTCOEX_BA;
+    }
+    if (MAC_IS_TPLINK_885N(puc_mac_addr) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
+    {
+        en_ap_type |= MAC_AP_TYPE_BTCOEX_BA;
+    }
+    *pen_ap_type |= en_ap_type;
+}
+
+
+
+oal_void hmac_btcoex_process_exception_ap(
+                            mac_vap_stru           *pst_mac_vap,
+                            mac_user_stru          *pst_mac_user,
+                            mac_ap_type_enum_uint8  en_ap_type)
+{
+    hmac_user_stru *pst_hmac_user;
+    oal_uint8      *puc_mac_addr;
+
+    if (WLAN_VAP_MODE_BSS_STA != pst_mac_vap->en_vap_mode)
+    {
+        return;
+    }
+    if (en_ap_type & MAC_AP_TYPE_BTCOEX_BA)
+    {
+        pst_hmac_user = (hmac_user_stru *)mac_res_get_hmac_user(pst_mac_user->us_assoc_id);
+        if (OAL_PTR_NULL == pst_hmac_user)
+        {
+            OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id,pst_mac_vap->uc_vap_id,"hmac_btcoex_process_exception_ap:pst_hmac_user is null,user_index=%d",pst_mac_user->us_assoc_id);
+            return;
+        }
+        puc_mac_addr = pst_mac_user->auc_user_mac_addr;
+        if (MAC_IS_HIROUTER_H1(puc_mac_addr) || MAC_IS_360_AP(puc_mac_addr))
+        {
+            pst_hmac_user->st_hmac_user_btcoex.en_ba_type = BTCOEX_BA_TYPE_REJECT;
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id,OAM_SF_COEX,"hmac_btcoex_process_exception_ap:reject addba when bt on");
+        }
+        if (MAC_IS_TPLINK_885N(puc_mac_addr))
+        {
+            pst_hmac_user->st_hmac_user_btcoex.en_ba_type = BTCOEX_BA_TYPE_SIZE_1;
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id,OAM_SF_COEX,"hmac_btcoex_process_exception_ap:set ba size to 1 when sco");
+        }
+    }
 }
 #endif /* #ifdef _PRE_WLAN_FEATURE_COEXIST_BT */
 

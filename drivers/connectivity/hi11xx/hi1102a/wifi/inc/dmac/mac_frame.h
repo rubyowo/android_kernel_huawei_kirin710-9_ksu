@@ -60,8 +60,9 @@ extern "C" {
 #define MAC_DSPARMS_LEN             1   /* ds parameter set 长度 */
 #define MAC_MIN_TIM_LEN             4
 #define MAC_DEFAULT_TIM_LEN         4
-#define MAC_MIN_RSN_LEN             2
+#define MAC_MIN_RSN_LEN             12
 #define MAC_MAX_RSN_LEN             254
+#define MAC_MIN_WPA_LEN             16
 #define MAC_TIM_LEN_EXCEPT_PVB      3   /* DTIM Period、DTIM Count与BitMap Control三个字段的长度 */
 #define MAC_CONTRY_CODE_LEN         3   /* 国家码长度为3 */
 #define MAC_MIN_COUNTRY_LEN         6
@@ -134,7 +135,6 @@ extern "C" {
 
 /* WPA 信息元素相关定义 */
 #define MAC_WPA_IE_VERSION          1
-#define WLAN_AKM_SUITE_WAPI_CERT    0x000FAC12
 
 /* OUI相关定义 */
 #define MAC_OUI_LEN                 3
@@ -205,6 +205,9 @@ extern "C" {
 #define MAC_UDP_PROTOCAL                                   17
 #define MAC_CHARIOT_NETIF_PORT                             10115
 #define MAC_WFD_RTSP_PORT                                  7236
+
+/* hitalk协议压缩目标端口号 */
+#define MAC_HITALK_PORT                                    2999
 
 /* Wavetest仪器识别 */
 #define MAC_IS_WAVETEST_STA(pauc_bssid) (\
@@ -278,12 +281,12 @@ extern "C" {
 #define MAC_IGMPV3_REPORT_TYPE    0x22
 
 /* Is packet type is either leave or report */
-#define IS_IGMP_REPORT_LEAVE_PACKET(type) (\
-    (MAC_IGMPV1_REPORT_TYPE == type)\
-    || (MAC_IGMPV2_REPORT_TYPE == type)\
-    || (MAC_IGMPV2_LEAVE_TYPE  == type)\
-    || (MAC_IGMPV3_REPORT_TYPE == type)\
-                                         )
+#define IS_IGMP_REPORT_LEAVE_PACKET(type) ( \
+    ((type) == MAC_IGMPV1_REPORT_TYPE) ||   \
+    ((type) == MAC_IGMPV2_REPORT_TYPE) ||   \
+    ((type) == MAC_IGMPV2_LEAVE_TYPE)  ||   \
+    ((type) == MAC_IGMPV3_REPORT_TYPE)      \
+                                        )
 
 /* V3 group record types [grec_type] */
 #define IGMPV3_MODE_IS_INCLUDE        1
@@ -294,13 +297,13 @@ extern "C" {
 #define IGMPV3_BLOCK_OLD_SOURCES      6
 
 /* Is packet type is either leave or report */
-#define IS_IGMPV3_MODE(type) (\
-    (IGMPV3_MODE_IS_INCLUDE == type)\
-    || (IGMPV3_MODE_IS_EXCLUDE == type)\
-    || (IGMPV3_CHANGE_TO_INCLUDE  == type)\
-    || (IGMPV3_CHANGE_TO_EXCLUDE == type)\
-    || (IGMPV3_ALLOW_NEW_SOURCES == type)\
-    || (IGMPV3_BLOCK_OLD_SOURCES == type)\
+#define IS_IGMPV3_MODE(type) (              \
+    ((type) == IGMPV3_MODE_IS_INCLUDE)   || \
+    ((type) == IGMPV3_MODE_IS_EXCLUDE)   || \
+    ((type) == IGMPV3_CHANGE_TO_INCLUDE) || \
+    ((type) == IGMPV3_CHANGE_TO_EXCLUDE) || \
+    ((type) == IGMPV3_ALLOW_NEW_SOURCES) || \
+    ((type) == IGMPV3_BLOCK_OLD_SOURCES)    \
                                           )
 
 /* Calculate the group record length*/
@@ -316,10 +319,22 @@ extern "C" {
 #define MAC_IS_TPINK_6500_3_AP(puc_bssid)     ((0x14 == puc_bssid[0]) && (0x75 == puc_bssid[1]) && (0x90 == puc_bssid[2]))
 #define MAC_IS_TPINK_941N_AP(puc_bssid)       ((0x50 == puc_bssid[0]) && (0xfa == puc_bssid[1]) && (0x84 == puc_bssid[2]))
 #define MAC_IS_TPINK_5510_AP(puc_bssid)       ((0x80 == puc_bssid[0]) && (0x89 == puc_bssid[1]) && (0x17 == puc_bssid[2]))
+#define MAC_IS_HIROUTER_H1(puc_bssid)         ((0x5C == puc_bssid[0]) && (0xC3 == puc_bssid[1]) && (0x07 == puc_bssid[2]))
+/* TP-LINK 847N识别:AP OUI + 芯片OUI */
+#define MAC_IS_TPLINK_847N(pst_bss_dscr)      ((0x1c == pst_bss_dscr->auc_bssid[0]) && (0xfa == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0x68 == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
+#define MAC_IS_TPLINK_890N(pst_bss_dscr)      ((0x24 == pst_bss_dscr->auc_bssid[0]) && (0x69 == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0x68 == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
+#define MAC_IS_TPLINK_880N(pst_bss_dscr)      ((0xD0 == pst_bss_dscr->auc_bssid[0]) && (0x76 == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0xE7 == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
+#define MAC_IS_TPLINK_2041N(pst_bss_dscr)      ((0x50 == pst_bss_dscr->auc_bssid[0]) && (0xFA == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0x84 == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
+#define MAC_IS_TPLINK_H28R(pst_bss_dscr)      ((0x30 == pst_bss_dscr->auc_bssid[0]) && (0xB4 == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0x9E == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_SHENZHEN == pst_bss_dscr->en_is_tplink_oui))
+#define MAC_IS_NETGEAR_R7800(pst_bss_dscr)    ((0x8c == pst_bss_dscr->auc_bssid[0]) && (0x3b == pst_bss_dscr->auc_bssid[1]) &&\
+                                                (0xad == pst_bss_dscr->auc_bssid[2]) && (WLAN_AP_CHIP_OUI_ATHEROS == pst_bss_dscr->en_is_tplink_oui))
 
-#define MAC_IS_360_AP0(puc_bssid)             ((0xb0 == puc_bssid[0]) && (0xd5 == puc_bssid[1]) && (0x9d == puc_bssid[2]))
-#define MAC_IS_360_AP1(puc_bssid)             ((0xc8 == puc_bssid[0]) && (0xd5 == puc_bssid[1]) && (0xfe == puc_bssid[2]))
-#define MAC_IS_360_AP2(puc_bssid)             ((0x70 == puc_bssid[0]) && (0xb0 == puc_bssid[1]) && (0x35 == puc_bssid[2]))
+#define MAC_IS_360_AP(puc_bssid)              ((0xd0 == puc_bssid[0]) && (0xfa == puc_bssid[1]) && (0x1d == puc_bssid[2]))
 #define MAC_IS_FEIXUN_K3(puc_bssid)           ((0x2c == puc_bssid[0]) && (0xb2 == puc_bssid[1]) && (0x1a == puc_bssid[2]))
 
 #define MAC_IS_HAIER_AP(puc_bssid)            ((0x08 == puc_bssid[0]) && (0x10 == puc_bssid[1]) && (0x79 == puc_bssid[2]))
@@ -327,7 +342,12 @@ extern "C" {
 #define MAC_IS_FAST_AP(puc_bssid)             ((0x44 == puc_bssid[0]) && (0x97 == puc_bssid[1]) && (0x5a == puc_bssid[2]))
 #define MAC_IS_TPINK_845_AP(puc_bssid)        ((0x88 == puc_bssid[0]) && (0x25 == puc_bssid[1]) && (0x93 == puc_bssid[2]))
 #define MAC_IS_XIAOMI_R1D(puc_bssid)          ((0x8C == puc_bssid[0]) && (0xBE == puc_bssid[1]) && (0xBE == puc_bssid[2]))
-
+#define MAC_IS_XIAOMI_R2D(puc_bssid)          ((0xf0 == puc_bssid[0]) && (0xb4 == puc_bssid[1]) && (0x29 == puc_bssid[2]))
+#define MAC_IS_FEIXUN_K3(puc_bssid)           ((0x2c == puc_bssid[0]) && (0xb2 == puc_bssid[1]) && (0x1a == puc_bssid[2]))
+#define MAC_IS_APPLE_AP(puc_bssid)            ((0xf0 == puc_bssid[0]) && (0x99 == puc_bssid[1]) && (0xbf == puc_bssid[2]))
+#define MAC_IS_TPLINK_7500(puc_bssid)         ((0xbc == puc_bssid[0]) && (0x46 == puc_bssid[1]) && (0x99 == puc_bssid[2]))
+#define MAC_IS_LINKSYS_1900(puc_bssid)        ((0x94 == puc_bssid[0]) && (0x10 == puc_bssid[1]) && (0x3e == puc_bssid[2]))
+#define MAC_IS_TPLINK_885N(puc_bssid)         ((0xe4 == puc_bssid[0]) && (0xd3 == puc_bssid[1]) && (0x32 == puc_bssid[2]))
 
 #define MAC_WLAN_CHIP_OUI_ATHEROSC              0x00037f
 #define MAC_WLAN_CHIP_OUI_TYPE_ATHEROSC         0x1
@@ -338,6 +358,20 @@ extern "C" {
 #define MAC_WLAN_CHIP_OUI_TYPE_BROADCOM         0x2
 #define MAC_WLAN_CHIP_OUI_SHENZHEN              0x000aeb
 #define MAC_WLAN_CHIP_OUI_TYPE_SHENZHEN         0x1
+#define MAC_WLAN_CHIP_OUI_APPLE1                0x0017f2
+#define MAC_WLAN_CHIP_OUI_TYPE_APPLE_1_1        0x1
+#define MAC_WLAN_CHIP_OUI_TYPE_APPLE_1_2        0x7
+#define MAC_WLAN_CHIP_OUI_APPLE2                0x000393
+#define MAC_WLAN_CHIP_OUI_TYPE_APPLE_2_1        0x1
+#define MAC_WLAN_CHIP_OUI_360                   0x00e04c
+#define MAC_WLAN_CHIP_OUI_TYPE_360              0x2
+#define MAC_WLAN_CHIP_OUI_ATHEROS               0x00037e
+#define MAC_WLAN_CHIP_OUI_TYPE_ATHEROS          0x1
+#define MAC_WLAN_CHIP_OUI_REALTEKS              0x00e04c
+#define MAC_WLAN_CHIP_OUI_TYPE_REALTEKS         0x2
+#define MAC_WLAN_CHIP_OUI_MARVELL               0x005043
+#define MAC_WLAN_CHIP_OUI_TYPE_MARVELL          0x3
+
 
 /* p2p相关*/
 /* GO negotiation*/
@@ -413,9 +447,9 @@ typedef enum
     MAC_AP_TYPE_DDC_WHITELIST       = BIT2,
     MAC_AP_TYPE_BTCOEX_PS_BLACKLIST = BIT3,
     MAC_AP_TYPE_BTCOEX_DISABLE_CTS  = BIT4,
-    MAC_AP_TYPE_TPLINK              = BIT5,
+    MAC_AP_TYPE_R7800               = BIT5,
     MAC_AP_TYPE_ROAM                = BIT6,
-
+    MAC_AP_TYPE_BTCOEX_BA           = BIT7, // 共存场景特殊处理BA
     MAC_AP_TYPE_BUTT
 } mac_ap_type_enum;
 typedef oal_uint8 mac_ap_type_enum_uint8;
@@ -576,7 +610,10 @@ typedef oal_uint8 mac_txbf_clb_enum_uint8;
 /* Spectrum Management Category下的Action枚举值 */
 typedef enum
 {
+    MAC_SPEC_MEASURE_REQUEST    = 0,
+    MAC_SPEC_MEASURE_REPORT     = 1,
     MAC_SPEC_TPC_REQUEST        = 2,
+    MAC_SPEC_TPC_REPORT         = 3,
     MAC_SPEC_CH_SWITCH_ANNOUNCE = 4   /*  Channel Switch Announcement */
 }mac_specmgmt_action_type_enum;
 typedef oal_uint8 mac_specmgmt_action_type_enum_uint8;
@@ -766,6 +803,8 @@ typedef enum
     MAC_DST_STA_NOT_QSTA            = 50,
     MAC_LARGE_LISTEN_INT            = 51,
     MAC_INVALID_PMKID               = 53,
+    MAC_INVALID_MDE                 = 54,
+    MAC_INVALID_FTE                 = 55,
     MAC_MISMATCH_VHTCAP             = 104,
 
      /*私有的定义*/
@@ -1076,8 +1115,9 @@ typedef enum
     MAC_EAPOL_PTK_4_4,
 
     MAC_EAPOL_PTK_BUTT
-}mac_eapol_type_enum_uint8;
+}mac_eapol_type_enum;
 
+typedef oal_uint8  mac_eapol_type_enum_uint8;
 
 #define MAC_WLAN_OUI_WFA                    0x506f9a
 #define MAC_WLAN_OUI_TYPE_WFA_P2P               9
@@ -1501,7 +1541,7 @@ struct mac_11ntxbf_vendor_ie
 {
     oal_uint8                        uc_id;          /* element ID */
     oal_uint8                        uc_len;         /* length in bytes */
-    //oal_uint8                        auc_reserve[2];
+
     oal_uint8                        auc_oui[3];
     oal_uint8                        uc_ouitype;
     mac_11ntxbf_info_stru            st_11ntxbf;
@@ -1518,7 +1558,7 @@ struct mac_ieee80211_vendor_ie {
 typedef struct mac_ieee80211_vendor_ie mac_ieee80211_vendor_ie_stru;
 
 #ifdef _PRE_WLAN_FEATURE_NBFH
-#define NBFH_MAX_HOP_NUM 12
+#define NBFH_MAX_HOP_NUM 14
 
 struct mac_nbfh_vendor_ie {
     oal_uint8 uc_element_id;
@@ -1528,7 +1568,13 @@ struct mac_nbfh_vendor_ie {
     oal_uint8 uc_oui_type;
 
     oal_uint8 uc_hop_index;
-    oal_uint8 auc_reserve[3];
+    oal_uint8 uc_hop_pattern;
+    oal_uint8 uc_nbfh_tbtt_offset;
+    oal_uint8 uc_nbfh_tbtt_sync;
+
+    oal_uint16 us_nbfh_tbtt_dwell;
+    oal_uint16 us_nbfh_tbtt_beacon;
+
 } __OAL_DECLARE_PACKED;
 typedef struct mac_nbfh_vendor_ie mac_nbfh_vendor_ie_stru;
 #endif
@@ -1664,9 +1710,9 @@ struct mac_ext_cap_ftm_ie
     oal_uint8   bit_resv4                : 4,
                 bit_proxyarp             : 1,
                 bit_resv13               : 3;   /* bit13~bit15 */
-    oal_uint8   bit_resv5                : 3,
+    oal_uint8   bit_resv5                : 4,
                 bit_bss_transition       : 1,   /* bit19 */
-                bit_resv14               : 4;   /* bit20~bit23 */
+                bit_resv14               : 3;   /* bit20~bit23 */
     oal_uint8   bit_resv6                : 7,
                 bit_interworking         : 1;
     oal_uint8   bit_resv7                         : 5,

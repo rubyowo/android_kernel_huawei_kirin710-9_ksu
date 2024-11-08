@@ -74,6 +74,9 @@ extern "C" {
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
+wal_packet_check_rx_info_stru g_st_pkt_check_rx_info;
+extern oal_uint32 hmac_config_send_check_data(mac_vap_stru *pst_mac_vap,
+                                              oal_uint8     uc_type);
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -426,117 +429,37 @@ OAL_STATIC oal_uint32  wal_config_alg(mac_vap_stru *pst_mac_vap, oal_uint16 us_l
 }
 
 
-
-oal_netbuf_stru*  wal_config_create_packet_ap(oal_uint32    ul_size,
-                                              oal_uint8     uc_tid,
-                                              oal_uint8    *puc_mac_ra,
-                                              oal_uint8    *puc_mac_ta)
+OAL_STATIC oal_uint32  wal_config_packet_check(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    oal_netbuf_stru         *pst_buf;
-    mac_ether_header_stru   *pst_ether_header;
-    mac_ip_header_stru      *pst_ip;
-    oal_uint32               ul_loop = 0;
-    oal_uint32               l_reserve = 256;
-    pst_buf = oal_netbuf_alloc(ul_size+l_reserve, (oal_int32)l_reserve, 4);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_buf))
-    {
-        return OAL_PTR_NULL;
+    oal_uint8                        uc_skb_num;
+    oal_uint8                        uc_skb_idx;
+    mac_cfg_packet_check_param_stru *pst_pkt_check_param = OAL_PTR_NULL;
+    hmac_device_stru                *pst_hmac_device = OAL_PTR_NULL;
+
+    pst_hmac_device = hmac_res_get_mac_dev(pst_mac_vap->uc_device_id);
+    if (pst_hmac_device == OAL_PTR_NULL) {
+        OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_config_packet_check::pst_hmac_device is null}");
+        return OAL_FAIL;
     }
 
-    oal_netbuf_put(pst_buf, ul_size);
-    oal_set_mac_addr(&pst_buf->data[0], puc_mac_ra);
-    oal_set_mac_addr(&pst_buf->data[6], puc_mac_ta);
+    pst_pkt_check_param = (mac_cfg_packet_check_param_stru *)puc_param;
+    uc_skb_num          = pst_pkt_check_param->uc_packet_num;
 
-    /* 帧体内容 最后6个字节保持为0x00*/
-    for (ul_loop = 0; ul_loop < ul_size - 20; ul_loop++)
-    {
-        pst_buf->data[14 + ul_loop] = (oal_uint8)ul_loop;
-    }
+    /* 打开包校验开关,并把计数器清零 */
+    pst_hmac_device->st_packet_check.en_pkt_check_on   = OAL_TRUE;
+    OAL_MEMZERO(&g_st_pkt_check_rx_info, OAL_SIZEOF(g_st_pkt_check_rx_info));
+    g_st_pkt_check_rx_info.us_pkt_check_send_num       = uc_skb_num;
 
-    pst_ether_header = (mac_ether_header_stru *)oal_netbuf_data(pst_buf);
-
-    /*lint -e778*/
-    pst_ether_header->us_ether_type = OAL_HOST2NET_SHORT(ETHER_TYPE_IP);
-    /*lint +e778*/
-    pst_ip = (mac_ip_header_stru *)(pst_ether_header + 1);      /* 偏移一个以太网头，取ip头 */
-
-    pst_ip->uc_tos = (oal_uint8)(uc_tid << WLAN_IP_PRI_SHIFT);
-
-#ifdef _PRE_WLAN_FEATURE_EDCA_OPT_AP
-    pst_ip->uc_protocol = MAC_UDP_PROTOCAL;
-#endif
-
-    pst_buf->next = OAL_PTR_NULL;
-    pst_buf->prev = OAL_PTR_NULL;
-
-    OAL_MEMZERO(oal_netbuf_cb(pst_buf), OAL_NETBUF_CB_SIZE());
-
-    return pst_buf;
-
-}
-
-
-
-OAL_STATIC oal_uint32  wal_config_packet_xmit(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    mac_cfg_mpdu_ampdu_tx_param_stru *pst_ampdu_tx_on_param;
-    oal_uint8                       uc_skb_num;
-    oal_uint8                       uc_skb_idx;
-    oal_netbuf_stru                *pst_netbuf;
-    oal_uint8                       uc_tid;
-    oal_uint16                      us_packet_len;
-    oal_net_device_stru            *pst_dev;
-    oal_netbuf_stru                *past_netbuf[32] = {OAL_PTR_NULL};
-
-    pst_ampdu_tx_on_param = (mac_cfg_mpdu_ampdu_tx_param_stru *)puc_param;
-    uc_skb_num            = pst_ampdu_tx_on_param->uc_packet_num;
-    uc_tid                = pst_ampdu_tx_on_param->uc_tid;
-    us_packet_len         = pst_ampdu_tx_on_param->us_packet_len;
-
-    pst_dev = hmac_vap_get_net_device(pst_mac_vap->uc_vap_id);
-
-    /*为profiling测试修改，只测量xmit时间*/
-    if (uc_skb_num <= 32)
-    {
-        for (uc_skb_idx = 0; uc_skb_idx < uc_skb_num; uc_skb_idx++)
-        {
-            past_netbuf[uc_skb_idx] = wal_config_create_packet_ap(us_packet_len, uc_tid,
-                                                    pst_ampdu_tx_on_param->auc_ra_mac,
-                                                    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11StationID);
-
-        }
-
-        OAM_PROFILING_TX_STATISTIC(OAL_PTR_NULL, OAM_PROFILING_FUNC_CONFIG_XMIT_START);
-
-        for (uc_skb_idx = 0; uc_skb_idx < uc_skb_num; uc_skb_idx++)
-        {
-            #ifdef _PRE_WLAN_FEATURE_SMP_SUPPORT
-                wal_vap_start_xmit(past_netbuf[uc_skb_idx], pst_dev);
-            #else
-                wal_bridge_vap_xmit(past_netbuf[uc_skb_idx], pst_dev);
-            #endif
-        }
-
-        OAM_PROFILING_TX_STATISTIC(OAL_PTR_NULL, OAM_PROFILING_FUNC_CONFIG_XMIT_END);
-
-    }
-    else
-    {
-        for (uc_skb_idx = 0; uc_skb_idx < uc_skb_num; uc_skb_idx++)
-        {
-            pst_netbuf = wal_config_create_packet_ap(us_packet_len, uc_tid,
-                                                    pst_ampdu_tx_on_param->auc_ra_mac,
-                                                    pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11StationID);
-            #ifdef _PRE_WLAN_FEATURE_SMP_SUPPORT
-                wal_vap_start_xmit(pst_netbuf, pst_dev);
-            #else
-                wal_bridge_vap_xmit(pst_netbuf, pst_dev);
-            #endif
-        }
+    for (uc_skb_idx = 0; uc_skb_idx < uc_skb_num; uc_skb_idx++) {
+        hmac_config_send_check_data(pst_mac_vap, WLAN_PACKET_CHECK_DATA_TYPE0);
+        hmac_config_send_check_data(pst_mac_vap, WLAN_PACKET_CHECK_DATA_TYPE1);
+        hmac_config_send_check_data(pst_mac_vap, WLAN_PACKET_CHECK_DATA_TYPE2);
+        hmac_config_send_check_data(pst_mac_vap, WLAN_PACKET_CHECK_DATA_TYPE3);
     }
 
     return OAL_SUCC;
 }
+
 #ifdef _PRE_DEBUG_MODE
 
 OAL_STATIC oal_uint32  wal_config_dump_ba_bitmap(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -619,11 +542,11 @@ OAL_STATIC oal_uint32  wal_config_ampdu_tx_on(mac_vap_stru *pst_mac_vap, oal_uin
 OAL_STATIC oal_uint32  wal_config_txbf_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
 
-    mac_cfg_ampdu_tx_on_param_stru *pst_txbf_on_param;
+    mac_cfg_ampdu_tx_on_param_stru *pst_txbf_on_param = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_txbf_switch:: pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_txbf_switch:: pst_mac_vap/puc_param is null ptr %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -631,7 +554,7 @@ OAL_STATIC oal_uint32  wal_config_txbf_switch(mac_vap_stru *pst_mac_vap, oal_uin
 
     if (1 == pst_txbf_on_param->uc_aggr_tx_on || 0 == pst_txbf_on_param->uc_aggr_tx_on)
     {
-        //pst_mac_vap->st_cap_flag.bit_bfer = pst_txbf_on_param->uc_aggr_tx_on;
+
     }
     else
     {
@@ -743,7 +666,7 @@ OAL_STATIC oal_uint32  wal_config_dump_memory(mac_vap_stru *pst_mac_vap, oal_uin
     oal_uint32                ul_i;
 
     pst_param = (mac_cfg_dump_memory_stru *)puc_param;
-    puc_addr  = (oal_uint8 *)(pst_param->ul_addr);
+    puc_addr  = (oal_uint8 *)(uintptr_t)(pst_param->ul_addr);
 
     for (ul_i = 0; ul_i < pst_param->ul_len; ul_i++)
     {
@@ -1159,7 +1082,44 @@ OAL_STATIC oal_uint32  wal_config_set_nbfh(mac_vap_stru *pst_mac_vap, oal_uint16
 
 }
 
+
+OAL_STATIC oal_uint32  wal_config_hitalk_listen(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    oal_uint32                        ul_ret;
+
+    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    {
+        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_hitalk_listen::pst_mac_vap/puc_param is null ptr!}\r\n");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    /***************************************************************************
+        抛事件到DMAC层, 同步DMAC数据
+    ***************************************************************************/
+    ul_ret = hmac_config_send_event(pst_mac_vap, WLAN_CFGID_HITALK_LISTEN, us_len, puc_param);
+
+    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
+    {
+        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{wal_config_hitalk_listen::hmac_config_send_event failed[%d].}", ul_ret);
+    }
+
+    return OAL_SUCC;
+
+}
+
 #endif
+
+
+OAL_STATIC oal_uint32 wal_config_dscr_th_opt(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_dscr_th_opt(pst_mac_vap, us_len, puc_param);
+}
+
+
+OAL_STATIC oal_uint32 wal_config_tcp_ack_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_tcp_ack_filter(pst_mac_vap, us_len, puc_param);
+}
 
 
 OAL_STATIC oal_uint32  wal_config_dbb_scaling_amend(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -2216,14 +2176,6 @@ OAL_STATIC oal_uint32 wal_config_fbt_scan_report_period(mac_vap_stru * pst_mac_v
 }
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-
-OAL_STATIC oal_uint32  wal_config_set_tx_classify_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_tx_classify_switch(pst_mac_vap, us_len, puc_param);
-}
-#endif  /* _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN */
-
 #ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
 
 OAL_STATIC oal_uint32  wal_config_send_cw_signal(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -2332,7 +2284,6 @@ OAL_CONST wal_wid_op_stru g_ast_board_wid_op_debug[] =
 #ifdef _PRE_DEBUG_MODE
     {WLAN_CFGID_SEND_BAR,               OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_send_bar},
 #endif //#ifdef _PRE_DEBUG_MODE
-    {WLAN_CFGID_PACKET_XMIT,            OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_packet_xmit},
 #ifdef _PRE_DEBUG_MODE
     {WLAN_CFGID_DUMP_BA_BITMAP,         OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_dump_ba_bitmap},
 #endif //#ifdef _PRE_DEBUG_MODE
@@ -2359,7 +2310,10 @@ OAL_CONST wal_wid_op_stru g_ast_board_wid_op_debug[] =
 #ifdef _PRE_WLAN_NARROW_BAND
     {WLAN_CFGID_NARROW_BW,              OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_narrow_bw},
     {WLAN_CFGID_SET_NBFH,               OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_nbfh},
+    {WLAN_CFGID_HITALK_LISTEN,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_hitalk_listen},
 #endif
+    {WLAN_CFGID_SET_DSCR_TH_HOST,       OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_dscr_th_opt},
+    {WLAN_CFGID_SET_TCP_ACK_FILTER,     OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_tcp_ack_filter},
 
 #ifdef _PRE_WLAN_DFT_STAT
 #ifdef _PRE_DEBUG_MODE
@@ -2630,9 +2584,6 @@ OAL_CONST wal_wid_op_stru g_ast_board_wid_op_debug[] =
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
     {WLAN_CFGID_SET_DEVICE_FREQ_ENABLE,           OAL_FALSE,  {0},  OAL_PTR_NULL,           wal_config_set_auto_freq_enable},
 #endif
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-    {WLAN_CFGID_TX_CLASSIFY_LAN_TO_WLAN_SWITCH, OAL_FALSE,  {0},   OAL_PTR_NULL,          wal_config_set_tx_classify_switch},
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_HILINK
     {WLAN_CFGID_FBT_SET_MODE,                   OAL_FALSE,  {0},    OAL_PTR_NULL,         wal_config_fbt_set_mode},
@@ -2667,6 +2618,7 @@ OAL_CONST wal_wid_op_stru g_ast_board_wid_op_debug[] =
     {WLAN_CFGID_SET_BT_UPC_BY_FREQ,             OAL_FALSE,  {0},    OAL_PTR_NULL,         wal_config_set_bt_upc_by_freq},
     {WLAN_CFGID_PRINT_BT_GM,                    OAL_FALSE,  {0},    OAL_PTR_NULL,         wal_config_print_bt_gm},
 #endif
+    {WLAN_CFGID_CHECK_PACKET,                    OAL_FALSE,  {0},    OAL_PTR_NULL,        wal_config_packet_check},
 
     {WLAN_CFGID_BUTT,                           OAL_FALSE,  {0},    0,                    0},
 };

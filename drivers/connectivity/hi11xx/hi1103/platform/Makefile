@@ -57,12 +57,6 @@ pm-objs += wireless_patch.o
 endif
 
 ifeq ($(CONFIG_HI110X_GPS_REFCLK),y)
-ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_1),y)
-pm-objs += gps_refclk_src_1.o
-endif
-ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_2),y)
-pm-objs += gps_refclk_src_2.o
-endif
 ifeq ($(CONFIG_HI110X_GPS_REFCLK_SRC_3),y)
 pm-objs += gps_refclk_src_3.o
 endif
@@ -73,10 +67,10 @@ pm-objs := $(addprefix pm/,$(pm-objs))
 driver-objs :=  plat_sdio.o plat_uart.o
 driver-objs := $(addprefix driver/,$(driver-objs))
 
-bfgx-objs := bfgx_low_power.o bfgx_exception_rst.o bfgx_data_parse.o bfgx_dev.o bfgx_user_ctrl.o
+bfgx-objs := bfgx_exception_rst.o bfgx_data_parse.o bfgx_platform_msg_handle.o bfgx_dev.o bfgx_user_ctrl.o
 bfgx-objs := $(addprefix ../bfgx/,$(bfgx-objs))
 
-board-objs := board.o board-hi1102.o board-hi1103.o
+board-objs := board.o board_hi1102.o board_hi1103.o
 board-objs := $(addprefix board/,$(board-objs))
 
 oneimage-objs := oneimage.o
@@ -151,12 +145,12 @@ KBUILD_CFLAGS += -DPLATFORM_DEBUG_ENABLE
 KBUILD_CFLAGS += -DPLATFORM_SSI_FULL_LOG
 endif
 
-KBUILD_CFLAGS += -DHI1XX_ANDROID_BUILD_VARIANT_ROOT=1
-KBUILD_CFLAGS += -DHI1XX_ANDROID_BUILD_VARIANT_USER=2
+KBUILD_CFLAGS += -DHI1XX_OS_BUILD_VARIANT_ROOT=1
+KBUILD_CFLAGS += -DHI1XX_OS_BUILD_VARIANT_USER=2
 ifneq ($(TARGET_BUILD_VARIANT),user)
-KBUILD_CFLAGS += -DANDROID_HI1XX_BUILD_VERSION=HI1XX_ANDROID_BUILD_VARIANT_ROOT
+KBUILD_CFLAGS += -DOS_HI1XX_BUILD_VERSION=HI1XX_OS_BUILD_VARIANT_ROOT
 else
-KBUILD_CFLAGS += -DANDROID_HI1XX_BUILD_VERSION=HI1XX_ANDROID_BUILD_VARIANT_USER
+KBUILD_CFLAGS += -DOS_HI1XX_BUILD_VERSION=HI1XX_OS_BUILD_VARIANT_USER
 endif
 
 ifneq ($(HAVE_HISI_FEATURE_BT),false)
@@ -202,6 +196,9 @@ $(warning hisi connectivity driver compile strict check disable)
 else
 EXTRA_CFLAGS += -Werror -Wuninitialized -Wempty-body -Wclobbered -Wmissing-parameter-type -Wold-style-declaration -Woverride-init -Wtype-limits
 endif
+
+#ignore some option is not support by calng
+EXTRA_CFLAGS += -Wno-unknown-warning-option
 
 EXTRA_CFLAGS +=  -fno-pic
 MODFLAGS = -fno-pic

@@ -34,7 +34,7 @@ extern "C" {
 oal_uint8 mac_get_data_type_from_80211_etc(oal_netbuf_stru *pst_netbuff, oal_uint16 us_mac_hdr_len)
 {
     oal_uint8               uc_datatype = MAC_DATA_BUTT;
-    mac_llc_snap_stru      *pst_snap;
+    mac_llc_snap_stru      *pst_snap = OAL_PTR_NULL;
 
     if(OAL_PTR_NULL == pst_netbuff)
     {
@@ -48,39 +48,11 @@ oal_uint8 mac_get_data_type_from_80211_etc(oal_netbuf_stru *pst_netbuff, oal_uin
     return uc_datatype;
 
 }
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
 
-oal_uint16 mac_rx_get_eapol_keyinfo_51(oal_netbuf_stru *pst_netbuff)
-{
-    oal_uint8                      uc_datatype = MAC_DATA_BUTT;
-    oal_uint8                     *puc_payload;
-    mac_rx_ctl_stru               *pst_rx_info;
-    dmac_rx_ctl_stru              *pst_cb_ctrl;
-
-    pst_cb_ctrl = (dmac_rx_ctl_stru*)oal_netbuf_cb(pst_netbuff);
-
-    pst_rx_info = &(pst_cb_ctrl->st_rx_info);
-
-    uc_datatype = mac_get_data_type_from_80211_etc(pst_netbuff, pst_rx_info->uc_mac_header_len);
-    if(MAC_DATA_EAPOL != uc_datatype)
-    {
-        return 0;
-    }
-
-    puc_payload = MAC_GET_RX_PAYLOAD_ADDR(pst_rx_info, pst_netbuff);
-    if(OAL_PTR_NULL == puc_payload)
-    {
-        return 0;
-    }
-
-    return *(oal_uint16 *)(puc_payload + OAL_EAPOL_INFO_POS);
-
-}
-#endif
 
 oal_bool_enum_uint8 mac_is_eapol_key_ptk_etc(mac_eapol_header_stru  *pst_eapol_header)
 {
-    mac_eapol_key_stru *pst_key;
+    mac_eapol_key_stru *pst_key = OAL_PTR_NULL;
 
     if (IEEE802_1X_TYPE_EAPOL_KEY == pst_eapol_header->uc_type)
     {
@@ -100,8 +72,8 @@ oal_bool_enum_uint8 mac_is_eapol_key_ptk_etc(mac_eapol_header_stru  *pst_eapol_h
 
 oal_bool_enum_uint8 mac_is_eapol_key_ptk_4_4_etc(oal_netbuf_stru *pst_netbuff)
 {
-    mac_eapol_header_stru   *pst_eapol_header;
-    mac_eapol_key_stru      *pst_eapol_key;
+    mac_eapol_header_stru   *pst_eapol_header = OAL_PTR_NULL;
+    mac_eapol_key_stru      *pst_eapol_key = OAL_PTR_NULL;
 
     if ((mac_get_data_type_etc(pst_netbuff) == MAC_DATA_EAPOL))
     {
@@ -127,9 +99,9 @@ pkt_trace_type_enum_uint8 mac_pkt_should_trace(oal_uint8 *puc_frame_hdr, mac_net
     oal_uint8                       uc_data_type         = MAC_DATA_BUTT;
     pkt_trace_type_enum_uint8       en_trace_data_type   = PKT_TRACE_BUTT;
     oal_uint16                      us_ether_type;
-    oal_uint8                      *puc_frame_body;
-    oal_ip_header_stru             *pst_ip;
-    oal_uint8                      *puc_icmp_body;
+    oal_uint8                      *puc_frame_body = OAL_PTR_NULL;
+    oal_ip_header_stru             *pst_ip = OAL_PTR_NULL;
+    oal_uint8                      *puc_icmp_body = OAL_PTR_NULL;
 
     //识别出DHCP/ECHO/EAPOL/ARP
 
@@ -192,7 +164,7 @@ pkt_trace_type_enum_uint8 mac_pkt_should_trace(oal_uint8 *puc_frame_hdr, mac_net
 pkt_trace_type_enum_uint8 wifi_pkt_should_trace(oal_netbuf_stru *pst_netbuff, oal_uint16 us_mac_hdr_len)
 {
     pkt_trace_type_enum_uint8       en_trace_data_type   = PKT_TRACE_BUTT;
-    mac_llc_snap_stru              *pst_snap;
+    mac_llc_snap_stru              *pst_snap = OAL_PTR_NULL;
     mac_ieee80211_frame_stru       *pst_mac_header;
 
     pst_mac_header = (mac_ieee80211_frame_stru *)oal_netbuf_header(pst_netbuff);
@@ -288,7 +260,7 @@ oal_uint8 mac_get_dhcp_frame_type_etc(oal_ip_header_stru   *pst_rx_ip_hdr)
 mac_eapol_type_enum_uint8 mac_get_eapol_key_type_etc(oal_uint8 *pst_payload)
 {
     mac_eapol_header_stru   *pst_eapol_header;
-    mac_eapol_key_stru      *pst_eapol_key;
+    mac_eapol_key_stru      *pst_eapol_key = OAL_PTR_NULL;
     oal_bool_enum_uint8      en_key_ack_set = OAL_FALSE;
     oal_bool_enum_uint8      en_key_mic_set = OAL_FALSE;
     oal_bool_enum_uint8      en_key_len_set = OAL_FALSE;
@@ -348,7 +320,7 @@ mac_eapol_type_enum_uint8 mac_get_eapol_key_type_etc(oal_uint8 *pst_payload)
 
     return en_eapol_type;
 }
-
+#if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 
 oal_bool_enum mac_snap_is_protocol_type(oal_uint8 uc_snap_type)
 {
@@ -358,8 +330,7 @@ oal_bool_enum mac_snap_is_protocol_type(oal_uint8 uc_snap_type)
     }
     else
     {
-        OAM_WARNING_LOG1(0, OAM_SF_RX, "mac_frame_is_8023_type:: rx a frame not 0xaa snap type[%x]", uc_snap_type);
-
+        OAM_WARNING_LOG1(0, OAM_SF_RX, "mac_snap_is_protocol_type:: rx a frame not 0xaa snap type[%x]", uc_snap_type);
         if(SNAP_BRIDGE_SPANNING_TREE == uc_snap_type || SNAP_IBM_LAN_MANAGEMENT == uc_snap_type)
         {
             return OAL_FALSE;
@@ -369,7 +340,7 @@ oal_bool_enum mac_snap_is_protocol_type(oal_uint8 uc_snap_type)
     /* 无法识别的类型默认protocl type形式，与原逻辑保持一致 */
     return OAL_TRUE;
 }
-
+#endif
 /*lint -e19*/
 oal_module_symbol(mac_get_data_type_from_80211_etc);
 oal_module_symbol(mac_is_eapol_key_ptk_etc);

@@ -82,6 +82,8 @@ extern "C" {
 #define WAL_IOCTL_PRIV_SET_ISOLATION        (OAL_SIOCIWFIRSTPRIV + 28)
 #endif
 #define WAL_IOCTL_PRIV_SUBCMD_MAX_LEN          20
+#define WAL_CALI_MASK_CLOSEALL                 0x2000
+
 typedef oal_uint32  (*wal_hipriv_cmd_func)(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 
 /*****************************************************************************
@@ -168,8 +170,8 @@ typedef enum
 extern oal_iw_handler_def_stru g_st_iw_handler_def;
 extern oal_net_device_ops_stru g_st_wal_net_dev_ops;
 
-extern oal_uint8 g_wlan_ps_mode;           //定制化文件下发的power save mode
-extern oal_uint8 g_wlan_fast_check_cnt;   //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
+extern oal_uint8 wlan_ps_mode;           //定制化文件下发的power save mode
+extern oal_uint8 wlan_fast_check_cnt;   //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 extern oal_ethtool_ops_stru g_st_wal_ethtool_ops;
@@ -224,11 +226,11 @@ typedef struct
 }wal_ioctl_alg_cfg_stru;
 
 /* 1102 使用wpa_supplicant 下发命令 */
-typedef struct wal_android_wifi_priv_cmd {
-    oal_int32    l_total_len;
-    oal_int32    l_used_len;
-    oal_uint8   *puc_buf;
-}wal_android_wifi_priv_cmd_stru;
+typedef struct wal_wifi_priv_cmd {
+    oal_uint32    ul_total_len;
+    oal_uint32    ul_used_len;
+    oal_uint8    *puc_buf;
+}wal_wifi_priv_cmd_stru;
 
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
 /* dyn cali 参数配置结构体 */
@@ -315,7 +317,7 @@ extern oal_int32  wal_cfg_vap_h2d_event(oal_net_device_stru *pst_net_dev);
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
 extern oal_uint32 hwifi_config_init_dts_main(oal_net_device_stru *pst_cfg_net_dev);
 extern oal_int32 wal_set_custom_process_func(custom_cali_func p_cus_fun, priv_ini_config_func p_priv_func);
-extern oal_bool_enum hwifi_config_init_nvram_main(oal_net_device_stru * pst_cfg_net_dev);
+extern oal_uint32 hwifi_config_init_nvram_main(oal_net_device_stru * pst_cfg_net_dev);
 
 extern oal_uint32 wal_custom_cali(oal_void);
 extern oal_uint32 wal_priv_init_config(oal_void);
@@ -324,9 +326,9 @@ extern oal_int32 hwifi_config_init_ini_priv(oal_net_device_stru *pst_cfg_net_dev
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44))
-extern oal_uint32  wal_ioctl_set_essid(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+extern oal_uint32  wal_hipriv_set_essid(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 #endif
-extern oal_uint32  wal_get_cmd_one_arg(oal_int8 *pc_cmd, oal_int8 *pc_arg, oal_uint32 *pul_cmd_offset);
+extern oal_uint32  wal_get_cmd_one_arg(oal_int8 *pc_cmd, oal_int8 *pc_arg, oal_uint32 ul_arg_len, oal_uint32 *pul_cmd_offset);
 #ifdef _PRE_WLAN_FEATURE_CUSTOM_SECURITY
 extern oal_uint32  wal_hipriv_send_cfg_uint32_data(oal_net_device_stru *pst_net_dev,
     oal_int8 *pc_param, wlan_cfgid_enum_uint16 cfgid);

@@ -19,7 +19,6 @@ extern "C" {
 #include "mac_device.h"
 #include "mac_vap.h"
 #include "mac_resource.h"
-//#include "mac_11i.h"
 
 #include "hmac_resource.h"
 #include "hmac_device.h"
@@ -39,10 +38,6 @@ extern "C" {
 #include "hmac_test_main.h"
 #endif
 
-#if defined(_PRE_WLAN_FEATURE_MCAST) || defined(_PRE_WLAN_FEATURE_HERA_MCAST)
-#include "hmac_m2u.h"
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_PROXY_ARP
 #include "hmac_proxy_arp.h"
 #endif
@@ -54,9 +49,9 @@ extern "C" {
 #if ((_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)) || (defined (WIN32) && (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST))
 #include "plat_pm_wlan.h"
 #endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-#include "hmac_fbt_main.h"
-#endif
+
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_CONFIG_C
@@ -87,8 +82,9 @@ OAL_STATIC oal_uint32  wal_config_set_shortgi80(mac_vap_stru *pst_mac_vap, oal_u
 OAL_STATIC oal_uint32  wal_config_get_shpreamble(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_shpreamble(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_MONITOR
-OAL_STATIC oal_uint32  wal_config_get_addr_filter(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_addr_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32  wal_config_get_monitor_mode(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32  wal_config_set_monitor_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32  wal_config_set_sniffer(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 OAL_STATIC oal_uint32  wal_config_get_prot_mode(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_prot_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -113,16 +109,16 @@ OAL_STATIC oal_uint32 wal_config_btcoex_set_perf_param(mac_vap_stru *pst_mac_vap
 #ifdef _PRE_WLAN_FEATURE_LTECOEX
 OAL_STATIC oal_uint32 wal_config_ltecoex_mode_set(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+OAL_STATIC oal_uint32 wal_config_nrcoex_priority_set(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32 wal_config_nrcoex_test(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32 wal_config_query_nrcoex_stat(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 OAL_STATIC oal_uint32  wal_config_lte_gpio_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_wfa_cfg_aifsn(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_wfa_cfg_cw(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-
-#endif
-
-#if 0
-OAL_STATIC oal_uint32  wal_config_ota_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 OAL_STATIC oal_uint32  wal_config_set_random_mac_addr_scan(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_random_mac_oui(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -149,7 +145,6 @@ OAL_STATIC oal_uint32  wal_config_dump_all_rx_dscr(mac_vap_stru *pst_mac_vap, oa
 
 #ifdef _PRE_WLAN_FEATURE_SMPS
 OAL_STATIC oal_uint32  wal_config_set_smps_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-//OAL_STATIC oal_uint32  wal_config_get_smps_mode_en(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_vap_smps_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 
@@ -177,10 +172,6 @@ OAL_STATIC oal_uint32  wal_config_cfg80211_stop_sched_scan(mac_vap_stru *pst_mac
 OAL_STATIC oal_uint32  wal_config_cfg80211_start_scan(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_cfg80211_start_join(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_alg_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#if 0
-OAL_STATIC oal_uint32  wal_config_tdls_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_tdls_channel_switch_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#endif
 OAL_STATIC oal_uint32  wal_config_rx_fcs_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 
 #ifdef _PRE_WLAN_FEATURE_DFS
@@ -203,8 +194,6 @@ OAL_STATIC oal_uint32  wal_config_update_ip_filter(mac_vap_stru *pst_mac_vap, oa
 
 OAL_STATIC oal_uint32  wal_config_user_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_dscr_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-//#ifdef    _PRE_WLAN_CHIP_TEST
-
 OAL_STATIC oal_uint32  wal_config_set_log_level(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
@@ -218,29 +207,20 @@ OAL_STATIC oal_uint32  wal_config_set_mcs(mac_vap_stru *pst_mac_vap, oal_uint16 
 OAL_STATIC oal_uint32  wal_config_set_mcsac(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_11AX
 OAL_STATIC oal_uint32  wal_config_set_mcsax(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+OAL_STATIC oal_uint32  wal_config_set_mcsax_er(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif
 #endif
 OAL_STATIC oal_uint32  wal_config_set_bw(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_ALWAYS_TX
 OAL_STATIC oal_uint32  wal_config_always_tx(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
 OAL_STATIC oal_uint32  wal_config_always_tx_num(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_always_tx_hw(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-OAL_STATIC oal_uint32  wal_config_always_tx_51(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-#endif
+OAL_STATIC oal_uint32  wal_config_always_tx_aggr_num(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 OAL_STATIC oal_uint32  wal_config_always_rx(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_tx_pow_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-OAL_STATIC oal_uint32  wal_config_always_rx_51(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-#endif
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-OAL_STATIC oal_uint32  wal_config_cali_power(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_cali_power(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_polynomial_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_upc_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_upc_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_load_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#endif
+
 OAL_STATIC oal_uint32  wal_config_get_dieid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_pcie_pm_level(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_reg_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -294,10 +274,6 @@ OAL_STATIC oal_uint32  wal_config_set_blacklist_mode(mac_vap_stru *pst_mac_vap, 
 OAL_STATIC oal_uint32  wal_config_blacklist_show(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-OAL_STATIC oal_uint32  wal_config_get_temp(mac_vap_stru * pst_mac_vap, oal_uint16 *pus_len, oal_uint8 * puc_param);
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_PROXY_ARP
 OAL_STATIC oal_uint32  wal_config_proxyarp_en(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
@@ -315,7 +291,9 @@ OAL_STATIC oal_uint32 wal_config_query_station_stats(mac_vap_stru *pst_mac_vap, 
 OAL_STATIC oal_uint32  wal_config_query_rssi(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_query_rate(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_query_psst(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+OAL_STATIC oal_uint32  wal_config_query_psm_flt_stat(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif
 #ifdef _PRE_WLAN_DFT_STAT
 OAL_STATIC oal_uint32  wal_config_query_ani(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
@@ -323,6 +301,8 @@ OAL_STATIC oal_uint32  wal_config_query_ani(mac_vap_stru *pst_mac_vap, oal_uint1
 #ifdef _PRE_WLAN_FEATURE_HS20
 OAL_STATIC oal_uint32  wal_config_set_qos_map(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
+OAL_STATIC oal_uint32  wal_config_set_dc_status(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+
 #ifdef _PRE_WLAN_FEATURE_P2P
 OAL_STATIC oal_uint32  wal_config_set_p2p_miracast_status(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_p2p_ps_ops(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -334,6 +314,7 @@ OAL_STATIC oal_uint32  wal_config_set_sta_pm_mode(mac_vap_stru *pst_mac_vap, oal
 OAL_STATIC oal_uint32  wal_config_show_pm_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 OAL_STATIC oal_uint32  wal_config_set_sta_pm_on(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+OAL_STATIC oal_uint32  wal_config_set_fast_sleep_para_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 #ifdef _PRE_WLAN_FEATURE_STA_UAPSD
 OAL_STATIC oal_uint32 wal_config_set_uapsd_para(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -366,30 +347,13 @@ OAL_STATIC oal_uint32  wal_config_dev_customize_info(mac_vap_stru *pst_mac_vap, 
 OAL_STATIC oal_uint32  wal_config_vap_destroy(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 oal_uint32 wal_config_set_vendor_ie(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 
-#ifdef _PRE_WLAN_FEATURE_HILINK
-OAL_STATIC oal_uint32 wal_config_fbt_kick_user(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_fbt_start_scan(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-oal_uint32 wal_config_set_white_lst_ssidhiden(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-oal_uint32 wal_config_get_cur_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-oal_uint32 wal_config_set_stay_time(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-OAL_STATIC oal_uint32 wal_config_set_mgmt_frame_filters(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32 wal_config_get_sta_diag_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32 wal_config_get_vap_diag_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32 wal_config_set_sensing_bssid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32 wal_config_get_sensing_bssid_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#endif
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_11KV_INTERFACE
 OAL_STATIC oal_uint32 wal_config_send_action_frame(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32 wal_config_set_mgmt_frame_ie(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32 wal_config_set_mgmt_cap_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_11R_AP
 OAL_STATIC oal_uint32 wal_config_set_mlme(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param);
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_11K
 OAL_STATIC oal_uint32  wal_config_send_neighbor_req(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
@@ -442,43 +406,7 @@ OAL_STATIC oal_uint32 wal_config_sta_scan_wake_wow(mac_vap_stru *pst_mac_vap, oa
 OAL_STATIC oal_uint32  wal_config_get_wmmswitch(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_get_max_user(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-OAL_STATIC oal_uint32  wal_config_set_hw_addr(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-
-OAL_STATIC oal_uint32  wal_config_set_hide_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_hide_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_global_shortgi(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_global_shortgi(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_txbeamform(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_txbeamform(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_set_noforward(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_noforward(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_priv_set_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_channel(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_priv_set_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_assoc_num(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_noise(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_bw(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_pmf(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_band(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_bcast_rate(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-#ifdef _PRE_WLAN_FEATURE_BAND_STEERING
-OAL_STATIC oal_uint32  wal_config_set_bsd(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_bsd(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-#endif
-OAL_STATIC oal_uint32  wal_config_get_ko_version(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_wps_ie(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_rate_info(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_chan_list(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_vap_cap(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_pwr_ref(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_scan_stat(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_neighbor_scan(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_neighb_no(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_get_ant_rssi(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
-OAL_STATIC oal_uint32  wal_config_ant_rssi_report(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
-#endif
-#ifdef _PRE_WLAN_FEATURE_M2S
+#ifdef _PRE_WLAN_FEATURE_M2S_MSS
 OAL_STATIC oal_uint32  wal_config_set_m2s_switch_blacklist(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 OAL_STATIC oal_uint32  wal_config_set_m2s_switch_mss(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
@@ -494,6 +422,10 @@ OAL_STATIC oal_uint32  wal_config_remove_app_ie(mac_vap_stru *pst_mac_vap, oal_u
 #ifdef  _PRE_WLAN_FEATURE_FORCE_STOP_FILTER
 OAL_STATIC oal_uint32  wal_config_force_stop_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+OAL_STATIC oal_uint32  wal_config_external_auth(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param);
+#endif /* _PRE_WLAN_FEATURE_SAE */
+
 /* cfgid操作全局变量 */
 OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 {
@@ -515,7 +447,8 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 
     {WLAN_CFGID_SHORT_PREAMBLE,    OAL_FALSE,  {0},   wal_config_get_shpreamble, wal_config_set_shpreamble},
 #ifdef _PRE_WLAN_FEATURE_MONITOR
-    {WLAN_CFGID_ADDR_FILTER,       OAL_FALSE,  {0},   wal_config_get_addr_filter,wal_config_set_addr_filter},
+    {WLAN_CFGID_SNIFFER,            OAL_FALSE,  {0},   OAL_PTR_NULL,               wal_config_set_sniffer},
+    {WLAN_CFGID_MONITOR_MODE,       OAL_FALSE,  {0},   wal_config_get_monitor_mode,wal_config_set_monitor_mode},
 #endif
     {WLAN_CFGID_PROT_MODE,         OAL_FALSE,  {0},   wal_config_get_prot_mode,  wal_config_set_prot_mode},
     {WLAN_CFGID_AUTH_MODE,         OAL_FALSE,  {0},   wal_config_get_auth_mode,  wal_config_set_auth_mode},
@@ -524,7 +457,6 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_TX_POWER,          OAL_FALSE,  {0},   wal_config_get_txpower,    wal_config_set_txpower},
 #ifdef _PRE_WLAN_FEATURE_SMPS
     {WLAN_CFGID_SMPS_MODE,         OAL_FALSE,  {0},   OAL_PTR_NULL,              wal_config_set_smps_mode},
-//    {WLAN_CFGID_SMPS_EN,           OAL_FALSE,  {0},   OAL_PTR_NULL,              wal_config_get_smps_mode_en},
     {WLAN_CFGID_SMPS_VAP_MODE,     OAL_FALSE,  {0},   OAL_PTR_NULL,              wal_config_set_vap_smps_mode},
 #endif
 #ifdef _PRE_WLAN_FEATURE_UAPSD
@@ -557,14 +489,16 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 #ifdef _PRE_WLAN_FEATURE_LTECOEX
     {WLAN_CFGID_LTECOEX_MODE_SET,    	OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_ltecoex_mode_set},
 #endif
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+    {WLAN_CFGID_NRCOEX_PRIORITY_SET,    OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_nrcoex_priority_set},
+    {WLAN_CFGID_NRCOEX_TEST,            OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_nrcoex_test},
+    {WLAN_CFGID_QUERY_NRCOEX_STAT,      OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_query_nrcoex_stat},
+#endif
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     {WLAN_CFGID_WFA_CFG_AIFSN,        OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_wfa_cfg_aifsn},
     {WLAN_CFGID_WFA_CFG_CW,        OAL_FALSE,  {0},    OAL_PTR_NULL,                wal_config_wfa_cfg_cw},
     {WLAN_CFGID_CHECK_LTE_GPIO,              OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_lte_gpio_mode},
 
-#endif
-#if 0
-    {WLAN_CFGID_OTA_SWITCH,             OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_ota_switch},
 #endif
     {WLAN_CFGID_SET_RANDOM_MAC_ADDR_SCAN, OAL_FALSE,  {0},    OAL_PTR_NULL,          wal_config_set_random_mac_addr_scan},
     {WLAN_CFGID_SET_RANDOM_MAC_OUI,     OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_random_mac_oui},
@@ -593,11 +527,6 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_COUNTRY_FOR_DFS,        OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_country_for_dfs},
     {WLAN_CFGID_TID,                    OAL_FALSE,  {0},    wal_config_get_tid,      OAL_PTR_NULL},
 
-
-#if 0
-    {WLAN_CFGID_TDLS_PROHI,             OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_tdls_prohibited},
-    {WLAN_CFGID_TDLS_CHASWI_PROHI,      OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_tdls_channel_switch_prohibited},
-#endif
     {WLAN_CFGID_FRAG_THRESHOLD_REG,     OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_frag_threshold},
     {WLAN_CFGID_RX_FCS_INFO,            OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_rx_fcs_info},
 
@@ -608,34 +537,23 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_REGDOMAIN_PWR,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_rd_pwr},
     {WLAN_CFGID_USER_INFO,              OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_user_info},
     {WLAN_CFGID_SET_DSCR,               OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_dscr_param},
-/*#ifdef _PRE_WLAN_CHIP_TEST  */
     {WLAN_CFGID_SET_RATE,               OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_rate},
     {WLAN_CFGID_SET_MCS,                OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_mcs},
     {WLAN_CFGID_SET_MCSAC,              OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_mcsac},
 #ifdef _PRE_WLAN_FEATURE_11AX
     {WLAN_CFGID_SET_MCSAX,              OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_mcsax},
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+    {WLAN_CFGID_SET_MCSAX_ER,           OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_mcsax_er},
+#endif
 #endif
     {WLAN_CFGID_SET_BW,                 OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_bw},
 #ifdef _PRE_WLAN_FEATURE_ALWAYS_TX
     {WLAN_CFGID_SET_ALWAYS_TX,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_tx},
     {WLAN_CFGID_SET_ALWAYS_TX_NUM,      OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_tx_num},
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    {WLAN_CFGID_SET_ALWAYS_TX_51,       OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_tx_51},
-#endif
     {WLAN_CFGID_SET_ALWAYS_TX_HW,       OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_tx_hw},
+    {WLAN_CFGID_SET_ALWAYS_TX_AGGR_NUM, OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_tx_aggr_num},
 #endif
     {WLAN_CFGID_SET_ALWAYS_RX,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_rx},
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    {WLAN_CFGID_SET_ALWAYS_RX_51,       OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_always_rx_51},
-#endif
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-    {WLAN_CFGID_CALI_POWER,             OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_cali_power},
-    {WLAN_CFGID_GET_CALI_POWER,         OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_get_cali_power},
-    {WLAN_CFGID_SET_POLYNOMIAL_PARA,    OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_polynomial_param},
-    {WLAN_CFGID_GET_UPC_PARA,           OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_get_upc_params},
-    {WLAN_CFGID_SET_UPC_PARA,           OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_upc_params},
-    {WLAN_CFGID_SET_LOAD_MODE,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_load_mode},
-#endif
     {WLAN_CFGID_GET_DIEID,              OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_get_dieid},
     {WLAN_CFGID_PCIE_PM_LEVEL,          OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_pcie_pm_level},
     {WLAN_CFGID_SET_TX_POW,             OAL_FALSE,  {0},    OAL_PTR_NULL,            wal_config_set_tx_pow_param},
@@ -697,23 +615,6 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_GET_ANT_INFO,           OAL_FALSE,  {0},   OAL_PTR_NULL,             wal_config_get_ant_info},
     {WLAN_CFGID_DOUBLE_ANT_SW,          OAL_FALSE,  {0},   OAL_PTR_NULL,             wal_config_double_ant_switch},
 #endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    {WLAN_CFGID_FBT_KICK_USER,              OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_fbt_kick_user},
-    {WLAN_CFGID_SET_WHITE_LIST_SSIDHIDEN,   OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_white_lst_ssidhiden},
-    {WLAN_CFGID_FBT_FET_CURRENT_CHANNEL,    OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_cur_channel},
-    {WLAN_CFGID_FBT_SET_SCAN_TIME_PARAM,    OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_stay_time},
-    {WLAN_CFGID_FBT_GET_STA_11V_ABILITY,    OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_sta_11v_abillty},
-    {WLAN_CFGID_FBT_GET_STA_11K_ABILITY,    OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_sta_11k_abillty},
-    {WLAN_CFGID_FBT_CHANGE_STA_TO_TARGET_AP,OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_change_to_other_ap},
-    {WLAN_CFGID_FBT_NEIGHBOR_BCN_REQ,       OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_sta_bcn_request},
-#endif
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-    {WLAN_CFGID_SET_MGMT_FRAME_FILTERS,     OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_mgmt_frame_filters},
-    {WLAN_CFGID_GET_STA_DIAG_INFO,          OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_sta_diag_info},
-    {WLAN_CFGID_GET_VAP_DIAG_INFO,          OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_vap_diag_info},
-    {WLAN_CFGID_SET_SENSING_BSSID,          OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_sensing_bssid},
-    {WLAN_CFGID_GET_SENSING_BSSID_INFO,     OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_sensing_bssid_info},
-#endif
 #ifdef _PRE_WLAN_FEATURE_11KV_INTERFACE
     {WLAN_CFGID_SEND_ACTION_FRAME,          OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_send_action_frame},
     {WLAN_CFGID_SET_MGMT_FRAME_IE,          OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_set_mgmt_frame_ie},
@@ -725,8 +626,8 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     /* END:开源APP 程序下发的私有命令 */
 #ifdef _PRE_WLAN_FEATURE_11R_AP
     {WLAN_CFGID_FBT_GET_STA_11R_ABILITY,    OAL_FALSE,  {0},   OAL_PTR_NULL,        wal_config_get_sta_11r_abillty},
-    {WLAN_CFGID_SET_MLME,          OAL_FALSE,  {0},   OAL_PTR_NULL,             wal_config_set_mlme},
 #endif
+    {WLAN_CFGID_SET_MLME,          OAL_FALSE,  {0},   OAL_PTR_NULL,             wal_config_set_mlme},
 
     {WLAN_CFGID_DEFAULT_KEY,        OAL_FALSE,  {0},   OAL_PTR_NULL,            wal_config_set_default_key},
     {WLAN_CFGID_WMM_SWITCH,         OAL_FALSE,  {0},   wal_config_get_wmmswitch,wal_config_open_wmm},
@@ -748,6 +649,9 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_CFG80211_SET_PMKSA,        OAL_FALSE,  {0},    OAL_PTR_NULL,     wal_config_set_pmksa},
     {WLAN_CFGID_CFG80211_DEL_PMKSA,        OAL_FALSE,  {0},    OAL_PTR_NULL,     wal_config_del_pmksa},
     {WLAN_CFGID_CFG80211_FLUSH_PMKSA,      OAL_FALSE,  {0},    OAL_PTR_NULL,     wal_config_flush_pmksa},
+#ifdef _PRE_WLAN_FEATURE_SAE
+    {WLAN_CFGID_CFG80211_EXTERNAL_AUTH,    OAL_FALSE,  {0},    OAL_PTR_NULL,        wal_config_external_auth},
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
     {WLAN_CFGID_SET_WPS_P2P_IE,                    OAL_FALSE,  {0},    OAL_PTR_NULL,     wal_config_set_wps_p2p_ie},
     {WLAN_CFGID_CFG80211_REMAIN_ON_CHANNEL,        OAL_FALSE,  {0},    OAL_PTR_NULL,     wal_config_remain_on_channel},
@@ -759,6 +663,9 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_QUERY_RSSI,             OAL_FALSE,  {0},    OAL_PTR_NULL,           wal_config_query_rssi},
     {WLAN_CFGID_QUERY_RATE,             OAL_FALSE,  {0},    OAL_PTR_NULL,           wal_config_query_rate},
     {WLAN_CFGID_QUERY_PSST,             OAL_FALSE,  {0},    OAL_PTR_NULL,           wal_config_query_psst},
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+    { WLAN_CFGID_QUERY_PSM_STAT,        OAL_FALSE, { 0 }, OAL_PTR_NULL,           wal_config_query_psm_flt_stat },
+#endif
 #ifdef _PRE_WLAN_DFT_STAT
     {WLAN_CFGID_QUERY_ANI,              OAL_FALSE,  {0},    OAL_PTR_NULL,           wal_config_query_ani},
 #endif
@@ -769,6 +676,7 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_SHOW_PS_INFO,          OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_show_pm_info},
 #endif
     {WLAN_CFGID_SET_STA_PM_ON,          OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_set_sta_pm_on},
+    {WLAN_CFGID_SET_FASTSLEEP_PARA,     OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_set_fast_sleep_para_etc},
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_DHCP_REQ_DISABLE
@@ -778,6 +686,7 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 #ifdef _PRE_WLAN_FEATURE_STA_UAPSD
     {WLAN_CFGID_SET_UAPSD_PARA,        OAL_FALSE, {0},      OAL_PTR_NULL,       wal_config_set_uapsd_para},
 #endif
+    {WLAN_CFGID_DC_STATUS,          OAL_FALSE,  {0},   OAL_PTR_NULL,            wal_config_set_dc_status},
 
 #ifdef _PRE_WLAN_FEATURE_P2P
     {WLAN_CFGID_SET_P2P_MIRACAST_STATUS,     OAL_FALSE,  {0},   OAL_PTR_NULL,   wal_config_set_p2p_miracast_status},
@@ -820,9 +729,6 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
     {WLAN_CFGID_TAS_RSSI_ACCESS, OAL_FALSE,  {0},    OAL_PTR_NULL,      wal_config_tas_rssi_access},
 #endif
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    {WLAN_CFGID_FBT_START_SCAN,  OAL_FALSE,  {0},    OAL_PTR_NULL,      wal_config_fbt_start_scan},
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_11K
     {WLAN_CFGID_SEND_NEIGHBOR_REQ,   OAL_FALSE,  {0},  OAL_PTR_NULL,     wal_config_send_neighbor_req},
@@ -852,43 +758,13 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
     {WLAN_CFGID_QUERY_STAT_INFO,             OAL_FALSE,  {0},  OAL_PTR_NULL,         wal_config_query_stat_info},
 #endif
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-    {WLAN_CFGID_SET_HWADDR,                 OAL_FALSE,  {0},    OAL_PTR_NULL,                   wal_config_set_hw_addr},
-    {WLAN_CFGID_HIDE_SSID,                  OAL_FALSE,  {0},    wal_config_get_hide_ssid,       wal_config_set_hide_ssid},
-    {WLAN_CFGID_GLOBAL_SHORTGI,             OAL_FALSE,  {0},    wal_config_get_global_shortgi,  wal_config_set_global_shortgi},
-    {WLAN_CFGID_SET_TXBEAMFORM,             OAL_FALSE,  {0},    wal_config_get_txbeamform,      wal_config_set_txbeamform},
-    {WLAN_CFGID_SET_NOFORWARD,              OAL_FALSE,  {0},    wal_config_get_noforward,       wal_config_set_noforward},
-    {WLAN_CFGID_PRIV_MODE,                  OAL_FALSE,  {0},    OAL_PTR_NULL,                   wal_config_priv_set_mode},
-    {WLAN_CFGID_CHANNEL,                    OAL_FALSE,  {0},    wal_config_get_channel,         wal_config_priv_set_channel},
-    {WLAN_CFGID_ASSOC_NUM,                  OAL_FALSE,  {0},    wal_config_get_assoc_num,       OAL_PTR_NULL},
-    {WLAN_CFGID_NOISE,                      OAL_FALSE,  {0},    wal_config_get_noise,           OAL_PTR_NULL},
-    {WLAN_CFGID_GET_BW,                     OAL_FALSE,  {0},    wal_config_get_bw,              OAL_PTR_NULL},
-    {WLAN_CFGID_PMF,                        OAL_FALSE,  {0},    wal_config_get_pmf,             OAL_PTR_NULL},
-    {WLAN_CFGID_GET_TEMP,                   OAL_FALSE,  {0},    wal_config_get_temp,            OAL_PTR_NULL},
-    {WLAN_CFGID_GET_BCAST_RATE,             OAL_FALSE,  {0},    wal_config_get_bcast_rate,      OAL_PTR_NULL},
-#ifdef _PRE_WLAN_FEATURE_BAND_STEERING
-    {WLAN_CFGID_BSD_CONFIG,                 OAL_FALSE,  {0},    OAL_PTR_NULL,                   wal_config_set_bsd},
-    {WLAN_CFGID_GET_BSD,                    OAL_FALSE,  {0},    wal_config_get_bsd,             OAL_PTR_NULL},
-#endif
-    {WLAN_CFGID_GET_KO_VERSION,             OAL_FALSE,  {0},    wal_config_get_ko_version,      OAL_PTR_NULL},
-    {WLAN_CFGID_GET_WPS_IE,                 OAL_FALSE,  {0},    wal_config_get_wps_ie,          OAL_PTR_NULL},
-    {WLAN_CFGID_GET_BAND,                   OAL_FALSE,  {0},    wal_config_get_band,            OAL_PTR_NULL},
-    {WLAN_CFGID_GET_RATE_INFO,              OAL_FALSE,  {0},    wal_config_get_rate_info,       OAL_PTR_NULL},
-    {WLAN_CFGID_GET_CHAN_LIST,              OAL_FALSE,  {0},    wal_config_get_chan_list,       OAL_PTR_NULL},
-    {WLAN_CFGID_GET_VAP_CAP,                OAL_FALSE,  {0},    wal_config_get_vap_cap,         OAL_PTR_NULL},
-    {WLAN_CFGID_GET_PWR_REF,                OAL_FALSE,  {0},    wal_config_get_pwr_ref,         OAL_PTR_NULL},
-    {WLAN_CFGID_NEIGHBOR_SCAN,              OAL_FALSE,  {0},    wal_config_get_scan_stat,       wal_config_neighbor_scan},
-    {WLAN_CFGID_GET_NEIGHB_NO,              OAL_FALSE,  {0},    wal_config_get_neighb_no,       OAL_PTR_NULL},
-    {WLAN_CFGID_GET_ANT_RSSI,               OAL_FALSE,  {0},    wal_config_get_ant_rssi,       OAL_PTR_NULL},
-    {WLAN_CFGID_ANT_RSSI_REPORT,            OAL_FALSE,  {0},    OAL_PTR_NULL,       wal_config_ant_rssi_report},
-#endif
     {WLAN_CFGID_GET_BG_NOISE,               OAL_FALSE,  {0},    wal_config_get_bg_noise,       OAL_PTR_NULL},
 #ifdef _PRE_WLAN_FEATURE_11K_EXTERN
     {WLAN_CFGID_SEND_RADIO_MEAS_REQ,        OAL_FALSE,  {0},  OAL_PTR_NULL,         wal_config_send_radio_meas_req},
     {WLAN_CFGID_SET_11K_SWITCH,             OAL_FALSE,  {0},  OAL_PTR_NULL,         wal_config_set_11k_switch},
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_M2S
+#ifdef _PRE_WLAN_FEATURE_M2S_MSS
     {WLAN_CFGID_SET_M2S_BLACKLIST,          OAL_FALSE,  {0},  OAL_PTR_NULL,         wal_config_set_m2s_switch_blacklist},
     {WLAN_CFGID_SET_M2S_MSS,                OAL_FALSE,  {0},  OAL_PTR_NULL,         wal_config_set_m2s_switch_mss},
 #endif
@@ -905,6 +781,11 @@ OAL_STATIC OAL_CONST wal_wid_op_stru g_ast_board_wid_op[] =
 #ifdef  _PRE_WLAN_FEATURE_FORCE_STOP_FILTER
     {WLAN_CFGID_FORCE_STOP_FILTER,         OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_force_stop_filter},
 #endif
+    {WLAN_CFGID_SPEC_FEMLP_EN,             OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_fem_lp_flag},
+    {WLAN_CFGID_SOFTAP_MIMO_MODE,          OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_softap_mimo_mode},
+#ifdef _PRE_WLAN_FEATURE_IP_FILTER
+    {WLAN_CFGID_ASSIGNED_FILTER,           OAL_FALSE,  {0},   OAL_PTR_NULL,         wal_config_assigned_filter},
+#endif //_PRE_WLAN_FEATURE_IP_FILTER
 
     {WLAN_CFGID_BUTT,                  OAL_FALSE,  {0},    0,                       0},
 };
@@ -917,7 +798,7 @@ OAL_STATIC oal_uint32  wal_config_add_vap(mac_vap_stru *pst_mac_vap, oal_uint16 
 {
     oal_uint32 ul_ret;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -935,9 +816,9 @@ OAL_STATIC oal_uint32  wal_config_del_vap(mac_vap_stru *pst_mac_vap, oal_uint16 
 {
     oal_uint32         ul_ret;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_del_vap::pst_mac_vap or puc_param null ptr error [%d], [%d]}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_del_vap::pst_mac_vap or puc_param null ptr error [%x], [%x]}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -956,9 +837,9 @@ OAL_STATIC oal_uint32  wal_config_start_vap(mac_vap_stru *pst_mac_vap, oal_uint1
 {
     oal_uint32  ul_ret;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_start_vap::pst_mac_vap or puc_param null ptr error %d,%d.}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_start_vap::pst_mac_vap or puc_param null ptr error %x,%x.}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -976,9 +857,9 @@ OAL_STATIC oal_uint32  wal_config_down_vap(mac_vap_stru *pst_mac_vap, oal_uint16
 {
     oal_uint32    ul_ret;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_down_vap::pst_mac_vap or puc_param null ptr error [%x],[%x].}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_down_vap::pst_mac_vap or puc_param null ptr error [%x],[%x].}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1017,7 +898,7 @@ OAL_STATIC oal_uint32  wal_config_set_mode(mac_vap_stru *pst_mac_vap, oal_uint16
 
     if (!pst_mac_vap || !puc_param)
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_set_mode::null ptr, vap=%p param=%p", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_set_mode::null ptr, vap=%p param=%p", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1046,9 +927,9 @@ OAL_STATIC oal_uint32  wal_config_set_mac_addr(mac_vap_stru *pst_mac_vap, oal_ui
 {
     oal_uint32                     ul_ret;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_mac_addr::pst_mac_vap or puc_param null ptr error %d,%d.}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_mac_addr::pst_mac_vap or puc_param null ptr error %x,%x.}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1087,15 +968,21 @@ OAL_STATIC oal_uint32  wal_config_get_shpreamble(mac_vap_stru *pst_mac_vap, oal_
 }
 #ifdef _PRE_WLAN_FEATURE_MONITOR
 
-OAL_STATIC oal_uint32  wal_config_set_addr_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+OAL_STATIC oal_uint32  wal_config_set_sniffer(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    return hmac_config_set_addr_filter(pst_mac_vap, us_len, puc_param);
+    return hmac_config_set_sniffer(pst_mac_vap, us_len, puc_param);
 }
 
 
-OAL_STATIC oal_uint32  wal_config_get_addr_filter(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
+OAL_STATIC oal_uint32  wal_config_set_monitor_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    return hmac_config_get_addr_filter_etc(pst_mac_vap, pus_len, puc_param);
+    return hmac_config_set_monitor_mode(pst_mac_vap, us_len, puc_param);
+}
+
+
+OAL_STATIC oal_uint32  wal_config_get_monitor_mode(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
+{
+    return hmac_config_get_monitor_etc(pst_mac_vap, pus_len, puc_param);
 }
 #endif
 
@@ -1256,13 +1143,6 @@ OAL_STATIC oal_uint32  wal_config_set_smps_mode(mac_vap_stru *pst_mac_vap, oal_u
 {
     return hmac_config_set_smps_mode(pst_mac_vap, us_len, puc_param);
 }
-#if 0
-
-OAL_STATIC oal_uint32  wal_config_get_smps_mode_en(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_smps_mode_en(pst_mac_vap, us_len, puc_param);
-}
-#endif
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_UAPSD
@@ -1295,7 +1175,7 @@ OAL_STATIC oal_uint32  wal_config_set_channel(mac_vap_stru *pst_mac_vap, oal_uin
 
     if (!pst_mac_vap || !puc_param)
     {
-        OAM_WARNING_LOG2(0, OAM_SF_CFG, "{wal_config_set_channel::null ptr, vap=%p param=%p", pst_mac_vap, puc_param);
+        OAM_WARNING_LOG2(0, OAM_SF_CFG, "{wal_config_set_channel::null ptr, vap=%p param=%p", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1313,9 +1193,9 @@ OAL_STATIC oal_uint32  wal_config_set_beacon(mac_vap_stru *pst_mac_vap, oal_uint
     oal_uint32                          ul_ret;
 
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap) || OAL_UNLIKELY(OAL_PTR_NULL == puc_param) )
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_beacon::pst_mac_vap or puc_param is null [%x],[%x].}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_beacon::pst_mac_vap or puc_param is null [%x],[%x].}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1358,6 +1238,33 @@ OAL_STATIC oal_uint32 wal_config_ltecoex_mode_set(mac_vap_stru *pst_mac_vap, oal
     return hmac_config_ltecoex_mode_set(pst_mac_vap, us_len, puc_param);
 }
 #endif
+
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+/*
+ * 函 数 名  : wal_config_nrcoex_priority_set
+ * 功能描述  :
+ */
+OAL_STATIC oal_uint32 wal_config_nrcoex_priority_set(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_nrcoex_priority_set(pst_mac_vap, us_len, puc_param);
+}
+
+OAL_STATIC oal_uint32 wal_config_query_nrcoex_stat(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_query_nrcoex_stat(pst_mac_vap, us_len, puc_param);
+}
+
+
+/*
+ * 函 数 名  : wal_config_nrcoex
+ * 功能描述  :
+ */
+OAL_STATIC oal_uint32 wal_config_nrcoex_test(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_nrcoex_test(pst_mac_vap, us_len, puc_param);
+}
+#endif
+
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 
@@ -1493,8 +1400,8 @@ oal_netbuf_stru*  wal_config_create_packet_sta_etc(oal_uint32 ul_size,
                                                 oal_uint8 uc_tid)
 {
     oal_netbuf_stru *pst_buf;
-    mac_ether_header_stru  *pst_ether_header;
-    mac_ip_header_stru     *pst_ip;
+    mac_ether_header_stru  *pst_ether_header = OAL_PTR_NULL;
+    mac_ip_header_stru     *pst_ip = OAL_PTR_NULL;
     oal_uint32             ul_loop = 0;
 
     pst_buf = oal_netbuf_alloc(ul_size, l_reserve, 4);
@@ -1549,7 +1456,7 @@ oal_netbuf_stru*  wal_config_create_packet_sta_etc(oal_uint32 ul_size,
     pst_buf->next = OAL_PTR_NULL;
     pst_buf->prev = OAL_PTR_NULL;
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_buf), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_buf), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     return pst_buf;
 
@@ -1558,11 +1465,11 @@ oal_netbuf_stru*  wal_config_create_packet_sta_etc(oal_uint32 ul_size,
 
 OAL_STATIC oal_uint32  wal_config_frag_threshold(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    mac_cfg_frag_threshold_stru *pst_frag_threshold;
+    mac_cfg_frag_threshold_stru *pst_frag_threshold = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_frag_threshold:: pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_frag_threshold:: pst_mac_vap/puc_param is null ptr %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1570,12 +1477,11 @@ OAL_STATIC oal_uint32  wal_config_frag_threshold(mac_vap_stru *pst_mac_vap, oal_
 
     if (OAL_PTR_NULL == pst_mac_vap->pst_mib_info)
     {
-        OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_frag_threshold:pst_mib_info[%d],ul_frag_threshold[%d] !}\r\n",
-                    pst_mac_vap->pst_mib_info);
+        OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_frag_threshold:pst_mib_info[%x]!}\r\n",
+                    (uintptr_t)(pst_mac_vap->pst_mib_info));
 		return OAL_ERR_CODE_PTR_NULL;
     }
 
-    //pst_mac_vap->pst_mib_info->st_wlan_mib_operation.ul_dot11FragmentationThreshold = pst_frag_threshold->ul_frag_threshold;
     mac_mib_set_FragmentationThreshold(pst_mac_vap, pst_frag_threshold->ul_frag_threshold);
     return OAL_SUCC;
 }
@@ -1583,11 +1489,11 @@ OAL_STATIC oal_uint32  wal_config_frag_threshold(mac_vap_stru *pst_mac_vap, oal_
 
 OAL_STATIC oal_uint32  wal_config_rts_threshold(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    mac_cfg_rts_threshold_stru *pst_rts_threshold;
+    mac_cfg_rts_threshold_stru *pst_rts_threshold = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_rts_threshold:: pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_rts_threshold:: pst_mac_vap/puc_param is null ptr %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1704,18 +1610,18 @@ OAL_STATIC oal_uint32 wal_config_set_pm_switch(mac_vap_stru *pst_mac_vap, oal_ui
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     if((1 == uc_en) || (4 == uc_en))
     {
-        g_wlan_pm_switch_etc = OAL_TRUE;
+        wlan_pm_switch_etc = OAL_TRUE;
         wlan_pm_enable_etc();
     }
     else
     {
         wlan_pm_disable_etc();
-        g_wlan_pm_switch_etc = OAL_FALSE;
+        wlan_pm_switch_etc = OAL_FALSE;
     }
 #endif
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-    g_wlan_device_pm_switch = uc_en;
+    wlan_device_pm_switch = uc_en;
 #endif
 
     /***************************************************************************
@@ -1812,10 +1718,11 @@ OAL_STATIC oal_uint32  wal_config_set_rate(mac_vap_stru *pst_mac_vap, oal_uint16
     oal_uint32  ul_ret;
     mac_cfg_tx_comp_stru            st_event_set_bcast;
 
-    oal_memset(&st_event_set_bcast, 0, OAL_SIZEOF(mac_cfg_tx_comp_stru));
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    memset_s(&st_event_set_bcast, OAL_SIZEOF(mac_cfg_tx_comp_stru),
+               0, OAL_SIZEOF(mac_cfg_tx_comp_stru));
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_WARNING_LOG2(0, OAM_SF_ANY, "{wal_config_set_rate::pst_mac_vap/puc_param is null ptr %d %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_WARNING_LOG2(0, OAM_SF_ANY, "{wal_config_set_rate::pst_mac_vap/puc_param is null ptr %x %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -1827,15 +1734,6 @@ OAL_STATIC oal_uint32  wal_config_set_rate(mac_vap_stru *pst_mac_vap, oal_uint16
         OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_set_rate::hmac_config_set_rate_etc error!}\r\n");
         return ul_ret;
     }
-#if 0
-    /* 重新常发 */
-    if (OAL_SWITCH_ON == pst_mac_vap->bit_al_tx_flag)
-    {
-       st_event_set_bcast.uc_param = OAL_SWITCH_ON;
-       st_event_set_bcast.en_protocol_mode = WLAN_PHY_PROTOCOL_BUTT;
-       wal_config_always_tx(pst_mac_vap, us_len, (oal_uint8 *)&st_event_set_bcast);
-    }
-#endif
     return ul_ret;
 }
 
@@ -1844,7 +1742,7 @@ OAL_STATIC oal_uint32  wal_config_set_mcs(mac_vap_stru *pst_mac_vap, oal_uint16 
 {
     oal_uint32  ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY,"{wal_config_set_mcs::pst_mac_vap/puc_param is null ptr}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1867,7 +1765,7 @@ OAL_STATIC oal_uint32  wal_config_set_mcsac(mac_vap_stru *pst_mac_vap, oal_uint1
 {
     oal_uint32  ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_set_mcsac::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1888,7 +1786,7 @@ OAL_STATIC oal_uint32  wal_config_set_mcsax(mac_vap_stru *pst_mac_vap, oal_uint1
 {
     oal_uint32  ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_set_mcsax::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1904,6 +1802,29 @@ OAL_STATIC oal_uint32  wal_config_set_mcsax(mac_vap_stru *pst_mac_vap, oal_uint1
 
     return ul_ret;
 }
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+OAL_STATIC oal_uint32  wal_config_set_mcsax_er(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    oal_uint32  ul_ret;
+
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
+    {
+        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_set_mcsax_er::pst_mac_vap/puc_param is null ptr!}\r\n");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    /* 设置参数 */
+    ul_ret = hmac_config_set_mcsax_er(pst_mac_vap, us_len, puc_param);
+    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
+    {
+        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_set_mcsax_er::hmac_config_set_mcsac_etc error!}\r\n");
+        return ul_ret;
+    }
+
+    return ul_ret;
+}
+
+#endif
 #endif
 
 
@@ -1912,7 +1833,7 @@ OAL_STATIC oal_uint32  wal_config_set_bw(mac_vap_stru *pst_mac_vap, oal_uint16 u
 {
     oal_uint32  ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_set_bw::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1935,7 +1856,7 @@ OAL_STATIC oal_uint32  wal_config_always_tx(mac_vap_stru *pst_mac_vap, oal_uint1
 {
     oal_uint32                      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_always_tx::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1959,38 +1880,12 @@ OAL_STATIC oal_uint32  wal_config_always_tx_num(mac_vap_stru *pst_mac_vap, oal_u
 }
 
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-
-OAL_STATIC oal_uint32  wal_config_always_tx_51(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    oal_uint32                      ul_ret;
-    //mac_cfg_tx_comp_stru            *pst_event_set_bcast;
-
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
-    {
-        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_always_tx_51::pst_mac_vap/puc_param is null ptr!}\r\n");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    //pst_event_set_bcast = (mac_cfg_tx_comp_stru *)puc_param;
-
-    ul_ret = hmac_config_always_tx_51(pst_mac_vap, us_len, puc_param);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
-    {
-        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_always_tx_51::hmac_config_always_tx failed!}\r\n");
-        return ul_ret;
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
 
 OAL_STATIC oal_uint32  wal_config_always_tx_hw(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
     oal_uint32                      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_always_tx_hw::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -2006,6 +1901,10 @@ OAL_STATIC oal_uint32  wal_config_always_tx_hw(mac_vap_stru *pst_mac_vap, oal_ui
     return OAL_SUCC;
 }
 
+OAL_STATIC oal_uint32  wal_config_always_tx_aggr_num(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_always_tx_aggr_num(pst_mac_vap, us_len, puc_param);
+}
 #endif /* #ifdef _PRE_WLAN_FEATURE_ALWAYS_TX */
 
 
@@ -2014,7 +1913,7 @@ OAL_STATIC oal_uint32  wal_config_always_rx(mac_vap_stru *pst_mac_vap, oal_uint1
 {
     oal_uint32                      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_always_rx::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -2030,29 +1929,6 @@ OAL_STATIC oal_uint32  wal_config_always_rx(mac_vap_stru *pst_mac_vap, oal_uint1
     return OAL_SUCC;
 }
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-
-OAL_STATIC oal_uint32  wal_config_always_rx_51(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    oal_uint32                      ul_ret;
-
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
-    {
-        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_always_rx::pst_mac_vap/puc_param is null ptr!}\r\n");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    ul_ret = hmac_config_always_rx_51(pst_mac_vap, us_len, puc_param);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_ret))
-    {
-        OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_always_rx::hmac_config_always_rx_etc failed!}\r\n");
-        return ul_ret;
-    }
-
-    return OAL_SUCC;
-}
-#endif
-
 
 OAL_STATIC oal_uint32  wal_config_set_tx_pow_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
@@ -2064,7 +1940,7 @@ OAL_STATIC oal_uint32  wal_config_pcie_pm_level(mac_vap_stru *pst_mac_vap, oal_u
 {
     oal_uint32                      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_pcie_pm_level::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -2130,7 +2006,7 @@ OAL_STATIC oal_uint32  wal_config_sdio_flowctrl(mac_vap_stru *pst_mac_vap, oal_u
 }
 #endif
 
- #ifdef _PRE_WLAN_DELAY_STATISTIC
+#ifdef _PRE_WLAN_DELAY_STATISTIC
  
 OAL_STATIC oal_uint32  wal_config_pkt_time_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
@@ -2141,23 +2017,8 @@ OAL_STATIC oal_uint32  wal_config_pkt_time_switch(mac_vap_stru *pst_mac_vap, oal
 
 OAL_STATIC oal_uint32  wal_config_alg_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-
     return hmac_config_alg_param_etc(pst_mac_vap, us_len, puc_param);
 }
-
-#if 0
-
-OAL_STATIC oal_uint32  wal_config_tdls_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_tdls_prohibited(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_tdls_channel_switch_prohibited(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_tdls_channel_switch_prohibited(pst_mac_vap, us_len, puc_param);
-}
-#endif
 
 
 OAL_STATIC oal_uint32  wal_config_rx_fcs_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -2179,7 +2040,7 @@ OAL_STATIC wal_wid_op_stru* wal_config_get_wid_map(wal_wid_op_stru* pst_wid_map,
                                                     oal_uint32 ul_wid_nums)
 {
     oal_uint16 us_cfgid;
-    wal_wid_op_stru* pst_current_wid;
+    wal_wid_op_stru* pst_current_wid = OAL_PTR_NULL;
 
     for(us_cfgid = 0; us_cfgid < ul_wid_nums; us_cfgid++)
     {
@@ -2204,18 +2065,15 @@ OAL_STATIC oal_uint32  wal_config_process_query(
     oal_uint16          us_req_idx = 0;      /* 请求消息索引 */
     oal_uint16          us_rsp_idx = 0;      /* 返回消息索引 */
     oal_uint16          us_len     = 0;      /* WID对应返回值的长度 */
-    wal_msg_query_stru *pst_query_msg;
-    wal_msg_write_stru *pst_rsp_msg;
+    wal_msg_query_stru *pst_query_msg = OAL_PTR_NULL;
+    wal_msg_write_stru *pst_rsp_msg = OAL_PTR_NULL;
     oal_uint32          ul_ret;
-    wal_wid_op_stru*    pst_current_wid;
+    wal_wid_op_stru*    pst_current_wid = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap)
-     || (OAL_PTR_NULL == puc_req_msg)
-     || (OAL_PTR_NULL == puc_rsp_msg)
-     || (OAL_PTR_NULL == puc_rsp_msg_len)))
+    if (OAL_ANY_NULL_PTR4(pst_mac_vap,puc_req_msg,puc_rsp_msg,puc_rsp_msg_len))
     {
-        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{wal_config_process_query::pst_mac_vap/puc_req_msg/puc_rsp_msg/puc_rsp_msg_len null ptr error: %d, %d, %d, %d!}\r\n",
-                       pst_mac_vap, puc_req_msg, puc_rsp_msg, puc_rsp_msg_len);
+        OAM_ERROR_LOG4(0, OAM_SF_ANY, "{wal_config_process_query::pst_mac_vap/puc_req_msg/puc_rsp_msg/puc_rsp_msg_len null ptr error: %x, %x, %x, %x!}\r\n",
+                       (uintptr_t)pst_mac_vap, (uintptr_t)puc_req_msg, (uintptr_t)puc_rsp_msg, (uintptr_t)puc_rsp_msg_len);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -2308,14 +2166,14 @@ OAL_STATIC oal_uint32  wal_config_process_write(
 {
     oal_uint16              us_req_idx = 0;
     oal_uint16              us_rsp_idx = 0;
-    wal_msg_write_stru     *pst_write_msg;
-    wal_msg_write_rsp_stru *pst_rsp_msg;
+    wal_msg_write_stru     *pst_write_msg = OAL_PTR_NULL;
+    wal_msg_write_rsp_stru *pst_rsp_msg = OAL_PTR_NULL;
     oal_uint32              ul_ret;
-    wal_wid_op_stru*        pst_current_wid;
+    wal_wid_op_stru*        pst_current_wid = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_req_msg)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_req_msg)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_process_write::pst_mac_vap/puc_req_msg null ptr error %d, %d!}\r\n", pst_mac_vap, puc_req_msg);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_process_write::pst_mac_vap/puc_req_msg null ptr error %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_req_msg);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -2401,17 +2259,19 @@ OAL_STATIC oal_uint32  wal_config_process_write(
 
 oal_uint32  wal_config_process_pkt_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru         *pst_event;
-    wal_msg_stru           *pst_msg;
+    frw_event_stru         *pst_event = OAL_PTR_NULL;
+    wal_msg_stru           *pst_msg = OAL_PTR_NULL;
     wal_msg_stru           *pst_rsp_msg = NULL;
-    frw_event_hdr_stru     *pst_event_hdr;
-    mac_vap_stru           *pst_mac_vap;
+    frw_event_hdr_stru     *pst_event_hdr = OAL_PTR_NULL;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
     oal_uint16              us_msg_len;
     oal_uint8               uc_rsp_len = 0;
     oal_uint8               uc_rsp_toal_len = 0;
     oal_uint32              ul_ret;
     oal_ulong               ul_request_address;
     oal_uint8               ac_rsp_msg[HMAC_RSP_MSG_MAX_LEN] = {0};
+    oal_uint8               *puc_msg_data = OAL_PTR_NULL;
+    oal_uint8               *puc_rsp_msg_data = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -2440,12 +2300,14 @@ oal_uint32  wal_config_process_pkt_etc(frw_event_mem_stru *pst_event_mem)
     us_msg_len = pst_msg->st_msg_hdr.us_msg_len;
 
     OAM_INFO_LOG0(pst_event_hdr->uc_vap_id, OAM_SF_ANY, "{wal_config_process_pkt_etc::a config event occur!}\r\n");
+    puc_msg_data = &pst_msg->auc_msg_data[0];
+    puc_rsp_msg_data = &pst_rsp_msg->auc_msg_data[0];
 
     switch (pst_msg->st_msg_hdr.en_msg_type)
     {
         case WAL_MSG_TYPE_QUERY:
 
-            ul_ret = wal_config_process_query(pst_mac_vap, pst_msg->auc_msg_data, us_msg_len, pst_rsp_msg->auc_msg_data, &uc_rsp_len);
+            ul_ret = wal_config_process_query(pst_mac_vap, puc_msg_data, us_msg_len, puc_rsp_msg_data, &uc_rsp_len);
             if (OAL_SUCC != ul_ret)
             {
                 OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_process_pkt_etc::wal_config_process_query return error code %d!}\r\n", ul_ret);
@@ -2455,7 +2317,7 @@ oal_uint32  wal_config_process_pkt_etc(frw_event_mem_stru *pst_event_mem)
             break;
 
         case WAL_MSG_TYPE_WRITE:
-            ul_ret = wal_config_process_write(pst_mac_vap, pst_msg->auc_msg_data, us_msg_len, pst_rsp_msg->auc_msg_data, &uc_rsp_len);
+            ul_ret = wal_config_process_write(pst_mac_vap, puc_msg_data, us_msg_len, puc_rsp_msg_data, &uc_rsp_len);
             if (OAL_SUCC != ul_ret)
             {
                 OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_process_pkt_etc::wal_config_process_write return error code %d!}\r\n", ul_ret);
@@ -2496,7 +2358,7 @@ oal_uint32  wal_config_process_pkt_etc(frw_event_mem_stru *pst_event_mem)
         }
         else
         {
-            oal_memcopy((oal_void*)pst_rsp_msg_tmp, (oal_void*)ac_rsp_msg, uc_rsp_toal_len);
+            memcpy_s((oal_void*)pst_rsp_msg_tmp, uc_rsp_toal_len, (oal_void*)ac_rsp_msg, uc_rsp_toal_len);
             if(OAL_SUCC != wal_set_msg_response_by_addr_etc(ul_request_address, (oal_void*)pst_rsp_msg_tmp, OAL_SUCC, uc_rsp_toal_len))
             {
                 OAL_IO_PRINT("wal_config_process_pkt_etc did't found the request msg, request addr:0x%lx\n", ul_request_address);
@@ -2591,9 +2453,9 @@ OAL_STATIC oal_uint32  wal_config_set_edca_opt_cycle_ap(mac_vap_stru *pst_mac_va
 
 OAL_STATIC oal_uint32  wal_config_open_wmm(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_open_wmm::pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_open_wmm::pst_mac_vap/puc_param is null ptr %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -2630,8 +2492,6 @@ OAL_STATIC oal_uint32  wal_config_get_version(mac_vap_stru *pst_mac_vap, oal_uin
 {
     return hmac_config_get_version_etc(pst_mac_vap, us_len, puc_param);
 }
-
-
 
 #if (_PRE_WLAN_FEATURE_BLACKLIST_LEVEL != _PRE_WLAN_FEATURE_BLACKLIST_NONE)
 
@@ -2677,7 +2537,10 @@ OAL_STATIC oal_uint32 wal_config_blacklist_clr(mac_vap_stru *pst_mac_vap, oal_ui
         return OAL_SUCC;
     }
 
-    oal_memcopy(puc_param, BROADCAST_MACADDR, OAL_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(puc_param, OAL_MAC_ADDR_LEN, BROADCAST_MACADDR, OAL_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_config_blacklist_clr::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     return hmac_config_blacklist_del_etc(pst_mac_vap, us_len, puc_param);
 }
@@ -2717,15 +2580,6 @@ OAL_STATIC oal_uint32  wal_config_blacklist_show(mac_vap_stru *pst_mac_vap, oal_
     return hmac_config_show_blacklist_etc(pst_mac_vap, us_len, puc_param);
 }
 #endif
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-
-OAL_STATIC oal_uint32 wal_config_get_temp(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    *pus_len = OAL_SIZEOF(oal_int32);
-
-    return hmac_config_get_temp(pst_mac_vap, pus_len, puc_param);
-}
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_PROXY_ARP
 
@@ -2753,25 +2607,26 @@ OAL_STATIC oal_uint32  wal_config_set_dhcp_req_disable(mac_vap_stru *pst_mac_vap
 oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 {
     oal_int8                ac_vap_name[OAL_IF_NAME_SIZE];
-    oal_net_device_stru    *pst_net_dev;
-    mac_vap_stru           *pst_mac_vap;
-    frw_event_mem_stru     *pst_event_mem;
-    frw_event_stru         *pst_event;
+    oal_net_device_stru    *pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
+    frw_event_mem_stru     *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru         *pst_event = OAL_PTR_NULL;
     oal_uint32              ul_ret      = OAL_SUCC;
-    wal_msg_stru           *pst_msg;
-    oal_netbuf_stru        *pst_netbuf;
+    wal_msg_stru           *pst_msg = OAL_PTR_NULL;
+    oal_netbuf_stru        *pst_netbuf = OAL_PTR_NULL;
     oal_uint16              us_netbuf_len; /* 传给sdt的skb数据区不包括头尾空间的长度 */
-    wal_msg_stru           *pst_rsp_msg;
+    wal_msg_stru           *pst_rsp_msg = OAL_PTR_NULL;
     wal_msg_rep_hdr        *pst_rep_hdr = NULL;
 
     oal_uint16              us_msg_size = us_len;
     oal_uint16              us_need_response = OAL_FALSE;
+    oal_int32               l_ret;
 
     DECLARE_WAL_MSG_REQ_STRU(st_msg_request);
 
     WAL_MSG_REQ_STRU_INIT(st_msg_request);
 
-    oal_memcopy(ac_vap_name, puc_buf, OAL_IF_NAME_SIZE);
+    l_ret = memcpy_s(ac_vap_name, OAL_IF_NAME_SIZE, puc_buf, OAL_IF_NAME_SIZE);
     ac_vap_name[OAL_IF_NAME_SIZE - 1] = '\0';   /* 防止字符串异常 */
 
     /* 根据dev_name找到dev */
@@ -2814,7 +2669,8 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
                        pst_mac_vap->uc_vap_id);
 
     /* 填写事件payload */
-    oal_memcopy(frw_get_event_payload(pst_event_mem) + OAL_SIZEOF(wal_msg_rep_hdr), puc_buf + OAL_IF_NAME_SIZE, us_msg_size);
+    l_ret += memcpy_s(frw_get_event_payload(pst_event_mem) + OAL_SIZEOF(wal_msg_rep_hdr), us_msg_size,
+                      puc_buf + OAL_IF_NAME_SIZE, us_msg_size);
     pst_msg = (wal_msg_stru *)(puc_buf + OAL_IF_NAME_SIZE);
     pst_rep_hdr = (wal_msg_rep_hdr*)pst_event->auc_event_data;
 
@@ -2826,7 +2682,7 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 
     if(OAL_TRUE == us_need_response)
     {
-        pst_rep_hdr->ul_request_address = (oal_ulong)&st_msg_request;
+        pst_rep_hdr->ul_request_address = (oal_ulong)(uintptr_t)&st_msg_request;
         wal_msg_request_add_queue_etc(&st_msg_request);
     }
     else
@@ -2844,11 +2700,7 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
     if (OAL_SUCC != ul_ret)
     {
         FRW_EVENT_FREE(pst_event_mem);
-        if(NULL != st_msg_request.pst_resp_mem)
-        {
-            /*异常时内存需要释放*/
-            oal_free(st_msg_request.pst_resp_mem);
-        }
+        WAL_MSG_REQ_RESP_MEM_FREE(st_msg_request);
         return (oal_int32)ul_ret;
     }
 
@@ -2858,13 +2710,9 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
     /* 如果是查询消息类型，结果上报 */
     if(OAL_TRUE == us_need_response)
     {
-        if (OAL_UNLIKELY(OAL_PTR_NULL == g_st_oam_sdt_func_hook_etc.p_sdt_report_data_func))
+        if (OAL_UNLIKELY(OAL_PTR_NULL == oam_sdt_func_hook_etc.p_sdt_report_data_func))
         {
-            if(NULL != st_msg_request.pst_resp_mem)
-            {
-                /*异常时内存需要释放*/
-                oal_free(st_msg_request.pst_resp_mem);
-            }
+            WAL_MSG_REQ_RESP_MEM_FREE(st_msg_request);
             return OAL_ERR_CODE_PTR_NULL;
         }
 
@@ -2883,16 +2731,17 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
         pst_netbuf = oam_alloc_data2sdt_etc(us_netbuf_len);
         if (OAL_PTR_NULL == pst_netbuf)
         {
-            if(NULL != st_msg_request.pst_resp_mem)
-            {
-                /*异常时内存需要释放*/
-                oal_free(st_msg_request.pst_resp_mem);
-            }
+            WAL_MSG_REQ_RESP_MEM_FREE(st_msg_request);
             return OAL_ERR_CODE_PTR_NULL;
         }
 
         oal_netbuf_data(pst_netbuf)[0] = 'M';     /* sdt需要 */
-        oal_memcopy(oal_netbuf_data(pst_netbuf) + 1, (oal_uint8 *)pst_rsp_msg->auc_msg_data, us_netbuf_len - 1);
+        l_ret += memcpy_s(oal_netbuf_data(pst_netbuf) + 1, us_netbuf_len - 1,
+                          (oal_uint8 *)pst_rsp_msg->auc_msg_data, us_netbuf_len - 1);
+        if (l_ret != EOK) {
+            OAM_WARNING_LOG0(0, OAM_SF_ANY, "wal_recv_config_cmd_etc::memcpy fail!");
+        }
+
         oal_free(st_msg_request.pst_resp_mem);
 
         oam_report_data2sdt_etc(pst_netbuf, OAM_DATA_TYPE_CFG, OAM_PRIMID_TYPE_DEV_ACK);
@@ -2904,11 +2753,12 @@ oal_int32  wal_recv_config_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 
 oal_int32  wal_recv_memory_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 {
-    oal_netbuf_stru            *pst_netbuf;
+    oal_netbuf_stru            *pst_netbuf = OAL_PTR_NULL;
     wal_sdt_mem_frame_stru     *pst_mem_frame;
     oal_uint                    ul_mem_addr;    /* 读取内存地址 */
     oal_uint16                  us_mem_len;     /* 需要读取的长度 */
     oal_uint8                   uc_offload_core_mode; /* offload下，表示哪一个核 */
+    oal_int32                   l_ret = EOK;
 
     pst_mem_frame        = (wal_sdt_mem_frame_stru *)puc_buf;
     ul_mem_addr          = pst_mem_frame->ul_addr;
@@ -2931,15 +2781,12 @@ oal_int32  wal_recv_memory_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
         return OAL_ERR_CODE_ARRAY_OVERFLOW;
     }
 
-
-
     if (MAC_SDT_MODE_READ== pst_mem_frame->uc_mode)
     {
-        if (OAL_UNLIKELY(OAL_PTR_NULL == g_st_oam_sdt_func_hook_etc.p_sdt_report_data_func))
+        if (OAL_UNLIKELY(OAL_PTR_NULL == oam_sdt_func_hook_etc.p_sdt_report_data_func))
         {
             return OAL_ERR_CODE_PTR_NULL;
         }
-
 
         pst_netbuf = oam_alloc_data2sdt_etc(us_mem_len);
         if (OAL_PTR_NULL == pst_netbuf)
@@ -2947,13 +2794,18 @@ oal_int32  wal_recv_memory_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
             return OAL_ERR_CODE_PTR_NULL;
         }
 
-        oal_memcopy(oal_netbuf_data(pst_netbuf), (oal_void *)ul_mem_addr, us_mem_len);
+        l_ret += memcpy_s(oal_netbuf_data(pst_netbuf), us_mem_len, (oal_void *)(uintptr_t)ul_mem_addr, us_mem_len);
 
         oam_report_data2sdt_etc(pst_netbuf, OAM_DATA_TYPE_MEM_RW, OAM_PRIMID_TYPE_DEV_ACK);
     }
     else if (MAC_SDT_MODE_WRITE == pst_mem_frame->uc_mode)
     {
-        oal_memcopy((oal_void *)ul_mem_addr, pst_mem_frame->auc_data, us_mem_len);
+        l_ret += memcpy_s((oal_void *)(uintptr_t)ul_mem_addr, us_mem_len, pst_mem_frame->auc_data, us_mem_len);
+    }
+
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_recv_memory_cmd_etc::memcpy fail!");
+        return OAL_FAIL;
     }
 
     return OAL_SUCC;
@@ -2964,16 +2816,18 @@ oal_int32  wal_parse_global_var_cmd_etc(
                 wal_sdt_global_var_stru    *pst_global_frame,
                 oal_uint                   ul_global_var_addr)
 {
-    oal_netbuf_stru            *pst_netbuf;
+    oal_netbuf_stru            *pst_netbuf = OAL_PTR_NULL;
     oal_uint16                  us_skb_len;
+    oal_int32                   l_ret = EOK;
 
     if (MAC_SDT_MODE_WRITE == pst_global_frame->uc_mode)
     {
-        oal_memcopy((oal_void *)ul_global_var_addr, (oal_void *)(pst_global_frame->auc_global_value), pst_global_frame->us_len);
+        l_ret += memcpy_s((oal_void *)(uintptr_t)ul_global_var_addr, pst_global_frame->us_len,
+                          (oal_void *)(pst_global_frame->auc_global_value), pst_global_frame->us_len);
     }
     else if (MAC_SDT_MODE_READ == pst_global_frame->uc_mode)
     {
-        if (OAL_UNLIKELY(OAL_PTR_NULL == g_st_oam_sdt_func_hook_etc.p_sdt_report_data_func))
+        if (OAL_UNLIKELY(OAL_PTR_NULL == oam_sdt_func_hook_etc.p_sdt_report_data_func))
         {
             return OAL_ERR_CODE_PTR_NULL;
         }
@@ -2988,12 +2842,15 @@ oal_int32  wal_parse_global_var_cmd_etc(
             return OAL_ERR_CODE_PTR_NULL;
         }
 
-        oal_memcopy(oal_netbuf_data(pst_netbuf), (oal_void *)ul_global_var_addr, us_skb_len);
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-        oam_report_data2sdt_etc(pst_netbuf, OAM_DATA_TYPE_GVAR_RW, OAM_PRIMID_TYPE_DEV_ACK);
-#else
+        l_ret += memcpy_s(oal_netbuf_data(pst_netbuf), us_skb_len,
+                          (oal_void *)(uintptr_t)ul_global_var_addr, us_skb_len);
         oam_report_data2sdt_etc(pst_netbuf, OAM_DATA_TYPE_MEM_RW, OAM_PRIMID_TYPE_DEV_ACK);
-#endif
+
+    }
+
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_parse_global_var_cmd_etc::memcpy fail!");
+        return OAL_FAIL;
     }
 
     return OAL_SUCC;
@@ -3002,7 +2859,7 @@ oal_int32  wal_parse_global_var_cmd_etc(
 
 oal_int32  wal_recv_global_var_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 {
-    wal_sdt_global_var_stru        *pst_global_frame;
+    wal_sdt_global_var_stru        *pst_global_frame = OAL_PTR_NULL;
     oal_uint                       ul_global_var_addr;
 
     if (OAL_PTR_NULL == puc_buf)
@@ -3032,15 +2889,16 @@ oal_int32  wal_recv_global_var_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 oal_int32  wal_recv_reg_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
 {
     oal_int8                     ac_vap_name[OAL_IF_NAME_SIZE];
-    oal_net_device_stru         *pst_net_dev;
-    mac_vap_stru                *pst_mac_vap;
-    wal_sdt_reg_frame_stru      *pst_reg_frame;
+    oal_net_device_stru         *pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru                *pst_mac_vap = OAL_PTR_NULL;
+    wal_sdt_reg_frame_stru      *pst_reg_frame = OAL_PTR_NULL;
     oal_int32                    l_ret;
-    hmac_vap_cfg_priv_stru      *pst_cfg_priv;
-    oal_netbuf_stru             *pst_net_buf;
+    hmac_vap_cfg_priv_stru      *pst_cfg_priv = OAL_PTR_NULL;
+    oal_netbuf_stru             *pst_net_buf = OAL_PTR_NULL;
     oal_uint32                   ul_ret;
+    oal_int32                    l_memcpy_ret;
 
-    oal_memcopy(ac_vap_name, puc_buf, OAL_IF_NAME_SIZE);
+    l_memcpy_ret = memcpy_s(ac_vap_name, OAL_IF_NAME_SIZE, puc_buf, OAL_IF_NAME_SIZE);
     ac_vap_name[OAL_IF_NAME_SIZE - 1] = '\0';   /* 防止字符串异常 */
 
     /* 根据dev_name找到dev */
@@ -3102,7 +2960,7 @@ oal_int32  wal_recv_reg_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
         /* 读取返回的寄存器值 */
         pst_reg_frame->ul_reg_val = *((oal_uint32 *)(pst_cfg_priv->ac_rsp_msg));
 
-        if (OAL_UNLIKELY(OAL_PTR_NULL != g_st_oam_sdt_func_hook_etc.p_sdt_report_data_func))
+        if (OAL_UNLIKELY(OAL_PTR_NULL != oam_sdt_func_hook_etc.p_sdt_report_data_func))
         {
             pst_net_buf = oam_alloc_data2sdt_etc((oal_uint16)OAL_SIZEOF(wal_sdt_reg_frame_stru));
             if (OAL_PTR_NULL == pst_net_buf)
@@ -3110,10 +2968,16 @@ oal_int32  wal_recv_reg_cmd_etc(oal_uint8 *puc_buf, oal_uint16 us_len)
                 return OAL_ERR_CODE_PTR_NULL;
             }
 
-            oal_memcopy(oal_netbuf_data(pst_net_buf), (oal_uint8 *)pst_reg_frame, (oal_uint16)OAL_SIZEOF(wal_sdt_reg_frame_stru));
+            l_memcpy_ret += memcpy_s(oal_netbuf_data(pst_net_buf), (oal_uint16)OAL_SIZEOF(wal_sdt_reg_frame_stru),
+                              (oal_uint8 *)pst_reg_frame, (oal_uint16)OAL_SIZEOF(wal_sdt_reg_frame_stru));
 
             oam_report_data2sdt_etc(pst_net_buf, OAM_DATA_TYPE_REG_RW, OAM_PRIMID_TYPE_DEV_ACK);
         }
+    }
+
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_recv_reg_cmd_etc::memcpy fail!");
+        return OAL_FAIL;
     }
 
     return OAL_SUCC;
@@ -3126,7 +2990,10 @@ oal_int32  wal_recv_sample_cmd(oal_uint8 *puc_buf, oal_uint16 us_len)
     oal_net_device_stru         *pst_net_dev;
     mac_vap_stru                *pst_mac_vap;
 
-    oal_memcopy(ac_vap_name, puc_buf, OAL_IF_NAME_SIZE);
+    if (EOK != memcpy_s(ac_vap_name, OAL_IF_NAME_SIZE, puc_buf, OAL_IF_NAME_SIZE)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_recv_sample_cmd::memcpy fail!");
+        return OAL_FAIL;
+    }
     ac_vap_name[OAL_IF_NAME_SIZE - 1] = '\0';   /* 防止字符串异常 */
 
     /* 根据dev_name找到dev */
@@ -3167,7 +3034,10 @@ oal_uint32 wal_sample_report2sdt(frw_event_mem_stru *pst_event_mem)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memcopy(oal_netbuf_data(pst_net_buf), pst_event->auc_event_data, us_payload_len);
+    if (EOK != memcpy_s(oal_netbuf_data(pst_net_buf), us_payload_len, pst_event->auc_event_data, us_payload_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_sample_report2sdt::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     oam_report_data2sdt_etc(pst_net_buf, OAM_DATA_TYPE_SAMPLE, OAM_PRIMID_TYPE_DEV_ACK);
     return OAL_SUCC;
@@ -3198,7 +3068,10 @@ oal_uint32 wal_dpd_report2sdt(frw_event_mem_stru *pst_event_mem)
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memcopy(oal_netbuf_data(pst_net_buf), pst_event->auc_event_data, us_payload_len);
+    if (EOK != memcpy_s(oal_netbuf_data(pst_net_buf), us_payload_len, pst_event->auc_event_data, us_payload_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_dpd_report2sdt::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     oam_report_data2sdt_etc(pst_net_buf, OAM_DATA_TYPE_DPD, OAM_PRIMID_TYPE_DEV_ACK);
     return OAL_SUCC;
@@ -3212,7 +3085,10 @@ oal_int32  wal_recv_autocali_cmd(oal_uint8 *puc_buf, oal_uint16 us_len)
     oal_net_device_stru         *pst_net_dev;
     mac_vap_stru                *pst_mac_vap;
 
-    oal_memcopy(ac_vap_name, puc_buf, OAL_IF_NAME_SIZE);
+    if (EOK != memcpy_s(ac_vap_name, OAL_IF_NAME_SIZE, puc_buf, OAL_IF_NAME_SIZE)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_recv_autocali_cmd::memcpy fail!");
+        return OAL_FAIL;
+    }
     ac_vap_name[OAL_IF_NAME_SIZE - 1] = '\0';   /* 防止字符串异常 */
 
     /* 根据dev_name找到dev */
@@ -3288,13 +3164,22 @@ OAL_STATIC oal_uint32  wal_config_cancel_remain_on_channel(mac_vap_stru *pst_mac
     return hmac_config_cancel_remain_on_channel_etc(pst_mac_vap, us_len, puc_param);
 }
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+
+OAL_STATIC oal_uint32  wal_config_external_auth(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_external_auth_etc(pst_mac_vap, us_len, puc_param);
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
+
+
 #ifdef _PRE_WLAN_FEATURE_STA_PM
 OAL_STATIC oal_uint32  wal_config_set_sta_pm_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    mac_cfg_ps_mode_param_stru   *pst_ps_mode_param;
-    hmac_vap_stru                *pst_hmac_vap;
+    mac_cfg_ps_mode_param_stru   *pst_ps_mode_param = OAL_PTR_NULL;
+    hmac_vap_stru                *pst_hmac_vap = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -3311,7 +3196,7 @@ OAL_STATIC oal_uint32  wal_config_set_sta_pm_mode(mac_vap_stru *pst_mac_vap, oal
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     if((MAX_FAST_PS==pst_hmac_vap->uc_ps_mode)||(AUTO_FAST_PS==pst_hmac_vap->uc_ps_mode))
     {
-        wlan_pm_set_timeout_etc((g_wlan_min_fast_ps_idle>1)?(g_wlan_min_fast_ps_idle-1): g_wlan_min_fast_ps_idle);
+        wlan_pm_set_timeout_etc((wlan_min_fast_ps_idle>1)?(wlan_min_fast_ps_idle-1): wlan_min_fast_ps_idle);
     }
     else
 #endif
@@ -3337,10 +3222,10 @@ OAL_STATIC oal_uint32  wal_config_show_pm_info(mac_vap_stru *pst_mac_vap, oal_ui
 
 OAL_STATIC oal_uint32  wal_config_set_sta_pm_on(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    hmac_vap_stru                *pst_hmac_vap;
-    mac_cfg_ps_open_stru         *pst_sta_pm_open;
+    hmac_vap_stru                *pst_hmac_vap = OAL_PTR_NULL;
+    mac_cfg_ps_open_stru         *pst_sta_pm_open = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_PWR, "{wal_config_set_sta_pm_on::pst_mac_vap / puc_param null}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -3363,13 +3248,18 @@ OAL_STATIC oal_uint32  wal_config_set_sta_pm_on(mac_vap_stru *pst_mac_vap, oal_u
 
     return hmac_config_set_sta_pm_on_etc(pst_mac_vap, us_len, puc_param);
 }
+
+OAL_STATIC oal_uint32  wal_config_set_fast_sleep_para_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_set_fast_sleep_para_etc(pst_mac_vap, us_len, puc_param);
+}
 #endif
 
 
 #ifdef _PRE_WLAN_FEATURE_STA_UAPSD
 OAL_STATIC oal_uint32 wal_config_set_uapsd_para(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -3407,6 +3297,14 @@ OAL_STATIC oal_uint32  wal_config_query_psst(mac_vap_stru *pst_mac_vap, oal_uint
     return hmac_config_query_psst(pst_mac_vap, us_len, puc_param);
 }
 
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+
+OAL_STATIC oal_uint32  wal_config_query_psm_flt_stat(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_query_psm_flt_stat_etc(pst_mac_vap, us_len, puc_param);
+}
+#endif
+
 #ifdef _PRE_WLAN_DFT_STAT
 
 OAL_STATIC oal_uint32  wal_config_query_ani(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -3422,6 +3320,11 @@ OAL_STATIC oal_uint32  wal_config_set_qos_map(mac_vap_stru *pst_mac_vap, oal_uin
     return hmac_config_set_qos_map(pst_mac_vap, us_len, puc_param);
 }
 #endif
+
+OAL_STATIC oal_uint32  wal_config_set_dc_status(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_set_dc_status(pst_mac_vap, us_len, puc_param);
+}
 
 #ifdef _PRE_WLAN_FEATURE_P2P
 
@@ -3464,16 +3367,24 @@ oal_uint32 wal_send_cali_matrix_data(oal_net_device_stru *pst_net_dev)
 {
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     mac_vap_stru               *pst_mac_vap;
+    oal_int32                   l_chip_type = get_hi110x_subchip_type();
 
     pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
     if (pst_mac_vap != OAL_PTR_NULL)
     {
-        hmac_send_cali_matrix_data(pst_mac_vap);
+        if(BOARD_VERSION_HI1105 == l_chip_type)
+        {
+            hmac_send_1105_cali_matrix_data(pst_mac_vap);
+        }
+        else
+        {
+            hmac_send_cali_matrix_data(pst_mac_vap);
+        }
     }
     else
     {
         OAL_IO_PRINT("wal_send_cali_matrix_data:netdev name %s not have dev priv-vap", pst_net_dev->name);
-        OAM_WARNING_LOG1(0, OAM_SF_CALIBRATE, "wal_send_cali_matrix_data:netdev[%p] have no dev priv-vap", pst_net_dev);
+        OAM_WARNING_LOG1(0, OAM_SF_CALIBRATE, "wal_send_cali_matrix_data:netdev[%p] have no dev priv-vap", (uintptr_t)pst_net_dev);
 
         return OAL_FAIL;
     }
@@ -3494,7 +3405,7 @@ oal_uint32 wal_send_cali_data_etc(oal_net_device_stru *pst_net_dev)
     else
     {
         OAL_IO_PRINT("wal_send_cali_data_etc:netdev name %s not have dev priv-vap", pst_net_dev->name);
-        OAM_WARNING_LOG1(0, OAM_SF_CALIBRATE, "wal_send_cali_data_etc:netdev[%p] have no dev priv-vap", pst_net_dev);
+        OAM_WARNING_LOG1(0, OAM_SF_CALIBRATE, "wal_send_cali_data_etc:netdev[%p] have no dev priv-vap", (uintptr_t)pst_net_dev);
 
         return OAL_FAIL;
     }
@@ -3520,32 +3431,6 @@ OAL_STATIC oal_uint32  wal_config_set_ft_ies(mac_vap_stru *pst_mac_vap, oal_uint
     return hmac_config_set_ft_ies_etc(pst_mac_vap, us_len, puc_param);
 }
 #endif //_PRE_WLAN_FEATURE_11R
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-OAL_STATIC oal_uint32  wal_config_cali_power(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_cali_power(pst_mac_vap, us_len, puc_param);
-}
-OAL_STATIC oal_uint32  wal_config_get_cali_power(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_cali_power(pst_mac_vap, us_len, puc_param);
-}
-OAL_STATIC oal_uint32  wal_config_set_polynomial_param(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_polynomial_param(pst_mac_vap, us_len, puc_param);
-}
-OAL_STATIC oal_uint32  wal_config_get_upc_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_upc_params(pst_mac_vap, us_len, puc_param);
-}
-OAL_STATIC oal_uint32  wal_config_set_upc_params(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_upc_params(pst_mac_vap, us_len, puc_param);
-}
-OAL_STATIC oal_uint32  wal_config_set_load_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_load_mode(pst_mac_vap, us_len, puc_param);
-}
-#endif
 
 OAL_STATIC oal_uint32  wal_config_get_dieid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
@@ -3564,7 +3449,7 @@ OAL_STATIC oal_uint32  wal_config_get_cali_staus(mac_vap_stru *pst_mac_vap, oal_
 {
     oal_uint32                      ul_ret;
 
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
         OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_config_get_cali_staus::pst_mac_vap/puc_param is null ptr!}\r\n");
         return OAL_ERR_CODE_PTR_NULL;
@@ -3635,145 +3520,6 @@ OAL_STATIC oal_uint32  wal_config_set_cus_dyn_cali(mac_vap_stru *pst_mac_vap, oa
 
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
-#ifdef _PRE_WLAN_FEATURE_HILINK
-
-OAL_STATIC oal_uint32  wal_config_fbt_kick_user(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    mac_cfg_kick_user_param_stru   *pst_kick_user_param;
-    oal_uint32                      ul_ret;
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_fbt_kick_user:: pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    pst_kick_user_param = (mac_cfg_kick_user_param_stru *)puc_param;
-
-    OAM_WARNING_LOG4(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{wal_config_fbt_kick_user::uc_rej_user[%d], uc_kick_user[%d], mac[%x%x]}\r\n",
-                                pst_kick_user_param->uc_rej_user,
-                                pst_kick_user_param->uc_kick_user,
-                                pst_kick_user_param->auc_mac_addr[4],
-                                pst_kick_user_param->auc_mac_addr[5]);
-
-    /* 根据rej参数，进行禁止用户连接的管理 */
-    ul_ret = hmac_config_fbt_rej_user(pst_mac_vap, us_len, puc_param);
-    if (OAL_SUCC != ul_ret)
-    {
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{hmac_config_kick_user_etc::hmac_fbt_add_disable_user failed[%d].}",ul_ret);
-        return ul_ret;
-    }
-
-    /* 如果非广播地址，并且kick=1，则调用kick user，剔除该用户 */
-    if (OAL_FALSE == oal_is_broadcast_ether_addr(pst_kick_user_param->auc_mac_addr))
-    {
-        if (OAL_TRUE == pst_kick_user_param->uc_kick_user)
-        {
-            ul_ret = hmac_config_kick_user_etc(pst_mac_vap, us_len, puc_param);
-            if (OAL_SUCC != ul_ret)
-            {
-                OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{wal_config_fbt_kick_user::hmac_config_kick_user_etc failed[%d].}",ul_ret);
-            }
-        }
-    }
-
-    return ul_ret;
-}
-
-
-oal_uint32 wal_config_set_white_lst_ssidhiden(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_white_lst_ssidhiden(pst_mac_vap, puc_param);
-}
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-
-
-oal_uint32 wal_config_set_mgmt_frame_filters(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_mgmt_frame_filters(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_get_sta_diag_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_all_sta_diag_info(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_get_vap_diag_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_vap_diag_info(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_set_sensing_bssid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_sensing_bssid(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_get_sensing_bssid_info(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_sensing_bssid_info(pst_mac_vap, us_len, puc_param);
-}
-
-#endif //_PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-
-
-oal_uint32 wal_config_get_sta_11k_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-#ifdef _PRE_WLAN_FEATURE_11K_EXTERN
-    return hmac_config_get_sta_11k_abillty(pst_mac_vap, us_len, puc_param);
-#else
-    OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_config_get_sta_11k_abillty:: not support 11k}\r\n");
-    return OAL_FAIL;
-#endif
-}
-
-
-
-oal_uint32 wal_config_set_sta_bcn_request(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-#ifdef _PRE_WLAN_FEATURE_11K_EXTERN
-    return hmac_config_set_sta_bcn_request(pst_mac_vap, us_len, puc_param);
-#else
-    OAM_WARNING_LOG0(0, OAM_SF_CFG, "{wal_config_set_sta_bcn_request:: not support 11k}\r\n");
-    return OAL_FAIL;
-#endif
-}
-
-
-oal_uint32 wal_config_get_sta_11v_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_sta_11v_abillty(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_change_to_other_ap(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_change_to_other_ap(pst_mac_vap, us_len, puc_param);
-}
-
-
-oal_uint32 wal_config_get_cur_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_cur_channel(pst_mac_vap, puc_param);
-}
-
-
-oal_uint32 wal_config_set_stay_time(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_stay_time(pst_mac_vap, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_fbt_start_scan(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param)
-{
-    return hmac_config_fbt_start_scan(pst_mac_vap, us_len, puc_param);
-}
-
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_11KV_INTERFACE
 
 oal_uint32 wal_config_send_action_frame(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -3810,18 +3556,13 @@ oal_uint32 wal_config_get_sta_11r_abillty(mac_vap_stru *pst_mac_vap, oal_uint16 
 {
     return hmac_config_get_sta_11r_abillty(pst_mac_vap, us_len, puc_param);
 }
+#endif
+
 
 OAL_STATIC oal_uint32 wal_config_set_mlme(mac_vap_stru * pst_mac_vap, oal_uint16 us_len, oal_uint8 * puc_param)
 {
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_set_mlme:: pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
     return hmac_config_set_mlme(pst_mac_vap, us_len, puc_param);
 }
-#endif
 
 
 OAL_STATIC oal_uint32  wal_config_vap_destroy(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
@@ -3940,9 +3681,9 @@ OAL_STATIC oal_uint32  wal_config_get_vap_wmm_switch(mac_vap_stru *pst_mac_vap, 
 
 OAL_STATIC oal_uint32  wal_config_set_vap_wmm_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == puc_param))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param)))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_vap_wmm_switch::pst_mac_vap/puc_param is null ptr %d, %d!}\r\n", pst_mac_vap, puc_param);
+        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_vap_wmm_switch::pst_mac_vap/puc_param is null ptr %x, %x!}\r\n", (uintptr_t)pst_mac_vap, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -3969,344 +3710,6 @@ OAL_STATIC oal_uint32 wal_config_get_max_user(mac_vap_stru *pst_mac_vap, oal_uin
     return hmac_config_get_max_user(pst_mac_vap, pus_len, puc_param);
 }
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-
-OAL_STATIC oal_uint32  wal_config_set_hw_addr(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    oal_uint32                     ul_ret;
-
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param)))
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_ANY, "{wal_config_set_hw_addr::pst_mac_vap or puc_param null ptr error %d,%d.}\r\n", pst_mac_vap, puc_param);
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    ul_ret = hmac_config_set_hw_addr(pst_mac_vap, us_len, puc_param);
-    if (OAL_SUCC != ul_ret)
-    {
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_config_set_hw_addr:: return error code %d.}\r\n", ul_ret);
-        return ul_ret;
-    }
-
-    return OAL_SUCC;
-}
-
-
-OAL_STATIC oal_uint32  wal_config_set_hide_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_hide_ssid(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_hide_ssid(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_hide_ssid(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_set_global_shortgi(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_global_shortgi(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_global_shortgi(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_global_shortgi(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_set_txbeamform(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_txbeamform(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_txbeamform(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_txbeamform(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_set_noforward(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_set_noforward(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_noforward(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_noforward(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_priv_set_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    mac_cfg_mib_by_bw_param_stru st_cfg;
-
-    if (!pst_mac_vap || !puc_param)
-    {
-        OAM_ERROR_LOG2(0, OAM_SF_CFG, "{wal_config_set_mode::null ptr, vap=%p param=%p", pst_mac_vap, puc_param);
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    st_cfg.en_band = ((mac_cfg_mode_param_stru *)puc_param)->en_band;
-    st_cfg.en_bandwidth= ((mac_cfg_mode_param_stru *)puc_param)->en_bandwidth;
-
-    hmac_config_set_mib_by_bw(pst_mac_vap, (oal_uint16)OAL_SIZEOF(st_cfg), (oal_uint8 *)&st_cfg);
-
-    return hmac_config_priv_set_mode(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_channel(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_channel(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_priv_set_channel(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_priv_set_channel(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_assoc_num(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_assoc_num(pst_mac_vap, pus_len, puc_param);
-}
-
-#ifdef _PRE_WLAN_FEATURE_BAND_STEERING
-
-OAL_STATIC oal_uint32  wal_config_set_bsd(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_bsd(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_bsd(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_bsd(pst_mac_vap, pus_len, puc_param);
-}
-#endif
-
-
-OAL_STATIC oal_uint32  wal_config_get_pwr_ref(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_pwr_ref(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_ko_version(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_ko_version(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_rate_info(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_rate_info(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_chan_list(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_chan_list(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_wps_ie(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_wps_ie(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_vap_cap(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_vap_cap(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_pmf(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_pmf(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_bcast_rate(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_bcast_rate(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_noise(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_noise(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_bw(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_bw(pst_mac_vap, pus_len, puc_param);
-}
-
-
-oal_int32 wal_config_get_sta_rssi(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param)
-{
-    mac_vap_stru               *pst_vap;
-
-    pst_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_wmm_params_etc::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr.}\r\n");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-    return hmac_config_get_sta_rssi(pst_vap, puc_mac, puc_param);
-}
-
-
-OAL_STATIC oal_uint32 wal_config_get_band(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_band(pst_mac_vap, pus_len, puc_param);
-}
-
-OAL_STATIC oal_uint32  wal_config_get_scan_stat(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_scan_stat(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_neighbor_scan(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_neighbor_scan(pst_mac_vap, us_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_neighb_no(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_neighb_no(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_get_ant_rssi(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param)
-{
-    return hmac_config_get_ant_rssi(pst_mac_vap, pus_len, puc_param);
-}
-
-
-OAL_STATIC oal_uint32  wal_config_ant_rssi_report(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
-{
-    return hmac_config_ant_rssi_report(pst_mac_vap, us_len, puc_param);
-}
-
-
- oal_int32  wal_config_get_neighb_info(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data)
-{
-    mac_vap_stru                   *pst_mac_vap;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_neighb_info::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr!}\r\n");
-        return OAL_EFAUL;
-    }
-
-    return hmac_config_get_neighb_info(pst_mac_vap, &(pst_ioctl_data->pri_data.st_ap_info));
-}
-
-
- oal_int32  wal_config_get_hw_flow_stat(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data)
-{
-    mac_vap_stru                   *pst_mac_vap;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_hw_flow_stat::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr!}\r\n");
-        return OAL_EFAUL;
-    }
-
-    return hmac_config_get_hw_flow_stat(pst_mac_vap, &(pst_ioctl_data->pri_data.st_machw_stat));
-}
-
-
- oal_int32  wal_config_get_wme_stat(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data)
-{
-    mac_vap_stru                   *pst_mac_vap;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_wme_stat::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr!}\r\n");
-        return OAL_EFAUL;
-    }
-
-    return hmac_config_get_wme_stat(pst_mac_vap, &(pst_ioctl_data->pri_data.st_wme_stat));
-}
-
-#ifdef _PRE_WLAN_11K_STAT
-
-oal_uint32 *wal_config_get_sta_drop_num(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param)
-{
-    mac_vap_stru               *pst_vap;
-
-    pst_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_wmm_params_etc::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr.}\r\n");
-        return OAL_PTR_NULL;
-    }
-    return hmac_config_get_sta_drop_num(pst_vap, puc_mac, puc_param);
-}
-
-
-oal_uint32 *wal_config_get_sta_tx_delay(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_mac, oal_uint8 *puc_param)
-{
-    mac_vap_stru               *pst_vap;
-
-    pst_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_wmm_params_etc::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr.}\r\n");
-        return OAL_PTR_NULL;
-    }
-    return hmac_config_get_sta_tx_delay(pst_vap, puc_mac, puc_param);
-}
-
-
- oal_int32  wal_config_get_tx_delay_ac(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data)
-{
-    mac_vap_stru                   *pst_mac_vap;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_config_get_tx_delay_ac::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr!}\r\n");
-        return OAL_EFAUL;
-    }
-
-    return hmac_config_get_tx_delay_ac(pst_mac_vap, &(pst_ioctl_data->pri_data.st_tx_delay_ac));
-}
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_DFS
-
-oal_uint32  wal_config_get_dfs_chn_status(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_param)
-{
-    mac_vap_stru                   *pst_mac_vap;
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_DFS, "{wal_config_get_dfs_chn_status::OAL_NET_DEV_PRIV(pst_net_dev) is null ptr!}\r\n");
-        return OAL_EFAUL;
-    }
-
-    return hmac_config_get_dfs_chn_status(pst_mac_vap, puc_param);
-}
-#endif
-
-#endif
-
 #if defined(_PRE_WLAN_FEATURE_MCAST) || defined(_PRE_WLAN_FEATURE_HERA_MCAST)
 
  oal_int32  wal_config_get_snoop_table(oal_net_device_stru *pst_net_dev, oal_net_dev_ioctl_data_stru *pst_ioctl_data)
@@ -4324,7 +3727,7 @@ oal_uint32  wal_config_get_dfs_chn_status(oal_net_device_stru *pst_net_dev, oal_
 }
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_M2S
+#ifdef _PRE_WLAN_FEATURE_M2S_MSS
 
 OAL_STATIC oal_uint32  wal_config_set_m2s_switch_blacklist(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
@@ -4344,7 +3747,7 @@ OAL_STATIC oal_uint32  wal_config_set_m2s_switch_mss(mac_vap_stru *pst_mac_vap, 
 OAL_STATIC oal_uint32  wal_config_set_suspend_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
     mac_device_stru    *pst_mac_device = mac_res_get_dev_etc(pst_mac_vap->uc_device_id);
-    if (!pst_mac_device)
+    if (pst_mac_device == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "wal_config_set_suspend_mode:pst_mac_device is null ptr!");
         return OAL_ERR_CODE_PTR_NULL;
@@ -4388,12 +3791,29 @@ OAL_STATIC oal_uint32  wal_config_force_stop_filter(mac_vap_stru *pst_mac_vap, o
 }
 #endif
 
+
+oal_uint32  wal_config_fem_lp_flag(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_fem_lp_flag(pst_mac_vap, us_len, puc_param);
+}
+
+
+oal_uint32  wal_config_softap_mimo_mode(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_softap_mimo_mode(pst_mac_vap, us_len, puc_param);
+}
+
+#ifdef _PRE_WLAN_FEATURE_IP_FILTER
+
+oal_uint32  wal_config_assigned_filter(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
+{
+    return hmac_config_assigned_filter_etc(pst_mac_vap, us_len, puc_param);
+}
+#endif
+
 /*lint -e19*/
 oal_module_symbol(wal_drv_cfg_func_hook_init_etc);
 oal_module_symbol(wal_config_set_vendor_ie);
-#ifdef _PRE_WLAN_FEATURE_HILINK
-oal_module_symbol(wal_config_fbt_kick_user);
-#endif
 /*lint +e19*/
 
 #ifdef __cplusplus

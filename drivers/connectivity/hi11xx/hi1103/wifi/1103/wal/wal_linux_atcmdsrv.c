@@ -54,6 +54,8 @@ extern "C" {
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 #endif
 #endif
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_ATCMDSRV_C
@@ -130,8 +132,10 @@ oal_int32                       g_l_mode_etc;
 #define WAL_ATCMDSRV_DYN_INTVAL_LEN               19
 #define WAL_ATCMDSRV_DYN_INTVAL_LOCATION         (WAL_ATCMDSRV_DYN_INTVAL_LEN - 2)
 
+extern OAL_CONST oal_int8   *pauc_bw_tbl[WLAN_BAND_ASSEMBLE_AUTO];
+
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-extern BOARD_INFO               g_board_info_etc;
+extern BOARD_INFO               board_info_etc;
 #endif
 #endif
 
@@ -139,9 +143,10 @@ extern BOARD_INFO               g_board_info_etc;
 wal_atcmdsrv_ant_info_stru g_st_atcmdsrv_ant_info;
 #endif
 
-extern oal_bool_enum_uint8 g_en_nv_dp_init_is_null;
-extern oal_bool_enum_uint8 g_uc_wlan_cal_intvl_enable;
+extern oal_bool_enum_uint8 en_nv_dp_init_is_null;
+extern oal_bool_enum_uint8 wlan_cal_intvl_enable;
 extern oal_uint32  wal_hipriv_sta_pm_on_etc(oal_net_device_stru * pst_cfg_net_dev, oal_int8 * pc_param);
+extern oal_bool_enum_uint8 wlan_cal_disable_switch;
 extern oal_bool_enum_uint8 bfgx_is_shutdown_etc(void);
 
 
@@ -152,10 +157,10 @@ extern oal_bool_enum_uint8 bfgx_is_shutdown_etc(void);
 oal_int32  wal_atcmsrv_ioctl_get_rx_pckg_etc(oal_net_device_stru *pst_net_dev, oal_int32 *pl_rx_pckg_succ_num)
 {
     oal_int32                   l_ret;
-    mac_cfg_rx_fcs_info_stru   *pst_rx_fcs_info;
+    mac_cfg_rx_fcs_info_stru   *pst_rx_fcs_info = OAL_PTR_NULL;
     wal_msg_write_stru          st_write_msg;
     mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
+    hmac_vap_stru              *pst_hmac_vap = OAL_PTR_NULL;
     oal_int32                   i_leftime;
 
     pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
@@ -228,7 +233,7 @@ oal_int32  wal_atcmsrv_ioctl_get_rx_pckg_etc(oal_net_device_stru *pst_net_dev, o
 oal_int32  wal_atcmsrv_ioctl_set_hw_addr_etc(oal_net_device_stru *pst_net_dev, oal_uint8 *pc_hw_addr)
 {
     oal_int32                       l_ret;
-    mac_cfg_staion_id_param_stru   *pst_mac_cfg_para;
+    mac_cfg_staion_id_param_stru   *pst_mac_cfg_para = OAL_PTR_NULL;
     wal_msg_write_stru              st_write_msg;
 
 
@@ -249,10 +254,6 @@ oal_int32  wal_atcmsrv_ioctl_set_hw_addr_etc(oal_net_device_stru *pst_net_dev, o
                                (oal_uint8 *)&st_write_msg,
                                OAL_FALSE,
                                OAL_PTR_NULL);
-
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-    wal_hipriv_wait_rsp(pst_net_dev, (oal_int8 *)pc_hw_addr);
-#endif
 
     if (OAL_UNLIKELY(OAL_SUCC != l_ret))
     {
@@ -423,6 +424,53 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_mode(oal_net_device_stru *pst_net_de
     return OAL_SUCC;
 }
 
+OAL_STATIC oal_int32  wal_atcmsrv_set_bw(oal_uint8 *pen_bw)
+{
+    oal_int8                    ac_bw_str[5] = {0};
+    OAL_CONST oal_int8          *c_bw20 = "20";
+    OAL_CONST oal_int8          *c_bw40 = "40";
+    OAL_CONST oal_int8          *c_bw80 = "80";
+    OAL_CONST oal_int8          *c_bw160 = "160";
+
+    if ((WLAN_BAND_WIDTH_160PLUSPLUSPLUS <= g_l_bandwidth_etc)
+            && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_160MINUSMINUSMINUS))
+    {
+        strncpy_s(ac_bw_str, sizeof(ac_bw_str), c_bw160, OAL_MIN(OAL_ARRAY_SIZE(ac_bw_str), OAL_STRLEN(c_bw160)));
+    }
+    else if ((WLAN_BAND_WIDTH_80PLUSPLUS <= g_l_bandwidth_etc)
+        && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_80MINUSMINUS))
+    {
+        strncpy_s(ac_bw_str, sizeof(ac_bw_str), c_bw80, OAL_MIN(OAL_ARRAY_SIZE(ac_bw_str), OAL_STRLEN(c_bw80)));
+    }
+    else if ((WLAN_BAND_WIDTH_40PLUS <= g_l_bandwidth_etc)
+        && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_40MINUS))
+    {
+        strncpy_s(ac_bw_str, sizeof(ac_bw_str), c_bw40, OAL_MIN(OAL_ARRAY_SIZE(ac_bw_str), OAL_STRLEN(c_bw40)));
+    }
+    else
+    {
+        strncpy_s(ac_bw_str, sizeof(ac_bw_str), c_bw20, OAL_MIN(OAL_ARRAY_SIZE(ac_bw_str), OAL_STRLEN(c_bw20)));
+    }
+
+    for (*pen_bw = 0; *pen_bw < WLAN_BANDWITH_CAP_BUTT; (*pen_bw)++)
+    {
+        if(!oal_strcmp(pauc_bw_tbl[*pen_bw], ac_bw_str))
+        {
+            break;
+        }
+    }
+
+    /* 检查命令是否打错 */
+    if (*pen_bw >= WLAN_BANDWITH_CAP_BUTT)
+    {
+        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_hipriv_set_bw::not support this bandwidth!}\r\n");
+        return OAL_ERR_CODE_INVALID_CONFIG;
+    }
+    return OAL_SUCC;
+}
+
+
+
 OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_datarate(oal_net_device_stru *pst_net_dev, oal_int32 l_datarate)
 {
     oal_uint8                   uc_prot_idx;
@@ -440,8 +488,6 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_datarate(oal_net_device_stru *pst_ne
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_set_datarate::OAL_NET_DEV_PRIV, return null!}");
         return -OAL_EINVAL;
     }
-
-
     OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "wal_atcmsrv_ioctl_set_datarate:l_datarate[%d]", l_datarate);
 
     /*获取速率对应的字符，方便调用设置速率的相应接口*/
@@ -481,21 +527,11 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_datarate(oal_net_device_stru *pst_ne
 
     /* 解析并设置配置命令参数 */
     pst_set_bw_param = (mac_cfg_tx_comp_stru *)(st_write_msg.auc_value);
-    if ((WLAN_BAND_WIDTH_80PLUSPLUS <= g_l_bandwidth_etc)
-        && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_80MINUSMINUS)) {
-        en_bw_index = 8;
-    }
-    else if ((WLAN_BAND_WIDTH_40PLUS <= g_l_bandwidth_etc)
-        && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_40MINUS)) {
-        en_bw_index = 4;
-    }
-    else if ((WLAN_BAND_WIDTH_160PLUSPLUSPLUS <= g_l_bandwidth_etc)
-        && (g_l_bandwidth_etc <= WLAN_BAND_WIDTH_160MINUSMINUSMINUS))
+
+    l_ret = wal_atcmsrv_set_bw(&en_bw_index);
+    if (OAL_SUCC != l_ret)
     {
-        en_bw_index = 12;    /* 1100 for bw160, tx_description */
-    }
-    else {
-        en_bw_index = 0;
+        return -OAL_EFAIL;
     }
     pst_set_bw_param->uc_param = (oal_uint8)(en_bw_index);
 
@@ -558,7 +594,6 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_always_tx(oal_net_device_stru *pst_n
     wal_msg_write_stru               st_write_msg;
     oal_int32                        l_ret;
     mac_cfg_tx_comp_stru             *pst_set_bcast_param;
-    oal_int8                          c_param;
     oal_uint8                         auc_param[] = {"all"};
     oal_uint16                        us_len;
     oal_uint32                       *pul_num;
@@ -620,19 +655,18 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_always_tx(oal_net_device_stru *pst_n
     }
 
 
-    /*打印未测信息*/
+    /*打印维测信息*/
     if (l_always_tx)
     {
-        l_ret = (oal_int32)wal_hipriv_vap_info_etc(pst_net_dev,&c_param);
-        if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-        {
-            OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_set_always_tx::return err code [%d]!}", l_ret);
-        }
         /*打印所有寄存器*/
         /***************************************************************************
                                     抛事件到wal层处理
         ***************************************************************************/
-        oal_memcopy(st_write_msg.auc_value, auc_param, OAL_STRLEN((oal_int8*)auc_param));
+        if (EOK != memcpy_s(st_write_msg.auc_value, OAL_STRLEN((oal_int8*)auc_param),
+                             auc_param, OAL_STRLEN((oal_int8*)auc_param))) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_atcmsrv_ioctl_set_always_tx::memcpy fail!");
+            return OAL_FAIL;
+        }
 
         st_write_msg.auc_value[OAL_STRLEN((oal_int8*)auc_param)] = '\0';
         us_len = (oal_uint16)(OAL_STRLEN((oal_int8*)auc_param) + 1);
@@ -881,63 +915,63 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_level_set(oal_int32 l_gpio_leve
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_ism_priority, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_ism_priority, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET ISM PRIORITY FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_lte_rx, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_lte_rx, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET LTE RX FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_lte_tx, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_lte_tx, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET LTE TX FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_lte_inact, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_lte_inact, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET LTE INACT FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_ism_rx_act, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_ism_rx_act, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET ISM RX ACT FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_bant_pri, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_bant_pri, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET BANT PRI FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_bant_status, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_bant_status, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET BANT STATUS FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_want_pri, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_want_pri, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET WANT PRI FAIL!");
         return l_ret;
     }
 
-    l_ret = wal_gpio_direction_output(g_st_wlan_customize_etc.ul_want_status, l_gpio_level);
+    l_ret = wal_gpio_direction_output(wlan_customize_etc.ul_want_status, l_gpio_level);
     if (OAL_SUCC != l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_level_set:SET WANT STATUS FAIL!");
@@ -1044,9 +1078,9 @@ OAL_STATIC oal_int32 wal_gpio_request_one(oal_uint32 ul_gpio_num, OAL_CONST oal_
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_ISM_PRIORITY mode gpio fail");
 #ifdef _PRE_CONFIG_USE_DTS
-        if (g_board_info_etc.need_power_prepare)
+        if (board_info_etc.need_power_prepare)
         {
-            l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+            l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
             if (l_ret)
             {
                 OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set pinctrl_select_state fail");
@@ -1061,9 +1095,9 @@ OAL_STATIC oal_int32 wal_gpio_request_one(oal_uint32 ul_gpio_num, OAL_CONST oal_
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_ISM_PRIORITY mode gpio fail");
 #ifdef _PRE_CONFIG_USE_DTS
-        if (g_board_info_etc.need_power_prepare)
+        if (board_info_etc.need_power_prepare)
         {
-            l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+            l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
             if (l_ret)
             {
                 OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set pinctrl_select_state fail");
@@ -1088,10 +1122,10 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_set(oal_void)
     oal_int32       l_ret = -OAL_EFAIL;
     /*将检测管脚配置成gpio模式*/
 #ifdef _PRE_CONFIG_USE_DTS
-    if (g_board_info_etc.need_power_prepare)
+    if (board_info_etc.need_power_prepare)
     {
         /* set LowerPower mode */
-        l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_idle);
+        l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_idle);
         if (l_ret)
         {
             OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set mode gpio fail");
@@ -1100,63 +1134,63 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_set(oal_void)
     }
 #endif
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_ism_priority, WAL_ATCMDSRV_ISM_PRIORITY_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_ism_priority, WAL_ATCMDSRV_ISM_PRIORITY_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_ISM_PRIORITY mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_lte_rx, WAL_ATCMDSRV_LTE_RX_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_lte_rx, WAL_ATCMDSRV_LTE_RX_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_RX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_lte_tx, WAL_ATCMDSRV_LTE_TX_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_lte_tx, WAL_ATCMDSRV_LTE_TX_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_lte_inact, WAL_ATCMDSRV_LTE_INACT_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_lte_inact, WAL_ATCMDSRV_LTE_INACT_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_ism_rx_act, WAL_ATCMDSRV_ISM_RX_ACT_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_ism_rx_act, WAL_ATCMDSRV_ISM_RX_ACT_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_bant_pri, WAL_ATCMDSRV_BANT_PRI_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_bant_pri, WAL_ATCMDSRV_BANT_PRI_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_bant_status, WAL_ATCMDSRV_BANT_STATUS_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_bant_status, WAL_ATCMDSRV_BANT_STATUS_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_want_pri, WAL_ATCMDSRV_WANT_PRI_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_want_pri, WAL_ATCMDSRV_WANT_PRI_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         return -OAL_EFAIL;
     }
 
-    l_ret = wal_gpio_request_one(g_st_wlan_customize_etc.ul_want_status, WAL_ATCMDSRV_WANT_STATUS_NAME);
+    l_ret = wal_gpio_request_one(wlan_customize_etc.ul_want_status, WAL_ATCMDSRV_WANT_STATUS_NAME);
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
@@ -1167,9 +1201,9 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_set(oal_void)
     if (l_ret)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_ISM_PRIORITY mode gpio fail");
-        if (g_board_info_etc.need_power_prepare)
+        if (board_info_etc.need_power_prepare)
         {
-            l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+            l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
             if (l_ret)
             {
                 OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set pinctrl_select_state fail");
@@ -1183,9 +1217,9 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_set(oal_void)
     {
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_RX_ACT mode gpio fail");
         gpio_free(WAL_ATCMDSRV_LTE_ISM_PRIORITY);
-        if (g_board_info_etc.need_power_prepare)
+        if (board_info_etc.need_power_prepare)
         {
-            l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+            l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
             if (l_ret)
             {
                 OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set pinctrl_select_state fail");
@@ -1200,9 +1234,9 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_set(oal_void)
         OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set LTE_TX_ACT mode gpio fail");
         gpio_free(WAL_ATCMDSRV_LTE_ISM_PRIORITY);
         gpio_free(WAL_ATCMDSRV_LTE_RX_ACT);
-        if (g_board_info_etc.need_power_prepare)
+        if (board_info_etc.need_power_prepare)
         {
-            l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+            l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
             if (l_ret)
             {
                 OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_set:set pinctrl_select_state fail");
@@ -1236,15 +1270,15 @@ OAL_STATIC oal_void  wal_atcmsrv_ioctl_lte_gpio_free(oal_net_device_stru *pst_ne
     wal_msg_write_stru              st_write_msg;
     oal_int32                       l_ret;
 #if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-    wal_gpio_free(g_st_wlan_customize_etc.ul_ism_priority);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_lte_rx);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_lte_tx);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_lte_inact);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_ism_rx_act);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_bant_pri);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_bant_status);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_want_pri);
-    wal_gpio_free(g_st_wlan_customize_etc.ul_want_status);
+    wal_gpio_free(wlan_customize_etc.ul_ism_priority);
+    wal_gpio_free(wlan_customize_etc.ul_lte_rx);
+    wal_gpio_free(wlan_customize_etc.ul_lte_tx);
+    wal_gpio_free(wlan_customize_etc.ul_lte_inact);
+    wal_gpio_free(wlan_customize_etc.ul_ism_rx_act);
+    wal_gpio_free(wlan_customize_etc.ul_bant_pri);
+    wal_gpio_free(wlan_customize_etc.ul_bant_status);
+    wal_gpio_free(wlan_customize_etc.ul_want_pri);
+    wal_gpio_free(wlan_customize_etc.ul_want_status);
 #else
     gpio_free(WAL_ATCMDSRV_LTE_ISM_PRIORITY);
 
@@ -1253,9 +1287,9 @@ OAL_STATIC oal_void  wal_atcmsrv_ioctl_lte_gpio_free(oal_net_device_stru *pst_ne
     gpio_free(WAL_ATCMDSRV_LTE_TX_ACT);
 #endif
 #ifdef _PRE_CONFIG_USE_DTS
-    if (g_board_info_etc.need_power_prepare)
+    if (board_info_etc.need_power_prepare)
     {
-        l_ret = pinctrl_select_state(g_board_info_etc.pctrl, g_board_info_etc.pins_normal);
+        l_ret = pinctrl_select_state(board_info_etc.pctrl, board_info_etc.pins_normal);
         if (l_ret)
         {
             OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_free:set pinctrl_select_state fail");
@@ -1358,31 +1392,10 @@ OAL_STATIC oal_int32 wal_atcmsrv_ioctl_wipin_test(oal_net_device_stru *pst_net_d
     oal_int32                       l_ret = 0;
 #endif
     oal_int32                       l_lte_status = 0;
-    //oal_int32                       ul_gpio_wakeup_host_int_get;
-#if 0
-    /*device上报消息，产生唤醒中断，检测唤醒引脚*/
-    l_ret = wal_atcmsrv_ioctl_get_dbb_num(pst_net_dev,auc_dbb);
-    if(OAL_SUCC != l_ret)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY,"wal_atcmsrv_ioctl_get_fem_pa_status_etc:Failed to get dbb num !");
-    }
-
-    /*device唤醒host gpio引脚检测*/
-    ul_gpio_wakeup_host_int_get = oal_get_gpio_int_count_para_etc();
-
-    if(ul_gpio_wakeup_host_int_get_save == ul_gpio_wakeup_host_int_get)
-    {
-        ul_check_gpio_wakeup_host_status = 1;
-
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_atcmsrv_ioctl_get_fem_pa_status_etc:check wl_host_wake_up gpio fail!");
-    }
-    ul_gpio_wakeup_host_int_get_save = ul_gpio_wakeup_host_int_get;
-#endif
-
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_wipin_test::g_st_wlan_customize_etc.ul_lte_gpio_check_switch is %d", g_st_wlan_customize_etc.ul_lte_gpio_check_switch);
+    OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_wipin_test::wlan_customize_etc.ul_lte_gpio_check_switch is %d", wlan_customize_etc.ul_lte_gpio_check_switch);
     /* 定制化是否检测lte共存管脚 */
-    if(g_st_wlan_customize_etc.ul_lte_gpio_check_switch == 1)
+    if(wlan_customize_etc.ul_lte_gpio_check_switch == 1)
     {
         /*获取lte共存管脚结果*/
         l_ret = wal_atcmsrv_ioctl_lte_gpio_check(pst_net_dev);
@@ -1405,35 +1418,6 @@ OAL_STATIC oal_int32 wal_atcmsrv_ioctl_wipin_test(oal_net_device_stru *pst_net_d
 #endif
 
 
-#if 0
-OAL_STATIC oal_int32  wal_atcmsrv_ioctl_lte_gpio_get(oal_int32 l_check_lte_gpio)
-{
-    oal_int32   l_fail_gpio_cnt = 0;
- #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    if(l_check_lte_gpio != gpio_get_value(WAL_ATCMDSRV_LTE_ISM_PRIORITY))
-    {
-        OAM_ERROR_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_get:LTE_ISM_PRIORITY FAIL");
-        l_fail_gpio_cnt++;
-    }
-
-    if(l_check_lte_gpio != gpio_get_value(WAL_ATCMDSRV_LTE_RX_ACT))
-    {
-        OAM_ERROR_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_get:LTE_RX_ACT FAIL");
-        l_fail_gpio_cnt++;
-    }
-
-    if(l_check_lte_gpio != gpio_get_value(WAL_ATCMDSRV_LTE_TX_ACT))
-    {
-        OAM_ERROR_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_get:LTE_TX_ACT FAIL");
-        l_fail_gpio_cnt++;
-    }
-    OAM_WARNING_LOG0(0, 0, "wal_atcmsrv_ioctl_lte_gpio_get:ALL GPIO IS OK");
- #endif
-    return l_fail_gpio_cnt;
-}
-#endif
-
-
 oal_int32 wal_atcmsrv_ioctl_get_hw_status_etc(oal_net_device_stru *pst_net_dev, oal_int32 *pl_fem_pa_status)
 {
     oal_int32                       l_ret = 0;
@@ -1441,7 +1425,7 @@ oal_int32 wal_atcmsrv_ioctl_get_hw_status_etc(oal_net_device_stru *pst_net_dev, 
     hi1103_cali_param_stru          *pst_cali_data_c0;
     hi1103_cali_param_stru          *pst_cali_data_c1;
 
-    if(g_st_wlan_customize_etc.ul_lte_gpio_check_switch == 1)
+    if(wlan_customize_etc.ul_lte_gpio_check_switch == 1)
     {
         /*获取lte共存管脚结果*/
         l_ret = wal_atcmsrv_ioctl_lte_gpio_check(pst_net_dev);
@@ -1475,7 +1459,6 @@ oal_void wal_atcmsrv_ioctl_get_fem_pa_status_etc(oal_net_device_stru *pst_net_de
     hi1103_cali_param_stru            *pst_cali_data_c0;
     hi1103_cali_param_stru            *pst_cali_data_c1;
 
-
     pst_cali_data_c0 = (hi1103_cali_param_stru *)get_cali_data_buf_addr_etc();
     pst_cali_data_c1 = pst_cali_data_c0 + 1;
     if ((NULL == pst_cali_data_c0) || (NULL == pst_cali_data_c1))
@@ -1490,7 +1473,7 @@ oal_void wal_atcmsrv_ioctl_get_fem_pa_status_etc(oal_net_device_stru *pst_net_de
         CHR_EXCEPTION_REPORT(CHR_PLATFORM_EXCEPTION_EVENTID, CHR_SYSTEM_WIFI, CHR_LAYER_DEV, CHR_WIFI_DEV_EVENT_CHIP, CHR_WIFI_DEV_ERROR_FEM_FAIL);
         OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::fem_pa_sta_c0[bit0-bit1 2g,bit2-bit3 5g],fem_pa_sta_c1[bit4-bit5 2g,bit6-7 5g];ul_check_hw_status[0x%x]}", *pl_fem_pa_status);
 #ifdef CONFIG_HUAWEI_DSM
-        hw_1103_dsm_client_notify(DSM_WIFI_FEMERROR, "%s: fem error",  __FUNCTION__);
+        hw_1103_dsm_client_notify(SYSTEM_TYPE_WIFI, DSM_WIFI_FEMERROR, "%s: fem error",  __FUNCTION__);
 #endif
     }
 }
@@ -1529,7 +1512,11 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_always_rx(oal_net_device_stru *pst_n
         /***************************************************************************
                                     抛事件到wal层处理
         ***************************************************************************/
-        oal_memcopy(st_write_msg.auc_value, auc_param, OAL_STRLEN((oal_int8*)auc_param));
+        if (EOK != memcpy_s(st_write_msg.auc_value, OAL_STRLEN((oal_int8*)auc_param),
+                             auc_param, OAL_STRLEN((oal_int8*)auc_param))) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_atcmsrv_ioctl_set_always_rx::memcpy fail!");
+            return OAL_FAIL;
+        }
 
         st_write_msg.auc_value[OAL_STRLEN((oal_int8*)auc_param)] = '\0';
         us_len = (oal_uint16)(OAL_STRLEN((oal_int8*)auc_param) + 1);
@@ -1706,28 +1693,6 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_wifi_chan_loop(oal_net_device_stru *
 {
     return conn_test_wifi_chan_loop((oal_int8 *)&l_wifi_chan_loop_set);
 }
-#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-
-OAL_STATIC oal_int32  wal_atcmsrv_ioctl_fetch_caldata(oal_uint8* auc_caldata)
-{
-    return hwifi_fetch_ori_caldata_etc(auc_caldata, WAL_ATCMDSRV_NV_WINVRAM_LENGTH);
-}
-
-OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_caldata(oal_net_device_stru *pst_net_dev)
-{
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-#else
-    /* Hi1103 联调阶段不开启定制化 */
-    hwifi_atcmd_update_host_nv_params();
-    hwifi_config_init_nvram_main_etc(pst_net_dev);
-
-#endif
-    return OAL_SUCC;
-}
-#endif
-#endif
-/*efuse检测*/
 
 OAL_STATIC oal_int32 wal_atcmdsrv_efuse_regs_read(oal_net_device_stru *pst_net_dev)
 {
@@ -1759,7 +1724,11 @@ OAL_STATIC oal_int32 wal_atcmdsrv_efuse_regs_read(oal_net_device_stru *pst_net_d
     /***************************************************************************
                                 抛事件到wal层处理
     ***************************************************************************/
-    oal_memcopy(st_write_msg.auc_value, auc_param, OAL_STRLEN((oal_int8*)auc_param));
+    if (EOK != memcpy_s(st_write_msg.auc_value, OAL_STRLEN((oal_int8*)auc_param),
+                         auc_param, OAL_STRLEN((oal_int8*)auc_param))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "wal_atcmdsrv_efuse_regs_read::memcpy fail!");
+        return -OAL_EINVAL;
+    }
     st_write_msg.auc_value[OAL_STRLEN((oal_int8*)auc_param)] = '\0';
 
     us_len = (oal_uint16)(OAL_STRLEN((oal_int8*)auc_param) + 1);
@@ -1782,7 +1751,7 @@ OAL_STATIC oal_int32 wal_atcmdsrv_efuse_regs_read(oal_net_device_stru *pst_net_d
     /*阻塞等待dmac上报*/
     i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(oal_uint32)(OAL_TRUE == pst_hmac_vap->st_atcmdsrv_get_status.uc_report_efuse_reg_flag),WAL_ATCMDSRB_DBB_NUM_TIME);
 
-    if ( 0 == i_leftime)
+    if (0 == i_leftime)
     {
         /* 超时还没有上报扫描结束 */
         OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_atcmdsrv_efuse_regs_read::efuse_regs wait for %ld ms timeout!}",
@@ -1924,7 +1893,7 @@ OAL_STATIC oal_int32 wal_atcmsrv_ioctl_get_dp_init(oal_net_device_stru *pst_net_
     hi1103_cali_param_stru           *pst_cali_data_c1;
 
     /* 1.读取NV中dp_init是否空的标志位 */
-    c_dp_init[0] = g_en_nv_dp_init_is_null;
+    c_dp_init[0] = en_nv_dp_init_is_null;
     OAM_WARNING_LOG1(0, OAM_SF_ANY, "wal_atcmsrv_ioctl_get_dp_init::dp_init_status[%d]", c_dp_init[0]);
 
     /* 2.若为空，将device计算结果上报,AT部分写入NV */
@@ -1976,7 +1945,11 @@ OAL_STATIC oal_int32 wal_atcmsrv_ioctl_get_pd_tran_param(oal_net_device_stru *ps
         return OAL_FAIL;
     }
 
-    oal_memcopy(c_pd_param, pc_pd_info, OAL_MIN(WAL_ATCMDSRV_NV_WINVRAM_LENGTH, CUS_PARAMS_LEN_MAX));
+    if (EOK != memcpy_s(c_pd_param, OAL_MIN(WAL_ATCMDSRV_NV_WINVRAM_LENGTH, CUS_PARAMS_LEN_MAX),
+                        pc_pd_info, OAL_MIN(WAL_ATCMDSRV_NV_WINVRAM_LENGTH, CUS_PARAMS_LEN_MAX))) {
+        OAM_ERROR_LOG0(0, 0, "wal_atcmsrv_ioctl_get_pd_tran_param::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     OAL_IO_PRINT("wal_atcmsrv_ioctl_get_pd_tran_param::pd_param is %s", c_pd_param);
     return l_ret;
@@ -1998,6 +1971,7 @@ OAL_STATIC oal_int32 wal_atcmsrv_ioctl_io_test(oal_net_device_stru *pst_net_dev,
 
 OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_pcie_ip_test(oal_net_device_stru *pst_net_dev, oal_int16 *s_pcie_status)
 {
+#ifdef _PRE_PLAT_FEATURE_HI110X_PCIE
     oal_int32     l_ret;
     oal_int32     l_test_count = 1;
 
@@ -2011,6 +1985,7 @@ OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_pcie_ip_test(oal_net_device_stru *pst_ne
     }
 
     return l_ret;
+#endif
 }
 
 OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_dyn_intervel_set(oal_net_device_stru *pst_net_dev, oal_int8 *c_dyn_intv)
@@ -2034,12 +2009,18 @@ OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_dyn_intervel_set(oal_net_device_stru *ps
 
 OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_selfcali_intervel_set(oal_net_device_stru *pst_net_dev, oal_int32 l_selfcali_en)
 {
+    /* selcali_en: 1 for sel_cali every time, 0 for never sel_cal */
+    if (!l_selfcali_en)
+    {
+        wlan_cal_disable_switch = OAL_TRUE;
+    }
     if (l_selfcali_en)
     {
-        g_uc_wlan_cal_intvl_enable = OAL_FALSE;     /* 使能每次上下电自校准 */
-        OAM_WARNING_LOG0(0, 0, "wal_atcmdsrv_ioctl_selfcali_intervel_set::set selfcali_interval to 0!");
+        wlan_cal_intvl_enable = OAL_FALSE;     /* 使能每次上下电自校准 */
+        wlan_cal_disable_switch = OAL_FALSE;
     }
 
+    OAM_WARNING_LOG1(0, 0, "wal_atcmdsrv_ioctl_selfcali_intervel_set::set selfcali_interval to [%d]!", l_selfcali_en);
     return OAL_SUCC;
 }
 
@@ -2069,165 +2050,6 @@ OAL_STATIC oal_int32 wal_atcmdsrv_ioctl_tas_ant_set(oal_net_device_stru *pst_net
 
 }
 
-#ifdef _PRE_WLAN_FEATURE_SMARTANT
-#if 0//保留在此，后续可能会用
-OAL_STATIC oal_int32 wal_atcmsrv_ioctl_get_ant_info(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_ant_type,
-                                                oal_uint32 *pul_last_ant_change_time_ms,
-                                                oal_uint32 *pul_ant_change_number,
-                                                oal_uint32 *pul_main_ant_time_s,
-                                                oal_uint32 *pul_aux_ant_time_s,
-                                                oal_uint32 *pul_total_time_s)
-{
-    oal_int32                   l_ret;
-    wal_msg_write_stru          st_write_msg;
-    mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
-    oal_int32                   i_leftime;
-    oal_uint16                  us_len;
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        *puc_ant_type                 = g_st_atcmdsrv_ant_info.uc_ant_type;
-        *pul_last_ant_change_time_ms  = g_st_atcmdsrv_ant_info.ul_last_ant_change_time_ms;
-        *pul_ant_change_number        = g_st_atcmdsrv_ant_info.ul_ant_change_number;
-        *pul_main_ant_time_s          = g_st_atcmdsrv_ant_info.ul_main_ant_time_s;
-        *pul_aux_ant_time_s           = g_st_atcmdsrv_ant_info.ul_aux_ant_time_s;
-        *pul_total_time_s             = g_st_atcmdsrv_ant_info.ul_total_time_s;
-
-        return OAL_SUCC;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmsrv_ioctl_get_ant_info::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    /***************************************************************************
-                                抛事件到wal层处理
-    ***************************************************************************/
-    us_len = 0;
-    pst_hmac_vap->en_ant_info_query_completed_flag = OAL_FALSE;
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_GET_ANT_INFO, us_len);
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + us_len,
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_ioctl_get_ant_info::return err code [%d]!}\r\n", l_ret);
-        return l_ret;
-    }
-    /*阻塞等待dmac上报*/
-    i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(oal_uint32)(OAL_TRUE == pst_hmac_vap->en_ant_info_query_completed_flag),WAL_ATCMDSRB_DBB_NUM_TIME);
-
-    if (0 == i_leftime)
-    {
-        /* 超时还没有上报扫描结束 */
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_ioctl_get_ant_info::query info wait for %ld ms timeout!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else if (i_leftime < 0)
-    {
-        /* 定时器内部错误 */
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_ioctl_get_ant_info::query info wait for %ld ms error!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else
-    {
-        *puc_ant_type                 = g_st_atcmdsrv_ant_info.uc_ant_type;
-        *pul_last_ant_change_time_ms  = g_st_atcmdsrv_ant_info.ul_last_ant_change_time_ms;
-        *pul_ant_change_number        = g_st_atcmdsrv_ant_info.ul_ant_change_number;
-        *pul_main_ant_time_s          = g_st_atcmdsrv_ant_info.ul_main_ant_time_s;
-        *pul_aux_ant_time_s           = g_st_atcmdsrv_ant_info.ul_aux_ant_time_s;
-        *pul_total_time_s             = g_st_atcmdsrv_ant_info.ul_total_time_s;
-
-        return OAL_SUCC;
-    }
-}
-
-OAL_STATIC oal_int32 wal_atcmsrv_ioctl_double_ant_switch(oal_net_device_stru *pst_net_dev, oal_uint32 ul_double_ant_sw,
-                                                oal_uint32 *pul_ret)
-{
-    oal_int32                   l_ret;
-    wal_msg_write_stru          st_write_msg;
-    mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
-    oal_int32                   i_leftime;
-    oal_uint16                  us_len;
-
-    *pul_ret                 = OAL_FAIL;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_double_ant_switch::OAL_NET_DEV_PRIV, return null!}");
-
-        return OAL_SUCC;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmsrv_ioctl_double_ant_switch::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    /***************************************************************************
-                                抛事件到wal层处理
-    ***************************************************************************/
-    st_write_msg.auc_value[0] = (oal_uint8)ul_double_ant_sw;
-    st_write_msg.auc_value[1] = 0;
-    us_len = OAL_SIZEOF(oal_int32);
-    pst_hmac_vap->en_double_ant_switch_query_completed_flag = OAL_FALSE;
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_DOUBLE_ANT_SW, us_len);
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + us_len,
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_atcmsrv_ioctl_double_ant_switch::return err code [%d]!}\r\n", l_ret);
-        return l_ret;
-    }
-    /*阻塞等待dmac上报*/
-    i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(oal_uint32)(OAL_TRUE == pst_hmac_vap->en_double_ant_switch_query_completed_flag),WAL_ATCMDSRB_DBB_NUM_TIME);
-
-    if (0 == i_leftime)
-    {
-        /* 超时还没有上报扫描结束 */
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_atcmsrv_ioctl_double_ant_switch::query info wait for %ld ms timeout!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else if (i_leftime < 0)
-    {
-        /* 定时器内部错误 */
-        OAM_WARNING_LOG1(0, OAM_SF_CFG, "{wal_atcmsrv_ioctl_double_ant_switch::query info wait for %ld ms error!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else
-    {
-        *pul_ret = pst_hmac_vap->ul_double_ant_switch_ret;
-
-        return OAL_SUCC;
-    }
-}
-
-#endif
-#endif
 
 OAL_STATIC oal_int32  wal_atcmsrv_ioctl_set_bss_expire_age(oal_net_device_stru *pst_net_dev, oal_uint32 ul_expire_age)
 {
@@ -2249,14 +2071,14 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_get_wifi_connect_info(oal_net_device_str
     hmac_bss_mgmt_stru          *pst_bss_mgmt;          /*管理扫描的bss结果的结构体 */
     hmac_scanned_bss_info       *pst_scanned_bss_info   = OAL_PTR_NULL;
 
-    if (pst_net_dev == OAL_PTR_NULL || pst_connect_info == OAL_PTR_NULL)
+    if (OAL_ANY_NULL_PTR2(pst_net_dev,pst_connect_info))
     {
         OAM_ERROR_LOG2(0, OAM_SF_CFG, "wal_atcmsrv_ioctl_get_wifi_connect_info::null pointer. net_dev %p, connect_info %p",
-                            pst_net_dev, pst_connect_info);
+                            (uintptr_t)pst_net_dev, (uintptr_t)pst_connect_info);
         return -OAL_EFAIL;
     }
 
-    OAL_MEMZERO(pst_connect_info, OAL_SIZEOF(*pst_connect_info));
+    memset_s(pst_connect_info, OAL_SIZEOF(*pst_connect_info), 0, OAL_SIZEOF(*pst_connect_info));
 
     pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -2291,7 +2113,7 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_get_wifi_connect_info(oal_net_device_str
 
         pst_connect_info->en_status = ATCMDSRV_WIFI_CONNECTED;
         pst_connect_info->c_rssi    = pst_hmac_vap->station_info.signal;
-        oal_memcopy(pst_connect_info->auc_bssid, pst_mac_vap->auc_bssid, WLAN_MAC_ADDR_LEN);
+        memcpy_s(pst_connect_info->auc_bssid, WLAN_MAC_ADDR_LEN, pst_mac_vap->auc_bssid, WLAN_MAC_ADDR_LEN);
 
         /* 获取管理扫描的bss结果的结构体 */
         pst_bss_mgmt = &(pst_hmac_device->st_scan_mgmt.st_scan_record_mgmt.st_bss_mgmt);
@@ -2309,12 +2131,15 @@ OAL_STATIC oal_int32  wal_atcmsrv_ioctl_get_wifi_connect_info(oal_net_device_str
 
             /* 解锁 */
         oal_spin_unlock(&(pst_bss_mgmt->st_lock));
-    return -OAL_EINVAL;
+        return -OAL_EINVAL;
         }
         /* 解锁*/
         oal_spin_unlock(&(pst_bss_mgmt->st_lock));
 
-        oal_memcopy(pst_connect_info->auc_ssid, pst_scanned_bss_info->st_bss_dscr_info.ac_ssid, WLAN_SSID_MAX_LEN);
+        if (EOK != memcpy_s(pst_connect_info->auc_ssid, WLAN_SSID_MAX_LEN, pst_scanned_bss_info->st_bss_dscr_info.ac_ssid, WLAN_SSID_MAX_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_CFG, "wal_atcmsrv_ioctl_get_wifi_connect_info::memcpy fail!");
+            return -OAL_EINVAL;
+        }
     }
     else
     {
@@ -2365,7 +2190,7 @@ oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_net_device_stru *pst_net_dev, oal_i
     oal_int32    l_ret              = OAL_SUCC;
 
 
-    if ((OAL_PTR_NULL == pst_ifr->ifr_data)||(OAL_PTR_NULL == pst_net_dev))
+    if (OAL_ANY_NULL_PTR2(pst_ifr->ifr_data,pst_net_dev))
     {
         l_ret = -OAL_EINVAL;
         return l_ret;
@@ -2463,23 +2288,6 @@ oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_net_device_stru *pst_net_dev, oal_i
          case WAL_ATCMDSRV_IOCTL_CMD_SDIO_LOOP_SET:
             l_ret = wal_atcmsrv_ioctl_set_wifi_chan_loop(pst_net_dev,&st_priv_cmd.pri_data.l_wifi_chan_loop_set);
             break;
-#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
-        case WAL_ATCMDSRV_IOCTL_CMD_RD_CALDATA:
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-            l_ret = wal_atcmsrv_ioctl_fetch_caldata(st_priv_cmd.pri_data.auc_caldata);
-            if(oal_copy_to_user(pst_ifr->ifr_data,&st_priv_cmd,sizeof(wal_atcmdsrv_wifi_priv_cmd_stru)))
-            {
-                OAM_ERROR_LOG0(0, OAM_SF_ANY,"wal_atcmdsrv_wifi_priv_cmd_etc:Failed to copy ioctl_data(caldata) to user !");
-                l_ret = -OAL_EINVAL;
-            }
-#endif
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_SET_CALDATA:
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_HOST)
-           l_ret = wal_atcmsrv_ioctl_set_caldata(pst_net_dev);
-#endif
-           break;
-#endif
         case WAL_ATCMDSRV_IOCTL_CMD_EFUSE_CHECK:
             l_ret = wal_atcmsrv_ioctl_efuse_check(pst_net_dev,&st_priv_cmd.pri_data.l_efuse_check_result);
             if(oal_copy_to_user(pst_ifr->ifr_data,&st_priv_cmd,sizeof(wal_atcmdsrv_wifi_priv_cmd_stru)))
@@ -2569,11 +2377,11 @@ oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_net_device_stru *pst_net_dev, oal_i
         case WAL_ATCMDSRV_IOCTL_CMD_GET_CONN_INFO:
             l_ret = wal_atcmsrv_ioctl_get_wifi_connect_info(pst_net_dev, &st_priv_cmd.pri_data.st_connect_info);
 
-            OAL_IO_PRINT("wal_atcmsrv_ioctl_get_wifi_connect_info::status %d, %.32s,%02x:%02x:%02x:%02x:%02x:%02x,%d",
+            OAL_IO_PRINT("wal_atcmsrv_ioctl_get_wifi_connect_info::status %d, %.32s,%02x:%02x:xx:xx:%02x:%02x,%d",
                          st_priv_cmd.pri_data.st_connect_info.en_status,
                          st_priv_cmd.pri_data.st_connect_info.auc_ssid,
-                         st_priv_cmd.pri_data.st_connect_info.auc_bssid[0], st_priv_cmd.pri_data.st_connect_info.auc_bssid[1], st_priv_cmd.pri_data.st_connect_info.auc_bssid[2],
-                         st_priv_cmd.pri_data.st_connect_info.auc_bssid[3], st_priv_cmd.pri_data.st_connect_info.auc_bssid[4], st_priv_cmd.pri_data.st_connect_info.auc_bssid[5],
+                         st_priv_cmd.pri_data.st_connect_info.auc_bssid[0], st_priv_cmd.pri_data.st_connect_info.auc_bssid[1],
+                         st_priv_cmd.pri_data.st_connect_info.auc_bssid[4], st_priv_cmd.pri_data.st_connect_info.auc_bssid[5],
                          st_priv_cmd.pri_data.st_connect_info.c_rssi);
 
             oal_copy_to_user(pst_ifr->ifr_data, &st_priv_cmd, sizeof(wal_atcmdsrv_wifi_priv_cmd_stru));
@@ -2583,385 +2391,6 @@ oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_net_device_stru *pst_net_dev, oal_i
     }
     return l_ret;
 }
-#endif
-
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) && defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST)
-
-oal_int32  wal_atcmsrv_ioctl_get_fem_pa_status_etc(oal_net_device_stru *pst_net_dev, oal_uint32 *pl_fem_pa_status)
-{
-    oal_int32                   l_ret;
-    oal_int32                   i_leftime;
-    wal_msg_write_stru          st_write_msg;
-    mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::OAL_NET_DEV_PRIV, return null!}");
-        return -OAL_EINVAL;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmsrv_ioctl_get_fem_pa_status_etc::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    pst_hmac_vap->st_atcmdsrv_get_status.uc_check_fem_pa_flag = OAL_FALSE;
-
-    /***************************************************************************
-                                抛事件到wal层处理
-    ***************************************************************************/
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CHECK_FEM_PA, 0);
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH,
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::return err code %d!}\r\n", l_ret);
-        return l_ret;
-    }
-
-    /*阻塞等待dmac上报*/
-    i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(OAL_TRUE == pst_hmac_vap->st_atcmdsrv_get_status.uc_check_fem_pa_flag), WAL_ATCMDSRB_NORM_TIME);
-    if ( 0 == i_leftime)
-    {
-        /* 超时还没有上报扫描结束 */
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::reg wait for %ld ms timeout!}",
-                         ((WAL_ATCMDSRB_NORM_TIME * 1000)/OAL_TIME_HZ));
-        //OAL_IO_PRINT("%s timeout\n", __func__);
-        return -OAL_EINVAL;
-    }
-    else if (i_leftime < 0)
-    {
-        /* 定时器内部错误 */
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::reg wait for %ld ms error!}",
-                         ((WAL_ATCMDSRB_NORM_TIME * 1000)/OAL_TIME_HZ));
-        //OAL_IO_PRINT("%s error\n", __func__);
-        return -OAL_EINVAL;
-    }
-    else
-    {
-        /* 正常结束  */
-        /* 结果返回AT界面 */
-        /* fem失效超过3次认变异常 */
-        *pl_fem_pa_status = (pst_hmac_vap->st_atcmdsrv_get_status.ul_check_fem_pa_status) > FEM_FAIL_TIME ? 1 : 0;
-
-        return OAL_SUCC;
-    }
-
-    //if(0 != *pl_fem_pa_status)
-    //{
-    //    OAM_ERROR_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_fem_pa_status_etc::ul_check_hw_status[0x%x]}", pst_hmac_vap->st_atcmdsrv_get_status.ul_check_fem_pa_status);
-    //    CHR_EXCEPTION(CHR_WIFI_DEV(CHR_WIFI_DEV_EVENT_CHIP, CHR_WIFI_DEV_ERROR_FEM_FAIL));
-    //}
-
-
-}
-
-oal_int32  wal_atcmdsrv_ioctl_get_reg_val(oal_net_device_stru *pst_net_dev, oal_uint8 * puc_param)
-{
-    oal_int32                   l_ret;
-    oal_int32                   i_leftime;
-    wal_msg_write_stru          st_write_msg;
-    mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
-    oal_uint16                      us_len;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_get_dbb_num::OAL_NET_DEV_PRIV, return null!}");
-        return -OAL_EINVAL;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmsrv_ioctl_get_dbb_num::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    pst_hmac_vap->st_atcmdsrv_get_status.uc_report_reg_flag = OAL_FALSE;
-
-    /***************************************************************************
-                                抛事件到wal层处理
-    ***************************************************************************/
-    oal_memcopy(st_write_msg.auc_value, puc_param, OAL_STRLEN((oal_int8 *)puc_param));
-
-    st_write_msg.auc_value[OAL_STRLEN((oal_int8 *)puc_param)] = '\0';
-
-    us_len = (oal_uint16)(OAL_STRLEN((oal_int8 *)puc_param) + 1);
-
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_REG_INFO, us_len);
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + us_len,
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmdsrv_ioctl_get_reg_val::return err code %d!}\r\n", l_ret);
-        return l_ret;
-    }
-
-    /*阻塞等待dmac上报*/
-    i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(OAL_TRUE == pst_hmac_vap->st_atcmdsrv_get_status.uc_report_reg_flag),WAL_ATCMDSRB_DBB_NUM_TIME);
-    if ( 0 == i_leftime)
-    {
-        /* 超时还没有上报扫描结束 */
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_atcmdsrv_ioctl_get_reg_val::reg wait for %ld ms timeout!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else if (i_leftime < 0)
-    {
-        /* 定时器内部错误 */
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_atcmdsrv_ioctl_get_reg_val::reg wait for %ld ms error!}",
-                         ((WAL_ATCMDSRB_DBB_NUM_TIME * 1000)/OAL_TIME_HZ));
-        return -OAL_EINVAL;
-    }
-    else
-    {
-        /* 正常结束  */
-        /* 结果返回AT界面 */
-        *(oal_uint32 *)puc_param = pst_hmac_vap->st_atcmdsrv_get_status.ul_reg_value;
-
-        return OAL_SUCC;
-    }
-}
-
-
-oal_int32  wal_atcmdsrv_ioctl_get_cali_info(oal_net_device_stru *pst_net_dev, oal_uint8 * puc_param)
-{
-    oal_int32                   l_ret;
-    wal_msg_write_stru          st_write_msg;
-    mac_vap_stru               *pst_mac_vap;
-    hmac_vap_stru              *pst_hmac_vap;
-    oal_uint16                  us_len;
-
-    oal_memset(&st_write_msg,0,OAL_SIZEOF(wal_msg_write_stru));
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmdsrv_ioctl_get_cali_info::OAL_NET_DEV_PRIV, return null!}");
-        return -OAL_EINVAL;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmdsrv_ioctl_get_cali_info::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    /***************************************************************************
-                                抛事件到wal层处理
-    ***************************************************************************/
-    *(oal_uint8**)st_write_msg.auc_value = puc_param;
-    us_len = (oal_uint16)(sizeof(oal_uint8*));
-
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_GET_CALI_INFO, us_len);
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + us_len,
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-    wal_hipriv_wait_rsp(pst_net_dev, (oal_int8 *)puc_param);
-#endif
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmdsrv_ioctl_get_cali_info::return err code %d!}\r\n", l_ret);
-        return l_ret;
-    }
-
-    return OAL_SUCC;
-
-}
-
-
-oal_int32  wal_atcmdsrv_ioctl_chip_check(oal_net_device_stru *pst_net_dev)
-{
-    wal_msg_write_stru          st_write_msg;
-    oal_int32                   l_ret;
-  //oal_uint32                  ul_off_set;
-  //oal_int8                    ac_arg[WAL_HIPRIV_CMD_NAME_MAX_LEN];
-  //oal_uint32                  ul_ret;
-  //oal_int32                   l_idx = 0;
-    oal_switch_enum_uint8       en_chip_check_flag = OAL_TRUE;
-    mac_vap_stru                *pst_mac_vap;
-    hmac_vap_stru               *pst_hmac_vap;
-    oal_int                     i_leftime;
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG1(0,OAM_SF_ANY,"{wal_atcmsrv_ioctl_chip_check::mac_res_get_hmac_vap fail.vap_id[%u]}",pst_mac_vap->uc_vap_id);
-        return -OAL_EINVAL;
-    }
-
-    /***************************************************************************
-                                    抛事件到wal层处理
-    ***************************************************************************/
-    WAL_WRITE_MSG_HDR_INIT(&st_write_msg, WLAN_CFGID_CHIP_CHECK_SWITCH, OAL_SIZEOF(oal_uint8));
-    *((oal_uint8 *)(st_write_msg.auc_value)) = en_chip_check_flag;  /* 设置配置命令参数 */
-
-    l_ret = wal_send_cfg_event_etc(pst_net_dev,
-                               WAL_MSG_TYPE_WRITE,
-                               WAL_MSG_WRITE_MSG_HDR_LENGTH + OAL_SIZEOF(oal_uint8),
-                               (oal_uint8 *)&st_write_msg,
-                               OAL_FALSE,
-                               OAL_PTR_NULL);
-
-    if (OAL_UNLIKELY(OAL_SUCC != l_ret))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmsrv_ioctl_chip_check::return err code %d!}\r\n", l_ret);
-        return (oal_int32)l_ret;
-    }
-
-    /*阻塞等待dmac上报*/
-    i_leftime = OAL_WAIT_EVENT_INTERRUPTIBLE_TIMEOUT(pst_hmac_vap->query_wait_q,(oal_uint32)(OAL_TRUE == pst_hmac_vap->st_hipriv_ack_stats.uc_get_hipriv_ack_flag),100);
-
-    if(i_leftime > 0)
-    {
-        /* 正常结束  */
-        l_ret = (OAL_TRUE == pst_hmac_vap->st_hipriv_ack_stats.uc_get_hipriv_ack_flag)?
-                    OAL_SUCC: (-OAL_EINVAL);
-        return l_ret;
-    }
-    else
-    {
-        return -OAL_EINVAL;
-    }
-}
-
-
-oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_int8 *ac_dev_name, oal_int32 ul_cmd, oal_uint8 * puc_param)
-{
-    oal_int32                        l_ret              = OAL_SUCC;
-    oal_net_device_stru*             pst_net_dev;
-  //oal_uint8                        uc_cw_param;
-    oal_uint32                       ul_rx_pckg_succ_num = 0;
-    mac_vap_stru                    *pst_mac_vap;
-    hmac_vap_stru                   *pst_hmac_vap;
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-    oal_iw_point_stru                st_w;
-#endif
-    oal_uint32                       ul_ret;
-    oal_uint32                       ul_off_set = 0;
-    oal_int8                         ac_dev_name_tmp[WAL_HIPRIV_CMD_NAME_MAX_LEN];
-
-    if (OAL_PTR_NULL == ac_dev_name)
-    {
-        l_ret = -OAL_EINVAL;
-        return l_ret;
-    }
-
-    if(WAL_ATCMDSRV_IOCTL_CMD_NORM_SET == ul_cmd)//normal set的device name在后面的关键字中，需要提取出来
-    {
-        ul_ret = wal_get_cmd_one_arg_etc((oal_int8 *)puc_param, ac_dev_name_tmp, &ul_off_set);
-        if (OAL_SUCC != ul_ret)
-        {
-            OAM_WARNING_LOG1(0, OAM_SF_ANY, "{wal_atcmdsrv_wifi_priv_cmd_etc::wal_get_cmd_one_arg_etc return err_code [%d]!}\r\n", ul_ret);
-            return ul_ret;
-        }
-    }
-    else
-    {//其他操作，device name在ac_dev_name中
-        OAL_SPRINTF(ac_dev_name_tmp, WAL_HIPRIV_CMD_NAME_MAX_LEN, "%s", ac_dev_name);
-    }
-    /* 根据dev_name找到dev */
-    pst_net_dev = oal_dev_get_by_name(ac_dev_name_tmp);
-    if (OAL_PTR_NULL == pst_net_dev)
-    {
-        OAL_IO_PRINT("wal_atcmdsrv_wifi_priv_cmd_set::oal_dev_get_by_name return null ptr!\n");
-        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{wal_atcmdsrv_wifi_priv_cmd_set::oal_dev_get_by_name return null ptr!}\r\n");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    /* 调用oal_dev_get_by_name后，必须调用oal_dev_put使net_dev的引用计数减一 */
-    oal_dev_put(pst_net_dev);
-
-    pst_mac_vap = OAL_NET_DEV_PRIV(pst_net_dev);
-    if (OAL_PTR_NULL == pst_mac_vap)
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_atcmdsrv_wifi_priv_cmd_set::OAL_NET_DEV_PRIV, return null!}");
-        return -OAL_EINVAL;
-    }
-
-    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_hmac_vap)
-    {
-        OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY,"{wal_atcmdsrv_wifi_priv_cmd_set::mac_res_get_hmac_vap failed!}");
-        return OAL_FAIL;
-    }
-
-    pst_hmac_vap->st_hipriv_ack_stats.uc_get_hipriv_ack_flag = OAL_FALSE;
-
-    switch(ul_cmd)
-    {
-        case WAL_ATCMDSRV_IOCTL_CMD_NORM_SET:
-            l_ret = wal_hipriv_parse_cmd_etc((oal_int8 *)puc_param);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_REGINFO_SET:
-            l_ret = wal_atcmdsrv_ioctl_get_reg_val(pst_net_dev, puc_param);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_CALIINFO_SET:
-            l_ret = wal_atcmdsrv_ioctl_get_cali_info(pst_net_dev, puc_param);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_FEM_PA_INFO_GET:
-            l_ret = wal_atcmsrv_ioctl_get_fem_pa_status_etc(pst_net_dev, (oal_uint32 *)puc_param);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_RX_PCKG_GET:
-            l_ret = wal_atcmsrv_ioctl_get_rx_pckg_etc(pst_net_dev, (oal_int32 *)&ul_rx_pckg_succ_num);
-            if (OAL_SUCC == l_ret)
-            {
-                puc_param[0] = (ul_rx_pckg_succ_num >> 8)&0xFF;
-                puc_param[1] = ul_rx_pckg_succ_num & 0xFF;
-            }
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_VAP_DOWN_SET:
-            l_ret = wal_netdev_stop_etc(pst_net_dev);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_HW_ADDR_SET:
-            l_ret = wal_atcmsrv_ioctl_set_hw_addr_etc(pst_net_dev, puc_param);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_VAP_UP_SET:
-            l_ret = wal_netdev_open_etc(pst_net_dev,OAL_FALSE);
-            break;
-        case WAL_ATCMDSRV_IOCTL_CMD_CHIPCHECK_SET:
-            l_ret = wal_atcmdsrv_ioctl_chip_check(pst_net_dev);
-            break;
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-        case WAL_ATCMDSRV_IOCTL_CMD_GET_POWER_PARAM:
-            st_w.length = 0;
-            l_ret = wal_ioctl_get_power_param(pst_net_dev, OAL_PTR_NULL, (oal_void *)&st_w, (oal_int8 *)puc_param+4);
-            break;
-#endif
-
-        default:
-             break;
-    }
-
-    return l_ret;
-}
-
 #endif
 
 #ifdef __cplusplus

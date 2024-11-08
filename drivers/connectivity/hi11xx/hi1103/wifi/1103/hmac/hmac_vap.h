@@ -48,16 +48,9 @@ extern "C" {
 #define MAX_DSCP_EXCEPT   21  /* maximum of DSCP Exception fields for QoS Map set */
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-#define  HMAC_HIPRIV_ACK_BUF_SIZE  3
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-#define MAC_VAP_PROXYSTA_MAP_MAX_VALUE       16                                 /* PROXYSTA HASH表的桶值 目前支持32个用户 设置16个桶 */
-#define MAC_VAP_PROXYSTA_MAP_UNKNOW_VALUE     4                                 /* PROXYSTA HASH表的未知协议报文桶值 目前4个桶 */
-#endif
 #define HMAC_MAX_DSCP_VALUE_NUM      64
 #define HMAC_DSCP_VALUE_INVALID      0xA5
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -71,7 +64,7 @@ extern "C" {
   4 全局变量声明
 *****************************************************************************/
 #ifdef _PRE_WLAN_REPORT_PRODUCT_LOG
-extern oal_uint8   g_auc_vapid_to_chipid[2 * WLAN_VAP_MAX_NUM_PER_DEVICE_LIMIT];
+extern oal_uint8   vapid_to_chipid[2 * WLAN_VAP_MAX_NUM_PER_DEVICE_LIMIT];
 #endif
 
 extern oal_uint8   g_uc_host_rx_ampdu_amsdu;
@@ -151,17 +144,6 @@ typedef struct
                                      uc_get_ant_flag : 4;
 }hmac_atcmdsrv_get_stats_stru;
 
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-/*51装备测试 hipriv命令回显*/
-typedef struct
-{
-    oal_uint8                   auc_data[HMAC_HIPRIV_ACK_BUF_SIZE];
-    oal_bool_enum_uint8         uc_get_hipriv_ack_flag;
-    oal_int8                    *pc_buffer;
-    oal_uint8                   auc_reserved[3];
-    oal_uint32                  ul_buf_len;
-}hmac_hipriv_ack_stats_stru;
-#endif
 typedef struct
 {
     oal_dlist_head_stru           st_entry;
@@ -190,38 +172,6 @@ typedef struct
     oal_netbuf_head_stru         data_queue[HMAC_TCP_OPT_QUEUE_BUTT];
     oal_spin_lock_stru           data_queue_lock[HMAC_TCP_OPT_QUEUE_BUTT];
 }hmac_tcp_ack_stru;
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-typedef struct hmac_psta_rep
-{
-    oal_rwlock_stru         st_lock;
-    oal_dlist_head_stru     st_vsta_list;   // proxysta device list
-    oal_dlist_head_stru     st_msta_list;   // main sta list
-    oal_dlist_head_stru     st_pbss_list;   // proxy bss list
-    oal_dlist_head_stru     ast_hash[MAC_VAP_PROXY_STA_HASH_MAX_VALUE];
-    oal_bool_enum_uint8     en_isolation;
-    oal_uint8               uc_use_cnt;
-    oal_uint8               uc_resv[2];
-} hmac_psta_rep_stru;
-
-typedef struct hmac_psta_mgr
-{
-    hmac_psta_rep_stru       ast_rep[WLAN_PROXY_STA_MAX_REP];
-    oal_proc_dir_entry_stru *pst_proc_entry;
-} hmac_psta_mgr_stru;
-
-typedef  struct
-{
-    oal_dlist_head_stru     st_hash_entry;
-    oal_dlist_head_stru     st_xsta_entry;
-    oal_uint8               auc_oma[WLAN_MAC_ADDR_LEN];
-    oal_uint8               uc_rep_id;
-    oal_uint8               auc_resv[1];
-} hmac_psta_stru;
-
-#define hmac_vap_psta_oma(vap)  ((vap)->st_psta.auc_oma)
-#define hmac_vap_psta_in_rep(vap)   (!oal_dlist_is_empty(&(vap)->st_psta.st_hash_entry))
 #endif
 
 #if defined (_PRE_WLAN_FEATURE_WDS) || defined (_PRE_WLAN_FEATURE_VIRTUAL_MULTI_STA)
@@ -324,20 +274,6 @@ typedef struct mac_vap_rrm_info_tag
 }mac_vap_rrm_info_stru;
 #endif //_PRE_WLAN_FEATURE_11K_EXTERN
 
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-typedef struct
-{
-    oal_rwlock_stru                     st_lock;                                                /* 读写保护锁 */
-    oal_dlist_head_stru                 ast_map_ipv4_head[MAC_VAP_PROXYSTA_MAP_MAX_VALUE];      /* IPV4的map hash表 */
-    oal_dlist_head_stru                 ast_map_ipv6_head[MAC_VAP_PROXYSTA_MAP_MAX_VALUE];      /* IPV6的map hash表 */
-    oal_dlist_head_stru                 ast_map_unknow_head[MAC_VAP_PROXYSTA_MAP_UNKNOW_VALUE]; /* 未知协议的map hash表 */
-    oal_uint8                           uc_map_ipv4_num;        /* 记录ipv4的条数 */
-    oal_uint8                           uc_map_ipv6_num;        /* 记录ipv6的条数 */
-    oal_uint8                           uc_map_unknow_num;      /* 记录未知协议的条数 */
-    oal_uint8                           uc_resv;
-}hmac_vap_proxysta_stru;
-#endif  //_PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-
 typedef struct
 {
     oal_uint8               uc_type;
@@ -380,9 +316,6 @@ typedef struct hmac_vap_tag
     mac_cfg_ampdu_tx_on_param_stru  st_mode_set;
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    hmac_psta_stru                  st_psta;
-#endif
     hmac_remove_ie_stru             st_remove_ie;                           /* 配置需要屏蔽的IE信息 */
 
 #if (_PRE_WLAN_FEATURE_BLACKLIST_LEVEL != _PRE_WLAN_FEATURE_BLACKLIST_NONE)
@@ -404,16 +337,6 @@ typedef struct hmac_vap_tag
 
 #ifdef _PRE_WLAN_FEATURE_HS20
     hmac_cfg_qos_map_param_stru     st_cfg_qos_map_param;
-#endif
-
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    oal_netbuf_head_stru            st_tx_queue_head[2];                        /* 2个发送队列，2个线程pinpon操作 */
-    oal_uint8                       uc_in_queue_id;
-    oal_uint8                       uc_out_queue_id;
-    oal_uint8                       auc_resv0[2];
-    oal_atomic                      ul_tx_event_num;                            /* frw发包事件的个数 */
-    oal_uint32                      ul_tx_quata;                                /* 发包配额，方便配置 */
-    oal_spin_lock_stru              st_smp_lock;
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_ALWAYS_TX
@@ -476,21 +399,24 @@ typedef struct hmac_vap_tag
 
     oal_uint8                       bit_sta_protocol_cfg    :   1;
     oal_uint8                       bit_protocol_fall       :   1;              /* 降协议标志位 */
-    oal_uint8                       bit_reassoc_flag        :   1;             /* 关联过程中判断是否为重关联动作 */
+    oal_uint8                       bit_reassoc_flag        :   1;              /* 关联过程中判断是否为重关联动作 */
     oal_uint8                       bit_rx_ampduplusamsdu_active:1;
+    oal_uint8                       bit_sae_connect_with_pmkid :1;              /* 0:不包含PMKID的SAE连接；1:包含PMKID的SAE连接 */
 #if defined(_PRE_WLAN_FEATURE_11K) || defined(_PRE_WLAN_FEATURE_11R) || defined(_PRE_WLAN_FEATURE_11K_EXTERN) || defined(_PRE_WLAN_FEATURE_11V_ENABLE)
-    oal_uint8                       bit_11k_auth_flag       :   1;             /* 11k 认证标志位*/
+    oal_uint8                       bit_11k_auth_flag       :   1;              /* 11k 认证标志位*/
     oal_uint8                       bit_voe_11r_auth        :   1;
     oal_uint8                       bit_11k_auth_oper_class :   2;
-    oal_uint8                       bit_11r_over_ds         :   1;             /*是否使用11r over ds；0表示over ds走over air流程*/
-    oal_uint8                       bit_resv                :   7;
-    oal_uint8                       auc_resv[2];
+    oal_uint8                       bit_11r_over_ds         :   1;              /*是否使用11r over ds；0表示over ds走over air流程*/
     oal_uint8                       bit_11k_enable          :   1;
     oal_uint8                       bit_11v_enable          :   1;
     oal_uint8                       bit_11r_enable          :   1;
     oal_uint8                       bit_bcn_table_switch    :   1;
+    oal_uint8                       bit_adaptive11r         :   1;              /* 是否使用adaptive 11r流程 */
+    oal_uint8                       bit_nb_rpt_11k          :   1;
+
+    oal_uint8                       auc_resv[2];
 #else
-    oal_uint8                       bit_resv                :   4;
+    oal_uint8                       bit_resv                :   3;
 #endif // _PRE_WLAN_FEATURE_11K
     oal_int8                        ac_desired_country[3];                      /* 要加入的AP的国家字符串，前两个字节为国家字母，第三个为\0 */
 
@@ -503,13 +429,9 @@ typedef struct hmac_vap_tag
 
     oal_bool_enum_uint8              station_info_query_completed_flag;         /*查询结束标志，OAL_TRUE，查询结束，OAL_FALSE，查询未结束*/
     oal_int16                        s_free_power;                              /* 底噪 */
-    oal_bool_enum_uint8              en_addr_filter;
+    oal_bool_enum_uint8              en_monitor_mode;
 
     oal_int32                        center_freq;                               /* 中心频点 */
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-    mac_cfg_show_pd_paras_stru       st_polynomial_paras;
-    mac_cfg_show_upc_paras_stru      st_upc_paras;
-#endif
     mac_cfg_show_dieid_stru          st_dieid;
     hmac_atcmdsrv_get_stats_stru     st_atcmdsrv_get_status;
     oal_proc_dir_entry_stru         *pst_proc_dir;                              /* vap对应的proc目录 */
@@ -543,9 +465,6 @@ typedef struct hmac_vap_tag
     oal_uint16                       us_check_timer_pause_cnt;                   /* 低功耗pause计数 */
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-    hmac_hipriv_ack_stats_stru       st_hipriv_ack_stats;
-#endif
 #ifdef _PRE_WLAN_FEATURE_SMARTANT
     oal_bool_enum_uint8             en_ant_info_query_completed_flag;           /*查询结束标志，OAL_TRUE，查询结束，OAL_FALSE，查询未结束*/
     oal_bool_enum_uint8             en_double_ant_switch_query_completed_flag;  /*查询结束标志，OAL_TRUE，查询结束，OAL_FALSE，查询未结束*/
@@ -569,22 +488,29 @@ typedef struct hmac_vap_tag
     mac_vap_rrm_info_stru                  *pst_rrm_info;
 #endif
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-    oal_machw_flow_stat_stru            st_machw_stat;
-#ifdef _PRE_WLAN_11K_STAT
-    oal_wme_stat_stru                   st_wme_stat;
-    oal_tx_delay_ac_stru                st_tx_delay_ac;
-#endif
-#endif
     oal_uint8                           auc_dscp_tid_map[HMAC_MAX_DSCP_VALUE_NUM];
-#ifdef _PRE_WLAN_FEATURE_SINGLE_PROXYSTA
-    hmac_vap_proxysta_stru              *pst_vap_proxysta;                                /* Proxy STA 特性相关结构体指针 */
-    proxysta_mode_enum_uint8            en_proxysta_mode;                                 /* Proxy STA 的VAP工作模式 */
-    oal_uint8                           auc_resv8[3];
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_M2S
     hmac_vap_m2s_stru                   st_hmac_vap_m2s;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_SAE
+    oal_work_stru                       st_sae_report_ext_auth_worker;          /* SAE report external auth req工作队列 */
+#endif
+    oal_uint8                           owe_group[MAC_OWE_GROUP_SUPPORTED_NUM];
+    oal_uint8                           owe_group_cap;
+
+#ifdef _PRE_WLAN_FEATURE_11AX /* TWT节能配置参数 */
+    oal_uint64      ull_twt_start_time;
+    oal_uint64      ull_twt_interval;
+    oal_uint8        uc_twt_duration;
+    oal_uint8        uc_twt_flow_id;
+    oal_uint8        uc_twt_announce_bit;
+
+    oal_uint8       uc_mac_padding;
+    oal_uint8       uc_disable_mu_edca;
+    oal_uint8       uc_htc_order_flag;
+    oal_uint32      ul_htc_info;
 #endif
 
     mac_vap_stru                        st_vap_base_info;                           /* MAC vap，只能放在最后! */
@@ -630,7 +556,8 @@ extern oal_uint32  hmac_vap_init_etc(
                        oal_uint8                   uc_vap_id,
                        mac_cfg_add_vap_param_stru *pst_param);
 
-extern oal_uint32  hmac_vap_creat_netdev_etc(hmac_vap_stru *pst_hmac_vap, oal_int8 *puc_netdev_name, oal_int8 *puc_mac_addr);
+extern oal_uint32  hmac_vap_creat_netdev_etc(hmac_vap_stru *pst_hmac_vap,
+    oal_int8 *puc_netdev_name, oal_uint8 uc_netdev_name_len, oal_int8 *puc_mac_addr);
 
 extern oal_uint16 hmac_vap_check_ht_capabilities_ap_etc(
             hmac_vap_stru                  *pst_hmac_vap,
@@ -665,6 +592,8 @@ extern oal_uint32 hmac_restart_all_work_vap(oal_uint8 uc_chip_id);
 extern oal_void hmac_set_ampdu_worker(oal_delayed_work *pst_work);
 extern oal_void hmac_set_ampdu_hw_worker(oal_delayed_work *pst_work);
 #endif
+
+oal_void hmac_vap_state_restore_etc(hmac_vap_stru *pst_hmac_vap);
 
 #ifdef __cplusplus
     #if __cplusplus

@@ -107,11 +107,11 @@ oal_uint32  mac_device_exit(mac_device_stru *pst_device)
 
     mac_res_free_dev(pst_device->uc_device_id);
 
-#if 0
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    pst_device->en_device_state = OAL_FALSE;
-#endif
-#endif
+
+
+
+
+
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     mac_device_set_state(pst_device, OAL_FALSE);
@@ -123,11 +123,11 @@ oal_uint32  mac_device_exit(mac_device_stru *pst_device)
 
 oal_uint32  mac_chip_exit(mac_board_stru *pst_board, mac_chip_stru *pst_chip)
 {
-#if 0
-    mac_device_stru   *pst_dev;
-    oal_uint32         ul_ret;
-    oal_uint8          uc_device;
-#endif
+
+
+
+
+
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_chip || OAL_PTR_NULL == pst_board))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_chip_init::param null.}");
@@ -136,19 +136,19 @@ oal_uint32  mac_chip_exit(mac_board_stru *pst_board, mac_chip_stru *pst_chip)
     }
 
     /*放入Device自身结构释放*/
-#if 0
-    for (uc_device = 0; uc_device < pst_chip->uc_device_nums; uc_device++)
-    {
-         pst_dev = mac_res_get_dev(pst_chip->auc_device_id[uc_device]);
-         ul_ret = pst_board->p_device_destroy_fun(pst_dev);
-         if (OAL_SUCC != ul_ret)
-         {
-             OAM_WARNING_LOG1(0, OAM_SF_ANY, "{mac_chip_exit::p_device_destroy_fun failed[%d].}", ul_ret);
 
-             return ul_ret;
-         }
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
 
     pst_chip->uc_device_nums = 0;
 
@@ -162,10 +162,10 @@ oal_uint32  mac_chip_exit(mac_board_stru *pst_board, mac_chip_stru *pst_chip)
 
 oal_uint32  mac_board_exit(mac_board_stru *pst_board)
 {
-#if 0
-    oal_uint8  uc_chip_idx;
-    oal_uint32 ul_ret;
-#endif
+
+
+
+
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_board))
     {
@@ -173,33 +173,33 @@ oal_uint32  mac_board_exit(mac_board_stru *pst_board)
 
         return OAL_ERR_CODE_PTR_NULL;
     }
-#if 0
-    while (0 != pst_board->uc_chip_id_bitmap)
-    {
-        /* 获取最右边一位为1的位数，此值即为chip的数组下标 */
-        uc_chip_idx = oal_bit_find_first_bit_one_byte(pst_board->uc_chip_id_bitmap);
-        if (OAL_UNLIKELY(uc_chip_idx >= WLAN_CHIP_MAX_NUM_PER_BOARD))
-        {
-            MAC_ERR_LOG2(0, "uc_chip_idx is exceeded support spec.", uc_chip_idx, pst_board->uc_chip_id_bitmap);
-            OAM_ERROR_LOG2(0, OAM_SF_ANY, "{mac_board_exit::invalid uc_chip_idx[%d] uc_chip_id_bitmap=%d.}",
-                           uc_chip_idx, pst_board->uc_chip_id_bitmap);
 
-            return OAL_ERR_CODE_ARRAY_OVERFLOW;
-        }
 
-        ul_ret = mac_chip_exit(pst_board, &pst_board->ast_chip[uc_chip_idx]);
-        if (OAL_SUCC != ul_ret)
-        {
-            MAC_WARNING_LOG1(0, "mac_chip_destroy return fail.", ul_ret);
-            OAM_WARNING_LOG1(0, OAM_SF_ANY, "{mac_board_exit::mac_chip_exit failed[%d].}", ul_ret);
 
-            return ul_ret;
-        }
 
-        /* 清除对应的bitmap位 */
-        oal_bit_clear_bit_one_byte(&pst_board->uc_chip_id_bitmap, uc_chip_idx);
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return OAL_SUCC;
 }
@@ -379,7 +379,7 @@ oal_uint32  mac_device_init(mac_device_stru *pst_mac_device, oal_uint32 ul_chip_
     pst_mac_device->uc_scan_count    = 0;
 #endif
 
-    /* 初始化随机mac oui为0(3个字节都是0),确保只有Android下发有效mac oui才进行随机mac地址扫描(在随机mac扫描开关打开的情况下) */
+    /* 初始化随机mac oui为0(3个字节都是0),确保只有系统下发有效mac oui才进行随机mac地址扫描(在随机mac扫描开关打开的情况下) */
     pst_mac_device->en_is_random_mac_addr_scan = OAL_FALSE;
     pst_mac_device->auc_mac_oui[0] = 0x0;
     pst_mac_device->auc_mac_oui[1] = 0x0;
@@ -413,7 +413,7 @@ oal_uint32  mac_board_init(mac_board_stru *pst_board)
 mac_vap_stru * mac_device_find_another_up_vap(mac_device_stru *pst_mac_device, oal_uint8 uc_vap_id_self)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
@@ -448,7 +448,7 @@ mac_vap_stru * mac_device_find_another_up_vap(mac_device_stru *pst_mac_device, o
 oal_uint32  mac_device_find_up_vap(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
@@ -488,7 +488,7 @@ oal_uint32  mac_device_find_2up_vap(
                 mac_vap_stru   **ppst_mac_vap1,
                 mac_vap_stru   **ppst_mac_vap2)
 {
-    mac_vap_stru                  *pst_vap;
+    mac_vap_stru                  *pst_vap = OAL_PTR_NULL;
     oal_uint8                      uc_vap_idx;
     oal_uint8                      ul_up_vap_num = 0;
     mac_vap_stru                  *past_vap[2] = {0};
@@ -533,8 +533,8 @@ oal_uint32  mac_device_find_2up_vap(
 
 oal_uint32  mac_fcs_dbac_state_check(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru *pst_mac_vap1;
-    mac_vap_stru *pst_mac_vap2;
+    mac_vap_stru *pst_mac_vap1 = OAL_PTR_NULL;
+    mac_vap_stru *pst_mac_vap2 = OAL_PTR_NULL;
     oal_uint32    ul_ret;
 
     ul_ret = mac_device_find_2up_vap(pst_mac_device, &pst_mac_vap1, &pst_mac_vap2);
@@ -555,7 +555,7 @@ oal_uint32  mac_fcs_dbac_state_check(mac_device_stru *pst_mac_device)
 oal_uint32  mac_device_find_up_ap(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
@@ -584,7 +584,7 @@ oal_uint32  mac_device_find_up_ap(mac_device_stru *pst_mac_device, mac_vap_stru 
 oal_uint32  mac_device_find_up_sta(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
@@ -617,7 +617,7 @@ oal_uint32  mac_device_find_up_sta(mac_device_stru *pst_mac_device, mac_vap_stru
 oal_uint32  mac_device_find_up_p2p_go(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
 
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
@@ -645,7 +645,7 @@ oal_uint32  mac_device_find_up_p2p_go(mac_device_stru *pst_mac_device, mac_vap_s
 
 oal_uint8  mac_device_calc_up_vap_num(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru                  *pst_vap;
+    mac_vap_stru                  *pst_vap = OAL_PTR_NULL;
     oal_uint8                      uc_vap_idx;
     oal_uint8                      ul_up_ap_num = 0;
 
@@ -714,7 +714,7 @@ mac_vap_stru *mac_find_main_proxysta(mac_device_stru *pst_mac_device)
 
 oal_uint32 mac_device_calc_work_vap_num(mac_device_stru *pst_mac_device)
 {
-    mac_vap_stru *pst_vap;
+    mac_vap_stru *pst_vap = OAL_PTR_NULL;
     oal_uint8 uc_vap_idx;
     oal_uint8 ul_work_vap_num = 0;
 
@@ -740,24 +740,21 @@ oal_uint32 mac_device_calc_work_vap_num(mac_device_stru *pst_mac_device)
 
 oal_uint32  mac_device_is_p2p_connected(mac_device_stru *pst_mac_device)
 {
-    oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    oal_uint8     uc_vap_idx;
+    mac_vap_stru *pst_mac_vap = OAL_PTR_NULL;
 
-    for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
-    {
+    for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++) {
         pst_mac_vap = mac_res_get_mac_vap(pst_mac_device->auc_vap_id[uc_vap_idx]);
-        if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
-        {
+        if (OAL_UNLIKELY(pst_mac_vap == OAL_PTR_NULL)) {
             OAM_WARNING_LOG1(0, OAM_SF_P2P, "vap is null! vap id is %d", pst_mac_device->auc_vap_id[uc_vap_idx]);
-            return OAL_ERR_CODE_PTR_NULL;
+            return OAL_FALSE;
         }
-        if((IS_P2P_GO(pst_mac_vap)||IS_P2P_CL(pst_mac_vap))&&
-           (pst_mac_vap->us_user_nums > 0))
-        {
-            return OAL_SUCC;
+        if((IS_P2P_GO(pst_mac_vap) || IS_P2P_CL(pst_mac_vap)) &&
+           (pst_mac_vap->us_user_nums > 0)) {
+            return OAL_TRUE;
         }
     }
-    return OAL_FAIL;
+    return OAL_FALSE;
 }
 
 
@@ -885,29 +882,61 @@ oal_void  mac_device_dec_active_user(mac_device_stru *pst_mac_device)
     }
 }
 
-#if 0
-oal_void  mac_device_set_dfs(mac_device_stru *pst_mac_device, oal_bool_enum_uint8 en_dfs_switch, oal_uint8 uc_debug_level)
-{
-    /*待整改dfs变量后 生效*/
-#if 0
-    pst_mac_device->en_dfs_switch = en_dfs_switch;
-    pst_mac_device->uc_debug_level = uc_debug_level;
-#endif
-}
-#endif
+
+
+
+
+
+
+
+
+
+
 
 oal_void* mac_device_get_all_rates(mac_device_stru *pst_dev)
 {
     return (oal_void *)pst_dev->st_mac_rates_11g;
 }
+
+
+oal_uint32  mac_device_find_legacy_sta(mac_device_stru *pst_mac_device, mac_vap_stru **ppst_mac_vap)
+{
+    oal_uint8       uc_vap_idx;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
+
+    for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
+    {
+        pst_mac_vap = mac_res_get_mac_vap(pst_mac_device->auc_vap_id[uc_vap_idx]);
+        if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
+        {
+            OAM_WARNING_LOG1(0, OAM_SF_SCAN, "vap is null! vap id is %d", pst_mac_device->auc_vap_id[uc_vap_idx]);
+
+            *ppst_mac_vap = OAL_PTR_NULL;
+
+            return OAL_ERR_CODE_PTR_NULL;
+        }
+
+        if (IS_LEGACY_STA(pst_mac_vap))
+        {
+            *ppst_mac_vap = pst_mac_vap;
+
+            return OAL_SUCC;
+        }
+    }
+
+    *ppst_mac_vap = OAL_PTR_NULL;
+
+    return OAL_FAIL;
+}
+
 #ifdef _PRE_WLAN_FEATURE_HILINK
 
 oal_uint32  mac_device_clear_fbt_scan_list(mac_device_stru *pst_mac_dev, oal_uint8 *puc_param)
 {
 
-    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info;
+    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info = OAL_PTR_NULL;
     oal_uint8                   uc_idx;
-    mac_fbt_scan_result_stru   *pst_user;
+    mac_fbt_scan_result_stru   *pst_user = OAL_PTR_NULL;
 
     /* 入参检查 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == puc_param))
@@ -937,7 +966,7 @@ oal_uint32  mac_device_clear_fbt_scan_list(mac_device_stru *pst_mac_dev, oal_uin
 
 oal_uint32  mac_device_set_fbt_scan_sta(mac_device_stru *pst_mac_dev, mac_fbt_scan_sta_addr_stru *pst_fbt_scan_sta)
 {
-    mac_fbt_scan_mgmt_stru                     *pst_fbt_scan_info;
+    mac_fbt_scan_mgmt_stru                     *pst_fbt_scan_info = OAL_PTR_NULL;
     oal_uint32                                  ul_idx;
 
     /* 入参检查 */
@@ -995,7 +1024,7 @@ oal_uint32  mac_device_set_fbt_scan_sta(mac_device_stru *pst_mac_dev, mac_fbt_sc
 
 oal_uint32  mac_device_set_fbt_scan_interval(mac_device_stru *pst_mac_dev, oal_uint32 ul_scan_interval)
 {
-    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info;
+    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info = OAL_PTR_NULL;
 
     /* 入参检查 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_dev))
@@ -1017,7 +1046,7 @@ oal_uint32  mac_device_set_fbt_scan_interval(mac_device_stru *pst_mac_dev, oal_u
 
 oal_uint32  mac_device_set_fbt_scan_channel(mac_device_stru *pst_mac_dev, oal_uint8 uc_fbt_scan_channel)
 {
-    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info;
+    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_dev))
     {
@@ -1037,7 +1066,7 @@ oal_uint32  mac_device_set_fbt_scan_channel(mac_device_stru *pst_mac_dev, oal_ui
 
 oal_uint32  mac_device_set_fbt_scan_report_period(mac_device_stru *pst_mac_dev, oal_uint32 ul_fbt_scan_report_period)
 {
-    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info;
+    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_info = OAL_PTR_NULL;
 
     /* 入参检查 */
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_dev))
@@ -1058,7 +1087,7 @@ oal_uint32  mac_device_set_fbt_scan_report_period(mac_device_stru *pst_mac_dev, 
 oal_uint32  mac_device_set_fbt_scan_enable(mac_device_stru *pst_mac_device, oal_uint8 uc_cfg_fbt_scan_enable)
 {
 
-    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_mgmt;
+    mac_fbt_scan_mgmt_stru     *pst_fbt_scan_mgmt = OAL_PTR_NULL;
     oal_uint8                   uc_user_index = 0;
 
     /* 入参检查 */
@@ -1107,11 +1136,11 @@ oal_module_symbol(mac_device_set_rxchain);
 oal_module_symbol(mac_device_set_beacon_interval);
 oal_module_symbol(mac_device_inc_active_user);
 oal_module_symbol(mac_device_dec_active_user);
-#if 0
-oal_module_symbol(mac_device_inc_assoc_user);
-oal_module_symbol(mac_device_dec_assoc_user);
-oal_module_symbol(mac_device_set_dfs);
-#endif
+
+
+
+
+
 
 oal_module_symbol(mac_device_init);
 oal_module_symbol(mac_chip_init);

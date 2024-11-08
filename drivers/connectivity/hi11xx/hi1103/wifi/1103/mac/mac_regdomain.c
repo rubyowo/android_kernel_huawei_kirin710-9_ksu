@@ -13,6 +13,8 @@ extern "C" {
 *****************************************************************************/
 #include "mac_regdomain.h"
 #include "mac_device.h"
+#include "securec.h"
+#include "securectype.h"
 
 
 #undef  THIS_FILE_ID
@@ -276,8 +278,16 @@ oal_uint32  mac_regdomain_set_country_etc(oal_uint16 us_len, oal_uint8 *puc_para
     /* 计算配置命令 */
     ul_size = (oal_uint32)(OAL_SIZEOF(mac_regclass_info_stru) * uc_rc_num + MAC_RD_INFO_LEN);
 
+    if(ul_size > OAL_SIZEOF(mac_regdomain_info_stru))
+    {
+        return OAL_ERR_CODE_INVALID_CONFIG;
+    }
     /* 更新管制域信息 */
-    oal_memcopy((oal_uint8 *)&g_st_mac_regdomain, (oal_uint8 *)pst_mac_regdom, ul_size);
+    if (EOK != memcpy_s((oal_uint8 *)&g_st_mac_regdomain, sizeof(g_st_mac_regdomain),
+                        (oal_uint8 *)pst_mac_regdom, ul_size)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "mac_regdomain_set_country_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /* 更新信道的管制域信息 */
     mac_init_channel_list_etc();
@@ -297,89 +307,30 @@ oal_void  mac_get_ext_chan_info(
                 mac_channel_list_stru                *pst_chan_info)
 {
     oal_uint8 uc_start_idx = uc_pri20_channel_idx;
-    switch (en_bandwidth)
-    {
-        case WLAN_BAND_WIDTH_20M:
-            pst_chan_info->ul_channels = 1;
-            break;
+    oal_uint8 auc_wlan_band_width_chanels[WLAN_BAND_WIDTH_BUTT - 2][2] = {
+        { 1, 0 }, { 2, 0 }, { 2, 1 }, { 4, 0 }, { 4, 2 }, { 4, 1 }, { 4, 3 },
+#ifdef _PRE_WLAN_FEATURE_160M
+        { 8, 0 }, { 8, 4 }, { 8, 2 }, { 8, 6 }, { 8, 1 }, { 8, 5 }, { 8, 3 }, { 8, 7 }
+#endif
+    };
 
-        case WLAN_BAND_WIDTH_40PLUS:
-            pst_chan_info->ul_channels = 2;
-            break;
-
-        case WLAN_BAND_WIDTH_40MINUS:
-            pst_chan_info->ul_channels = 2;
-            uc_start_idx = uc_pri20_channel_idx - 1;
-            break;
-
-        case WLAN_BAND_WIDTH_80PLUSPLUS:
-            pst_chan_info->ul_channels = 4;
-            break;
-
-        case WLAN_BAND_WIDTH_80PLUSMINUS:
-            pst_chan_info->ul_channels = 4;
-            uc_start_idx = uc_pri20_channel_idx - 2;
-            break;
-
-        case WLAN_BAND_WIDTH_80MINUSPLUS:
-            pst_chan_info->ul_channels = 4;
-            uc_start_idx = uc_pri20_channel_idx - 1;
-            break;
-
-        case WLAN_BAND_WIDTH_80MINUSMINUS:
-            pst_chan_info->ul_channels = 4;
-            uc_start_idx = uc_pri20_channel_idx - 3;
-            break;
-
-    #ifdef _PRE_WLAN_FEATURE_160M
-        case WLAN_BAND_WIDTH_160PLUSPLUSPLUS:
-            pst_chan_info->ul_channels = 8;
-            break;
-
-        case WLAN_BAND_WIDTH_160PLUSPLUSMINUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 4;
-            break;
-
-        case WLAN_BAND_WIDTH_160PLUSMINUSPLUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 2;
-            break;
-
-        case WLAN_BAND_WIDTH_160PLUSMINUSMINUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 6;
-            break;
-
-        case WLAN_BAND_WIDTH_160MINUSPLUSPLUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 1;
-            break;
-
-        case WLAN_BAND_WIDTH_160MINUSPLUSMINUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 5;
-            break;
-
-        case WLAN_BAND_WIDTH_160MINUSMINUSPLUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 3;
-            break;
-
-        case WLAN_BAND_WIDTH_160MINUSMINUSMINUS:
-            pst_chan_info->ul_channels = 8;
-            uc_start_idx = uc_pri20_channel_idx - 7;
-            break;
-    #endif
-
-        default:
-            pst_chan_info->ul_channels = 0;
-            OAM_ERROR_LOG1(0, OAM_SF_DFS, "{mac_get_ext_chan_info::Invalid bandwidth %d.}", en_bandwidth);
-            break;
+    if (en_bandwidth >= WLAN_BAND_WIDTH_BUTT - 2) {
+        pst_chan_info->ul_channels = 0;
+        OAM_ERROR_LOG1(0, OAM_SF_DFS, "{mac_get_ext_chan_info::Invalid bandwidth %d.}", en_bandwidth);
+    } else {
+        pst_chan_info->ul_channels = (oal_uint32)auc_wlan_band_width_chanels[en_bandwidth][0];
+        uc_start_idx = uc_pri20_channel_idx - auc_wlan_band_width_chanels[en_bandwidth][1];
     }
+
     if (pst_chan_info->ul_channels)
     {
-        oal_memcopy(pst_chan_info->ast_channels, &g_ast_freq_map_5g_etc[uc_start_idx], pst_chan_info->ul_channels*OAL_SIZEOF(mac_freq_channel_map_stru));
+        if (EOK != memcpy_s(pst_chan_info->ast_channels,
+                            MAC_MAX_20M_SUB_CH * OAL_SIZEOF(mac_freq_channel_map_stru),
+                            &g_ast_freq_map_5g_etc[uc_start_idx],
+                            pst_chan_info->ul_channels * OAL_SIZEOF(mac_freq_channel_map_stru))) {
+            OAM_ERROR_LOG0(0, OAM_SF_DFS, "mac_get_ext_chan_info::memcpy fail!");
+            return;
+        }
     }
 }
 

@@ -19,6 +19,8 @@ extern "C" {
 #include "hmac_mgmt_ap.h"
 #include "hmac_tx_data.h"
 #include "hmac_wds.h"
+#include "securec.h"
+#include "securectype.h"
 
 
 #undef  THIS_FILE_ID
@@ -149,7 +151,7 @@ OAL_STATIC oal_uint32  hmac_wds_add_sta_entry(
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(pst_sta, OAL_SIZEOF(hmac_wds_stas_stru));
+    memset_s(pst_sta, OAL_SIZEOF(hmac_wds_stas_stru), 0, OAL_SIZEOF(hmac_wds_stas_stru));
     oal_set_mac_addr(pst_sta->auc_mac, puc_addr);
     pst_sta->pst_related_node = pst_wds_node;
     pst_wds_node->uc_stas_num++;
@@ -276,7 +278,7 @@ OAL_STATIC oal_uint32  hmac_wds_add_node_entry(
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(pst_node, OAL_SIZEOF(hmac_wds_node_stru));
+    memset_s(pst_node, OAL_SIZEOF(hmac_wds_node_stru), 0, OAL_SIZEOF(hmac_wds_node_stru));
     oal_set_mac_addr(pst_node->auc_mac, puc_addr);
 
     ul_hash_value = WDS_CALC_MAC_HASH_VAL(puc_addr);
@@ -297,8 +299,7 @@ oal_uint32  hmac_wds_add_node(
     oal_uint8               ul_ret = OAL_SUCC;
     hmac_wds_node_stru   *pst_wds_node = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_node_mac)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_node_mac)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_add_node::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -342,8 +343,7 @@ oal_uint32  hmac_wds_del_node(
     oal_uint32                      ul_ret = OAL_SUCC;
     hmac_wds_node_stru              *pst_wds_node = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_node_mac)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_node_mac)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_del_node::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -383,9 +383,7 @@ oal_uint32  hmac_wds_add_sta(
     hmac_wds_node_stru      *pst_wds_node = OAL_PTR_NULL;
     hmac_wds_node_stru      *pst_old_wds_node = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_node_mac)
-                  || (OAL_PTR_NULL == puc_sta_mac)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR3(pst_hmac_vap,puc_node_mac,puc_sta_mac)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_add_sta::param null.}");
 
@@ -458,8 +456,7 @@ oal_uint32  hmac_wds_del_sta(
     hmac_wds_stas_stru      *pst_sta = OAL_PTR_NULL;
     hmac_wds_node_stru      *pst_node = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-        || (OAL_PTR_NULL == puc_addr)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_addr)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_del_sta::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -505,11 +502,9 @@ oal_uint32  hmac_find_valid_user_by_wds_sta(
     hmac_wds_stas_stru          *pst_wds_sta = OAL_PTR_NULL;
     hmac_wds_node_stru          *pst_node = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_sta_mac_addr)
-                  || ((OAL_PTR_NULL == pus_user_idx))))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR3(pst_hmac_vap,puc_sta_mac_addr,pus_user_idx)))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_find_valid_user_by_wds_sta::param null: pst_hmac_vap[%x]  puc_sta_mac_addr[%x]  pus_user_idx[%x]}", pst_hmac_vap, puc_sta_mac_addr, pus_user_idx);
+        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_find_valid_user_by_wds_sta::param null: pst_hmac_vap[%x]  puc_sta_mac_addr[%x]  pus_user_idx[%x]}", (uintptr_t)pst_hmac_vap, (uintptr_t)puc_sta_mac_addr, (uintptr_t)pus_user_idx);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -688,7 +683,7 @@ oal_uint32  hmac_wds_node_ergodic(
     hmac_wds_node_stru         *pst_node = OAL_PTR_NULL;
     oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
 
-    if ((pst_hmac_vap == OAL_PTR_NULL) || (pst_hmac_wds_node == OAL_PTR_NULL))
+    if (OAL_ANY_NULL_PTR2(pst_hmac_vap,pst_hmac_wds_node))
     {
         return OAL_FAIL;
     }
@@ -745,8 +740,7 @@ OAL_STATIC oal_uint32  hmac_wds_find_neigh(
     hmac_wds_neigh_stru         *pst_neigh = OAL_PTR_NULL;
     oal_dlist_head_stru         *pst_entry = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_addr)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_addr)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_find_neigh::param null.}");
 
@@ -784,8 +778,7 @@ oal_uint32 hmac_wds_update_neigh(
     oal_uint32              ul_hash_value = 0;
     hmac_wds_neigh_stru     *pst_neigh = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_mac)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_mac)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_WDS, "{hmac_wds_update_neigh::param null.}");
 
@@ -819,7 +812,7 @@ oal_uint32 hmac_wds_update_neigh(
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(pst_neigh, OAL_SIZEOF(hmac_wds_neigh_stru));
+    memset_s(pst_neigh, OAL_SIZEOF(hmac_wds_neigh_stru), 0, OAL_SIZEOF(hmac_wds_neigh_stru));
     oal_set_mac_addr(pst_neigh->auc_mac, puc_mac);
     pst_neigh->ul_last_pkt_age = OAL_TIME_JIFFY;
     ul_hash_value = WDS_CALC_MAC_HASH_VAL(puc_mac);
@@ -839,8 +832,7 @@ oal_uint32 hmac_wds_neigh_not_expired(
     oal_uint32                ul_ret = OAL_FAIL;
     hmac_wds_neigh_stru       *pst_neigh = OAL_PTR_NULL;
 
-    if (OAL_UNLIKELY((OAL_PTR_NULL == pst_hmac_vap)
-                  || (OAL_PTR_NULL == puc_mac)))
+    if (OAL_UNLIKELY(OAL_ANY_NULL_PTR2(pst_hmac_vap,puc_mac)))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_wds_neigh_not_expired::param null.}");
 
@@ -1033,6 +1025,7 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
     oal_wds_stas_stru                st_wds_sta;
     oal_wds_neigh_stru               st_wds_neigh;
     oal_uint8                        uc_idx = 0;
+    oal_int32                        l_ret = EOK;
 
     pc_print_buff = (oal_int8 *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, OAM_REPORT_MAX_STRING_LEN, OAL_TRUE);
     if (OAL_PTR_NULL == pc_print_buff)
@@ -1041,31 +1034,31 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+    memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
     oal_rw_lock_read_lock(&pst_hmac_vap->st_wds_table.st_lock);
-    ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-            "vap%d\n"
-            "\t wds vap mode:           %d.\n"
-            "\t wds node number:        %d.\n"
-            "\t wds sta number:         %d.\n"
-            "\t wds br neigh number:    %d.\n"
-            "\t wds entry aging time:   %u.\n\n",
-            pst_hmac_vap->st_vap_base_info.uc_vap_id,
-            pst_hmac_vap->st_wds_table.en_wds_vap_mode,
-            (oal_uint32)pst_hmac_vap->st_wds_table.uc_wds_node_num,
-            (oal_uint32)pst_hmac_vap->st_wds_table.uc_wds_stas_num,
-            (oal_uint32)pst_hmac_vap->st_wds_table.uc_neigh_num,
-            pst_hmac_vap->st_wds_table.ul_wds_aging/OAL_TIME_HZ);
+    ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                            "vap%d\n"
+                            "\t wds vap mode:           %d.\n"
+                            "\t wds node number:        %d.\n"
+                            "\t wds sta number:         %d.\n"
+                            "\t wds br neigh number:    %d.\n"
+                            "\t wds entry aging time:   %u.\n\n",
+                            pst_hmac_vap->st_vap_base_info.uc_vap_id,
+                            pst_hmac_vap->st_wds_table.en_wds_vap_mode,
+                            (oal_uint32)pst_hmac_vap->st_wds_table.uc_wds_node_num,
+                            (oal_uint32)pst_hmac_vap->st_wds_table.uc_wds_stas_num,
+                            (oal_uint32)pst_hmac_vap->st_wds_table.uc_neigh_num,
+                            pst_hmac_vap->st_wds_table.ul_wds_aging/OAL_TIME_HZ);
 
     ul_str_idx += ul_str_len;
     ul_str_left -= ul_str_len;
     ul_cur_time = OAL_TIME_JIFFY;
 
     if (pst_hmac_vap->st_wds_table.uc_wds_stas_num) {
-        ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-                "\nWDS Node Table:\n"
-                "\tWDS Sta              Last Active    Peer Node            Last Active\n");
+        ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left- 1,
+                                "\nWDS Node Table:\n"
+                                "\tWDS Sta              Last Active    Peer Node            Last Active\n");
         ul_str_idx += ul_str_len;
         ul_str_left -= ul_str_len;
     }
@@ -1076,30 +1069,31 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
         {
             pst_sta = (hmac_wds_stas_stru *)pst_entry;
 
-            if ((OAL_PTR_NULL == pst_sta) || (OAL_PTR_NULL == (pst_node = pst_sta->pst_related_node)))
+            if (OAL_ANY_NULL_PTR2(pst_sta,(pst_node = pst_sta->pst_related_node)))
             {
-                OAM_WARNING_LOG3(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_ANY, "{hmac_wds_vap_show_all::pst_sta|pst_node is null.sta idx %d, pst_sta: %x, pst_node: %x}",uc_hash_value, (oal_uint32 *)pst_sta, (oal_uint32 *)pst_node);
+                OAM_WARNING_LOG3(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_ANY, "{hmac_wds_vap_show_all::pst_sta|pst_node is null.sta idx %d, pst_sta: %x, pst_node: %x}",uc_hash_value, (uintptr_t)(oal_uint32 *)pst_sta, (uintptr_t)(oal_uint32 *)pst_node);
                 break;
             }
 
-            ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %-15u"
-                    "%02x:%02x:%02x:%02x:%02x:%02x    %d\n",
-                    pst_sta->auc_mac[0], pst_sta->auc_mac[1], pst_sta->auc_mac[2],
-                    pst_sta->auc_mac[3], pst_sta->auc_mac[4], pst_sta->auc_mac[5],
-                    (ul_cur_time - pst_sta->ul_last_pkt_age)/OAL_TIME_HZ,
-                    pst_node->auc_mac[0], pst_node->auc_mac[1], pst_node->auc_mac[2],
-                    pst_node->auc_mac[3], pst_node->auc_mac[4], pst_node->auc_mac[5],
-                    pst_node->uc_stas_num);
+            ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %-15u"
+                                    "%02x:%02x:%02x:%02x:%02x:%02x    %d\n",
+                                    pst_sta->auc_mac[0], pst_sta->auc_mac[1], pst_sta->auc_mac[2],
+                                    pst_sta->auc_mac[3], pst_sta->auc_mac[4], pst_sta->auc_mac[5],
+                                    (ul_cur_time - pst_sta->ul_last_pkt_age)/OAL_TIME_HZ,
+                                    pst_node->auc_mac[0], pst_node->auc_mac[1], pst_node->auc_mac[2],
+                                    pst_node->auc_mac[3], pst_node->auc_mac[4], pst_node->auc_mac[5],
+                                    pst_node->uc_stas_num);
             ul_str_idx += ul_str_len;
             ul_str_left -= ul_str_len;
 
-            if(OAL_PTR_NULL != pst_wds_info && (OAL_PTR_NULL != pst_wds_info->pst_wds_stas
-                && uc_idx < OAL_MIN(pst_wds_info->uc_wds_stas_num, pst_hmac_vap->st_wds_table.uc_wds_stas_num)))
+            if (OAL_ALL_NOT_NULL_PTR2(pst_wds_info, pst_wds_info->pst_wds_stas) &&
+                uc_idx < OAL_MIN(pst_wds_info->uc_wds_stas_num, pst_hmac_vap->st_wds_table.uc_wds_stas_num)))
             {
-                OAL_MEMZERO(&st_wds_sta, OAL_SIZEOF(oal_wds_stas_stru));
-                oal_memcopy(&st_wds_sta.auc_mac, &pst_sta->auc_mac, WLAN_MAC_ADDR_LEN);
-                oal_memcopy(&st_wds_sta.st_related_node.auc_mac, &pst_node->auc_mac, WLAN_MAC_ADDR_LEN);
+                memset_s(&st_wds_sta, OAL_SIZEOF(oal_wds_stas_stru), 0, OAL_SIZEOF(oal_wds_stas_stru));
+                l_ret += memcpy_s(&st_wds_sta.auc_mac, OAL_MAC_ADDR_LEN, &pst_sta->auc_mac, WLAN_MAC_ADDR_LEN);
+                l_ret += memcpy_s(&st_wds_sta.st_related_node.auc_mac, OAL_MAC_ADDR_LEN,
+                                  &pst_node->auc_mac, WLAN_MAC_ADDR_LEN);
                 st_wds_sta.st_related_node.uc_stas_num = pst_node->uc_stas_num;
                 st_wds_sta.ul_last_pkt_age = (ul_cur_time - pst_sta->ul_last_pkt_age)/OAL_TIME_HZ;
                 oal_copy_to_user(pst_wds_info->pst_wds_stas + uc_idx, &st_wds_sta, OAL_SIZEOF(oal_wds_stas_stru));
@@ -1110,7 +1104,7 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
         if (ul_str_left < 500)
         {
             oam_print_etc(pc_print_buff);
-            OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+            memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
             ul_str_len = 0;
             ul_str_idx = 0;
@@ -1119,9 +1113,9 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
     }
 
     if (pst_hmac_vap->st_wds_table.uc_wds_node_num) {
-        ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-               "Peer Node:\n"
-               "\tPeer Node            Last Active\n");
+        ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                                "Peer Node:\n"
+                                "\tPeer Node            Last Active\n");
         ul_str_idx += ul_str_len;
         ul_str_left -= ul_str_len;
     }
@@ -1139,19 +1133,19 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
                 break;
             }
 
-            ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %u\n",
-                    pst_node->auc_mac[0], pst_node->auc_mac[1], pst_node->auc_mac[2],
-                    pst_node->auc_mac[3], pst_node->auc_mac[4], pst_node->auc_mac[5],
-                    pst_node->uc_stas_num);
+            ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %u\n",
+                                    pst_node->auc_mac[0], pst_node->auc_mac[1], pst_node->auc_mac[2],
+                                    pst_node->auc_mac[3], pst_node->auc_mac[4], pst_node->auc_mac[5],
+                                    pst_node->uc_stas_num);
             ul_str_idx += ul_str_len;
             ul_str_left -= ul_str_len;
 
-            if(OAL_PTR_NULL != pst_wds_info && (OAL_PTR_NULL != pst_wds_info->pst_peer_node
-                && uc_idx < OAL_MIN(pst_wds_info->uc_wds_node_num, pst_hmac_vap->st_wds_table.uc_wds_node_num)))
+            if (OAL_ALL_NOT_NULL_PTR2(pst_wds_info, pst_wds_info->pst_peer_node) &&
+                uc_idx < OAL_MIN(pst_wds_info->uc_wds_node_num, pst_hmac_vap->st_wds_table.uc_wds_node_num)))
             {
-                OAL_MEMZERO(&st_wds_node, OAL_SIZEOF(oal_wds_node_stru));
-                oal_memcopy(&st_wds_node.auc_mac, &pst_node->auc_mac, WLAN_MAC_ADDR_LEN);
+                memset_s(&st_wds_node, OAL_SIZEOF(oal_wds_node_stru), 0, OAL_SIZEOF(oal_wds_node_stru));
+                l_ret += memcpy_s(&st_wds_node.auc_mac, OAL_MAC_ADDR_LEN, &pst_node->auc_mac, WLAN_MAC_ADDR_LEN);
                 st_wds_node.uc_stas_num = pst_node->uc_stas_num;
                 oal_copy_to_user(pst_wds_info->pst_peer_node + uc_idx, &st_wds_node, OAL_SIZEOF(oal_wds_node_stru));
                 uc_idx++;
@@ -1162,7 +1156,7 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
         if (ul_str_left < 500)
         {
             oam_print_etc(pc_print_buff);
-            OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+            memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
             ul_str_len = 0;
             ul_str_idx = 0;
@@ -1171,9 +1165,9 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
     }
 
     if (pst_hmac_vap->st_wds_table.uc_neigh_num) {
-        ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-                "Bridge neighbours:\n"
-                "\tNeighbours           Last Active\n");
+        ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                                "Bridge neighbours:\n"
+                                "\tNeighbours           Last Active\n");
         ul_str_idx += ul_str_len;
         ul_str_left -= ul_str_len;
     }
@@ -1191,19 +1185,19 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
                 break;
             }
 
-            ul_str_len = OAL_SPRINTF(pc_print_buff + ul_str_idx, ul_str_left,
-                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %u\n",
-                    pst_br_sa->auc_mac[0], pst_br_sa->auc_mac[1], pst_br_sa->auc_mac[2],
-                    pst_br_sa->auc_mac[3], pst_br_sa->auc_mac[4], pst_br_sa->auc_mac[5],
-                    (ul_cur_time - pst_br_sa->ul_last_pkt_age)/OAL_TIME_HZ);
+            ul_str_len = snprintf_s(pc_print_buff + ul_str_idx, ul_str_left, ul_str_left - 1,
+                                    "\t%02x:%02x:%02x:%02x:%02x:%02x    %u\n",
+                                    pst_br_sa->auc_mac[0], pst_br_sa->auc_mac[1], pst_br_sa->auc_mac[2],
+                                    pst_br_sa->auc_mac[3], pst_br_sa->auc_mac[4], pst_br_sa->auc_mac[5],
+                                    (ul_cur_time - pst_br_sa->ul_last_pkt_age)/OAL_TIME_HZ);
             ul_str_idx += ul_str_len;
             ul_str_left -= ul_str_len;
 
-            if(OAL_PTR_NULL != pst_wds_info && (OAL_PTR_NULL != pst_wds_info->pst_neigh
-                && uc_idx < OAL_MIN(pst_wds_info->uc_neigh_num, pst_hmac_vap->st_wds_table.uc_neigh_num)))
+            if (OAL_ALL_NOT_NULL_PTR2(pst_wds_info, pst_wds_info->pst_neigh) &&
+                uc_idx < OAL_MIN(pst_wds_info->uc_neigh_num, pst_hmac_vap->st_wds_table.uc_neigh_num)))
             {
-                OAL_MEMZERO(&st_wds_neigh, OAL_SIZEOF(oal_wds_neigh_stru));
-                oal_memcopy(&st_wds_neigh.auc_mac, &pst_br_sa->auc_mac, WLAN_MAC_ADDR_LEN);
+                memset_s(&st_wds_neigh, OAL_SIZEOF(oal_wds_neigh_stru), 0, OAL_SIZEOF(oal_wds_neigh_stru));
+                l_ret += memcpy_s(&st_wds_neigh.auc_mac, OAL_MAC_ADDR_LEN, &pst_br_sa->auc_mac, WLAN_MAC_ADDR_LEN);
                 st_wds_neigh.ul_last_pkt_age = (ul_cur_time - pst_sta->ul_last_pkt_age)/OAL_TIME_HZ;
                 oal_copy_to_user(pst_wds_info->pst_neigh + uc_idx, &st_wds_neigh, OAL_SIZEOF(oal_wds_neigh_stru));
                 uc_idx++;
@@ -1214,14 +1208,18 @@ oal_uint32  hmac_wds_vap_show_all(hmac_vap_stru *pst_hmac_vap, oal_uint8 *puc_pa
         if (ul_str_left < 500)
         {
             oam_print_etc(pc_print_buff);
-            OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+            memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
             ul_str_len = 0;
             ul_str_idx = 0;
             ul_str_left = OAM_REPORT_MAX_STRING_LEN;
         }
     }
+
     oal_rw_lock_read_unlock(&pst_hmac_vap->st_wds_table.st_lock);
+    if (l_ret != EOK) {
+        OAM_WARNING_LOG0(0, OAM_SF_ANY, "hmac_wds_vap_show_all::memcpy fail!");
+    }
 
     oam_print_etc(pc_print_buff);
     OAL_MEM_FREE(pc_print_buff, OAL_TRUE);
@@ -1404,9 +1402,6 @@ OAL_STATIC oal_uint32 hmac_wds_tx_event( hmac_vap_stru *pst_vap, hmac_user_stru 
      if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
      {
          OAM_WARNING_LOG0(pst_vap->st_vap_base_info.uc_vap_id, OAM_SF_TX, "{hmac_wds_tx_event::pst_event_mem null.}");
-#if(_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-         pst_vap->st_vap_base_info.st_vap_stats.ul_tx_dropped_packets++;
-#endif
          return OAL_ERR_CODE_ALLOC_MEM_FAIL;
      }
 

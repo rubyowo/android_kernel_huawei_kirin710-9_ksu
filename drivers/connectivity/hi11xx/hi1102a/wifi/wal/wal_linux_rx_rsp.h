@@ -112,13 +112,9 @@ extern oal_uint32  wal_mic_failure_proc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  wal_send_mgmt_to_host(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  wal_p2p_listen_timeout(frw_event_mem_stru *pst_event_mem);
 
-
-
-
-
-
-
-
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_uint32 wal_report_external_auth_req(frw_event_mem_stru *pst_event_mem);
+#endif
 
 #ifdef __cplusplus
     #if __cplusplus

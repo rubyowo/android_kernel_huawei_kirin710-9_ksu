@@ -16,13 +16,11 @@ extern "C" {
 #include "hal_chip.h"
 #include "hal_device.h"
 #include "hal_witp_mac.h"
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-#include "hal_witp_soc_1151v2.h"
-#else
 #include "hal_witp_soc.h"
-#endif
 #include "hal_witp_rf.h"
 #include "test_main.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_TEST_MAIN_C
@@ -39,9 +37,9 @@ OAL_STATIC oal_proc_dir_entry_stru *g_pst_test_proc_entry;
 *****************************************************************************/
 oal_uint32  wal_test_hipriv_reg_write(oal_int8 *pc_param)
 {
-    oal_int8       *pc_token;
-    oal_int8       *pc_end;
-    oal_int8       *pc_ctx;
+    oal_int8       *pc_token = OAL_PTR_NULL;
+    oal_int8       *pc_end = OAL_PTR_NULL;
+    oal_int8       *pc_ctx = OAL_PTR_NULL;
     oal_int8       *pc_sep = " ";
     oal_uint32      ul_addr;
     oal_uint32      ul_val = 0;
@@ -85,9 +83,9 @@ oal_uint32  wal_test_hipriv_reg_write(oal_int8 *pc_param)
 
 oal_uint32  wal_test_hipriv_reg_read(oal_int8 *pc_param)
 {
-    oal_int8       *pc_token;
-    oal_int8       *pc_end;
-    oal_int8       *pc_ctx;
+    oal_int8       *pc_token = OAL_PTR_NULL;
+    oal_int8       *pc_end = OAL_PTR_NULL;
+    oal_int8       *pc_ctx = OAL_PTR_NULL;
     oal_int8       *pc_sep = " ";
     oal_uint32       ul_addr;
     oal_uint32      ul_val = 0;
@@ -200,9 +198,9 @@ oal_void  wal_long_mac_test(oal_void)
 
 oal_uint32  wal_test_5115_reg_read(oal_int8 *pc_param)
 {
-    oal_int8             *pc_token;
-    oal_int8             *pc_end;
-    oal_int8             *pc_ctx;
+    oal_int8             *pc_token = OAL_PTR_NULL;
+    oal_int8             *pc_end = OAL_PTR_NULL;
+    oal_int8             *pc_ctx = OAL_PTR_NULL;
     oal_int8             *pc_sep = " ";
 
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
@@ -252,22 +250,21 @@ oal_uint32  wal_test_5115_reg_read(oal_int8 *pc_param)
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     if ((0 == oal_strcmp(st_reg_info.pc_reg_type, "sys")))   /* sys ctl */
     {
-        st_reg_info.ul_val = oal_readl(g_pst_5115_sys_ctl + (st_reg_info.ul_addr - OAL_PCIE_SYS_BASE_PHYS));
+        st_reg_info.ul_val = oal_readl(reg5115_sys_ctl + (st_reg_info.ul_addr - OAL_PCIE_SYS_BASE_PHYS));
     }
     else   /* pcie0 */
     {
         /* 配置工作模式，读5115侧 */
-        ul_val = oal_readl(g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        ul_val = oal_readl(reg5115_sys_ctl + OAL_PERI_R_PCIE0);
         ul_val |= BIT21;
-        oal_writel(ul_val, g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        oal_writel(ul_val, reg5115_sys_ctl + OAL_PERI_R_PCIE0);
 
         /* TBD，后续整改成pst_device->p_pci_dbi_base */
-        /* st_reg_info.ul_val = oal_readl(g_pst_5115_pci0 + (st_reg_info.ul_addr - OAL_DBI_BASE_ADDR_0)); */
 
         /* 配置工作模式，恢复读wifi侧 */
-        ul_val = oal_readl(g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        ul_val = oal_readl(reg5115_sys_ctl + OAL_PERI_R_PCIE0);
         ul_val &= (~BIT21);
-        oal_writel(ul_val, g_pst_5115_sys_ctl + OAL_PERI_R_PCIE0);
+        oal_writel(ul_val, reg5115_sys_ctl + OAL_PERI_R_PCIE0);
     }
 #endif
 
@@ -280,7 +277,7 @@ oal_uint32  wal_test_5115_reg_read(oal_int8 *pc_param)
 
 oal_int32  test_hipriv_proc_write(oal_file_stru *pst_file, const oal_int8 *pc_buffer, oal_uint32 ul_len, oal_void *p_data)
 {
-    oal_int8  *pc_cmd;
+    oal_int8  *pc_cmd = OAL_PTR_NULL;
     oal_uint32 ul_ret;
 
     OAL_IO_PRINT("test_hipriv_proc_write start!\n");
@@ -298,7 +295,7 @@ oal_int32  test_hipriv_proc_write(oal_file_stru *pst_file, const oal_int8 *pc_bu
         return -OAL_ENOMEM;
     }
 
-    OAL_MEMZERO(pc_cmd, TEST_HIPRIV_CMD_MAX_LEN);
+    memset_s(pc_cmd, TEST_HIPRIV_CMD_MAX_LEN, 0, TEST_HIPRIV_CMD_MAX_LEN);
 
     ul_ret = oal_copy_from_user(pc_cmd, pc_buffer, ul_len);
 

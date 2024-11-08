@@ -81,11 +81,6 @@ extern oal_uint8   g_uc_host_rx_ampdu_amsdu;
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-/* 声明hmac_vap 结构体定义 */
-struct hmac_vap_tag;
-typedef struct hmac_vap_tag hmac_vap_stru;
-
-
 typedef struct
 {
     oal_dlist_head_stru st_timeout_head;
@@ -172,7 +167,7 @@ typedef enum _hmac_tcp_opt_queue_
 } hmac_tcp_opt_queue;
 
 #ifdef _PRE_WLAN_TCP_OPT
-typedef oal_uint16 (* hmac_trans_cb_func)(hmac_vap_stru *pst_hmac_device, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru* data);
+typedef oal_uint16 (* hmac_trans_cb_func)(void *pst_hmac_device, hmac_tcp_opt_queue type,hcc_chan_type dir, oal_netbuf_head_stru* data);
 /*tcp_ack优化*/
 typedef struct
 {
@@ -281,6 +276,9 @@ typedef struct hmac_vap_tag
     oal_net_device_stru            *pst_p2p0_net_device;                        /* 指向p2p0 net device */
     oal_net_device_stru            *pst_del_net_device;                         /* 指向需要通过cfg80211 接口删除的 net device */
     oal_work_stru                   st_del_virtual_inf_worker;                  /* 删除net_device 工作队列 */
+    oal_bool_enum_uint8             en_wait_roc_end;
+    oal_uint8                       auc_resv11[3];
+    oal_completion                  st_roc_end_ready;                           /* roc end completion */
 #endif
 #ifdef _PRE_WLAN_FEATURE_HS20
     hmac_cfg_qos_map_param_stru     st_cfg_qos_map_param;
@@ -303,6 +301,7 @@ typedef struct hmac_vap_tag
 #endif
 #ifdef _PRE_WLAN_FEATURE_ROAM
     oal_uint32                     *pul_roam_info;
+    oal_bool_enum_uint8             en_roam_prohibit_on;                        /* 是否禁止漫游 */
 #endif  //_PRE_WLAN_FEATURE_ROAM
     /* 组播转单播字段 */
 #ifdef _PRE_WLAN_FEATURE_MCAST
@@ -319,20 +318,22 @@ typedef struct hmac_vap_tag
     /* sta独有字段 */
     oal_uint8                       bit_sta_protocol_cfg    :   1;
     oal_uint8                       bit_protocol_fall       :   1;              /* 降协议标志位 */
-    oal_uint8                       bit_reassoc_flag        :   1;             /* 关联过程中判断是否为重关联动作 */
+    oal_uint8                       bit_reassoc_flag        :   1;              /* 关联过程中判断是否为重关联动作 */
+    oal_uint8                       bit_sae_connect_with_pmkid :1;              /* 0:不包含PMKID的SAE连接；1:包含PMKID的SAE连接 */
 #if defined(_PRE_WLAN_FEATURE_11K)  || defined(_PRE_WLAN_FEATURE_FTM) || defined(_PRE_WLAN_FEATURE_11V) || defined(_PRE_WLAN_FEATURE_11R)
-    oal_uint8                       bit_11k_auth_flag       :   1;             /* 11k 认证标志位*/
+    oal_uint8                       bit_11k_auth_flag       :   1;              /* 11k 认证标志位*/
     oal_uint8                       bit_voe_11r_auth        :   1;
     oal_uint8                       bit_11k_auth_oper_class :   2;
-    oal_uint8                       bit_11r_over_ds         :   1;             /*是否使用11r over ds；0表示over ds走over air流程*/
+    oal_uint8                       bit_11r_over_ds         :   1;              /*是否使用11r over ds；0表示over ds走over air流程*/
     oal_uint8                       bit_bcn_table_switch    :   1;
-    oal_uint8                       auc_resv41[3];
     oal_uint8                       bit_11k_enable          :   1;
     oal_uint8                       bit_11v_enable          :   1;
     oal_uint8                       bit_11r_enable          :   1;
+    oal_uint8                       bit_resv                :   3;
 
+    oal_uint8                       auc_resv41[3];
 #else
-    oal_uint8                       bit_resv                :   5;
+    oal_uint8                       bit_resv                :   4;
 #endif //_PRE_WLAN_FEATURE_11K
     oal_int8                        ac_desired_country[3];                      /* 要加入的AP的国家字符串，前两个字节为国家字母，第三个为\0 */
     oal_uint32                      ul_asoc_req_ie_len;
@@ -372,6 +373,7 @@ typedef struct hmac_vap_tag
     oal_uint8                        auc_resv6[1];
     oal_int32                        center_freq;                               /* 中心频点 */
     hmac_atcmdsrv_get_stats_stru     st_atcmdsrv_get_status;
+    chr_wifi_ext_info_query_stru     st_chr_wifi_ext_info_query;
 
     oal_proc_dir_entry_stru         *pst_proc_dir;                              /* vap对应的proc目录 */
 
@@ -425,11 +427,7 @@ typedef struct hmac_vap_tag
     frw_timeout_stru                 st_ps_sw_timer;                             /* 低功耗开关 */
     oal_uint32                       ul_check_timer_pause_cnt;                   /* 低功耗pause计数 */
 #endif
-
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN                                /* 业务识别功能开关 */
-    oal_uint8                        uc_tx_traffic_classify_flag;
-    oal_uint8                        auc_resv10[3];
-#endif
+    oal_uint8                        auc_resv10[4];
 
 #ifdef _PRE_WLAN_FEATURE_HILINK
     hmac_fbt_mgmt_stru               st_fbt_mgmt;                               /* 记录fbt配置信息、禁止连接列表 */
@@ -444,6 +442,10 @@ typedef struct hmac_vap_tag
     oal_uint8                       auc_rsv[2];
     oal_uint32                      ul_double_ant_switch_ret;
 #endif
+#ifdef _PRE_WLAN_FEATURE_SAE
+    oal_work_stru                       st_sae_report_ext_auth_worker;          /* SAE report external auth req工作队列 */
+#endif
+
     mac_vap_stru                    st_vap_base_info;                           /* MAC vap，只能放在最后! */
 }hmac_vap_stru;
 
@@ -469,8 +471,8 @@ extern oal_uint32  hmac_vap_init(
                        oal_uint8                   uc_vap_id,
                        mac_cfg_add_vap_param_stru *pst_param);
 
-extern oal_uint32  hmac_vap_creat_netdev(hmac_vap_stru *pst_hmac_vap, oal_int8 *puc_netdev_name, oal_int8 *puc_mac_addr);
-
+extern oal_uint32  hmac_vap_creat_netdev(hmac_vap_stru *pst_hmac_vap, oal_int8 *puc_netdev_name,
+            oal_uint32 ul_netdev_name_len, oal_int8 *puc_mac_addr);
 extern oal_uint16 hmac_vap_check_ht_capabilities_ap(
             hmac_vap_stru                  *pst_hmac_vap,
             oal_uint8                      *puc_payload,

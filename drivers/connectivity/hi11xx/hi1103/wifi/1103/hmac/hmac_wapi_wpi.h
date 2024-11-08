@@ -74,7 +74,7 @@ extern oal_uint32  hmac_wpi_decrypt_etc(oal_uint8* puc_iv, oal_uint8* puc_bufin,
 extern void hmac_wpi_swap_pn_etc(oal_uint8 *puc_pn, oal_uint8 uc_len);
 
 extern oal_uint32  hmac_wpi_pmac_etc(oal_uint8* puc_iv, oal_uint8* puc_buf, oal_uint32 ul_pamclen,
-                    oal_uint8* puc_key, oal_uint8* puc_mic);
+                    oal_uint8* puc_key, oal_uint8* puc_mic, oal_uint8 uc_mic_len);
 
 #endif
 

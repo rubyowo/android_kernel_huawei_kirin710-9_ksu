@@ -64,43 +64,43 @@ typedef oal_uint8 dfx_performance_log_switch_enum_uint8;
 *****************************************************************************/
 /* HOST CRX子表 */
 extern frw_event_sub_table_item_stru *g_past_dmac_host_crx_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_BUTT];
+extern frw_event_sub_table_item_stru  dmac_host_crx_table[HMAC_TO_DMAC_SYN_BUTT];
 
 /* DMAC模块，HOST_DRX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_tx_host_drx;
-extern frw_event_sub_table_item_stru  g_ast_dmac_tx_host_drx[DMAC_TX_HOST_DRX_BUTT];
+extern frw_event_sub_table_item_stru  dmac_tx_host_drx[DMAC_TX_HOST_DRX_BUTT];
 
 /* DMAC模块，WLAN_DTX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_tx_wlan_dtx;
-extern frw_event_sub_table_item_stru  g_ast_dmac_tx_wlan_dtx[DMAC_TX_WLAN_DTX_BUTT];
+extern frw_event_sub_table_item_stru  dmac_tx_wlan_dtx[DMAC_TX_WLAN_DTX_BUTT];
 
 /* DMAC模块，WLAN_CTX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_wlan_ctx_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块,WLAN_DRX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_wlan_drx_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_wlan_drx_event_sub_table[HAL_WLAN_DRX_EVENT_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_wlan_drx_event_sub_table[HAL_WLAN_DRX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块，高优先级事件处理函数注册结构体定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_high_prio_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_high_prio_event_sub_table[HAL_EVENT_ERROR_IRQ_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_high_prio_event_sub_table[HAL_EVENT_ERROR_IRQ_SUB_TYPE_BUTT];
 
 /* DMAC模块,WLAN_CRX事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_wlan_crx_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_wlan_crx_event_sub_table[HAL_WLAN_CRX_EVENT_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_wlan_crx_event_sub_table[HAL_WLAN_CRX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块，TX_COMP事件处理函数注册结构定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_tx_comp_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_tx_comp_event_sub_table[HAL_TX_COMP_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_tx_comp_event_sub_table[HAL_TX_COMP_SUB_TYPE_BUTT];
 
 /* DMAC模块, TBTT事件处理函数表定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_tbtt_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_tbtt_event_sub_table[HAL_EVENT_TBTT_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_tbtt_event_sub_table[HAL_EVENT_TBTT_SUB_TYPE_BUTT];
 
 /*DMAC模块, MISC事件处理函数表定义 */
 extern frw_event_sub_table_item_stru *g_past_dmac_misc_event_sub_table;
-extern frw_event_sub_table_item_stru  g_ast_dmac_misc_event_sub_table[HAL_EVENT_DMAC_MISC_SUB_TYPE_BUTT];
+extern frw_event_sub_table_item_stru  dmac_misc_event_sub_table[HAL_EVENT_DMAC_MISC_SUB_TYPE_BUTT];
 extern oal_uint16                     g_us_hal_event_dmac_misc_sub_type_butt;
 
 /* WLAN_DTX 事件子类型表 */

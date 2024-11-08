@@ -343,7 +343,7 @@ oal_uint32  mac_device_init(mac_device_stru *pst_mac_device, oal_uint32 ul_chip_
     pst_mac_device->uc_scan_count    = 0;
 #endif
 
-    /* 初始化随机mac oui为0(3个字节都是0),确保只有Android下发有效mac oui才进行随机mac地址扫描(在随机mac扫描开关打开的情况下) */
+    /* 初始化随机mac oui为0(3个字节都是0),确保只有下发有效mac oui才进行随机mac地址扫描(在随机mac扫描开关打开的情况下) */
     pst_mac_device->en_is_random_mac_addr_scan = OAL_FALSE;
     pst_mac_device->auc_mac_oui[0] = 0x0;
     pst_mac_device->auc_mac_oui[1] = 0x0;

@@ -198,7 +198,7 @@ frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan
         return OAL_PTR_NULL;
     }
 
-    oal_memset(puc_result, 0, ul_size);
+    memset_s(puc_result, ul_size, 0, ul_size);
     pst_event = (frw_event_stru *)pst_event_mem->puc_data;
 
     FRW_EVENT_HDR_INIT(&(pst_event->st_event_hdr),
@@ -227,7 +227,7 @@ frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan
     pst_chan_results  = (mac_scan_chan_stats_simple_stru *)(pst_scan_event + 1);
     pst_bss_results   = (mac_scan_bss_stats_simple_stru *)(pst_chan_results + pst_scan_record->uc_chan_numbers);
 
-    oal_memset(pst_scan_event, 0, OAL_SIZEOF(mac_scan_event_stru));
+    memset_s(pst_scan_event, OAL_SIZEOF(mac_scan_event_stru), 0, OAL_SIZEOF(mac_scan_event_stru));
     pst_scan_event->uc_chip_id   = uc_chip_id;
     pst_scan_event->uc_device_id = uc_device_id;
     pst_scan_event->uc_need_rank = en_need_rank;
@@ -287,7 +287,7 @@ oal_uint32  hmac_acs_got_init_rank(hmac_device_stru *pst_hmac_device, mac_vap_st
     {
         OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_ACS, "{hmac_acs_got_init_rank::invalid 2G channel band=%d bw=%d ch=%d",
                          pst_ch->en_band, pst_ch->en_bandwidth, pst_ch->uc_chan_number);
-        oal_memset(pst_ch, 0, OAL_SIZEOF(mac_channel_stru));
+        memset_s(pst_ch, OAL_SIZEOF(mac_channel_stru), 0, OAL_SIZEOF(mac_channel_stru));
     }
 
     pst_ch++;
@@ -300,7 +300,7 @@ oal_uint32  hmac_acs_got_init_rank(hmac_device_stru *pst_hmac_device, mac_vap_st
     {
         OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_ACS, "{hmac_acs_got_init_rank::invalid 5G channel band=%d bw=%d ch=%d",
                          pst_ch->en_band, pst_ch->en_bandwidth, pst_ch->uc_chan_number);
-        oal_memset(pst_ch, 0, OAL_SIZEOF(mac_channel_stru));
+        memset_s(pst_ch, OAL_SIZEOF(mac_channel_stru), 0, OAL_SIZEOF(mac_channel_stru));
     }
 
     OAL_IO_PRINT("got init rank result [%d %d %d] -  [%d %d %d] init=%d for %d:%d\n",

@@ -42,9 +42,11 @@ oal_rom_cb_result_enum_uint8 mac_vap_init_cb(
     pst_vap->st_txbf_add_cap.bit_csi_bfee_max_rows = 0;
     pst_vap->st_txbf_add_cap.bit_channel_est_cap   = 0;
     pst_vap->st_cap_flag.bit_11ntxbf               = 0;
+    pst_vap->en_host_txbf_mode = COMPABILITY_TXBF;
 #endif
     /* 默认APUT不支持随环境进行自动2040带宽切换 */
     pst_vap->st_cap_flag.bit_2040_autoswitch = OAL_FALSE;
+    mac_mib_set_LsigTxopFullProtectionActivated(pst_vap, OAL_FALSE);
 
     return OAL_CONTINUE;
 }

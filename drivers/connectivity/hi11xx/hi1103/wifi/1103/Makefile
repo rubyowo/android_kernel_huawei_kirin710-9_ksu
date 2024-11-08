@@ -23,7 +23,7 @@ include $(DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE)
 
 $(warning defconfig: $(DRIVER_PATH)/$(PLAT_DEFCONFIG_FILE))
 
-hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_m2u.o hmac_smps.o hmac_opmode.o hmac_data_acq.o hmac_rx_filter.o hmac_proxy_arp.o hmac_hcc_adapt.o hmac_reset.o hmac_scan.o hmac_p2p.o hmac_device.o hmac_resource.o  hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o hmac_cali_mgmt.o
+hmac-objs := hmac_main.o hmac_rx_data.o hmac_tx_amsdu.o hmac_tx_data.o hmac_user.o hmac_vap.o hmac_mgmt_bss_comm.o hmac_mgmt_classifier.o hmac_fsm.o hmac_mgmt_ap.o hmac_mgmt_sta.o hmac_encap_frame_ap.o hmac_encap_frame_sta.o hmac_encap_frame.o hmac_sme_sta.o hmac_11i.o hmac_uapsd.o hmac_config.o hmac_protection.o hmac_frag.o hmac_crypto_tkip.o hmac_chan_mgmt.o hmac_smps.o hmac_opmode.o hmac_data_acq.o hmac_rx_filter.o hmac_proxy_arp.o hmac_hcc_adapt.o hmac_reset.o hmac_scan.o hmac_p2p.o hmac_device.o hmac_resource.o  hmac_wapi_wpi.o hmac_wapi_sms4.o hmac_wapi.o hmac_cali_mgmt.o
 hmac-objs += hmac_scan.o hmac_blockack.o hmac_dfs.o hmac_psm_ap.o hmac_dfx.o hmac_edca_opt.o hmac_arp_offload.o hmac_verify/hmac_test_main.o  hmac_tcp_opt.o hmac_auto_adjust_freq.o hmac_roam_alg.o hmac_roam_connect.o hmac_roam_main.o hmac_blacklist.o hmac_isolation.o
 hmac-objs += hmac_traffic_classify.o hmac_proxysta.o hmac_wmmac.o
 hmac-objs += hmac_btcoex.o hmac_11v.o hmac_m2s.o
@@ -84,6 +84,7 @@ HI110X_INCLUDES += -I$(HI110X_DRIVER_SRC_PATH)/common/customize
 HI110X_INCLUDES += -I$(HI110X_DRIVER_SRC_PATH)/common/oneimage
 HI110X_INCLUDES += -I$(HI110X_DRIVER_SRC_PATH)/common/inc
 HI110X_INCLUDES += -I$(HI110X_DRIVER_SRC_PATH)/common/chr_log
+HI110X_INCLUDES += -I$(HI110X_DRIVER_SRC_PATH)/bfgx
 HI110X_INCLUDES += -I$(DRIVER_PATH)/inc/dmac
 HI110X_INCLUDES += -I$(DRIVER_PATH)/inc/hal
 HI110X_INCLUDES += -I$(DRIVER_PATH)/hal

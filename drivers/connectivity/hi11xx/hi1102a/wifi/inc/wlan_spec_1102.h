@@ -23,17 +23,18 @@ extern "C" {
 /*定制化待设计为一个结构体，并对外提供内联函数访问形态，而不是预编译访问形态*/
 
 /* 关联用户的最大个数 */
-extern oal_uint16   g_us_wlan_assoc_user_max_num;
+extern oal_uint16   wlan_assoc_user_max_num;
 extern oal_uint32   g_ul_wlan_vap_max_num_per_device;
 
 /*****************************************************************************
   0.1.2 热点入网功能
 *****************************************************************************/
 /* 关联用户的最大个数 启动Proxy STA时，ap最大关联用户数为15，关闭时为32*/
-#define WLAN_ASSOC_USER_MAX_NUM_SPEC        g_us_wlan_assoc_user_max_num
+#define WLAN_ASSOC_USER_MAX_NUM_SPEC        wlan_assoc_user_max_num
 
 /* 作为P2P GO 允许关联最大用户数 */
 #define WLAN_P2P_GO_ASSOC_USER_MAX_NUM_SPEC 4
+
 /*****************************************************************************
   0.5.3 AMSDU功能
 *****************************************************************************/
@@ -260,7 +261,7 @@ extern oal_uint32   g_ul_wlan_vap_max_num_per_device;
 
 #define WLAN_LINKLOSS_OFFSET_11H                5  /* 切信道时的延迟 */
 #define WLAN_LINKLOSS_MIN_THRESHOLD             10 /* linkloss门限最小最低值 */
-
+#define WLAN_LINKLOSS_MAX_THRESHOLD             254 /* linkloss门限最大值 */
 
 
 /* Beacon Interval参数 */

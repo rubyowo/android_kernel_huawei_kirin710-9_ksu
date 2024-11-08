@@ -59,14 +59,14 @@ typedef enum
 }wlan_mib_pwr_mgmt_mode_enum;
 typedef oal_uint8 wlan_mib_pwr_mgmt_mode_enum_uint8;
 
-/* dot11AuthenticationAlgorithm INTEGER, {openSystem(1),sharedKey(2),*/
-/* fastBSSTransition(3),simultaneousAuthEquals(4) }                  */
-typedef enum
-{
-    WLAN_MIB_AUTH_ALG_OPEN_SYS          = 1,
-    WLAN_MIB_AUTH_ALG_SHARE_KEY         = 2,
-    WLAN_MIB_AUTH_ALG_FAST_BSS_TRANS    = 3,
-    WLAN_MIB_AUTH_ALG_SIM_AUTH_EQUAL    = 4,
+/* 根据802.11-2016 9.4.1.1 Authentication Algorithm Number field 重新定义认证算法枚举 */
+/* dot11AuthenticationAlgorithm INTEGER, {openSystem(0),sharedKey(1),*/
+/* fastBSSTransition(2),simultaneousAuthEquals(3) }                  */
+typedef enum {
+    WLAN_MIB_AUTH_ALG_OPEN_SYS          = 0,
+    WLAN_MIB_AUTH_ALG_SHARE_KEY         = 1,
+    WLAN_MIB_AUTH_ALG_FT                = 2,
+    WLAN_MIB_AUTH_ALG_SAE               = 3,
 
     WLAN_MIB_AUTH_ALG_BUTT
 }wlan_mib_auth_alg_enum;
@@ -932,7 +932,6 @@ typedef enum
     WLAN_CFGID_SET_STA_PM_ON                = 232,      /* STA低功耗开关接口 */
 #endif
 
-    WLAN_CFGID_PACKET_XMIT                  = 240,      /* 发指定个数的报文 */
     WLAN_CFGID_DUMP_BA_BITMAP               = 241,      /* 发指定个数的报文 */
     WLAN_CFGID_VAP_PKT_STAT                 = 242,      /* vap统计信息 */
     WLAN_CFGID_TIMER_START                  = 244,
@@ -1146,7 +1145,7 @@ typedef enum
     WLAN_CFIGD_BGSCAN_ENABLE         = 485,      /* 禁用背景扫描命令 */
     WLAN_CFGID_QUERY_RSSI            = 486,     /* 查询用户dmac rssi信息 */
     WLAN_CFGID_QUERY_RATE            = 487,     /* 查询用户当前使用的tx rx phy rate */
-
+    WLAN_CFGID_QUERY_CHR_EXT_INFO    = 488,
     WLAN_CFGID_CFG80211_REMAIN_ON_CHANNEL           = 490,  /* 停止在指定信道 */
     WLAN_CFGID_CFG80211_CANCEL_REMAIN_ON_CHANNEL    = 491,  /* 取消停止在指定信道 */
 
@@ -1255,9 +1254,10 @@ typedef enum
     WLAN_CFGID_SET_FT_IES               = 558,
     WLAN_CFGID_ROAM_NOTIFY_STATE        = 559,
 #endif  //_PRE_WLAN_FEATURE_ROAM
-    WLAN_CFGID_CFG80211_SET_PMKSA    = 560,     /* 设置PMK缓存 */
-    WLAN_CFGID_CFG80211_DEL_PMKSA    = 561,     /* 删除PMK缓存 */
-    WLAN_CFGID_CFG80211_FLUSH_PMKSA  = 562,     /* 清空PMK缓存 */
+    WLAN_CFGID_CFG80211_SET_PMKSA       = 560,     /* 设置PMK缓存 */
+    WLAN_CFGID_CFG80211_DEL_PMKSA       = 561,     /* 删除PMK缓存 */
+    WLAN_CFGID_CFG80211_FLUSH_PMKSA     = 562,     /* 清空PMK缓存 */
+    WLAN_CFGID_CFG80211_EXTERNAL_AUTH   = 563,     /* 触发SAE认证 */
 
     WLAN_CFGID_SET_PM_SWITCH            = 570,  /* 全局低功耗使能去使能*/
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
@@ -1301,6 +1301,7 @@ typedef enum
     WLAN_CFGID_SET_CUS_NVRAM_PARAM,                 /* NVRAM参数定制化 */
     WLAN_CFGID_LAUCH_CAP,                           /* 读取设备发射能力 */
     WLAN_CFGID_SET_CUS_BASE_POWER,                  /* 设置基准功率 */
+    WLAN_CFGID_SET_5G_HIGH_BAND_MAX_POW,            /* 设置5G高band最大发送功率 */
     WLAN_CFGID_SET_CUS_FCC_CE_POWER,                /* 设置基准功率和边带功率 */
     /* HISI-CUSTOMIZE INFOS */
     WLAN_CFGID_SHOW_DEV_CUSTOMIZE_INFOS = 610,      /* show device customize info */
@@ -1315,9 +1316,6 @@ typedef enum
     WLAN_CFGID_WFA_CFG_CW               = 613,
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
-    WLAN_CFGID_TX_CLASSIFY_LAN_TO_WLAN_SWITCH       = 614,         /* 设置业务识别功能开关 */
-#endif
     WLAN_CFGID_REDUCE_SAR               = 615,      /* 通过降低发射功率来降低SAR */
 
     WLAN_CFGID_DBB_SCALING_AMEND            = 616,           /* 调整dbb scaling值 */
@@ -1403,6 +1401,14 @@ typedef enum
     WLAN_CFGID_BINDCPU                      = 672,            /* 绑核命令 */
     WLAN_CFGID_NAPIWEIGHT                   = 673,            /* 调整NAPI weight值 */
     WLAN_CFGID_SET_NBFH                     = 674,
+    WLAN_CFGID_SET_DSCR_TH_HOST             = 675,
+    WLAN_CFGID_SET_TCP_ACK_FILTER           = 676,
+    WLAN_CFGID_HITALK_LISTEN                = 677,
+    WLAN_CFGID_SET_EVENT_NETBUF_NUM         = 678,            /* 设置预留给事件使用的netbuf个数 */
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+    WLAN_CFGID_PMF_CAP                      = 679,            /* PMF能力配置 */
+#endif
 
     /************************************************************************
         第三段 非MIB的内部数据同步，需要严格受控
@@ -1417,6 +1423,8 @@ typedef enum
     WLAN_CFGID_USER_CAP_SYN            = 2007,   /* hmac向dmac同步mac user的cap能力信息 */
 
     WLAN_CFGID_SUSPEND_ACTION_SYN      = 2008,
+    WLAN_CFGID_APF_SWITCH_SYN          = 2009,
+
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
     WLAN_CFGID_DYN_CALI_CFG            = 2010,
 #endif
@@ -1434,6 +1442,19 @@ typedef enum
     WLAN_CFGID_SET_BT_UPC_BY_FREQ       = 2016,
     WLAN_CFGID_PRINT_BT_GM              = 2017,
 #endif
+    WLAN_CFGID_BTCOEX_STATUS_SYN        = 2018,
+    WLAN_CFGID_SET_DSCR_TH              = 2019,
+    WLAN_CFGID_SET_TXBF_ABILITY         = 2020,
+    WLAN_CFGID_TCP_ACK_INFO_SYN         = 2021,
+    WLAN_CFGID_TCP_ACK_FILTER_SWITCH    = 2022,
+#ifdef _PRE_WLAN_FEATURE_HS20
+    WLAN_CFGID_INTERWORKING_SWITCH      = 2023,
+#endif
+    WLAN_CFGID_11V_FILTER_SWITCH        = 2024,
+    WLAN_CFGID_FFT_WINDOW_OFFSET        = 2025,
+    WLAN_CFGID_RESET_RSSI               = 2026,
+    WLAN_CFGID_CHECK_PACKET             = 2027,
+    WLAN_CFGID_TX_OPT_SYN               = 2028,
 
     WLAN_CFGID_BUTT,
 }wlan_cfgid_enum;
@@ -1501,7 +1522,7 @@ typedef struct
     wlan_mib_pwr_mgmt_mode_enum_uint8           uc_dot11PowerManagementMode;                    /* dot11PowerManagementMode INTEGER, */
     oal_uint8           auc_dot11DesiredSSID[32 + 1];                   /* dot11DesiredSSID OCTET STRING, SIZE(0..32)*//* +1预留\0 */
     wlan_mib_desired_bsstype_enum_uint8  en_dot11DesiredBSSType;        /* dot11DesiredBSSType INTEGER, */
-    //oal_uint8           auc_dot11OperationalRateSet[126];               /* dot11OperationalRateSet OCTET STRING,  (SIZE(1..126)*/
+
     oal_uint32          ul_dot11BeaconPeriod;                           /* dot11BeaconPeriod Unsigned32, */
     oal_uint32          ul_dot11DTIMPeriod;                             /* dot11DTIMPeriod Unsigned32, */
     oal_uint32          ul_dot11AssociationResponseTimeOut;             /* dot11AssociationResponseTimeOut Unsigned32, */
@@ -1513,7 +1534,7 @@ typedef struct
     oal_uint8           auc_dot11AuthenticateFailStation[6];            /* dot11AuthenticateFailStation MacAddress, */
     //oal_bool_enum_uint8 en_dot11MultiDomainCapabilityImplemented;       /* dot11MultiDomainCapabilityImplemented TruthValue, */
     oal_bool_enum_uint8 en_dot11MultiDomainCapabilityActivated;         /* dot11MultiDomainCapabilityActivated TruthValue, */
-    //oal_uint8           auc_dot11CountryString[3];                      /* dot11CountryString OCTET STRING,SIZE(3) */
+
     oal_bool_enum_uint8 en_dot11SpectrumManagementImplemented;          /* dot11SpectrumManagementImplemented TruthValue, */
     oal_bool_enum_uint8 en_dot11SpectrumManagementRequired;             /* dot11SpectrumManagementRequired TruthValue, */
     //oal_bool_enum_uint8 en_dot11RSNAOptionImplemented;                  /* dot11RSNAOptionImplemented TruthValue, */
@@ -1533,11 +1554,11 @@ typedef struct
     //oal_bool_enum_uint8 en_dot11AssociateInNQBSS;                       /* dot11AssociateInNQBSS TruthValue, */
     //oal_bool_enum_uint8 en_dot11DLSAllowedInQBSS;                       /* dot11DLSAllowedInQBSS TruthValue, */
     //oal_bool_enum_uint8 en_dot11DLSAllowed;                             /* dot11DLSAllowed TruthValue, */
-    //oal_uint8           auc_dot11AssociateStation[6];                   /* dot11AssociateStation MacAddress, */
+
     //oal_uint32          ul_dot11AssociateID;                            /* dot11AssociateID Unsigned32, */
     //oal_uint8           uc_dot11AssociateFailStation;                   /* dot11AssociateFailStation MacAddress, */
     //oal_uint32          ul_dot11AssociateFailStatus;                    /* dot11AssociateFailStatus Unsigned32, */
-    //oal_uint8           auc_dot11ReassociateStation[6];                 /* dot11ReassociateStation MacAddress, */
+
     //oal_uint32          ul_dot11ReassociateID;                          /* dot11ReassociateID Unsigned32, */
     //oal_uint8           uc_dot11ReassociateFailStation;                 /* dot11ReassociateFailStation MacAddress, */
     //oal_uint32          ul_dot11ReassociateFailStatus;                  /* dot11ReassociateFailStatus Unsigned32, */
@@ -1611,8 +1632,8 @@ typedef struct
     //oal_bool_enum_uint8 en_dot11RMCivicMeasurementActivated;            /* dot11RMCivicMeasurementActivated  TruthValue, */
     //oal_uint32          ul_dot11RMIdentifierMeasurementActivated;       /* dot11RMIdentifierMeasurementActivated  TruthValue, */
     //oal_uint32          ul_dot11TimeAdvertisementDTIMInterval;          /* dot11TimeAdvertisementDTIMInterval  Unsigned32, */
-    //oal_uint8           auc_dot11TimeAdvertisementTimeError[5];         /* dot11TimeAdvertisementTimeError  OCTET STRING, SIZE(5)*/
-    //oal_uint8           auc_dot11TimeAdvertisementTimeValue[10];        /* dot11TimeAdvertisementTimeValue  OCTET STRING,SIZE(10) */
+
+
     //oal_bool_enum_uint8 en_dot11RM3rdPartyMeasurementActivated;         /* dot11RM3rdPartyMeasurementActivated TruthValue, */
     //oal_bool_enum_uint8 en_dot11InterworkingServiceImplemented;         /* dot11InterworkingServiceImplemented  TruthValue, */
     //oal_bool_enum_uint8 en_dot11InterworkingServiceActivated;           /* dot11InterworkingServiceActivated  TruthValue, */
@@ -1623,7 +1644,7 @@ typedef struct
     //oal_bool_enum_uint8 en_dot11ESNetwork;                              /* dot11ESNetwork TruthValue, */
     //oal_bool_enum_uint8 en_dot11SSPNInterfaceImplemented;               /* dot11SSPNInterfaceImplemented TruthValue, */
     //oal_bool_enum_uint8 en_dot11SSPNInterfaceActivated;                 /* dot11SSPNInterfaceActivated TruthValue, */
-    //oal_uint8           auc_dot11HESSID[6];                             /* dot11HESSID MacAddress, */
+
     //oal_bool_enum_uint8 en_dot11EASImplemented;                         /* dot11EASImplemented TruthValue, */
     //oal_bool_enum_uint8 en_dot11EASActivated;                           /* dot11EASActivated TruthValue, */
     //oal_bool_enum_uint8 en_dot11MSGCFImplemented;                       /* dot11MSGCFImplemented TruthValue, */
@@ -1766,7 +1787,7 @@ typedef struct
 typedef struct
 {
     //oal_uint32 ul_dot11RSNAStatsIndex;                      /* dot11RSNAStatsIndex Unsigned32,                    */
-    //oal_uint8  auc_dot11RSNAStatsSTAAddress[6];             /* dot11RSNAStatsSTAAddress MacAddress,               */
+
     //oal_uint32 ul_dot11RSNAStatsVersion;                    /* dot11RSNAStatsVersion Unsigned32,                  */
     //oal_uint8  uc_dot11RSNAStatsSelectedPairwiseCipher;     /* dot11RSNAStatsSelectedPairwiseCipher OCTET STRING, SIZE(4)*/
     //oal_uint32 ul_dot11RSNAStatsTKIPICVErrors;              /* dot11RSNAStatsTKIPICVErrors Counter32,             */
@@ -1893,9 +1914,9 @@ typedef struct
     oal_uint8           auc_dot11FTMobilityDomainID[2];      /* dot11FTMobilityDomainID OCTET STRING,SIZE(2) */
     oal_bool_enum_uint8 en_dot11FTOverDSActivated;           /* dot11FTOverDSActivated TruthValue,          */
     oal_bool_enum_uint8 en_dot11FTResourceRequestSupported;  /* dot11FTResourceRequestSupported TruthValue, */
-    //oal_uint8           auc_dot11FTR0KeyHolderID[48];        /* dot11FTR0KeyHolderID OCTET STRING, SIZE(1..48) */
+
     //oal_uint32          ul_dot11FTR0KeyLifetime;             /* dot11FTR0KeyLifetime Unsigned32,            */
-    //oal_uint8           auc_dot11FTR1KeyHolderID[6];         /* dot11FTR1KeyHolderID OCTET STRING,SIZE(6)   */
+
     //oal_uint32          ul_dot11FTReassociationDeadline;     /* dot11FTReassociationDeadline Unsigned32     */
 }wlan_mib_Dot11FastBSSTransitionConfigEntry_stru;
 
@@ -2519,15 +2540,15 @@ typedef struct
 /****************************************************************************************/
 typedef struct
 {
-    //oal_uint8   auc_dot11MACAddress[6];                             /* dot11MACAddress MacAddress */
+
     oal_uint32  ul_dot11RTSThreshold;                               /* dot11RTSThreshold Unsigned32 */
     //oal_uint32  ul_dot11ShortRetryLimit;                            /* dot11ShortRetryLimit Unsigned32 */
     //oal_uint32  ul_dot11LongRetryLimit;                             /* dot11LongRetryLimit Unsigned32 */
     oal_uint32  ul_dot11FragmentationThreshold;                     /* dot11FragmentationThreshold Unsigned32 */
     //oal_uint32  ul_dot11MaxTransmitMSDULifetime;                    /* dot11MaxTransmitMSDULifetime Unsigned32 */
     //oal_uint32  ul_dot11MaxReceiveLifetime;                         /* dot11MaxReceiveLifetime Unsigned32 */
-    //oal_uint8   auc_dot11ManufacturerID[128];                       /* dot11ManufacturerID DisplayString (SIZE(0..128)*/
-    //oal_uint8   auc_dot11ProductID[128];                            /* dot11ProductID DisplayString SIZE(0..128) */
+
+
     //oal_uint32  ul_dot11CAPLimit;                                   /* dot11CAPLimit Unsigned32 */
     //oal_uint32  ul_dot11HCCWmin;                                    /* dot11HCCWmin Unsigned32 */
     //oal_uint32  ul_dot11HCCWmax;                                    /* dot11HCCWmax Unsigned32 */
@@ -3591,14 +3612,14 @@ typedef struct
     //wlan_mib_dot11RSNAConfigEntry_stru st_wlan_mib_rsna_cfg;
 
     /* --  dot11RSNAConfigPairwiseCiphersTable ::= { dot11smt 10 } */
-    //wlan_mib_dot11RSNAConfigPairwiseCiphersEntry_stru ast_wlan_mib_rsna_cfg_wpa_pairwise_cipher[WLAN_PAIRWISE_CIPHER_SUITES];
-    //wlan_mib_dot11RSNAConfigPairwiseCiphersEntry_stru ast_wlan_mib_rsna_cfg_wpa2_pairwise_cipher[WLAN_PAIRWISE_CIPHER_SUITES];
+
+
 
     /* --  dot11RSNAConfigAuthenticationSuitesTable      ::= { dot11smt 11 } */
-    //wlan_mib_Dot11RSNAConfigAuthenticationSuitesEntry_stru ast_wlan_mib_rsna_cfg_auth_suite[WLAN_AUTHENTICATION_SUITES];
+
 
     /* --  dot11RSNAStatsTable ::= { dot11smt 12 } */
-    //wlan_mib_Dot11RSNAStatsEntry_stru ast_wlan_mib_rsna_status[WLAN_ASSOC_USER_MAX_NUM_LIMIT * WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC + WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE * WLAN_DEVICE_SUPPORT_MAX_NUM_SPEC];
+
 
     /* --  dot11OperatingClassesTable ::= { dot11smt 13 } */
     //wlan_mib_Dot11OperatingClassesEntry_stru st_wlan_mib_op_class;
@@ -3662,7 +3683,7 @@ typedef struct
     wlan_mib_Dot11EDCAEntry_stru               ast_wlan_mib_edca[WLAN_WME_AC_BUTT];
     /* --  dot11QAPEDCATable ::= { dot11mac 5 } */
     wlan_mib_Dot11QAPEDCAEntry_stru            st_wlan_mib_qap_edac[WLAN_WME_AC_BUTT];
-    //wlan_mib_Dot11QAPEDCAEntry_stru            ast_wlan_mib_qap_edca[WLAN_WME_AC_BUTT];
+
     /* --  dot11QosCountersTable ::= { dot11mac 6 } */
     //wlan_mib_Dot11QosCountersEntry_stru        st_wlan_mib_qos_counters;
     /* --  dot11ResourceInfoTable    ::= { dot11mac 7 } */

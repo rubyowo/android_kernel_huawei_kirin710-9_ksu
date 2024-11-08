@@ -69,6 +69,7 @@ extern oal_uint32 wal_scan_work_func(hmac_scan_stru                *pst_scan_mgm
                                          oal_net_device_stru              *pst_netdev,
                                          oal_cfg80211_scan_request_stru   *pst_request);
 extern oal_int32 wal_force_scan_complete(oal_net_device_stru *pst_net_dev, oal_bool_enum en_is_aborted);
+extern oal_int32 wal_force_scan_complete_for_disconnect_scene(oal_net_device_stru   *pst_net_dev);
 extern oal_int32 wal_stop_sched_scan(oal_net_device_stru *pst_netdev);
 
 #define IS_P2P_SCAN_REQ(pst_request) ((pst_request->n_ssids > 0) && (NULL != pst_request->ssids )\

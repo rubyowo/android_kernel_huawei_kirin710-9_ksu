@@ -114,7 +114,7 @@ OAL_STATIC oal_uint32 hmac_car_inject_vap_token(hmac_device_stru *pst_hmac_dev, 
 {
     oal_uint32                     ul_ret = OAL_SUCC;
 
-    if ((OAL_PTR_NULL == pst_hmac_dev) || (OAL_PTR_NULL == pst_hmac_vap))
+    if (OAL_ANY_NULL_PTR2(pst_hmac_dev,pst_hmac_vap))
     {
         OAM_ERROR_LOG0(0, OAM_SF_CAR, "{hmac_car_inject_vap_token::pst_hmac_dev || pst_hmac_vap null}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -145,7 +145,7 @@ OAL_STATIC oal_uint32 hmac_car_inject_user_token(hmac_device_stru *pst_hmac_dev,
 {
     oal_uint32     ul_ret = OAL_SUCC;
 
-    if ((OAL_PTR_NULL == pst_hmac_dev) || (OAL_PTR_NULL == pst_hmac_user))
+    if (OAL_ANY_NULL_PTR2(pst_hmac_dev,pst_hmac_user))
     {
         OAM_ERROR_LOG0(0, OAM_SF_CAR, "{hmac_car_inject_vap_token::pst_hmac_dev || pst_hmac_vap null}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -625,9 +625,8 @@ oal_uint32  hmac_car_show_info(hmac_device_stru *pst_hmac_dev)
                 OAM_ERROR_LOG0(0, OAM_SF_CAR, "{hmac_car_show_info::pst_hmac_user null}");
                 return OAL_ERR_CODE_PTR_NULL;
             }
-            OAL_IO_PRINT("       user id:[%d]  mac addr:[%02x:%02x:%02x:%02x:%02x:%02x]\n", pst_mac_user->us_assoc_id,
+            OAL_IO_PRINT("       user id:[%d]  mac addr:[%02x:%02x:xx:xx:%02x:%02x]\n", pst_mac_user->us_assoc_id,
                 pst_mac_user->auc_user_mac_addr[0],pst_mac_user->auc_user_mac_addr[1],
-                pst_mac_user->auc_user_mac_addr[2],pst_mac_user->auc_user_mac_addr[3],
                 pst_mac_user->auc_user_mac_addr[4],pst_mac_user->auc_user_mac_addr[5]);
             OAL_IO_PRINT("          uplink:   flag:[%d] limit_kbps_bw:[%d]\n"
                          "          downlink: flag:[%d] limit_kbps_bw:[%d]\n\n",
@@ -746,7 +745,7 @@ oal_uint32  hmac_car_process(hmac_device_stru *pst_hmac_dev, hmac_vap_stru *pst_
     hmac_car_limit_stru          *pst_car_user_cfg;
     oal_uint32                    ul_ret = OAL_SUCC;
 
-    if ((OAL_PTR_NULL == pst_hmac_dev) || (OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user))
+    if (OAL_ANY_NULL_PTR3(pst_hmac_dev,pst_hmac_vap,pst_hmac_user))
     {
         OAM_WARNING_LOG0(0, OAM_SF_CAR, "{hmac_car_process:: null pointer!.}");
         return OAL_ERR_CODE_PTR_NULL;

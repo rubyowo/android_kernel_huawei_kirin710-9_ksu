@@ -133,6 +133,7 @@ extern oal_bool_enum_uint8 hmac_get_rxthread_enable(oal_void);
 #endif
 
 extern oal_uint32  hmac_proc_query_response_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
+extern oal_uint32  hmac_config_query_chr_ext_info_rsp_event(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param);
 
 #ifdef _PRE_WLAN_RF_110X_CALI_DPD
 extern oal_uint32 hmac_dpd_cali_data_recv(frw_event_mem_stru *pst_event_mem);

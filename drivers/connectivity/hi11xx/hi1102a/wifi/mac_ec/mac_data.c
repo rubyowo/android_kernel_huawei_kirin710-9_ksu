@@ -24,21 +24,41 @@ extern "C" {
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
-
+#define DHCP_SERVER_PORT (67)
+#define DHCP_CLIENT_PORT (68)
+#define DNS_SERVER_PORT  (53)
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
 
 oal_bool_enum_uint8 mac_is_dhcp_port(mac_ip_header_stru *pst_ip_hdr)
 {
-    udp_hdr_stru *pst_udp_hdr;
+    udp_hdr_stru *pst_udp_hdr = OAL_PTR_NULL;
     /* DHCP判断标准: udp协议，ip头部fragment offset字段为0，目的端口号为67或68 */
     if (MAC_UDP_PROTOCAL == pst_ip_hdr->uc_protocol && (0 == (pst_ip_hdr->us_frag_off & 0xFF1F)))
     {
         pst_udp_hdr = (udp_hdr_stru *)(pst_ip_hdr + 1);
 
-        if (OAL_NET2HOST_SHORT(pst_udp_hdr->us_des_port) == 67
-            || OAL_NET2HOST_SHORT(pst_udp_hdr->us_des_port) == 68)
+        if (OAL_NET2HOST_SHORT(pst_udp_hdr->us_des_port) == DHCP_SERVER_PORT
+            || OAL_NET2HOST_SHORT(pst_udp_hdr->us_des_port) == DHCP_CLIENT_PORT)
+        {
+            return OAL_TRUE;
+        }
+    }
+
+    return OAL_FALSE;
+}
+
+
+oal_bool_enum_uint8 mac_is_dns_frame(mac_ip_header_stru *pst_ip_hdr)
+{
+    udp_hdr_stru *pst_udp_hdr = OAL_PTR_NULL;
+    /* DNS判断标准: udp协议，ip头部fragment offset字段为0，目的端口号为53 */
+    if (MAC_UDP_PROTOCAL == pst_ip_hdr->uc_protocol && (0 == (pst_ip_hdr->us_frag_off & 0xFF1F)))
+    {
+        pst_udp_hdr = (udp_hdr_stru *)(pst_ip_hdr + 1);
+
+        if (OAL_NET2HOST_SHORT(pst_udp_hdr->us_des_port) == DNS_SERVER_PORT)
         {
             return OAL_TRUE;
         }
@@ -50,7 +70,7 @@ oal_bool_enum_uint8 mac_is_dhcp_port(mac_ip_header_stru *pst_ip_hdr)
 
 oal_bool_enum_uint8 mac_is_nd(oal_ipv6hdr_stru  *pst_ipv6hdr)
 {
-    oal_icmp6hdr_stru      *pst_icmp6hdr;
+    oal_icmp6hdr_stru      *pst_icmp6hdr = OAL_PTR_NULL;
 
     if (OAL_IPPROTO_ICMPV6 == pst_ipv6hdr->nexthdr)
     {
@@ -72,7 +92,7 @@ oal_bool_enum_uint8 mac_is_nd(oal_ipv6hdr_stru  *pst_ipv6hdr)
 
 oal_bool_enum_uint8 mac_is_dhcp6(oal_ipv6hdr_stru  *pst_ipv6hdr)
 {
-    udp_hdr_stru           *pst_udp_hdr;
+    udp_hdr_stru           *pst_udp_hdr = OAL_PTR_NULL;
 
     if (MAC_UDP_PROTOCAL == pst_ipv6hdr->nexthdr)
     {
@@ -106,8 +126,8 @@ mac_data_type_enum_uint8 mac_get_arp_type_by_arphdr(oal_eth_arphdr_stru  *pst_rx
 oal_uint8 mac_get_data_type_from_8023(oal_uint8 *puc_frame_hdr, mac_netbuff_payload_type uc_hdr_type)
 {
 
-    mac_ip_header_stru     *pst_ip;
-    oal_uint8              *puc_frame_body;
+    mac_ip_header_stru     *pst_ip = OAL_PTR_NULL;
+    oal_uint8              *puc_frame_body = OAL_PTR_NULL;
     oal_uint16              us_ether_type;
     oal_uint8               uc_datatype = MAC_DATA_BUTT;
 
@@ -147,6 +167,15 @@ oal_uint8 mac_get_data_type_from_8023(oal_uint8 *puc_frame_hdr, mac_netbuff_payl
             if (OAL_TRUE == mac_is_dhcp_port(pst_ip))
             {
                 uc_datatype = MAC_DATA_DHCP;
+            }
+            else if (MAC_TCP_PROTOCAL == pst_ip->uc_protocol)
+            {
+                mac_tcp_header_stru    *pst_tcp_hdr;
+                pst_tcp_hdr = (mac_tcp_header_stru *)(pst_ip + 1);
+                if (OAL_NTOH_16(pst_tcp_hdr->us_sport) == MAC_WFD_RTSP_PORT)
+                {
+                    return MAC_DATA_RTSP;
+                }
             }
             break;
 
@@ -200,7 +229,7 @@ oal_uint8 mac_get_data_type_from_8023(oal_uint8 *puc_frame_hdr, mac_netbuff_payl
 oal_uint8 mac_get_data_type_from_80211(oal_netbuf_stru *pst_netbuff, oal_uint16 us_mac_hdr_len)
 {
     oal_uint8               uc_datatype = MAC_DATA_BUTT;
-    mac_llc_snap_stru      *pst_snap;
+    mac_llc_snap_stru      *pst_snap = OAL_PTR_NULL;
 
     if(OAL_PTR_NULL == pst_netbuff)
     {
@@ -219,7 +248,7 @@ oal_uint8 mac_get_data_type_from_80211(oal_netbuf_stru *pst_netbuff, oal_uint16 
 oal_uint8 mac_get_data_type(oal_netbuf_stru *pst_netbuff)
 {
     oal_uint8               uc_datatype = MAC_DATA_BUTT;
-    mac_llc_snap_stru             *pst_snap;
+    mac_llc_snap_stru             *pst_snap = OAL_PTR_NULL;
 
     if(OAL_PTR_NULL == pst_netbuff)
     {
@@ -242,7 +271,7 @@ oal_uint8 mac_get_data_type(oal_netbuf_stru *pst_netbuff)
 oal_uint16 mac_get_eapol_keyinfo(oal_netbuf_stru *pst_netbuff)
 {
     oal_uint8                      uc_datatype = MAC_DATA_BUTT;
-    oal_uint8                     *puc_payload;
+    oal_uint8                     *puc_payload = OAL_PTR_NULL;
 
     uc_datatype = mac_get_data_type(pst_netbuff);
 
@@ -266,7 +295,7 @@ oal_uint16 mac_get_eapol_keyinfo(oal_netbuf_stru *pst_netbuff)
 oal_uint8 mac_get_eapol_type(oal_netbuf_stru *pst_netbuff)
 {
     oal_uint8                      uc_datatype = MAC_DATA_BUTT;
-    oal_uint8                     *puc_payload;
+    oal_uint8                     *puc_payload = OAL_PTR_NULL;
 
     uc_datatype = mac_get_data_type(pst_netbuff);
 
@@ -290,7 +319,7 @@ oal_uint8 mac_get_eapol_type(oal_netbuf_stru *pst_netbuff)
 
 oal_bool_enum_uint8 mac_is_eapol_key_ptk(mac_eapol_header_stru  *pst_eapol_header)
 {
-    mac_eapol_key_stru *pst_key;
+    mac_eapol_key_stru *pst_key = OAL_PTR_NULL;
 
     if (IEEE802_1X_TYPE_EAPOL_KEY == pst_eapol_header->uc_type)
     {
@@ -310,8 +339,8 @@ oal_bool_enum_uint8 mac_is_eapol_key_ptk(mac_eapol_header_stru  *pst_eapol_heade
 
 oal_bool_enum_uint8 mac_is_eapol_key_ptk_4_4(oal_netbuf_stru *pst_netbuff)
 {
-    mac_eapol_header_stru   *pst_eapol_header;
-    mac_eapol_key_stru      *pst_eapol_key;
+    mac_eapol_header_stru   *pst_eapol_header = OAL_PTR_NULL;
+    mac_eapol_key_stru      *pst_eapol_key = OAL_PTR_NULL;
 
     if ((mac_get_data_type(pst_netbuff) == MAC_DATA_EAPOL))
     {

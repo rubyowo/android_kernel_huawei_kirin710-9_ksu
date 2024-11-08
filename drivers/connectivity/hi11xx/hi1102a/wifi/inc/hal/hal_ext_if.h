@@ -259,6 +259,13 @@ OAL_STATIC OAL_INLINE oal_void hal_tx_non_ucast_data_set_dscr(hal_to_dmac_device
     HAL_PUBLIC_HOOK_FUNC(_tx_non_ucast_data_set_dscr)( pst_hal_device, pst_tx_dscr, pst_txop_feature, pst_txop_alg, pst_ppdu_feature);
 }
 
+OAL_STATIC OAL_INLINE oal_void hal_tx_ucast_data_set_dscr_rts_params(
+                               hal_to_dmac_device_stru    *pst_device,
+                               hal_tx_dscr_stru           *pst_tx_dscr)
+{
+    HAL_PUBLIC_HOOK_FUNC(_tx_ucast_data_set_dscr_rts_params)(pst_device, pst_tx_dscr);
+}
+
 
 OAL_STATIC OAL_INLINE oal_void  hal_tx_set_dscr_modify_mac_header_length(hal_to_dmac_device_stru *pst_hal_device,hal_tx_dscr_stru *pst_tx_dscr, oal_uint8 uc_mac_header_length)
 {
@@ -328,6 +335,12 @@ OAL_STATIC OAL_INLINE oal_void  hal_tx_set_pdet_en(hal_to_dmac_device_stru *pst_
 {
     HAL_PUBLIC_HOOK_FUNC(_tx_set_pdet_en)(pst_hal_device, pst_tx_dscr, en_pdet_en_flag);
 }
+
+OAL_STATIC OAL_INLINE oal_void  hal_tx_get_pdet_en(hal_to_dmac_device_stru *pst_hal_device, hal_tx_dscr_stru *pst_tx_dscr, oal_bool_enum_uint8 *pen_pdet_en_flag)
+{
+    HAL_PUBLIC_HOOK_FUNC(_tx_get_pdet_en)(pst_hal_device, pst_tx_dscr, pen_pdet_en_flag);
+}
+
 OAL_STATIC OAL_INLINE oal_uint32 hal_dyn_cali_vdet_val_amend(hal_to_dmac_device_stru *pst_hal_device, hal_pdet_info_stru *pst_pdet_info)
 
 {
@@ -372,19 +385,47 @@ OAL_STATIC OAL_INLINE oal_void  hal_tx_get_dscr_chiper_type(hal_tx_dscr_stru *ps
     HAL_PUBLIC_HOOK_FUNC(_tx_get_dscr_chiper_type)( pst_tx_dscr, puc_chiper_type, puc_chiper_key_id);
 }
 
-#if 0
 
-OAL_STATIC OAL_INLINE oal_void  hal_tx_enable_peer_sta_ps_ctrl(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 uc_lut_index)
-{
-    HAL_PUBLIC_HOOK_FUNC(_tx_enable_peer_sta_ps_ctrl)( pst_hal_device, uc_lut_index);
-}
 
-OAL_STATIC OAL_INLINE oal_void  hal_tx_disable_peer_sta_ps_ctrl(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 uc_lut_index)
-{
-    HAL_PUBLIC_HOOK_FUNC(_tx_disable_peer_sta_ps_ctrl)( pst_hal_device, uc_lut_index);
-}
 
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 OAL_STATIC OAL_INLINE oal_void  hal_tx_get_dscr_status(hal_to_dmac_device_stru *pst_hal_device, hal_tx_dscr_stru *pst_tx_dscr, oal_uint8 *puc_status)
@@ -824,8 +865,20 @@ OAL_STATIC OAL_INLINE oal_void  hal_psm_rf_awake(hal_to_dmac_device_stru  *pst_h
     HAL_PUBLIC_HOOK_FUNC(_psm_rf_awake)( pst_hal_device,uc_restore_reg);
 }
 
+OAL_STATIC OAL_INLINE oal_void  hal_pll_cfg_check(hal_to_dmac_device_stru * pst_hal_device)
+{
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST))
+    HAL_PUBLIC_HOOK_FUNC(_pll_cfg_check)( pst_hal_device);
+#endif
+}
 
 
+OAL_STATIC OAL_INLINE oal_void hal_rf_get_line_control_value(hal_to_dmac_device_stru *pst_hal_device, oal_uint16 *pus_value)
+{
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST))
+    HAL_PUBLIC_HOOK_FUNC(_rf_get_line_control_value)(pst_hal_device, pus_value);
+#endif
+}
 
 #ifdef _PRE_WLAN_REALTIME_CALI
 
@@ -1112,7 +1165,7 @@ OAL_STATIC OAL_INLINE oal_void  hal_en_soc_intr(hal_to_dmac_device_stru *pst_hal
 
 OAL_STATIC  OAL_INLINE oal_void hal_enable_beacon_filter(hal_to_dmac_device_stru *pst_hal_device)
 {
-    //HAL_PUBLIC_HOOK_FUNC(_enable_beacon_filter, pst_hal_device);
+
 }
 
 
@@ -1302,7 +1355,6 @@ OAL_STATIC OAL_INLINE oal_void hal_enable_radar_det(hal_to_dmac_device_stru *pst
 #endif
 }
 
-#ifdef _PRE_WLAN_PHY_BUGFIX_VHT_SIG_B
 
 OAL_STATIC OAL_INLINE oal_void hal_enable_sigB(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 uc_enable)
 {
@@ -1314,7 +1366,7 @@ OAL_STATIC OAL_INLINE oal_void hal_enable_improve_ce(hal_to_dmac_device_stru *ps
 {
     HAL_PUBLIC_HOOK_FUNC(_enable_improve_ce)( pst_hal_device, uc_enable);
 }
-#endif
+
 #ifdef _PRE_WLAN_PHY_BUGFIX_IMPROVE_CE_TH
 OAL_STATIC OAL_INLINE oal_void hal_set_acc_symb_num(hal_to_dmac_device_stru *pst_hal_device, oal_uint32 ul_num)
 {
@@ -1347,10 +1399,24 @@ OAL_STATIC  OAL_INLINE oal_void hal_set_rts_rate_selection_mode(hal_to_dmac_devi
 
 #ifdef _PRE_WLAN_FEATURE_TPC
 
-//OAL_STATIC  OAL_INLINE oal_void hal_set_tpc_params(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 uc_band, oal_uint8 uc_channel_num)
-//{
-    //HAL_PUBLIC_HOOK_FUNC(_set_bcn_phy_tx_mode, pst_hal_device, uc_band, uc_channel_num);
-//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 OAL_STATIC  OAL_INLINE oal_void  hal_get_rf_temp(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 *puc_cur_temp)
@@ -2202,55 +2268,167 @@ OAL_STATIC OAL_INLINE oal_void  hal_vap_get_edca_machw_cw(hal_to_dmac_vap_stru *
     HAL_PUBLIC_HOOK_FUNC(_vap_get_edca_machw_cw)( pst_hal_vap, puc_cwmax, puc_cwmin, uc_ec_type);
 }
 
-#if 0
-
-OAL_STATIC OAL_INLINE oal_void  hal_vap_set_machw_cw_bk(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 uc_cwmax, oal_uint8 uc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_set_machw_cw_bk)( pst_hal_vap, uc_cwmax, uc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_get_machw_cw_bk(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 *puc_cwmax, oal_uint8 *puc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_get_machw_cw_bk)( pst_hal_vap, puc_cwmax, puc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_set_machw_cw_be(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 uc_cwmax, oal_uint8 uc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_set_machw_cw_be)( pst_hal_vap, uc_cwmax, uc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_get_machw_cw_be(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 *puc_cwmax, oal_uint8 *puc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_get_machw_cw_be)( pst_hal_vap, puc_cwmax, puc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_set_machw_cw_vi(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 uc_cwmax, oal_uint8 uc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_set_machw_cw_vi)( pst_hal_vap, uc_cwmax, uc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_get_machw_cw_vi(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 *puc_cwmax, oal_uint8 *puc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_get_machw_cw_vi)( pst_hal_vap, puc_cwmax, puc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_set_machw_cw_vo(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 uc_cwmax, oal_uint8 uc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_set_machw_cw_vo)( pst_hal_vap, uc_cwmax, uc_cwmin);
-}
 
 
-OAL_STATIC OAL_INLINE oal_void  hal_vap_get_machw_cw_vo(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint8 *puc_cwmax, oal_uint8 *puc_cwmin)
-{
-    HAL_PUBLIC_HOOK_FUNC(_vap_get_machw_cw_vo)( pst_hal_vap, puc_cwmax, puc_cwmin);
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 OAL_STATIC OAL_INLINE oal_void  hal_vap_set_machw_txop_limit_bkbe(hal_to_dmac_vap_stru *pst_hal_vap, oal_uint16 us_be, oal_uint16 us_bk)
@@ -2594,7 +2772,9 @@ OAL_STATIC OAL_INLINE oal_void hal_set_tx_rsp_ba_pri_mode(hal_coex_priority_type
 }
 OAL_STATIC OAL_INLINE oal_void hal_set_tx_one_pkt_pri_mode(hal_coex_priority_type_uint8 en_mode)
 {
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV)
     HAL_PUBLIC_HOOK_FUNC(_set_tx_one_pkt_pri_mode)(en_mode);
+#endif
 }
 OAL_STATIC OAL_INLINE oal_void hal_get_btcoex_abort_qos_null_seq_num(oal_uint32 *ul_qosnull_seq_num)
 {
@@ -2696,6 +2876,10 @@ OAL_STATIC OAL_INLINE oal_void hal_btcoex_get_bt_acl_status(hal_to_dmac_device_s
 OAL_STATIC OAL_INLINE oal_void hal_btcoex_sw_preempt_init(hal_to_dmac_device_stru *pst_hal_device)
 {
     HAL_PUBLIC_HOOK_FUNC(_btcoex_sw_preempt_init)( pst_hal_device);
+}
+OAL_STATIC OAL_INLINE oal_void hal_btcoex_get_bt_status(oal_uint16 *pus_bt_status, oal_uint16 *pus_ble_status)
+{
+    HAL_PUBLIC_HOOK_FUNC(_btcoex_get_bt_status)(pus_bt_status, pus_ble_status);
 }
 
 #ifdef _PRE_WLAN_FEATURE_LTECOEX
@@ -3047,13 +3231,27 @@ OAL_STATIC OAL_INLINE oal_void hal_set_pktmem_csi_bus_access(hal_to_dmac_device_
     HAL_PUBLIC_HOOK_FUNC(_set_pktmem_csi_bus_access)(pst_hal_device);
 }
 
-#if 0
 
-OAL_STATIC OAL_INLINE oal_void hal_set_csi_buf_pointer(hal_to_dmac_device_stru *pst_hal_device, oal_uint32 ul_reg_value)
-{
-    HAL_PUBLIC_HOOK_FUNC(_set_csi_buf_pointer)( pst_hal_device, ul_reg_value);
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 OAL_STATIC OAL_INLINE oal_void hal_get_mac_csi_ta(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 *puc_addr)
@@ -3208,6 +3406,11 @@ OAL_STATIC  OAL_INLINE oal_void hal_pow_cfg_show_log(hal_to_dmac_device_stru *ps
     HAL_PUBLIC_HOOK_FUNC(_pow_cfg_show_log)(pst_hal_device, puc_rate_idx);
 }
 
+OAL_STATIC  OAL_INLINE oal_void hal_config_fft_window_offset(oal_uint32 ul_offset)
+{
+    HAL_PUBLIC_HOOK_FUNC(_config_fft_window_offset)(ul_offset);
+}
+
 #endif
 OAL_STATIC OAL_INLINE oal_void hal_tpc_select_upc_level(oal_int16       *pas_upc_gain_table,
                                                         oal_uint8                uc_upc_gain_table_len,
@@ -3263,6 +3466,26 @@ OAL_STATIC OAL_INLINE oal_void hal_adjust_pow_cali_upc_code_by_amend(
     HAL_PUBLIC_HOOK_FUNC(_adjust_pow_cali_upc_code_by_amend)(pst_hal_vap, pst_hal_device, uc_cur_ch_num);
 }
 
+OAL_STATIC OAL_INLINE oal_void hal_get_gnss_status(oal_bool_enum_uint8 *pen_gnss_on)
+{
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST))
+    HAL_PUBLIC_HOOK_FUNC(_get_gnss_status)(pen_gnss_on);
+#endif
+}
+
+OAL_STATIC OAL_INLINE oal_void hal_cfg_anti_intf(hal_to_dmac_vap_stru *pst_hal_vap,oal_int8 c_rssi)
+{
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST))
+    HAL_PUBLIC_HOOK_FUNC(_cfg_anti_intf)(pst_hal_vap,c_rssi);
+#endif
+}
+
+OAL_STATIC OAL_INLINE oal_void hal_reset_anti_intf(oal_void)
+{
+#if ((_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_DEV) || (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST))
+    HAL_PUBLIC_HOOK_FUNC(_reset_anti_intf)();
+#endif
+}
 OAL_STATIC OAL_INLINE oal_void hal_far_dis_is_need_gain_pwr(
                                                  wlan_channel_band_enum_uint8 en_band,
                                                  oal_uint8                    uc_channel_num,
@@ -3395,6 +3618,14 @@ OAL_STATIC OAL_INLINE oal_void hal_set_dyn_bypass_extlna_pm_flag(oal_bool_enum_u
     HAL_PUBLIC_HOOK_FUNC(_set_dyn_bypass_extlna_pm_flag)(en_value);
 }
 
+#ifdef _PRE_WLAN_FEATURE_AGC_BUGFIX
+
+OAL_STATIC  OAL_INLINE oal_void  hal_set_agc_target_adjust(hal_to_dmac_device_stru *pst_hal_device, hal_phy_agc_target_adjust_enmu_uint8  en_agc_target_adjust_type)
+{
+    HAL_PUBLIC_HOOK_FUNC(_set_agc_target_adjust)(pst_hal_device, en_agc_target_adjust_type);
+}
+#endif
+
 
 OAL_STATIC OAL_INLINE oal_void hal_set_dyn_bypass_extlna_enable(oal_uint8 uc_dyn_bypass_extlna_enable)
 {
@@ -3414,6 +3645,11 @@ OAL_STATIC OAL_INLINE oal_uint8 hal_get_dyn_bypass_extlna_enable(oal_void)
 }
 
 #endif
+
+OAL_STATIC  OAL_INLINE oal_void hal_set_ddc_en(oal_bool_enum_uint8 en_ddc_enable)
+{
+    HAL_PUBLIC_HOOK_FUNC(_set_ddc_en)(en_ddc_enable);
+}
 
 
 OAL_STATIC OAL_INLINE oal_void hal_clear_user_ptk_key(hal_to_dmac_device_stru *pst_hal_device, oal_uint8 uc_lut_idx)

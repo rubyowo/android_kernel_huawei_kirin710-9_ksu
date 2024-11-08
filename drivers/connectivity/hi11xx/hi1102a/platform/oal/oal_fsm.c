@@ -1,71 +1,66 @@
 
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-
-/*****************************************************************************
-  1 Í·ÎÄ¼ş°üº¬
-*****************************************************************************/
+/* Í·ÎÄ¼ş°üº¬ */
 #include "oal_ext_if.h"
 #include "oam_ext_if.h"
+#include "securec.h"
 
-#undef  THIS_FILE_ID
+#undef THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_OAL_FSM_C
 
-/*****************************************************************************
-  2 È«¾Ö±äÁ¿¶¨Òå
-*****************************************************************************/
-
-
-oal_uint32  oal_fsm_create(oal_void                   *p_oshandle,         /*×´Ì¬»úownerµÄÖ¸Õë£¬¶ÔµÍ¹¦ºÄ×´Ì¬»ú£¬Ö¸ÏòVAP½á¹¹*/
-                                const oal_uint8          *p_name,             /*×´Ì¬»úµÄÃû×Ö*/
-                                oal_void                 *p_ctx,              /*×´Ì¬»úcontext*/
-                                oal_fsm_stru             *pst_oal_fsm,        /* oal×´Ì¬»úÄÚÈİ */
-                                oal_uint8                 uc_init_state,      /*³õÊ¼×´Ì¬*/
-                                const oal_fsm_state_info *p_state_info,       /*×´Ì¬»úÊµÀıÖ¸Õë*/
-                                oal_uint8                 uc_num_states       /*±¾×´Ì¬»úµÄ×´Ì¬¸öÊı*/
-)
+/*
+ * º¯ Êı Ãû  : oal_fsm_create
+ * ¹¦ÄÜÃèÊö  : ×´Ì¬»ú´´½¨½Ó¿Ú
+ * ÊäÈë²ÎÊı  : p_oshandle: ×´Ì¬»úownerµÄÖ¸Õë£¬¶ÔµÍ¹¦ºÄ×´Ì¬»ú£¬Ö¸ÏòVAP½á¹¹
+ *             p_name    : ×´Ì¬»úµÄÃû×Ö
+ *             p_ctx     : ×´Ì¬»úcontext,Ö¸Ïòpm_handler
+ *             uc_init_state:³õÊ¼×´Ì¬
+ *             p_state_info:×´Ì¬»úÊµÀıÖ¸Õë
+ *             uc_num_states:×´Ì¬»ú×´Ì¬¸öÊı
+ *             pp_event_names:±¾×´Ì¬»úÖĞÊÂ¼ş¶ÔÓ¦µÄÊÂ¼şÃû×Ö
+ *             us_num_event_names:ÊÂ¼ş¸öÊı
+ */
+oal_uint32 oal_fsm_create(oal_void *p_oshandle, /* ×´Ì¬»úownerµÄÖ¸Õë£¬¶ÔµÍ¹¦ºÄ×´Ì¬»ú£¬Ö¸ÏòVAP½á¹¹ */
+                          const oal_uint8 *p_name,                    /* ×´Ì¬»úµÄÃû×Ö */
+                          oal_void *p_ctx,                            /* ×´Ì¬»úcontext */
+                          oal_fsm_stru *pst_oal_fsm,                  /* oal×´Ì¬»úÄÚÈİ */
+                          oal_uint8 uc_init_state,                    /* ³õÊ¼×´Ì¬ */
+                          const oal_fsm_state_info *p_state_info,     /* ×´Ì¬»úÊµÀıÖ¸Õë */
+                          oal_uint8 uc_num_states)                    /* ±¾×´Ì¬»úµÄ×´Ì¬¸öÊı */
 {
-    oal_uint32      ul_loop;
+    oal_uint32 ul_loop;
 
-    if (OAL_PTR_NULL == pst_oal_fsm)
-    {
+    if (pst_oal_fsm == OAL_PTR_NULL) {
         OAL_IO_PRINT("{oal_fsm_create:pst_oal_fsm is NULL }");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    if (OAL_FSM_MAX_STATES < uc_num_states)
-    {
-       OAL_IO_PRINT("{oal_fsm_create:state number [%d] too big. }",uc_num_states);
-       return OAL_FAIL;
+    if (uc_num_states > OAL_FSM_MAX_STATES) {
+        OAL_IO_PRINT("{oal_fsm_create:state number [%d] too big. }", uc_num_states);
+        return OAL_FAIL;
     }
 
-    /*¼ì²é×´Ì¬ĞÅÏ¢Ë³ĞòÊÇ·ñºÍ×´Ì¬¶¨ÒåÆ¥Åä*/
-    for (ul_loop = 0;ul_loop < uc_num_states;ul_loop++)
-    {
-        if ((p_state_info[ul_loop].state >= OAL_FSM_MAX_STATES) || (p_state_info[ul_loop].state!=ul_loop))
-        {
-            /* OAMÈÕÖ¾ÖĞ²»ÄÜÊ¹ÓÃ%s*/
-            OAL_IO_PRINT("oal_fsm_create::entry %d has invalid state %d }",ul_loop,p_state_info[ul_loop].state);
+    /* ¼ì²é×´Ì¬ĞÅÏ¢Ë³ĞòÊÇ·ñºÍ×´Ì¬¶¨ÒåÆ¥Åä */
+    for (ul_loop = 0; ul_loop < uc_num_states; ul_loop++) {
+        if ((p_state_info[ul_loop].state >= OAL_FSM_MAX_STATES) || (p_state_info[ul_loop].state != ul_loop)) {
+            /* OAMÈÕÖ¾ÖĞ²»ÄÜÊ¹ÓÃ%s */
+            OAL_IO_PRINT("oal_fsm_create::entry %d has invalid state %d }", ul_loop, p_state_info[ul_loop].state);
             return OAL_FAIL;
         }
     }
 
-    OAL_MEMZERO(pst_oal_fsm, OAL_SIZEOF(oal_fsm_stru));
-    pst_oal_fsm->uc_cur_state  = uc_init_state;
+    memset_s(pst_oal_fsm, OAL_SIZEOF(oal_fsm_stru), 0, OAL_SIZEOF(oal_fsm_stru));
+    pst_oal_fsm->uc_cur_state = uc_init_state;
     pst_oal_fsm->uc_prev_state = uc_init_state;
-    pst_oal_fsm->p_state_info  = p_state_info;
+    pst_oal_fsm->p_state_info = p_state_info;
     pst_oal_fsm->uc_num_states = uc_num_states;
-    pst_oal_fsm->p_oshandler   = p_oshandle;
-    pst_oal_fsm->p_ctx         = p_ctx;
+    pst_oal_fsm->p_oshandler = p_oshandle;
+    pst_oal_fsm->p_ctx = p_ctx;
     pst_oal_fsm->us_last_event = OAL_FSM_EVENT_NONE;
 
     /* strncpy fsm name */
     ul_loop = 0;
-    while((ul_loop < OAL_FSM_MAX_NAME -1) && (p_name[ul_loop] != '\0')) {
+    while ((ul_loop < OAL_FSM_MAX_NAME - 1) && (p_name[ul_loop] != '\0')) {
         pst_oal_fsm->uc_name[ul_loop] = p_name[ul_loop];
         ul_loop++;
     }
@@ -73,79 +68,75 @@ oal_uint32  oal_fsm_create(oal_void                   *p_oshandle,         /*×´Ì
         pst_oal_fsm->uc_name[ul_loop] = '\0';
     }
 
-    /*Æô¶¯×´Ì¬»ú*/
-   if(pst_oal_fsm->p_state_info[pst_oal_fsm->uc_cur_state].oal_fsm_entry)
-   {
-       pst_oal_fsm->p_state_info[pst_oal_fsm->uc_cur_state].oal_fsm_entry(pst_oal_fsm->p_ctx);
-   }
-
-   return OAL_SUCC;
-}
-#if 0
-
-oal_void oal_fsm_destroy(oal_fsm_stru* p_fsm)
-{
-    //OAL_MEM_FREE(p_fsm, OAL_TRUE);
-    //p_fsm = OAL_PTR_NULL;
-    return;
-}
-#endif
-
-oal_uint32 oal_fsm_trans_to_state(oal_fsm_stru* p_fsm,oal_uint8 uc_state)
-{
-    oal_uint8                    uc_cur_state = p_fsm->uc_cur_state;
-
-    if ((uc_state == OAL_FSM_STATE_NONE) || (uc_state >= OAL_FSM_MAX_STATES) || (uc_state>=p_fsm->uc_num_states))
-    {
-        OAL_IO_PRINT("oal_fsm_trans_to_state::trans to state %d needs to be a valid state cur_state=%d",uc_state,uc_cur_state);
-        return OAL_FAIL;
+    /* Æô¶¯×´Ì¬»ú */
+    if (pst_oal_fsm->p_state_info[pst_oal_fsm->uc_cur_state].oal_fsm_entry) {
+        pst_oal_fsm->p_state_info[pst_oal_fsm->uc_cur_state].oal_fsm_entry(pst_oal_fsm->p_ctx);
     }
-
-    if (uc_state == uc_cur_state)
-    {
-        OAL_IO_PRINT("oal_fsm_trans_to_state::trans to state %d needs to be a valid state cur_state=%d",uc_state,uc_cur_state);
-        return OAL_SUCC;
-    }
-
-    /*µ÷ÓÃÇ°Ò»×´Ì¬µÄÍË³öº¯Êı*/
-    if (p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_exit)
-    {
-        p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_exit(p_fsm->p_ctx);
-    }
-
-    /*µ÷ÓÃ±¾×´Ì¬µÄ½øÈëº¯Êı*/
-    if (p_fsm->p_state_info[uc_state].oal_fsm_entry)
-    {
-       p_fsm->p_state_info[uc_state].oal_fsm_entry(p_fsm->p_ctx);
-    }
-
-    p_fsm->uc_prev_state = uc_cur_state;
-    p_fsm->uc_cur_state  = uc_state;
 
     return OAL_SUCC;
 }
 
+/*
+ * º¯ Êı Ãû  : oal_fsm_trans_to_state
+ * ¹¦ÄÜÃèÊö  : ×´Ì¬»úµÄdestroy½Ó¿Ú
+ * ÊäÈë²ÎÊı  : p_fsm:×´Ì¬»úÖ¸Õë
+ */
+oal_uint32 oal_fsm_trans_to_state(oal_fsm_stru *p_fsm, oal_uint8 uc_state)
+{
+    oal_uint8 uc_cur_state = p_fsm->uc_cur_state;
 
-oal_uint32 oal_fsm_event_dispatch(oal_fsm_stru* p_fsm ,oal_uint16 us_event,
-                           oal_uint16 us_event_data_len, oal_void *p_event_data)
+    if ((uc_state == OAL_FSM_STATE_NONE) || (uc_state >= OAL_FSM_MAX_STATES) || (uc_state >= p_fsm->uc_num_states)) {
+        OAL_IO_PRINT("oal_fsm_trans_to_state::trans to state %d needs to be a valid state cur_state=%d",
+                     uc_state, uc_cur_state);
+        return OAL_FAIL;
+    }
+
+    if (uc_state == uc_cur_state) {
+        OAL_IO_PRINT("oal_fsm_trans_to_state::trans to state %d needs to be a valid state cur_state=%d",
+                     uc_state, uc_cur_state);
+        return OAL_SUCC;
+    }
+
+    /* µ÷ÓÃÇ°Ò»×´Ì¬µÄÍË³öº¯Êı */
+    if (p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_exit) {
+        p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_exit(p_fsm->p_ctx);
+    }
+
+    /* µ÷ÓÃ±¾×´Ì¬µÄ½øÈëº¯Êı */
+    if (p_fsm->p_state_info[uc_state].oal_fsm_entry) {
+        p_fsm->p_state_info[uc_state].oal_fsm_entry(p_fsm->p_ctx);
+    }
+
+    p_fsm->uc_prev_state = uc_cur_state;
+    p_fsm->uc_cur_state = uc_state;
+
+    return OAL_SUCC;
+}
+
+/*
+ * º¯ Êı Ãû  : oal_fsm_event_dispatch
+ * ¹¦ÄÜÃèÊö  : ×´Ì¬»úµÄÊÂ¼ş´¦Àí½Ó¿Ú
+ * ÊäÈë²ÎÊı  : p_fsm:×´Ì¬»úÖ¸Õë
+ */
+oal_uint32 oal_fsm_event_dispatch(oal_fsm_stru *p_fsm, oal_uint16 us_event,
+                                  oal_uint16 us_event_data_len, oal_void *p_event_data)
 {
     oal_uint32 ul_event_handled = OAL_FAIL;
 
-    if (p_fsm == OAL_PTR_NULL)
-    {
+    if (p_fsm == OAL_PTR_NULL) {
         OAL_IO_PRINT("oal_fsm_event_dispatch:p_fsm = OAL_PTR_NULL");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    if ((p_fsm->uc_cur_state != OAL_FSM_STATE_NONE) && (p_fsm->uc_cur_state < p_fsm->uc_num_states))
-    {
+    if ((p_fsm->uc_cur_state != OAL_FSM_STATE_NONE) && (p_fsm->uc_cur_state < p_fsm->uc_num_states)) {
         p_fsm->us_last_event = us_event;
-        ul_event_handled = (*p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_event)(p_fsm->p_ctx, us_event, us_event_data_len, p_event_data);
+        ul_event_handled = (*p_fsm->p_state_info[p_fsm->uc_cur_state].oal_fsm_event)(p_fsm->p_ctx, us_event,
+                                                                                     us_event_data_len,
+                                                                                     p_event_data);
     }
-    if (OAL_FAIL == ul_event_handled)
-    {
+    if (ul_event_handled == OAL_FAIL) {
         OAL_IO_PRINT("oal_fsm_event_dispatch:event[%d] did not handled in state %d",
-                            us_event,p_fsm->p_state_info[p_fsm->uc_cur_state].state);
+                     us_event, p_fsm->p_state_info[p_fsm->uc_cur_state].state);
         return OAL_FAIL;
     }
 
@@ -153,14 +144,6 @@ oal_uint32 oal_fsm_event_dispatch(oal_fsm_stru* p_fsm ,oal_uint16 us_event,
 }
 /*lint -e19*/
 oal_module_symbol(oal_fsm_create);
-//oal_module_symbol(oal_fsm_destroy);
 oal_module_symbol(oal_fsm_trans_to_state);
 oal_module_symbol(oal_fsm_event_dispatch);
 /*lint +e19*/
-
-#ifdef __cplusplus
-    #if __cplusplus
-        }
-    #endif
-#endif
-

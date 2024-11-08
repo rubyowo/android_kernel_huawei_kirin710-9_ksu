@@ -99,9 +99,12 @@ enum WAL_ATCMDSRV_IOCTL_CMD
     WAL_ATCMDSRV_IOCTL_CMD_DYN_INTERVAL,
     WAL_ATCMDSRV_IOCTL_CMD_PMU_CHECK,
     WAL_ATCMDSRV_IOCTL_CMD_PT_STE,
-    WAL_ATCMDSRV_IOCTL_CMD_SET_BSS_EXPIRE_AGE,      /* 设置扫描结果老化时间*/ 
+    WAL_ATCMDSRV_IOCTL_CMD_SELFCALI_INTERVAL,
+    WAL_ATCMDSRV_IOCTL_CMD_SET_BSS_EXPIRE_AGE,      /* 设置扫描结果老化时间*/
     WAL_ATCMDSRV_IOCTL_CMD_GET_CONN_INFO,           /* 获取连接信息 */
-    
+    WAL_ATCMDSRV_IOCTL_CMD_TAS_ANT_SET,
+    WAL_ATCMDSRV_IOCTL_CMD_BROADCAST_LOOP,
+
 	WAL_ATCMDSRV_IOCTL_CMD_TEST_BUTT
 };
 typedef enum
@@ -179,7 +182,7 @@ typedef struct wal_atcmdsrv_wifi_priv_cmd {
     oal_int32 l_pm_switch;
     oal_int32 l_rx_rssi;
     oal_int32 l_chipcheck_result;
-    oal_uint64 l_chipcheck_time;
+    oal_uint64 ull_chipcheck_time;
     oal_int32 l_uart_loop_set;
     oal_int32 l_sdio_loop_set;
     oal_int32 l_efuse_check_result;
@@ -196,7 +199,10 @@ typedef struct wal_atcmdsrv_wifi_priv_cmd {
     oal_int16 s_wkup_io_status;
     oal_int8  c_dyn_interval[WAL_ATCMDSRV_IOCTL_DYN_INTV_LEN];
     oal_int32 l_pt_set;
+    oal_int32 selfcali_interval_set;
     oal_uint32 ul_bss_expire_age;                               /* 产线扫描结果老化时间 */
+    oal_int32 l_tas_ant_set;
+    oal_uint32 ul_broadcast_test_num;
     struct wal_atcmdsrv_wifi_connect_info st_connect_info;      /* WiFi 连接信息 */
     }pri_data;
 
@@ -262,11 +268,13 @@ extern oal_int32 wlan_device_mem_check(void);
 extern oal_int32 wlan_device_mem_check_result(unsigned long long *time);
 extern oal_int32 conn_test_uart_loop(char *param);
 extern oal_int32 conn_test_sdio_loop(char *param);
-extern oal_int32 conn_test_wifi_chan_loop(char *param);
+extern oal_int32 conn_test_wifi_chan_loop(const char *param);
 extern oal_int32 hwifi_fetch_ori_caldata(oal_uint8* auc_caldata, oal_int32 l_nvm_len);
 extern oal_int32 hwifi_config_init(oal_int32);
 extern oal_int32 hi1102a_dev_io_test(void);
-
+extern oal_uint32 wal_hipriv_packet_check_send_event(oal_net_device_stru *pst_net_dev,
+    mac_vap_stru *pst_mac_vap, hmac_device_stru *pst_hmac_device, oal_uint8 uc_packet_num, oal_uint8 uc_packet_thr,
+    oal_uint8 uc_packet_timeout);
 #endif
 
 #ifdef __cplusplus

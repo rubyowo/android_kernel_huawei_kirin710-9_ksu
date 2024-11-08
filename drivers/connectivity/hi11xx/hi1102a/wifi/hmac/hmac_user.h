@@ -36,11 +36,9 @@ extern "C" {
 
 #define HMAC_USER_SET_AMSDU_NOT_SUPPORT(_user, _tid)    (((_user)->uc_amsdu_supported) &= (oal_uint8)(~(0x01 << ((_tid) & 0x07))))
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
 #define MAX_JUDGE_CACHE_LENGTH      20  /* 业务识别-用户待识别队列长度 */
 #define MAX_CONFIRMED_FLOW_NUM      2   /* 业务识别-用户已识别业务总数 */
 #define MAX_CLEAR_JUDGE_TH          2   /* 业务识别-用户未识别业务导致清空重新识别的次数门限 */
-#endif
 
 #define   HMAC_USER_STATS_PKT_INCR(_member, _cnt)            ((_member) += (_cnt))
 
@@ -88,6 +86,7 @@ typedef struct
     oal_uint16                              us_seq_num;                 /* MPDU对应的序列号 */
     oal_netbuf_head_stru                    st_netbuf_head;             /* MPDU对应的描述符首地址 */
     oal_uint32                              ul_rx_time;                 /* 报文被缓存的时间戳 */
+    oal_bool_enum_uint8                     en_tcp_ack_filtered[2];     /* bitmap, 该MPDU是否被tcp ack过滤机制过滤 */
 } hmac_rx_buf_stru;
 
 typedef struct
@@ -219,7 +218,6 @@ typedef struct tag_hmac_wapi_stru
 
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
 /* 业务识别-五元组结构体: 用于唯一地标识业务流 */
 typedef struct
 {
@@ -292,7 +290,6 @@ typedef struct
     hmac_tx_judge_info_stru             ast_judge_cache[MAX_JUDGE_CACHE_LENGTH];     /* 待识别流队列 */
 
 }hmac_tx_judge_list_stru;
-#endif
 
 /* 11v结构体 */
 #ifdef _PRE_WLAN_FEATURE_11V_ENABLE
@@ -308,8 +305,11 @@ typedef struct
     oal_uint8                            uc_user_status;                         /* 用户11V状态 */
     oal_uint8                            uc_11v_roam_scan_times;                 /* 单信道11v漫游扫描次数  */
     oal_bool_enum_uint8                  en_only_scan_one_time;                  /* 只扫描一次标志位*/
-    frw_timeout_stru                     st_status_wait_timer;                   /* 等待用户回应帧的计时器 */
-    mac_user_callback_func_11v           mac_11v_callback_fn;                   /* 回调函数指针 */
+    oal_uint8                            uc_reject_bsstreq_times;                /* 连续几次拒绝掉AP的漫游请求 */
+    oal_bool_enum_uint8                  en_bsstreq_filter;                      /* 兼容性问题开启dmac过滤11v bsst req帧 */
+    oal_uint8                            auc_reserve[2];
+    mac_user_callback_func_11v           mac_11v_callback_fn;                    /* 回调函数指针 */
+    oal_uint8                            auc_target_bss_addr[WLAN_MAC_ADDR_LEN]; /* 要求漫游的目的MAC地址 */
 }hmac_user_11v_ctrl_stru;
 #endif
 
@@ -351,7 +351,6 @@ typedef struct
     hmac_wapi_stru                  st_wapi;
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
     oal_uint8                       uc_cfm_num;                                         /* 用户已被识别业务个数 */
     oal_uint8                       auc_resv2[1];
     oal_uint16                      us_clear_judge_count;                               /* 未识别出RTP后清空重新识别的次数 在达到门限前可先快速预识别 加快识别过程 防止底层BE VI 调度可能导致的乱序 */
@@ -360,7 +359,6 @@ typedef struct
 
     //oal_spin_lock_stru          st_lock;
 
-#endif
 #ifdef _PRE_WLAN_FEATURE_BTCOEX
     hmac_user_btcoex_stru          st_hmac_user_btcoex;
 #endif

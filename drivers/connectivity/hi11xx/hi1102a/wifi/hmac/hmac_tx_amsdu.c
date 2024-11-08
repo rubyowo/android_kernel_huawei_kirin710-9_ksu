@@ -63,21 +63,21 @@ OAL_STATIC oal_uint32  hmac_amsdu_encap_hdr(hmac_amsdu_stru *pst_amsdu, oal_netb
     pst_cb  = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_buf);
     pst_first_cb->us_mpdu_bytes += pst_cb->us_mpdu_bytes;
 
-#if 0
-    /* WLAN TO WLAN 的 AMSDU报文 */
-    if ((FRW_EVENT_TYPE_WLAN_DTX == pst_cb->en_event_type)
-        && ((OAL_TRUE == pst_cb->en_is_amsdu)))
-    {
-        hmac_tx_netbuf_list_enqueue(&pst_amsdu->st_msdu_head, pst_buf, pst_cb->uc_netbuf_num);
 
-        /* 更新amsdu信息 */
-        pst_amsdu->uc_msdu_num += pst_cb->uc_netbuf_num;
-        pst_amsdu->us_amsdu_size += pst_cb->us_mpdu_len;
-        pst_amsdu->uc_netbuf_num += pst_cb->uc_netbuf_num;
 
-        return OAL_SUCC;
-    }
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /* 暂存数据剩余空间信息 */
     ul_headroom = oal_netbuf_headroom(pst_buf);
@@ -180,7 +180,7 @@ OAL_STATIC oal_uint32  hmac_amsdu_send(hmac_vap_stru *pst_vap, hmac_user_stru *p
     /* 入参检查 */
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_vap) || (OAL_PTR_NULL == pst_user) || (OAL_PTR_NULL == pst_amsdu)))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_AMPDU, "{hmac_amsdu_send::input error %x %x %x}", pst_vap, pst_user, pst_amsdu);
+        OAM_ERROR_LOG3(0, OAM_SF_AMPDU, "{hmac_amsdu_send::input error %x %x %x}", (uintptr_t)pst_vap, (uintptr_t)pst_user, (uintptr_t)pst_amsdu);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -376,7 +376,7 @@ oal_uint32  hmac_amsdu_tx_process(hmac_vap_stru *pst_vap, hmac_user_stru *pst_us
     mac_tx_ctl_stru    *pst_tx_ctl;
 
 #ifdef _PRE_WLAN_NARROW_BAND
-    if(g_uc_hitalk_status & NARROW_BAND_ON_MASK)
+    if(hitalk_status & NARROW_BAND_ON_MASK)
     {
         return HMAC_TX_PASS;
     }
@@ -612,12 +612,12 @@ oal_uint32  hmac_amsdu_notify(hmac_vap_stru *pst_vap, hmac_user_stru *pst_user, 
 
 OAL_STATIC oal_uint32  hmac_amsdu_tx_timeout_process(oal_void *p_arg)
 {
-    hmac_amsdu_stru         *pst_temp_amsdu;
-    mac_tx_ctl_stru         *pst_cb;
-    hmac_user_stru          *pst_user;
+    hmac_amsdu_stru         *pst_temp_amsdu = OAL_PTR_NULL;
+    mac_tx_ctl_stru         *pst_cb = OAL_PTR_NULL;
+    hmac_user_stru          *pst_user = OAL_PTR_NULL;
     oal_uint32               ul_ret;
-    oal_netbuf_stru         *pst_netbuf;
-    hmac_vap_stru           *pst_hmac_vap;
+    oal_netbuf_stru         *pst_netbuf = OAL_PTR_NULL;
+    hmac_vap_stru           *pst_hmac_vap = OAL_PTR_NULL;
     if (OAL_UNLIKELY(OAL_PTR_NULL == p_arg))
     {
         OAM_ERROR_LOG0(0, OAM_SF_AMPDU, "{hmac_amsdu_tx_timeout_process::input null}");
@@ -676,7 +676,7 @@ OAL_STATIC oal_uint32  hmac_amsdu_tx_timeout_process(oal_void *p_arg)
 oal_void hmac_amsdu_init_user(hmac_user_stru *pst_hmac_user_sta)
 {
     oal_uint32           ul_amsdu_idx;
-    hmac_amsdu_stru     *pst_amsdu;
+    hmac_amsdu_stru     *pst_amsdu = OAL_PTR_NULL;
 
     if(OAL_PTR_NULL == pst_hmac_user_sta)
     {
@@ -724,7 +724,7 @@ oal_void hmac_tx_encap_large_skb_amsdu(hmac_vap_stru *pst_hmac_vap, hmac_user_st
     oal_uint16                                us_80211_frame_len;
 
     /* AMPDU+AMSDU功能未开启,由定制化门限决定，高于300Mbps时开启amsdu大包聚合 */
-    if (OAL_FALSE == g_st_tx_large_amsdu.uc_cur_amsdu_ampdu_enable)
+    if (OAL_FALSE == tx_large_amsdu.uc_cur_amsdu_ampdu_enable)
     {
         return;
     }

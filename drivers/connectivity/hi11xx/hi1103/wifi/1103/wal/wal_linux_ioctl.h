@@ -48,6 +48,8 @@ extern "C" {
 #define WAL_HIPRIV_VHT_MCS_MAX          11
 #define WAL_HIPRIV_HE_MCS_MIN          0
 #define WAL_HIPRIV_HE_MCS_MAX          11
+#define WAL_HIPRIV_HE_ER_MCS_MIN        0
+#define WAL_HIPRIV_HE_ER_MCS_MAX        2
 #define WAL_HIPRIV_NSS_MIN              1
 #define WAL_HIPRIV_NSS_MAX              4
 #define WAL_HIPRIV_CH_NUM               4
@@ -95,24 +97,17 @@ extern "C" {
 #define WAL_IOCTL_PRIV_GET_BLACKLIST        (OAL_SIOCIWFIRSTPRIV + 27)
 #endif
 
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-#define WAL_IOCTL_PRIV_SET_ESSID            (OAL_SIOCIWFIRSTPRIV + 4)
-#define WAL_IOCTL_PRIV_GET_STRU             (OAL_SIOCIWFIRSTPRIV + 7)
-#define WAL_IOCTL_PRIV_SET_HWADDR           (OAL_SIOCIWFIRSTPRIV + 10)
-#define WAL_IOCTL_PRIV_GET_PARAM_CHAR       (OAL_SIOCIWFIRSTPRIV + 11)
-#define WAL_IOCTL_PRIV_SET_MAC              (OAL_SIOCIWFIRSTPRIV + 12)
-#define WAL_IOCTL_PRIV_SET_PARAM_CHAR       (OAL_SIOCIWFIRSTPRIV + 15)
-#define WAL_IOCTL_PRIV_GET_ESSID            (OAL_SIOCIWFIRSTPRIV + 19)
-#define WAL_IOCTL_PRIV_GET_STA_STAT_INFO    (OAL_SIOCIWFIRSTPRIV + 25)
-#endif
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-#define WAL_IOCTL_PRIV_SET_EQUIPMENT_PARAM        (OAL_SIOCIWFIRSTPRIV + 27)
-#endif
 #ifdef _PRE_WLAN_FEATURE_DFS
 #define WAL_IOCTL_PRIV_GET_DFS_CHN_STAT      (OAL_SIOCIWFIRSTPRIV + 29)
 #endif
 
 #define WAL_IOCTL_PRIV_SUBCMD_MAX_LEN          20
+
+#define EXT_PA_ISEXIST_5G_MASK      0x000F
+#define EXT_FEM_LP_STATUS_MASK      0x00F0
+#define EXT_FEM_FEM_SPEC_MASK       0xFF00
+#define EXT_FEM_LP_STATUS_OFFSET    4
+#define EXT_FEM_FEM_SPEC_OFFSET     8
 
 
 #define WAL_VAP_FOREACH_USER(_pst_user, _pst_vap, _pst_list_pos)       \
@@ -163,6 +158,7 @@ typedef enum
     WAL_DSCR_PARAM_LTF,
     WLA_DSCR_PARAM_GI,
     WLA_DSCR_PARAM_TXCHAIN,
+    WLA_DSCR_PARAM_DCM,
 
     WAL_DSCR_PARAM_BUTT
 }wal_dscr_param_enum;
@@ -183,6 +179,7 @@ typedef struct {
 
 typedef struct {
     int (*set_filter_enable)(int);
+    int (*set_filter_enable_ex)(int, int);
     int (*add_filter_items)(wal_hw_wifi_filter_item*, int);
     int (*clear_filters)(void);
     int (*get_filter_pkg_stat)(wal_hw_wifi_filter_item*, int, int*);
@@ -204,6 +201,8 @@ typedef enum
     WAL_TX_POW_PARAM_TAS_RSSI_MEASURE,
     WAL_TX_POW_PARAM_TAS_ANT_SWITCH,
 #endif
+    WAL_TX_POW_PARAM_SHOW_TPC_TABLE_GAIN,
+    WAL_TX_POW_POW_SAVE,
 
     WAL_TX_POW_PARAM_BUTT
 }wal_tx_pow_param_enum;
@@ -242,9 +241,7 @@ typedef enum
 extern oal_iw_handler_def_stru g_st_iw_handler_def_etc;
 extern oal_net_device_ops_stru g_st_wal_net_dev_ops_etc;
 extern oal_ethtool_ops_stru g_st_wal_ethtool_ops_etc;
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_iw_handler_def_stru g_st_iw_cfg_handler_def;
-#endif
+
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
@@ -302,11 +299,11 @@ typedef struct
 }wal_ioctl_alg_cfg_stru;
 
 /* 1102 使用wpa_supplicant 下发命令 */
-typedef struct wal_android_wifi_priv_cmd {
-    oal_int32    l_total_len;
-    oal_int32    l_used_len;
-    oal_uint8   *puc_buf;
-}wal_android_wifi_priv_cmd_stru;
+typedef struct wal_wifi_priv_cmd {
+    oal_uint32    ul_total_len;
+    oal_uint32    ul_used_len;
+    oal_uint8    *puc_buf;
+}wal_wifi_priv_cmd_stru;
 
 typedef struct
 {
@@ -314,6 +311,15 @@ typedef struct
     wlan_cfgid_enum_uint16              en_tlv_cfg_id;     /* 配置命令对应的枚举值 */
     oal_uint8                           auc_resv[2];    /* 字节对齐 */
 }wal_ioctl_tlv_stru;
+
+typedef struct
+{
+    oal_int8                           *pc_name;        /* 配置命令字符串 */
+    wlan_cfgid_enum_uint16              en_tlv_cfg_id;     /* 配置命令对应的枚举值 */
+    wal_ioctl_tlv_stru                 *pst_cfg_table;
+}wal_ioctl_str_stru;
+
+extern OAL_CONST wal_ioctl_str_stru   g_ast_set_str_table[];
 
 /*****************************************************************************
   8 UNION定义
@@ -335,6 +341,9 @@ extern oal_uint32  wal_hipriv_set_mcs_etc(oal_net_device_stru *pst_net_dev, oal_
 extern oal_uint32  wal_hipriv_set_mcsac_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 #ifdef _PRE_WLAN_FEATURE_11AX
 extern oal_uint32  wal_hipriv_set_mcsax(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+extern oal_uint32  wal_hipriv_set_mcsax_er(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+#endif
 #endif
 extern oal_uint32  wal_hipriv_vap_info_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 #ifdef _PRE_WLAN_FEATURE_NEGTIVE_DET
@@ -366,7 +375,7 @@ extern oal_int32  wal_stop_vap_etc(oal_net_device_stru *pst_net_dev);
 extern oal_int32 wal_netdev_stop_ap_etc(oal_net_device_stru *pst_net_dev);
 extern oal_int32 wal_init_wlan_vap_etc(oal_net_device_stru *pst_net_dev);
 extern oal_int32 wal_deinit_wlan_vap_etc(oal_net_device_stru *pst_net_dev);
-extern oal_int32 wal_init_wlan_netdev_etc(oal_wiphy_stru *pst_wiphy, char *dev_name);
+extern oal_int32 wal_init_wlan_netdev_etc(oal_wiphy_stru *pst_wiphy, const char *dev_name);
 extern oal_int32  wal_setup_ap_etc(oal_net_device_stru *pst_net_dev);
 extern oal_int32  wal_host_dev_init_etc(oal_net_device_stru *pst_net_dev);
 #endif
@@ -388,7 +397,7 @@ extern oal_uint32 wal_hipriv_arp_offload_enable(oal_net_device_stru *pst_net_dev
 oal_uint32 wal_hipriv_show_arpoffload_info(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_M2S
+#ifdef _PRE_WLAN_FEATURE_M2S_MSS
 extern oal_uint32  wal_ioctl_set_m2s_mss(oal_net_device_stru *pst_net_dev, oal_uint8 uc_m2s_mode);
 #endif
 extern oal_int32  wal_cfg_vap_h2d_event_etc(oal_net_device_stru *pst_net_dev);
@@ -403,27 +412,20 @@ extern oal_void hwifi_config_init_force_etc(oal_void);
 extern oal_int32 hwifi_config_host_global_ini_param(oal_void);
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-extern oal_uint32  wal_hipriv_proc_write_process_rsp(frw_event_mem_stru  *pst_event_mem);
-#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44))
-extern oal_uint32  wal_ioctl_set_essid_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+extern oal_uint32  wal_hipriv_set_essid_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
+extern int  wal_ioctl_set_essid_etc(oal_net_device_stru *pst_net_dev, oal_iw_request_info_stru *pst_info, oal_iwreq_data_union *pst_wrqu, char *pc_extra);
 #endif
-extern oal_uint32  wal_get_cmd_one_arg_etc(oal_int8 *pc_cmd, oal_int8 *pc_arg, oal_uint32 *pul_cmd_offset);
+extern oal_uint32  wal_get_cmd_one_arg_etc(oal_int8 *pc_cmd, oal_int8 *pc_arg, oal_uint32 ul_arg_len, oal_uint32 *pul_cmd_offset);
 extern oal_uint32  wal_hipriv_send_cfg_uint32_data_etc(oal_net_device_stru *pst_net_dev,
     oal_int8 *pc_param, wlan_cfgid_enum_uint16 cfgid);
 #ifdef _PRE_WLAN_CFGID_DEBUG
 extern oal_uint32 wal_hipriv_get_debug_cmd_size_etc(oal_void);
 #endif
 extern oal_uint32  wal_hipriv_alg_cfg_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
-#ifdef _PRE_WLAN_FEATURE_EQUIPMENT_TEST
-oal_int32  wal_hipriv_wait_rsp(oal_net_device_stru *pst_net_dev, oal_int8 *pc_param);
-#endif
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined _PRE_WLAN_FIT_BASED_REALTIME_CALI)
-oal_int32   wal_ioctl_get_power_param(oal_net_device_stru *pst_net_dev, oal_iw_request_info_stru *pst_info, oal_void *p_param, oal_int8 *pc_extra);
-#endif
 
 extern oal_uint32  wal_hipriv_parse_cmd_etc(oal_int8 *pc_cmd);
+extern oal_int32 wal_set_assigned_filter_enable_etc(oal_int32 l_filter_id,oal_int32 l_on);
 extern oal_int32 wal_set_ip_filter_enable_etc(oal_int32 l_on);
 extern oal_int32 wal_add_ip_filter_items_etc(wal_hw_wifi_filter_item *pst_items, oal_int32 l_count);
 extern oal_int32 wal_clear_ip_filter_etc(void);
@@ -438,11 +440,17 @@ extern oal_int32 wal_unregister_ip_filter_etc(void);
 #ifdef _PRE_WLAN_FEATURE_AP_PM
 extern oal_uint32  wal_hipriv_pm_enable(oal_net_device_stru *pst_cfg_net_dev, oal_int8 *pc_param);
 #endif
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_int32  wal_io2cfg_get_chan_info(oal_net_device_stru *pst_net_dev, mac_cfg_channel_param_stru *pst_channel_param, mac_beacon_param_stru *st_beacon_param);
-#endif
+
 #ifdef _PRE_WLAN_FIT_BASED_REALTIME_CALI
 extern oal_uint32  wal_hipriv_dyn_cali_cfg(oal_net_device_stru *pst_net_dev, oal_int8 *puc_param);
+#endif
+
+extern oal_uint32  wal_ioctl_set_ap_mode(oal_net_device_stru *pst_net_dev,oal_uint8 uc_param);
+extern oal_uint32  wal_vendor_cmd_gather_handler(oal_net_device_stru *pst_net_dev, oal_int8 *pc_command);
+extern oal_uint8  wal_vendor_cmd_gather(oal_int8 *pc_command);
+#ifdef _PRE_WLAN_FEATURE_PSM_FLT_STAT
+oal_uint32 wal_ioctl_get_psm_stat(oal_net_device_stru *pst_net_dev,
+    mac_psm_query_type_enum_uint8 en_query_type, oal_ifreq_stru *pst_ifr);
 #endif
 
 #ifdef __cplusplus

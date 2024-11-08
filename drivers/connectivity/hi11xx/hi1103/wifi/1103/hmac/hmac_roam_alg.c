@@ -104,6 +104,32 @@ oal_void hmac_roam_alg_init_etc(hmac_roam_info_stru *pst_roam_info, oal_int8 c_c
 }
 
 
+oal_void hmac_roam_alg_init_rssi_etc(hmac_vap_stru *pst_hmac_vap, hmac_roam_info_stru *pst_roam_info)
+{
+    if (OAL_UNLIKELY(pst_hmac_vap == OAL_PTR_NULL)) {
+        return ;
+    }
+
+    if (OAL_UNLIKELY(pst_roam_info == OAL_PTR_NULL)) {
+        return ;
+    }
+
+#ifdef _PRE_WLAN_FEATURE_11V_ENABLE
+    if (pst_roam_info->en_roam_trigger == ROAM_TRIGGER_11V) {
+        hmac_roam_alg_init_etc(pst_roam_info, pst_roam_info->st_bsst_rsp_info.c_rssi);
+    }
+    else
+#endif
+    if (pst_roam_info->en_roam_trigger == ROAM_TRIGGER_HOME_NETWORK) {
+        hmac_roam_alg_init_etc(pst_roam_info, pst_hmac_vap->station_info.signal);
+    } else {
+        hmac_roam_alg_init_etc(pst_roam_info, ROAM_RSSI_CMD_TYPE);
+    }
+
+    return ;
+}
+
+
 OAL_STATIC oal_int8 hmac_roam_alg_adjust_5G_rssi_weight(oal_int8 c_orginal_rssi)
 {
     oal_int8 c_current_rssi = c_orginal_rssi;
@@ -330,7 +356,7 @@ OAL_STATIC oal_bool_enum_uint8 hmac_roam_alg_find_in_bsslist(hmac_roam_bss_list_
 oal_uint32 hmac_roam_alg_add_blacklist_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid, roam_blacklist_type_enum_uint8 list_type)
 {
     oal_uint32      ul_ret;
-    if ((pst_roam_info == OAL_PTR_NULL) || (puc_bssid == OAL_PTR_NULL))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,puc_bssid))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -348,7 +374,7 @@ oal_uint32 hmac_roam_alg_add_blacklist_etc(hmac_roam_info_stru *pst_roam_info, o
 
 oal_bool_enum_uint8 hmac_roam_alg_find_in_blacklist_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid)
 {
-    if ((pst_roam_info == OAL_PTR_NULL) || (puc_bssid == OAL_PTR_NULL))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,puc_bssid))
     {
         return OAL_FALSE;
     }
@@ -362,7 +388,7 @@ oal_uint32 hmac_roam_alg_add_history_etc(hmac_roam_info_stru *pst_roam_info, oal
 {
     oal_uint32      ul_ret;
 
-    if ((pst_roam_info == OAL_PTR_NULL) || (puc_bssid == OAL_PTR_NULL))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,puc_bssid))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -381,7 +407,7 @@ oal_uint32 hmac_roam_alg_add_history_etc(hmac_roam_info_stru *pst_roam_info, oal
 
 oal_bool_enum_uint8 hmac_roam_alg_find_in_history_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_bssid)
 {
-    if ((pst_roam_info == OAL_PTR_NULL) || (puc_bssid == OAL_PTR_NULL))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,puc_bssid))
     {
         return OAL_FALSE;
     }
@@ -389,53 +415,69 @@ oal_bool_enum_uint8 hmac_roam_alg_find_in_history_etc(hmac_roam_info_stru *pst_r
     return hmac_roam_alg_find_in_bsslist(&pst_roam_info->st_alg.st_history, puc_bssid);
 }
 
-
-oal_uint32 hmac_roam_alg_scan_channel_init_etc(hmac_roam_info_stru *pst_roam_info, mac_scan_req_stru *pst_scan_params)
+oal_uint32 hmac_roam_alg_scan_one_channel_init_etc(hmac_roam_info_stru *pst_roam_info, mac_scan_req_stru *pst_scan_params)
 {
     hmac_vap_stru      *pst_hmac_vap;
     mac_channel_stru   *pst_channel;
-    oal_uint32         ul_ret;
-    oal_uint8          uc_chan_idx;
-    oal_uint8          uc_chan_number;
+    oal_uint32          ul_ret;
 
-    if ((pst_roam_info == OAL_PTR_NULL) || (pst_scan_params == OAL_PTR_NULL))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_scan_channel_init_etc::param null.}");
+    if (OAL_ANY_NULL_PTR2(pst_roam_info, pst_scan_params)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_scan_one_channel_init_etc::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     pst_hmac_vap  = pst_roam_info->pst_hmac_vap;
     pst_channel = &(pst_hmac_vap->st_vap_base_info.st_channel);
-    pst_scan_params->uc_channel_nums  = 0;
 
-    if (ROAM_SCAN_CHANNEL_ORG_1 == pst_roam_info->st_config.uc_scan_orthogonal)
-    {
-        OAM_INFO_LOG3(0, OAM_SF_ROAM, "{hmac_roam_alg_scan_channel_init_etc::scan one channel: ChanNum[%d], Band[%d], ChanIdx[%d]}",
-            pst_channel->uc_chan_number, pst_channel->en_band, pst_channel->uc_chan_idx);
+    OAM_INFO_LOG3(0, OAM_SF_ROAM, "{hmac_roam_alg_scan_channel_init_etc::scan one channel: ChanNum[%d], Band[%d], ChanIdx[%d]}",
+        pst_channel->uc_chan_number, pst_channel->en_band, pst_channel->uc_chan_idx);
 
-        if (pst_roam_info->en_roam_trigger != ROAM_TRIGGER_11V)
-        {
-            pst_scan_params->ast_channel_list[0].uc_chan_number = pst_channel->uc_chan_number;
-            pst_scan_params->ast_channel_list[0].en_band        = pst_channel->en_band;
-            pst_scan_params->ast_channel_list[0].uc_chan_idx    = pst_channel->uc_chan_idx;
-        }
+    if (pst_roam_info->en_roam_trigger == ROAM_TRIGGER_HOME_NETWORK) { // scan 5G home network
+        pst_channel = &(pst_roam_info->st_alg.st_candidate_bss_home.st_channel);
+        pst_scan_params->ast_channel_list[0].uc_chan_number = pst_channel->uc_chan_number;
+        pst_scan_params->ast_channel_list[0].en_band        = pst_channel->en_band;
+        pst_scan_params->ast_channel_list[0].uc_chan_idx    = pst_channel->uc_chan_idx;
+    }
+    else if (pst_roam_info->en_roam_trigger != ROAM_TRIGGER_11V) {
+        pst_scan_params->ast_channel_list[0].uc_chan_number = pst_channel->uc_chan_number;
+        pst_scan_params->ast_channel_list[0].en_band        = pst_channel->en_band;
+        pst_scan_params->ast_channel_list[0].uc_chan_idx    = pst_channel->uc_chan_idx;
+    }
 #ifdef _PRE_WLAN_FEATURE_11V_ENABLE
-        else
-        {
-            pst_scan_params->ast_channel_list[0].uc_chan_number = pst_roam_info->st_bsst_rsp_info.uc_chl_num;
-            pst_scan_params->ast_channel_list[0].en_band = mac_get_band_by_channel_num(pst_roam_info->st_bsst_rsp_info.uc_chl_num);
-            ul_ret = mac_get_channel_idx_from_num_etc(pst_scan_params->ast_channel_list[0].en_band, pst_scan_params->ast_channel_list[0].uc_chan_number,
-                                         &(pst_scan_params->ast_channel_list[0].uc_chan_idx));
-            if (OAL_SUCC != ul_ret)
-            {
-                OAM_WARNING_LOG1(0, OAM_SF_SCAN, "hmac_roam_alg_scan_channel_init_etc::mac_get_channel_idx_from_num_etc fail=%d", ul_ret);
-            }
+    else {
+        pst_scan_params->ast_channel_list[0].uc_chan_number = pst_roam_info->st_bsst_rsp_info.uc_chl_num;
+        pst_scan_params->ast_channel_list[0].en_band = mac_get_band_by_channel_num(pst_roam_info->st_bsst_rsp_info.uc_chl_num);
+        ul_ret = mac_get_channel_idx_from_num_etc(pst_scan_params->ast_channel_list[0].en_band, pst_scan_params->ast_channel_list[0].uc_chan_number,
+                                     &(pst_scan_params->ast_channel_list[0].uc_chan_idx));
+        if (OAL_SUCC != ul_ret) {
+            OAM_WARNING_LOG1(0, OAM_SF_SCAN, "hmac_roam_alg_scan_channel_init_etc::mac_get_channel_idx_from_num_etc fail=%d", ul_ret);
         }
+    }
 #endif
 
-        pst_scan_params->uc_channel_nums = 1;
-        pst_scan_params->uc_max_scan_count_per_channel = 1;
-        return OAL_SUCC;
+    pst_scan_params->uc_channel_nums = 1;
+    pst_scan_params->uc_max_scan_count_per_channel = 1;
+
+    return OAL_SUCC;
+}
+
+
+oal_uint32 hmac_roam_alg_scan_channel_init_etc(hmac_roam_info_stru *pst_roam_info, mac_scan_req_stru *pst_scan_params)
+{
+    oal_uint32         ul_ret;
+    oal_uint8          uc_chan_idx;
+    oal_uint8          uc_chan_number;
+
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,pst_scan_params))
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_scan_channel_init_etc::param null.}");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    pst_scan_params->uc_channel_nums  = 0;
+
+    if (ROAM_SCAN_CHANNEL_ORG_1 == pst_roam_info->st_config.uc_scan_orthogonal) {
+        return hmac_roam_alg_scan_one_channel_init_etc(pst_roam_info, pst_scan_params);
     }
 
     if (pst_roam_info->st_config.uc_scan_band & ROAM_BAND_2G_BIT)
@@ -620,6 +662,86 @@ OAL_STATIC oal_uint32 hmac_roam_alg_calc_avail_channel_capacity(mac_bss_dscr_str
     return ul_avail_channel_capacity;
 }
 
+
+void hmac_roam_alg_record_bss_info(hmac_roam_alg_stru *pst_roam_alg, mac_bss_dscr_stru *pst_bss_dscr)
+{
+    mac_channel_stru           *pst_channel;
+
+    if (OAL_ANY_NULL_PTR2(pst_roam_alg, pst_bss_dscr)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_record_bss_info::param null.}");
+        return ;
+    }
+
+    if (pst_bss_dscr->st_channel.en_band == WLAN_BAND_5G) {
+        if (0 == oal_memcmp(pst_roam_alg->st_candidate_bss_home.auc_bssid,
+                            pst_bss_dscr->auc_bssid, WLAN_MAC_ADDR_LEN)) {
+            return ;
+        }
+
+        if (EOK != memcpy_s(pst_roam_alg->st_candidate_bss_home.auc_bssid, WLAN_MAC_ADDR_LEN,
+                            pst_bss_dscr->auc_bssid, WLAN_MAC_ADDR_LEN)) {
+            OAM_WARNING_LOG0(0, OAM_SF_ANY, "hmac_roam_alg_record_bss_info_for_home::bssid memcpy fail!");
+        }
+
+        pst_channel = &(pst_roam_alg->st_candidate_bss_home.st_channel);
+        if (EOK != memcpy_s(pst_channel, sizeof(mac_channel_stru),
+                            &(pst_bss_dscr->st_channel), sizeof(mac_channel_stru))) {
+            OAM_WARNING_LOG0(0, OAM_SF_ANY, "hmac_roam_alg_record_bss_info_for_home::channel memcpy fail!");
+        }
+    }
+
+    return ;
+}
+
+
+void hmac_roam_alg_home_bss_in_ess(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr)
+{
+    hmac_vap_stru              *pst_hmac_vap;
+    mac_vap_stru               *pst_mac_vap;
+    hmac_roam_alg_stru         *pst_roam_alg;
+    oal_uint8                   i = 0;
+    oal_uint8                   bssid_check = 0;
+
+    if (OAL_ANY_NULL_PTR2(pst_roam_info, pst_bss_dscr))
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_home_bss_in_ess::param null.}");
+        return ;
+    }
+
+    pst_hmac_vap = pst_roam_info->pst_hmac_vap;
+    if (pst_hmac_vap == OAL_PTR_NULL)
+    {
+        return ;
+    }
+
+    pst_mac_vap   = &(pst_hmac_vap->st_vap_base_info);
+    pst_roam_alg = &(pst_roam_info->st_alg);
+
+    bssid_check = 0;
+    for (i = 0; i < WLAN_MAC_ADDR_LEN; i++) {
+        bssid_check += (pst_bss_dscr->auc_bssid[i] == pst_mac_vap->auc_bssid[i]);
+    }
+    if (bssid_check <= 4) {
+        return ;
+    }
+
+    pst_roam_alg->uc_candidate_bss_home_num++;
+
+    if (pst_roam_alg->uc_candidate_bss_home_num == 1) {
+        hmac_roam_alg_record_bss_info(pst_roam_alg, pst_bss_dscr);
+    }
+
+    if ((pst_bss_dscr->st_channel.en_band == WLAN_BAND_5G) &&
+        (pst_bss_dscr->c_rssi >= ROAM_RSSI_NE50_DB) &&
+        (pst_mac_vap->st_channel.en_band == WLAN_BAND_2G)) // current AP is 2G, target AP is 5G
+    {
+        pst_roam_alg->uc_candidate_5g_strong_rssi_num++;
+    }
+
+    return ;
+}
+
+
 oal_uint32 hmac_roam_alg_bss_in_ess_etc(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr)
 {
     hmac_vap_stru              *pst_hmac_vap;
@@ -628,7 +750,7 @@ oal_uint32 hmac_roam_alg_bss_in_ess_etc(hmac_roam_info_stru *pst_roam_info, mac_
     mac_cfg_ssid_param_stru     st_cfg_ssid;
     oal_uint8                   uc_stru_len;
 
-    if ((OAL_PTR_NULL == pst_roam_info) || (OAL_PTR_NULL == pst_bss_dscr))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,pst_bss_dscr))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_bss_in_ess_etc::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -676,6 +798,7 @@ oal_uint32 hmac_roam_alg_bss_in_ess_etc(hmac_roam_info_stru *pst_roam_info, mac_
             pst_roam_alg->uc_candidate_weak_rssi_num++;
         }
 
+        hmac_roam_alg_home_bss_in_ess(pst_roam_info, pst_bss_dscr);
         if (pst_bss_dscr->c_rssi > pst_roam_alg->c_max_rssi)
         {
             pst_roam_alg->c_max_rssi = pst_bss_dscr->c_rssi;
@@ -684,9 +807,131 @@ oal_uint32 hmac_roam_alg_bss_in_ess_etc(hmac_roam_info_stru *pst_roam_info, mac_
     else
     {
         pst_roam_alg->c_current_rssi = pst_bss_dscr->c_rssi;
+        hmac_roam_alg_record_bss_info(pst_roam_alg, pst_bss_dscr);
     }
 
     return OAL_SUCC;
+}
+
+
+oal_uint32 hmac_roam_check_cipher_limit_etc(hmac_roam_info_stru *pst_roam_info, mac_bss_dscr_stru *pst_bss_dscr)
+{
+    mac_vap_stru               *pst_mac_vap;
+    mac_cap_info_stru          *pst_cap_info;
+#ifdef _PRE_WLAN_FEATURE_SAE
+    mac_crypto_settings_stru    st_crypto;
+    oal_uint32                  ul_match_suite;
+    oal_uint32                  aul_rsn_akm_suites[WLAN_PAIRWISE_CIPHER_SUITES] = {0};
+#ifdef _PRE_WLAN_FEATURE_11R
+    wlan_auth_alg_mode_enum_uint8 en_auth_mode;
+    oal_uint8                    *puc_mde = OAL_PTR_NULL;
+#endif
+#endif
+
+    pst_mac_vap = &pst_roam_info->pst_hmac_vap->st_vap_base_info;
+    pst_cap_info = (mac_cap_info_stru *)&pst_bss_dscr->us_cap_info;
+
+    /*  wep的bss直接过滤掉 */
+    if ((OAL_PTR_NULL == pst_bss_dscr->puc_rsn_ie) &&
+        (OAL_PTR_NULL == pst_bss_dscr->puc_wpa_ie) &&
+        (0 != pst_cap_info->bit_privacy))
+    {
+        return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+    }
+
+    /*  open加密方式到wpa/wpa2直接过滤掉 */
+    if ((0 == pst_cap_info->bit_privacy) != (OAL_TRUE != mac_mib_get_privacyinvoked(pst_mac_vap)))
+    {
+        return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+    }
+
+#ifdef _PRE_WLAN_FEATURE_SAE
+    /* 不支持SAE与其他任何非SAE认证方式的漫游 */
+    memset_s(&st_crypto, OAL_SIZEOF(mac_crypto_settings_stru), 0, OAL_SIZEOF(mac_crypto_settings_stru));
+    mac_ie_get_rsn_cipher(pst_bss_dscr->puc_rsn_ie, &st_crypto);
+    ul_match_suite = mac_mib_rsn_akm_match_suites_s(pst_mac_vap, st_crypto.aul_akm_suite,
+        sizeof(st_crypto.aul_akm_suite));
+    if (0 == ul_match_suite)
+    {
+        mac_mib_get_rsn_akm_suites_s(pst_mac_vap, aul_rsn_akm_suites, sizeof(aul_rsn_akm_suites));
+        if (IS_ONLY_SUPPORT_SAE(aul_rsn_akm_suites) || IS_ONLY_SUPPORT_SAE(st_crypto.aul_akm_suite))
+        {
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ROAM,
+                                "hmac_roam_check_cipher_limit::forbid roam between sae and others");
+
+            return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+        }
+    }
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_11R
+    if (pst_roam_info->pst_hmac_vap->bit_11r_enable){
+        en_auth_mode = mac_mib_get_AuthenticationMode(pst_mac_vap);
+        puc_mde = mac_find_ie_etc(MAC_EID_MOBILITY_DOMAIN,
+            pst_bss_dscr->auc_mgmt_buff + MAC_80211_FRAME_LEN + MAC_SSID_OFFSET,
+                pst_bss_dscr->ul_mgmt_len - MAC_80211_FRAME_LEN - MAC_SSID_OFFSET);
+        /* SAE不支持11R漫游 */
+        if ((en_auth_mode == WLAN_WITP_AUTH_SAE) && (puc_mde != OAL_PTR_NULL)){
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ROAM,"hmac_roam_check_cipher_limit_etc::SAE do not support 11r roam");
+            return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+         /* 不支持ft到非ft */
+        }else if ((en_auth_mode == WLAN_WITP_AUTH_FT) &&  (puc_mde == OAL_PTR_NULL)){
+            OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ROAM,"hmac_roam_check_cipher_limit_etc::not support roam from FT  to Non_FT");
+            return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+        }
+    }
+#endif
+
+    return OAL_SUCC;
+}
+
+#ifdef _PRE_WLAN_FEATURE_11K
+
+oal_bool_enum_uint8 hmac_roam_alg_neighbor_rpt_is_target_ap_etc(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_mac_addr)
+{
+    oal_uint8   uc_loop;
+    for(uc_loop = 0; uc_loop < pst_roam_info->uc_neighbor_rpt_bssid_num; uc_loop++)
+    {
+        if(0 == oal_compare_mac_addr(pst_roam_info->auc_neighbor_rpt_bssid[uc_loop], puc_mac_addr))
+        {
+            return OAL_TRUE;
+        }
+    }
+
+    return OAL_FALSE;
+}
+#endif
+
+
+oal_uint32 hmac_roam_alg_check_bssid_limit(hmac_roam_info_stru *pst_roam_info, oal_uint8 *puc_mac_addr)
+{
+    oal_uint32 ul_ret;
+
+    /* 检查黑名单 */
+    ul_ret = hmac_roam_alg_find_in_blacklist_etc(pst_roam_info, puc_mac_addr);
+    if (OAL_TRUE == ul_ret)
+    {
+        OAM_WARNING_LOG3(0, OAM_SF_ROAM,"{hmac_roam_alg_check_bssid_limit:: [%02X:XX:XX:XX:%02X:%02X] in blacklist!}",
+                         puc_mac_addr[0], puc_mac_addr[4], puc_mac_addr[5]);
+        return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+    }
+
+#ifdef _PRE_WLAN_FEATURE_11K
+    /* 检测是否是neighbor report目标AP */
+    if(OAL_TRUE == pst_roam_info->st_scan_h2d_params.st_scan_params.uc_neighbor_report_process_flag)
+    {
+        ul_ret = hmac_roam_alg_neighbor_rpt_is_target_ap_etc(pst_roam_info, puc_mac_addr);
+        if(OAL_TRUE != ul_ret)
+        {
+            OAM_WARNING_LOG3(0, OAM_SF_ROAM,"{hmac_roam_alg_check_bssid_limit:: [%02X:XX:XX:XX:%02X:%02X] is not neighbor report target ap!}",
+                             puc_mac_addr[0], puc_mac_addr[4], puc_mac_addr[5]);
+            return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
+        }
+    }
+#endif
+
+    return OAL_SUCC;
+
 }
 
 
@@ -695,7 +940,6 @@ oal_uint32 hmac_roam_alg_bss_check_etc(hmac_roam_info_stru *pst_roam_info, mac_b
     hmac_vap_stru              *pst_hmac_vap;
     mac_vap_stru               *pst_mac_vap;
     hmac_roam_alg_stru         *pst_roam_alg;
-    mac_cap_info_stru          *pst_cap_info;
     oal_uint8                  *puc_pmkid;
     mac_cfg_ssid_param_stru     st_cfg_ssid;
     oal_uint32                  ul_ret;
@@ -704,7 +948,7 @@ oal_uint32 hmac_roam_alg_bss_check_etc(hmac_roam_info_stru *pst_roam_info, mac_b
     oal_int16                   s_delta_rssi;
     oal_int8                    c_tmp_rssi;
 
-    if ((OAL_PTR_NULL == pst_roam_info) || (OAL_PTR_NULL == pst_bss_dscr))
+    if (OAL_ANY_NULL_PTR2(pst_roam_info,pst_bss_dscr))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ROAM, "{hmac_roam_alg_bss_check_etc::param null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -754,12 +998,9 @@ oal_uint32 hmac_roam_alg_bss_check_etc(hmac_roam_info_stru *pst_roam_info, mac_b
         }
     }
 
-    /* 检查黑名单 */
-    ul_ret = hmac_roam_alg_find_in_blacklist_etc(pst_roam_info, pst_bss_dscr->auc_bssid);
-    if (OAL_TRUE == ul_ret)
+    ul_ret = hmac_roam_alg_check_bssid_limit(pst_roam_info, pst_bss_dscr->auc_bssid);
+    if(OAL_SUCC != ul_ret)
     {
-        OAM_WARNING_LOG3(0, OAM_SF_ROAM,"{hmac_roam_alg_bss_check_etc:: [%02X:XX:XX:XX:%02X:%02X] in blacklist!}",
-                         pst_bss_dscr->auc_bssid[0], pst_bss_dscr->auc_bssid[4], pst_bss_dscr->auc_bssid[5]);
         return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
     }
 
@@ -782,22 +1023,10 @@ oal_uint32 hmac_roam_alg_bss_check_etc(hmac_roam_info_stru *pst_roam_info, mac_b
         }
     }
 
-    /*  wep的bss直接过滤掉 */
-    pst_cap_info = (mac_cap_info_stru *)&pst_bss_dscr->us_cap_info;
-    if ((OAL_PTR_NULL == pst_bss_dscr->puc_rsn_ie) &&
-        (OAL_PTR_NULL == pst_bss_dscr->puc_wpa_ie) &&
-        (0 != pst_cap_info->bit_privacy))
+    if(OAL_SUCC != hmac_roam_check_cipher_limit_etc(pst_roam_info, pst_bss_dscr))
     {
         return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
     }
-
-    /*  open加密方式到wpa/wpa2直接过滤掉 */
-    /*lint -e731*/
-    if ((0 == pst_cap_info->bit_privacy) != (OAL_TRUE != mac_mib_get_privacyinvoked(&pst_hmac_vap->st_vap_base_info)))
-    {
-        return OAL_ERR_CODE_ROAM_NO_VALID_BSS;
-    }
-    /*lint +e731*/
 
     c_tmp_rssi = pst_bss_dscr->c_rssi;
     //终端评审: 2.4G候选AP小于-80dB不再漫游，5G候选AP小于-78dB不再漫游

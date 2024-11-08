@@ -36,18 +36,6 @@ typedef enum
 }dmac_alg_channel_bw_chg_type;
 typedef oal_uint8 dmac_alg_channel_bw_chg_type_uint8;
 
-#ifdef _PRE_WLAN_FEATURE_BTCOEX
-typedef enum
-{
-    BT_OTHER,
-    BT_TRANSFER,
-    BT_SCO_12SLOT,
-    BT_SCO_6SLOT,
-    BT_STATE_TYPE_BUTT
-}dmac_alg_bt_state_type;
-typedef oal_uint8 dmac_alg_bt_state_type_uint8;
-#endif
-
 #define DMAC_ALG_AUTORATE_FRAME_LEN                  1544            /* µäÐÍ°ü³¤ */
 
 
@@ -65,7 +53,7 @@ typedef oal_uint32 (*p_alg_cfg_channel_notify_func)(mac_vap_stru *pst_vap, dmac_
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 typedef oal_uint32 (*p_alg_cfg_start_connect_notify_func)(mac_vap_stru *pst_vap, oal_int c_rssi);
 #ifdef _PRE_WLAN_FEATURE_BTCOEX
-typedef oal_void (*p_alg_cfg_btcoex_state_notify_func)(mac_device_stru *pst_device, dmac_alg_bt_state_type_uint8 en_type);
+typedef oal_void (*p_alg_cfg_btcoex_state_notify_func)(mac_device_stru *pst_device, hal_btcoex_aggr_time_type_uint8 en_type);
 #endif
 #ifdef _PRE_WLAN_FEATURE_SMARTANT
 typedef oal_void (*p_alg_cfg_dual_antenna_state_notify_func)(mac_device_stru *pst_device, oal_uint32 ul_status);

@@ -18,13 +18,7 @@ extern "C" {
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_FRAG_C
-#if 0
-OAL_STATIC oal_void  hmac_defrag_check_seq_addr(hmac_user_stru *pst_hmac_user,
-                                                        mac_ieee80211_frame_stru *pst_last_hdr,
-                                                        mac_ieee80211_frame_stru *pst_mac_hdr,
-                                                        oal_uint16 us_rx_seq,
-                                                        oal_uint8 uc_frag_num);
-#endif
+
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
@@ -42,16 +36,16 @@ oal_uint32 hmac_frag_process(hmac_vap_stru *pst_hmac_vap,
                                    oal_uint32 ul_max_tx_unit)
 {
     mac_ieee80211_frame_stru *pst_mac_header;
-    mac_ieee80211_frame_stru *pst_frag_header;
-    oal_netbuf_stru          *pst_netbuf;
-    oal_netbuf_stru          *pst_netbuf_prev;
+    mac_ieee80211_frame_stru *pst_frag_header = OAL_PTR_NULL;
+    oal_netbuf_stru          *pst_netbuf = OAL_PTR_NULL;
+    oal_netbuf_stru          *pst_netbuf_prev = OAL_PTR_NULL;
     oal_uint32                ul_total_hdrsize;
     oal_uint32                ul_frag_num;
     oal_uint32                ul_frag_size;
     oal_int32                 l_remainder;
     oal_uint32                ul_payload  = 0;
     oal_uint32                ul_offset;
-    mac_tx_ctl_stru          *pst_tx_ctl_copy;
+    mac_tx_ctl_stru          *pst_tx_ctl_copy = OAL_PTR_NULL;
     oal_uint32                ul_mac_hdr_size;
 
     ul_mac_hdr_size = MAC_GET_CB_FRAME_HEADER_LENGTH(pst_tx_ctl);
@@ -86,7 +80,10 @@ oal_uint32 hmac_frag_process(hmac_vap_stru *pst_hmac_vap,
 
         pst_tx_ctl_copy = (mac_tx_ctl_stru *)OAL_NETBUF_CB(pst_netbuf);
         /* 拷贝cb字段 */
-        oal_memcopy(pst_tx_ctl_copy, pst_tx_ctl, MAC_TX_CTL_SIZE);
+        if (EOK != memcpy_s(pst_tx_ctl_copy, MAC_TX_CTL_SIZE, pst_tx_ctl, MAC_TX_CTL_SIZE)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_frag_process::memcpy fail!");
+            return OAL_FAIL;
+        }
         oal_netbuf_copy_queue_mapping(pst_netbuf, pst_netbuf_original);
 
         /*netbuf的headroom大于802.11 mac头长度*/
@@ -94,7 +91,10 @@ oal_uint32 hmac_frag_process(hmac_vap_stru *pst_hmac_vap,
         MAC_GET_CB_80211_MAC_HEAD_TYPE(pst_tx_ctl_copy) = 1;  /*指示mac头部在skb中*/
 
         /* 拷贝帧头内容 */
-        oal_memcopy(pst_frag_header, pst_mac_header, ul_mac_hdr_size);
+        if (EOK != memcpy_s(pst_frag_header, ul_mac_hdr_size, pst_mac_header, ul_mac_hdr_size)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_frag_process::memcpy fail!");
+            return OAL_FAIL;
+        }
         /* 赋值分片号 */
         pst_frag_header->bit_frag_num = ul_frag_num;
         ul_frag_num++;
@@ -135,7 +135,7 @@ oal_uint32  hmac_defrag_timeout_fn_etc(oal_void *p_arg)
 
 
     /* 超时后释放正在重组的分片报文 */
-    if (pst_hmac_user->pst_defrag_netbuf)
+    if (pst_hmac_user->pst_defrag_netbuf != OAL_PTR_NULL)
     {
         pst_netbuf = pst_hmac_user->pst_defrag_netbuf;
 
@@ -158,10 +158,10 @@ oal_netbuf_stru* hmac_defrag_process_etc(hmac_user_stru *pst_hmac_user, oal_netb
     oal_uint8                 uc_last_frag_num  = 0;
     oal_bool_enum_uint8       en_more_frag      = OAL_FALSE;
     oal_netbuf_stru          *pst_new_buf       = OAL_PTR_NULL;
-    mac_rx_ctl_stru          *pst_rx_ctl;
+    mac_rx_ctl_stru          *pst_rx_ctl = OAL_PTR_NULL;
     oal_uint32                ul_ret;
     oal_uint8                 uc_device_id;
-    mac_device_stru          *pst_mac_device;
+    mac_device_stru          *pst_mac_device = OAL_PTR_NULL;
 
     if (0 == ul_hrdsize)
     {
@@ -264,7 +264,7 @@ oal_netbuf_stru* hmac_defrag_process_etc(hmac_user_stru *pst_hmac_user, oal_netb
         /* 将分片报文拷贝到新申请的报文中并挂接到用户结构体下，释放原有的报文 */
         oal_netbuf_init(pst_new_buf, OAL_NETBUF_LEN(pst_netbuf));
         oal_netbuf_copydata(pst_netbuf, 0, oal_netbuf_data(pst_new_buf), OAL_NETBUF_LEN(pst_netbuf));
-        oal_memcopy(OAL_NETBUF_CB(pst_new_buf), OAL_NETBUF_CB(pst_netbuf), MAC_TX_CTL_SIZE);
+        memcpy_s(OAL_NETBUF_CB(pst_new_buf), MAC_TX_CTL_SIZE, OAL_NETBUF_CB(pst_netbuf), MAC_TX_CTL_SIZE);
         pst_rx_ctl = (mac_rx_ctl_stru *)OAL_NETBUF_CB(pst_new_buf);
         MAC_GET_RX_CB_MAC_HEADER_ADDR(pst_rx_ctl) = (oal_uint32 *)OAL_NETBUF_HEADER(pst_new_buf);
         pst_hmac_user->pst_defrag_netbuf = pst_new_buf;
@@ -279,7 +279,7 @@ oal_netbuf_stru* hmac_defrag_process_etc(hmac_user_stru *pst_hmac_user, oal_netb
         pst_last_hdr = (mac_ieee80211_frame_stru *)oal_netbuf_data(pst_hmac_user->pst_defrag_netbuf);
 
         /* 记录最新分片报文的分片号 */
-        pst_last_hdr->bit_seq_num   = pst_mac_hdr->bit_seq_num;/* [false alarm]:pst_mac_hdr不可能为空，这是队列中的元素，队列不可能为空*/
+        pst_last_hdr->bit_seq_num   = pst_mac_hdr->bit_seq_num;
         pst_last_hdr->bit_frag_num  = pst_mac_hdr->bit_frag_num;
 
         oal_netbuf_pull(pst_netbuf, ul_hrdsize);

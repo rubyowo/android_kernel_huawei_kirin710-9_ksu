@@ -29,6 +29,8 @@ extern "C" {
 #include "hmac_config.h"
 #include "hmac_11r_ap.h"
 #include "hmac_mgmt_bss_comm.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_11R_C
@@ -51,7 +53,7 @@ oal_void  hmac_ft_ap_up_rx_auth_req(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru
 
     hmac_rx_mgmt_send_to_host_etc(pst_hmac_vap, pst_auth_req);
     /* 获取STA的地址 */
-    mac_get_address2(oal_netbuf_header(pst_auth_req), auc_addr2);
+    mac_get_address2(oal_netbuf_header(pst_auth_req), auc_addr2, ETHER_ADDR_LEN);
     if(mac_addr_is_zero_etc(auc_addr2))
     {
         OAM_WARNING_LOG4(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_AUTH, "{hmac_ap_rx_auth_req::user mac:%02X:XX:XX:%02X:%02X:%02X is all 0 and invaild!}",
@@ -70,6 +72,7 @@ oal_void  hmac_ft_ap_up_rx_auth_req(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru
     uc_is_seq1 = (WLAN_AUTH_TRASACTION_NUM_ONE == us_auth_seq);
     ul_ret = hmac_encap_auth_rsp_get_user_idx_etc(&(pst_hmac_vap->st_vap_base_info),
                                         auc_addr2,
+                                        sizeof(auc_addr2),
                                         uc_is_seq1,
                                         &uc_auth_resend,
                                         &us_user_index);
@@ -114,19 +117,19 @@ oal_uint32  hmac_ft_ap_up_rx_assoc_req(
 oal_uint32 hmac_ft_assoc(mac_vap_stru *pst_mac_vap, oal_mlme_ie_stru *pst_mlme_ie)
 {
     oal_uint32                      ul_rslt;
-    oal_netbuf_stru                *pst_asoc_rsp;
-    hmac_user_stru                 *pst_hmac_user;
+    oal_netbuf_stru                *pst_asoc_rsp = OAL_PTR_NULL;
+    hmac_user_stru                 *pst_hmac_user = OAL_PTR_NULL;
     oal_uint16                      us_user_idx = 0;
     oal_uint32                      ul_asoc_rsp_len  = 0;
     mac_status_code_enum_uint16     en_status_code;
-    mac_tx_ctl_stru                *pst_tx_ctl;
+    mac_tx_ctl_stru                *pst_tx_ctl = OAL_PTR_NULL;
     mac_cfg_80211_ucast_switch_stru st_80211_ucast_switch;
     mac_cfg_user_info_param_stru    st_hmac_user_info_event;
     oal_uint8                       uc_chip_id;
     oal_uint16                      us_other_user_idx;
-    hmac_vap_stru                  *pst_hmac_other_vap;
-    hmac_user_stru                 *pst_hmac_other_user;
-    hmac_vap_stru                  *pst_hmac_vap;
+    hmac_vap_stru                  *pst_hmac_other_vap = OAL_PTR_NULL;
+    hmac_user_stru                 *pst_hmac_other_user = OAL_PTR_NULL;
+    hmac_vap_stru                  *pst_hmac_vap = OAL_PTR_NULL;
     ul_rslt = mac_vap_find_user_by_macaddr_etc(pst_mac_vap, pst_mlme_ie->auc_macaddr, &us_user_idx);
     if (OAL_SUCC != ul_rslt)
     {
@@ -163,7 +166,7 @@ oal_uint32 hmac_ft_assoc(mac_vap_stru *pst_mac_vap, oal_mlme_ie_stru *pst_mlme_i
         return OAL_ERR_CODE_ALLOC_MEM_FAIL;
     }
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_asoc_rsp);
-    OAL_MEMZERO(pst_tx_ctl, OAL_NETBUF_CB_SIZE());
+    memset_s(pst_tx_ctl, OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     OAL_MEM_NETBUF_TRACE(pst_asoc_rsp, OAL_TRUE);
 
@@ -253,9 +256,10 @@ oal_uint32 hmac_ft_assoc(mac_vap_stru *pst_mac_vap, oal_mlme_ie_stru *pst_mlme_i
         st_80211_ucast_switch.en_frame_switch = OAL_SWITCH_OFF;
         st_80211_ucast_switch.en_cb_switch = OAL_SWITCH_OFF;
         st_80211_ucast_switch.en_dscr_switch = OAL_SWITCH_OFF;
-        oal_memcopy(st_80211_ucast_switch.auc_user_macaddr,
-                (const oal_void *)pst_hmac_user->st_user_base_info.auc_user_mac_addr,
-                OAL_SIZEOF(st_80211_ucast_switch.auc_user_macaddr));
+        memcpy_s(st_80211_ucast_switch.auc_user_macaddr,
+                 OAL_SIZEOF(st_80211_ucast_switch.auc_user_macaddr)
+                 (const oal_void *)pst_hmac_user->st_user_base_info.auc_user_mac_addr,
+                 OAL_SIZEOF(st_80211_ucast_switch.auc_user_macaddr));
         hmac_config_80211_ucast_switch_etc(pst_mac_vap,OAL_SIZEOF(st_80211_ucast_switch),(oal_uint8 *)&st_80211_ucast_switch);
 
         st_80211_ucast_switch.en_frame_direction = OAM_OTA_FRAME_DIRECTION_TYPE_RX;
@@ -322,10 +326,10 @@ oal_uint16  hmac_ft_encap_auth_rsp(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *p
     oal_uint16       us_auth_type           = 0;
     oal_uint16       us_user_index          = 0xffff;
     oal_uint32       ul_ret                 = 0;
-    oal_uint8       *puc_data;
-    mac_tx_ctl_stru *pst_tx_ctl;
+    oal_uint8       *puc_data = OAL_PTR_NULL;
+    mac_tx_ctl_stru *pst_tx_ctl = OAL_PTR_NULL;
 
-    if (OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == pst_auth_rsp || OAL_PTR_NULL == pst_mlme)
+    if (OAL_ANY_NULL_PTR3(pst_mac_vap,pst_auth_rsp,pst_mlme))
     {
         OAM_ERROR_LOG3(0, OAM_SF_AUTH,"{hmac_ft_encap_auth_rsp::pst_mac_vap[0x%p], puc_data[0x%p], pst_mlme[0x%p]}", pst_mac_vap, pst_auth_rsp, pst_mlme);
         return us_auth_rsp_len;
@@ -398,7 +402,11 @@ oal_uint16  hmac_ft_encap_auth_rsp(mac_vap_stru *pst_mac_vap, oal_netbuf_stru *p
 
     OAM_WARNING_LOG4(pst_mac_vap->uc_vap_id, OAM_SF_AUTH, "{hmac_ft_encap_auth_rsp::user mac:%02X:XX:XX:%02X:%02X:%02X}",
                                 pst_mlme->auc_macaddr[0],pst_mlme->auc_macaddr[3],pst_mlme->auc_macaddr[4],pst_mlme->auc_macaddr[5]);
-    oal_memcopy(puc_frame, pst_mlme->auc_optie, pst_mlme->us_optie_len);
+    if (EOK != memcpy_s(puc_frame, WLAN_MEM_NETBUF_SIZE2 - us_auth_rsp_len, pst_mlme->auc_optie, pst_mlme->us_optie_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_AUTH, "hmac_ft_encap_auth_rsp::memcpy fail!");
+        puc_frame[4] = MAC_UNSPEC_FAIL;
+        return us_auth_rsp_len;
+    }
     us_auth_rsp_len += pst_mlme->us_optie_len;
     puc_frame = (oal_uint8 *)(puc_data + us_index);
 
@@ -433,10 +441,10 @@ oal_uint32 hmac_ft_auth(mac_vap_stru *pst_mac_vap, oal_mlme_ie_stru *pst_mlme_ie
     oal_netbuf_stru  *pst_auth_rsp      = OAL_PTR_NULL;
     oal_uint16        us_auth_rsp_len   = 0;
     oal_uint32        ul_ret;
-    mac_tx_ctl_stru  *pst_tx_ctl;
+    mac_tx_ctl_stru  *pst_tx_ctl = OAL_PTR_NULL;
     hmac_vap_stru    *pst_hmac_vap      = OAL_PTR_NULL;
 
-    if (OAL_PTR_NULL == pst_mac_vap || OAL_PTR_NULL == pst_mlme_ie)
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,pst_mlme_ie))
     {
         OAM_ERROR_LOG2(0, OAM_SF_AUTH, "{hmac_ft_auth::param null, pst_mac_vap=0x%p pst_mlme_ie=0x%p.}", pst_mac_vap, pst_mlme_ie);
         return OAL_ERR_CODE_PTR_NULL;
@@ -452,7 +460,7 @@ oal_uint32 hmac_ft_auth(mac_vap_stru *pst_mac_vap, oal_mlme_ie_stru *pst_mlme_ie
 
     OAL_MEM_NETBUF_TRACE(pst_auth_rsp, OAL_TRUE);
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_auth_rsp), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_auth_rsp), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     us_auth_rsp_len = hmac_ft_encap_auth_rsp(pst_mac_vap,
                                           pst_auth_rsp,

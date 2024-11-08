@@ -37,6 +37,8 @@ extern "C" {
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #include "plat_pm_wlan.h"
 #endif
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_LINUX_RX_RSP_C
@@ -58,30 +60,6 @@ extern struct st_rx_auth_to_host
 }g_st_rx_auth_to_host;
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_HILINK_TEMP_PROTECT
-
-typedef struct
-{
-    oal_dlist_head_stru          st_hash_dlist;                     /* 用于hash查找 */
-    oal_uint8                    auc_user_mac_addr[WLAN_MAC_ADDR_LEN];
-    oal_int8                     c_rssi;
-    oal_uint8                    uc_reseved;
-} wal_receive_sta_rssi_member;
-
-typedef struct
-{
-    oal_spin_lock_stru                  st_lock;
-    oal_uint8                           auc_cache_user_mac_addr[WLAN_MAC_ADDR_LEN];
-    oal_int8                            c_rssi;
-    oal_uint8                           uc_reseved;
-    oal_dlist_head_stru                 ast_user_hash[MAC_VAP_USER_HASH_MAX_VALUE];     /* hash数组,使用HASH结构内的DLIST */
-    wal_receive_sta_rssi_member         ast_user_info[MAC_RES_MAX_USER_LIMIT];
-    hmac_notify_all_sta_rssi_member     ast_tmp_user_info[MAC_RES_MAX_USER_LIMIT];
-} wal_receive_sta_rssi_stru;
-
-wal_receive_sta_rssi_stru g_st_wal_receive_sta_rssi_info;
-
-#endif
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -118,13 +96,13 @@ OAL_STATIC oal_void wal_schedule_scan_report(oal_wiphy_stru *pst_wiphy, hmac_sca
 oal_uint32  wal_scan_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 {
     oal_bool_enum                   en_is_aborted;
-    frw_event_stru                 *pst_event;
-    hmac_scan_rsp_stru             *pst_scan_rsp;
-    hmac_device_stru               *pst_hmac_device;
+    frw_event_stru                 *pst_event = OAL_PTR_NULL;
+    hmac_scan_rsp_stru             *pst_scan_rsp = OAL_PTR_NULL;
+    hmac_device_stru               *pst_hmac_device = OAL_PTR_NULL;
     hmac_vap_stru                  *pst_hmac_vap = OAL_PTR_NULL;
-    hmac_bss_mgmt_stru             *pst_bss_mgmt;
-    hmac_scan_stru                 *pst_scan_mgmt;
-    oal_wiphy_stru                 *pst_wiphy;
+    hmac_bss_mgmt_stru             *pst_bss_mgmt = OAL_PTR_NULL;
+    hmac_scan_stru                 *pst_scan_mgmt = OAL_PTR_NULL;
+    oal_wiphy_stru                 *pst_wiphy = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -232,17 +210,17 @@ oal_uint32  wal_scan_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
     oal_connet_result_stru       st_connet_result;
-    oal_net_device_stru         *pst_net_device;
-    hmac_asoc_rsp_stru          *pst_asoc_rsp;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    hmac_asoc_rsp_stru          *pst_asoc_rsp = OAL_PTR_NULL;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34))
     oal_uint32                   ul_ret;
 #endif
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -253,16 +231,21 @@ oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::get net device ptr is null!}");
         oal_free(pst_asoc_rsp->puc_asoc_rsp_ie_buff);
         pst_asoc_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memset(&st_connet_result, 0, OAL_SIZEOF(oal_connet_result_stru));
+    memset_s(&st_connet_result, OAL_SIZEOF(oal_connet_result_stru), 0, OAL_SIZEOF(oal_connet_result_stru));
 
     /* 准备上报内核的关联结果结构体 */
-    oal_memcopy(st_connet_result.auc_bssid, pst_asoc_rsp->auc_addr_ap, WLAN_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(st_connet_result.auc_bssid, WLAN_MAC_ADDR_LEN, pst_asoc_rsp->auc_addr_ap, WLAN_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_asoc_comp_proc_sta_etc::memcpy fail!");
+        oal_free(pst_asoc_rsp->puc_asoc_rsp_ie_buff);
+        pst_asoc_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
+        return OAL_FAIL;
+    }
     st_connet_result.puc_req_ie       = pst_asoc_rsp->puc_asoc_req_ie_buff;
     st_connet_result.ul_req_ie_len    = pst_asoc_rsp->ul_asoc_req_ie_len;
     st_connet_result.puc_rsp_ie       = pst_asoc_rsp->puc_asoc_rsp_ie_buff;
@@ -273,12 +256,10 @@ oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     if (st_connet_result.us_status_code == MAC_SUCCESSFUL_STATUSCODE)
     {
         hmac_device_stru    *pst_hmac_device;
-        oal_wiphy_stru      *pst_wiphy;
-        hmac_bss_mgmt_stru  *pst_bss_mgmt;
+        oal_wiphy_stru      *pst_wiphy = OAL_PTR_NULL;
+        hmac_bss_mgmt_stru  *pst_bss_mgmt = OAL_PTR_NULL;
         pst_hmac_device = hmac_res_get_mac_dev_etc(pst_event->st_event_hdr.uc_device_id);
-        if ((OAL_PTR_NULL == pst_hmac_device)
-            || (OAL_PTR_NULL == pst_hmac_device->pst_device_base_info)
-            || (OAL_PTR_NULL == pst_hmac_device->pst_device_base_info->pst_wiphy))
+        if (OAL_ANY_NULL_PTR3(pst_hmac_device,pst_hmac_device->pst_device_base_info,pst_hmac_device->pst_device_base_info->pst_wiphy))
         {
             OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC,
                             "{wal_asoc_comp_proc_sta_etc::get ptr is null!}");
@@ -314,7 +295,7 @@ oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
                                 GFP_ATOMIC);
     if (OAL_SUCC != ul_ret)
     {
-        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::oal_cfg80211_connect_result_etc fail[%d]!}\r\n", ul_ret);
+        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc::oal_cfg80211_connect_result_etc fail[%d]!}", ul_ret);
     }
 #endif
     oal_free(pst_asoc_rsp->puc_asoc_rsp_ie_buff);
@@ -333,7 +314,7 @@ oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
     OAL_WIFI_REPORT_STA_ACTION(pst_net_device->ifindex, OAL_WIFI_STA_JOIN, st_connet_result.auc_bssid, OAL_MAC_ADDR_LEN);
 
-    OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc status_code[%d] OK!}\r\n", st_connet_result.us_status_code);
+    OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_asoc_comp_proc_sta_etc status_code[%d] OK!}", st_connet_result.us_status_code);
 
     return OAL_SUCC;
 }
@@ -342,17 +323,21 @@ oal_uint32  wal_asoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_roam_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
-    oal_net_device_stru         *pst_net_device;
-    mac_device_stru             *pst_mac_device;
-    hmac_roam_rsp_stru          *pst_roam_rsp;
-    struct ieee80211_channel    *pst_channel;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    mac_device_stru             *pst_mac_device = OAL_PTR_NULL;
+    hmac_roam_rsp_stru          *pst_roam_rsp = OAL_PTR_NULL;
+    struct ieee80211_channel    *pst_channel = OAL_PTR_NULL;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    enum nl80211_band            en_band = NUM_NL80211_BANDS;
+#else
     enum ieee80211_band          en_band = IEEE80211_NUM_BANDS;
+#endif
     oal_int                      l_freq;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -363,7 +348,7 @@ oal_uint32  wal_roam_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_asoc_comp_proc_sta_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_asoc_comp_proc_sta_etc::get net device ptr is null!}");
 	    oal_free(pst_roam_rsp->puc_asoc_rsp_ie_buff);
         pst_roam_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
         return OAL_ERR_CODE_PTR_NULL;
@@ -380,11 +365,22 @@ oal_uint32  wal_roam_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
     if (pst_roam_rsp->st_channel.en_band >= WLAN_BAND_BUTT)
     {
-        OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_asoc_comp_proc_sta_etc::unexpected band[%d]!}\r\n", pst_roam_rsp->st_channel.en_band);
+        OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_asoc_comp_proc_sta_etc::unexpected band[%d]!}", pst_roam_rsp->st_channel.en_band);
 	    oal_free(pst_roam_rsp->puc_asoc_rsp_ie_buff);
         pst_roam_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
         return OAL_FAIL;
     }
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    if (WLAN_BAND_2G == pst_roam_rsp->st_channel.en_band)
+    {
+        en_band = NL80211_BAND_2GHZ;
+    }
+    if (WLAN_BAND_5G == pst_roam_rsp->st_channel.en_band)
+    {
+        en_band = NL80211_BAND_5GHZ;
+    }
+#else
     if (WLAN_BAND_2G == pst_roam_rsp->st_channel.en_band)
     {
         en_band = IEEE80211_BAND_2GHZ;
@@ -393,13 +389,7 @@ oal_uint32  wal_roam_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     {
         en_band = IEEE80211_BAND_5GHZ;
     }
-
-    /* for test, flush 192.168.1.1 arp */
-    //arp_invalidate(pst_net_device, 0xc0a80101);
-
-    //oal_memcopy(pst_net_device->ieee80211_ptr->ssid, "ROAM_ATURBO_EXT_2G", 18);
-    //pst_net_device->ieee80211_ptr->ssid_len = 18;
-    //pst_net_device->ieee80211_ptr->conn->params.ssid_len = 18;
+#endif
 
     l_freq = oal_ieee80211_channel_to_frequency(pst_roam_rsp->st_channel.uc_chan_number, en_band);
 
@@ -414,8 +404,8 @@ oal_uint32  wal_roam_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
                                  pst_roam_rsp->puc_asoc_rsp_ie_buff,
                                  pst_roam_rsp->ul_asoc_rsp_ie_len,
                                  GFP_ATOMIC);
-    OAM_WARNING_LOG4(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta_etc::oal_cfg80211_roamed_etc OK asoc_req_ie[%p] len[%d] asoc_rsp_ie[%p] len[%d]!}\r\n",
-                   pst_roam_rsp->puc_asoc_req_ie_buff, pst_roam_rsp->ul_asoc_req_ie_len, pst_roam_rsp->puc_asoc_rsp_ie_buff, pst_roam_rsp->ul_asoc_rsp_ie_len);
+    OAM_WARNING_LOG4(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_roam_comp_proc_sta_etc::oal_cfg80211_roamed_etc OK asoc_req_ie[%p] len[%d] asoc_rsp_ie[%p] len[%d]!}",
+                   (uintptr_t)(pst_roam_rsp->puc_asoc_req_ie_buff), pst_roam_rsp->ul_asoc_req_ie_len, (uintptr_t)(pst_roam_rsp->puc_asoc_rsp_ie_buff), pst_roam_rsp->ul_asoc_rsp_ie_len);
 	oal_free(pst_roam_rsp->puc_asoc_rsp_ie_buff);
     pst_roam_rsp->puc_asoc_rsp_ie_buff = OAL_PTR_NULL;
 
@@ -433,7 +423,7 @@ oal_uint32  wal_ft_event_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_ft_event_proc_sta_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_ft_event_proc_sta_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -444,7 +434,9 @@ oal_uint32  wal_ft_event_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_ft_event_proc_sta_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ROAM, "{wal_ft_event_proc_sta_etc::get net device ptr is null!}");
+        oal_free(pst_ft_event->puc_ft_ie_buff);
+        pst_ft_event->puc_ft_ie_buff = OAL_PTR_NULL;
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -452,11 +444,13 @@ oal_uint32  wal_ft_event_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     st_cfg_ft_event.ies_len       = pst_ft_event->us_ft_ie_len;
     st_cfg_ft_event.target_ap     = pst_ft_event->auc_bssid;
     st_cfg_ft_event.ric_ies       = OAL_PTR_NULL;
-    st_cfg_ft_event.ric_ies_len   = 0;
+    st_cfg_ft_event.ric_ies_len   =  pst_ft_event->us_ft_ie_len;;
 
     /* 调用内核接口，上报关联结果 */
     oal_cfg80211_ft_event_etc(pst_net_device, &st_cfg_ft_event);
 
+    oal_free(pst_ft_event->puc_ft_ie_buff);
+    pst_ft_event->puc_ft_ie_buff = OAL_PTR_NULL;
     return OAL_SUCC;
 }
 #endif //_PRE_WLAN_FEATURE_11R
@@ -464,17 +458,17 @@ oal_uint32  wal_ft_event_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_disasoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
     oal_disconnect_result_stru    st_disconnect_result;
-    oal_net_device_stru         *pst_net_device;
-    oal_uint16                  *pus_disasoc_reason_code;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
+    oal_uint16                  *pus_disasoc_reason_code = OAL_PTR_NULL;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34))
     oal_uint32                   ul_ret;
 #endif
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -484,14 +478,14 @@ oal_uint32  wal_disasoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::get net device ptr is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 获取去关联原因码指针 */
     pus_disasoc_reason_code = (oal_uint16 *)pst_event->auc_event_data;
 
-    oal_memset(&st_disconnect_result, 0, OAL_SIZEOF(oal_disconnect_result_stru));
+    memset_s(&st_disconnect_result, OAL_SIZEOF(oal_disconnect_result_stru), 0, OAL_SIZEOF(oal_disconnect_result_stru));
 
     /* 准备上报内核的关联结果结构体 */
     st_disconnect_result.us_reason_code = *pus_disasoc_reason_code;
@@ -511,7 +505,7 @@ oal_uint32  wal_disasoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
                               GFP_ATOMIC);
     if (OAL_SUCC != ul_ret)
     {
-        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::oal_cfg80211_disconnected_etc fail[%d]!}\r\n", ul_ret);
+        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc::oal_cfg80211_disconnected_etc fail[%d]!}", ul_ret);
         return ul_ret;
     }
 #endif
@@ -519,7 +513,7 @@ oal_uint32  wal_disasoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
     //sta模式下，不需要传mac地址
     OAL_WIFI_REPORT_STA_ACTION(pst_net_device->ifindex, OAL_WIFI_STA_LEAVE, 0, 0);
 
-    OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc reason_code[%d] OK!}\r\n", st_disconnect_result.us_reason_code);
+    OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disasoc_comp_proc_sta_etc reason_code[%d] OK!}", st_disconnect_result.us_reason_code);
 
     return OAL_SUCC;
 }
@@ -528,8 +522,8 @@ oal_uint32  wal_disasoc_comp_proc_sta_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_connect_new_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru              *pst_event;
-    oal_net_device_stru         *pst_net_device;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru         *pst_net_device = OAL_PTR_NULL;
     oal_uint8                    auc_connect_user_addr[WLAN_MAC_ADDR_LEN];
     oal_station_info_stru        st_station_info;
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34))
@@ -541,7 +535,7 @@ oal_uint32  wal_connect_new_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -551,13 +545,11 @@ oal_uint32  wal_connect_new_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::get net device ptr is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-
-
-    oal_memset(&st_station_info, 0, OAL_SIZEOF(oal_station_info_stru));
+    memset_s(&st_station_info, OAL_SIZEOF(oal_station_info_stru), 0, OAL_SIZEOF(oal_station_info_stru));
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44))
     /* 向内核标记填充了关联请求帧的ie信息 */
@@ -576,27 +568,35 @@ oal_uint32  wal_connect_new_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
     st_station_info.assoc_req_ies_len = pst_asoc_user_req_info->ul_assoc_req_ie_len;
 
     /* 获取关联user mac addr */
-    oal_memcopy(auc_connect_user_addr, (oal_uint8 *)pst_asoc_user_req_info->auc_user_mac_addr, WLAN_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(auc_connect_user_addr, WLAN_MAC_ADDR_LEN,
+                        (oal_uint8 *)pst_asoc_user_req_info->auc_user_mac_addr, WLAN_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_connect_new_sta_proc_ap_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 #else
     /* 获取关联user mac addr */
-    oal_memcopy(auc_connect_user_addr, (oal_uint8 *)pst_event->auc_event_data, WLAN_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(auc_connect_user_addr, WLAN_MAC_ADDR_LEN,
+                        (oal_uint8 *)pst_event->auc_event_data, WLAN_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_connect_new_sta_proc_ap_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 #endif
 
     /* 调用内核接口，上报STA关联结果 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34))
     oal_cfg80211_new_sta_etc(pst_net_device, auc_connect_user_addr, &st_station_info, GFP_ATOMIC);
 #else
-    ul_ret = oal_cfg80211_new_sta_etc(pst_net_device, auc_connect_user_addr, &st_station_info, GFP_ATOMIC);
+    ul_ret = oal_cfg80211_new_sta_etc(pst_net_device, &auc_connect_user_addr[0], &st_station_info, GFP_ATOMIC);
     if (OAL_SUCC != ul_ret)
     {
-        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::oal_cfg80211_new_sta_etc fail[%d]!}\r\n", ul_ret);
+        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc::oal_cfg80211_new_sta_etc fail[%d]!}", ul_ret);
         return ul_ret;
     }
 #endif
 
     OAL_WIFI_REPORT_STA_ACTION(pst_net_device->ifindex, OAL_WIFI_STA_JOIN, auc_connect_user_addr, OAL_MAC_ADDR_LEN);
 
-    OAM_WARNING_LOG4(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc mac[%02X:XX:XX:%02X:%02X:%02X] OK!}\r\n",
+    OAM_WARNING_LOG4(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_connect_new_sta_proc_ap_etc mac[%02X:XX:XX:%02X:%02X:%02X] OK!}",
             auc_connect_user_addr[0],
             auc_connect_user_addr[3],
             auc_connect_user_addr[4],
@@ -609,8 +609,8 @@ oal_uint32  wal_connect_new_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_disconnect_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru            *pst_event;
-    oal_net_device_stru       *pst_net_device;
+    frw_event_stru            *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru       *pst_net_device = OAL_PTR_NULL;
     oal_uint8                  auc_disconn_user_addr[WLAN_MAC_ADDR_LEN];
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,44))
     oal_int32                  l_ret;
@@ -618,7 +618,7 @@ oal_uint32  wal_disconnect_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -628,26 +628,29 @@ oal_uint32  wal_disconnect_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::get net device ptr is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
 
     /* 获取去关联user mac addr */
-    oal_memcopy(auc_disconn_user_addr, (oal_uint8 *)pst_event->auc_event_data, WLAN_MAC_ADDR_LEN);
+    if (EOK != memcpy_s(auc_disconn_user_addr, WLAN_MAC_ADDR_LEN, (oal_uint8 *)pst_event->auc_event_data, WLAN_MAC_ADDR_LEN)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ASSOC, "wal_disconnect_sta_proc_ap_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     /* 调用内核接口，上报STA去关联结果 */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,44))
     oal_cfg80211_del_sta_etc(pst_net_device, auc_disconn_user_addr, GFP_ATOMIC);
 #else
-    l_ret = oal_cfg80211_del_sta_etc(pst_net_device, auc_disconn_user_addr, GFP_ATOMIC);
+    l_ret = oal_cfg80211_del_sta_etc(pst_net_device, &auc_disconn_user_addr[0], GFP_ATOMIC);
     if (OAL_SUCC != l_ret)
     {
-        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::oal_cfg80211_del_sta_etc return fail[%d]!}\r\n", l_ret);
+        OAM_WARNING_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc::oal_cfg80211_del_sta_etc return fail[%d]!}", l_ret);
         return OAL_FAIL;
     }
 #endif
-    OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc mac[%x %x %x] OK!}\r\n", auc_disconn_user_addr[3], auc_disconn_user_addr[4], auc_disconn_user_addr[5]);
+    OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ASSOC, "{wal_disconnect_sta_proc_ap_etc mac[%x %x %x] OK!}", auc_disconn_user_addr[3], auc_disconn_user_addr[4], auc_disconn_user_addr[5]);
 
     OAL_WIFI_REPORT_STA_ACTION(pst_net_device->ifindex, OAL_WIFI_STA_LEAVE, auc_disconn_user_addr, OAL_MAC_ADDR_LEN);
 
@@ -657,13 +660,13 @@ oal_uint32  wal_disconnect_sta_proc_ap_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32  wal_mic_failure_proc_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru               *pst_event;
-    oal_net_device_stru          *pst_net_device;
-    hmac_mic_event_stru          *pst_mic_event;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru          *pst_net_device = OAL_PTR_NULL;
+    hmac_mic_event_stru          *pst_mic_event = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -674,174 +677,35 @@ oal_uint32  wal_mic_failure_proc_etc(frw_event_mem_stru *pst_event_mem)
     pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::get net device ptr is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     /* 调用内核接口，上报mic攻击 */
     oal_cfg80211_mic_failure_etc(pst_net_device, pst_mic_event->auc_user_mac, pst_mic_event->en_key_type, pst_mic_event->l_key_id, NULL, GFP_ATOMIC);
 
-    OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::mac[%x %x %x] OK!}\r\n",
+    OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_CRYPTO, "{wal_mic_failure_proc_etc::mac[%x %x %x] OK!}",
                   pst_mic_event->auc_user_mac[3], pst_mic_event->auc_user_mac[4], pst_mic_event->auc_user_mac[5]);
 
     return OAL_SUCC;
 }
 
-#ifdef _PRE_WLAN_FEATURE_HILINK_TEMP_PROTECT
-
-oal_void wal_init_all_sta_rssi_info(oal_void)
-{
-    oal_uint32                      ul_loop;
-    wal_receive_sta_rssi_stru      *pst_wal_sta_stru = &g_st_wal_receive_sta_rssi_info;
-
-    OAL_MEMZERO(pst_wal_sta_stru, OAL_SIZEOF(wal_receive_sta_rssi_stru));
-    oal_spin_lock_init(&(pst_wal_sta_stru->st_lock));
-    for (ul_loop = 0; ul_loop < MAC_VAP_USER_HASH_MAX_VALUE; ul_loop++)
-    {
-        oal_dlist_init_head(&pst_wal_sta_stru->ast_user_hash[ul_loop]);
-    }
-}
-
-
-oal_uint32 wal_get_rssi_by_mac_addr(oal_net_device_stru *pst_dev, oal_uint8 *puc_mac_addr, oal_uint32 *pul_rssi)
-{
-    wal_receive_sta_rssi_stru      *pst_wal_sta_stru = &g_st_wal_receive_sta_rssi_info;
-
-    *pul_rssi = 0;
-    oal_spin_lock_bh(&(pst_wal_sta_stru->st_lock));
-    if (!oal_compare_mac_addr(pst_wal_sta_stru->auc_cache_user_mac_addr, puc_mac_addr))
-    {
-        *pul_rssi = (oal_uint32)pst_wal_sta_stru->c_rssi;
-        oal_spin_unlock_bh(&(pst_wal_sta_stru->st_lock));
-        return OAL_SUCC;
-    }
-    else
-    {
-        oal_dlist_head_stru         *pst_entry;
-        wal_receive_sta_rssi_member *pst_sta_member;
-        oal_uint16  us_user_hash_value = MAC_CALCULATE_HASH_VALUE(puc_mac_addr);
-
-        OAL_DLIST_SEARCH_FOR_EACH(pst_entry, &(pst_wal_sta_stru->ast_user_hash[us_user_hash_value]))
-        {
-            if (OAL_PTR_NULL == pst_entry)
-            {
-                break;
-            }
-            pst_sta_member = (wal_receive_sta_rssi_member *)OAL_DLIST_GET_ENTRY(pst_entry, wal_receive_sta_rssi_member, st_hash_dlist);
-            if (OAL_PTR_NULL == pst_sta_member)
-            {
-                break;
-            }
-
-            /* 相同的MAC地址 */
-            if (!oal_compare_mac_addr(pst_sta_member->auc_user_mac_addr, puc_mac_addr))
-            {
-
-                *pul_rssi = (oal_uint32)pst_sta_member->c_rssi;
-
-                /*更新cache user*/
-                oal_set_mac_addr(pst_wal_sta_stru->auc_cache_user_mac_addr, pst_sta_member->auc_user_mac_addr);
-                pst_wal_sta_stru->c_rssi= pst_sta_member->c_rssi;
-                oal_spin_unlock_bh(&(pst_wal_sta_stru->st_lock));
-                return OAL_SUCC;
-            }
-        }
-    }
-    oal_spin_unlock_bh(&(pst_wal_sta_stru->st_lock));
-    return OAL_FAIL;
-}
-
-/*lint -e19*/
-oal_module_symbol(wal_get_rssi_by_mac_addr);
-/*lint +e19*/
-
-
-oal_uint32 wal_receive_all_sta_rssi_proc(frw_event_mem_stru *pst_event_mem)
-{
-    oal_int8                         c_rssi_temp;
-    oal_uint32                       ul_loop;
-    oal_uint16                       us_user_hash_idx;
-    oal_dlist_head_stru             *pst_dlist_head;
-    hmac_notify_all_sta_rssi_member *pst_hmac_sta_rssi_member;
-    hmac_notify_all_sta_rssi_stru   *pst_hmac_sta_rssi_stru;
-    wal_receive_sta_rssi_member     *pst_wal_sta_member;
-    wal_receive_sta_rssi_stru       *pst_wal_sta_stru = &g_st_wal_receive_sta_rssi_info;
-
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_HILINK, "{wal_receive_all_sta_rssi_proc::pst_event_mem is null!}\r\n");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    pst_hmac_sta_rssi_stru = (hmac_notify_all_sta_rssi_stru *)frw_get_event_payload(pst_event_mem);
-    oal_memcopy(&pst_wal_sta_stru->ast_tmp_user_info[pst_hmac_sta_rssi_stru->ul_start_index],
-                pst_hmac_sta_rssi_stru->ast_sta_rssi,
-                pst_hmac_sta_rssi_stru->ul_sta_count * OAL_SIZEOF(hmac_notify_all_sta_rssi_member));
-
-    if (pst_hmac_sta_rssi_stru->ul_start_index + pst_hmac_sta_rssi_stru->ul_sta_count < MAC_RES_MAX_USER_LIMIT)
-    {
-        return OAL_SUCC;
-    }
-
-    //所有sta的rssi信息接收完，才更新wal层数据
-    oal_spin_lock_bh(&(pst_wal_sta_stru->st_lock));
-    oal_memset(pst_wal_sta_stru->auc_cache_user_mac_addr, 0, WLAN_MAC_ADDR_LEN);
-    pst_wal_sta_stru->c_rssi = 0;
-    for (ul_loop = 0; ul_loop < MAC_VAP_USER_HASH_MAX_VALUE; ul_loop++)
-    {
-        oal_dlist_init_head(&pst_wal_sta_stru->ast_user_hash[ul_loop]);
-    }
-    pst_hmac_sta_rssi_member = pst_wal_sta_stru->ast_tmp_user_info;
-    for (ul_loop = 0; ul_loop < MAC_RES_MAX_USER_LIMIT; ul_loop++, pst_hmac_sta_rssi_member++)
-    {
-        pst_wal_sta_member = &pst_wal_sta_stru->ast_user_info[ul_loop];
-        if (pst_hmac_sta_rssi_member->uc_valid == 0)
-        {
-            continue;
-        }
-
-        oal_memcopy(pst_wal_sta_member->auc_user_mac_addr, pst_hmac_sta_rssi_member->auc_user_mac_addr, WLAN_MAC_ADDR_LEN);
-        c_rssi_temp = pst_hmac_sta_rssi_member->c_rssi + HMAC_FBT_RSSI_ADJUST_VALUE;
-        if (c_rssi_temp < 0)
-        {
-            c_rssi_temp = 0;
-        }
-        if (c_rssi_temp > HMAC_FBT_RSSI_MAX_VALUE)
-        {
-            c_rssi_temp = HMAC_FBT_RSSI_MAX_VALUE;
-        }
-        pst_wal_sta_member->c_rssi = c_rssi_temp;
-        us_user_hash_idx = MAC_CALCULATE_HASH_VALUE(pst_wal_sta_member->auc_user_mac_addr);
-        pst_dlist_head = &(pst_wal_sta_stru->ast_user_hash[us_user_hash_idx]);
-        oal_dlist_add_head(&(pst_wal_sta_member->st_hash_dlist), pst_dlist_head);
-    }
-
-    oal_spin_unlock_bh(&(pst_wal_sta_stru->st_lock));
-    return OAL_SUCC;
-}
-
-#endif
-
 
 oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru               *pst_event;
-    oal_net_device_stru          *pst_net_device;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_net_device_stru          *pst_net_device = OAL_PTR_NULL;
     oal_int32                     l_freq;
     oal_uint8                     uc_rssi;
-    oal_uint8                    *puc_buf;
+    oal_uint8                    *puc_buf = OAL_PTR_NULL;
     oal_uint16                    us_len;
     oal_uint32                    ul_ret;
-    hmac_rx_mgmt_event_stru      *pst_mgmt_frame;
-    oal_ieee80211_mgmt           *pst_ieee80211_mgmt;
-#if 0
-#ifdef _PRE_WLAN_DFT_STAT
-    mac_vap_stru                 *pst_mac_vap;
-#endif
-#endif
+    hmac_rx_mgmt_event_stru      *pst_mgmt_frame = OAL_PTR_NULL;
+    oal_ieee80211_mgmt           *pst_ieee80211_mgmt = OAL_PTR_NULL;
+
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -850,10 +714,9 @@ oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem)
 
     /* 获取net_device*/
     pst_net_device = oal_dev_get_by_name(pst_mgmt_frame->ac_name);
-    //pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
     if (OAL_PTR_NULL == pst_net_device)
     {
-        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::get net device ptr is null!}\r\n");
+        OAM_ERROR_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::get net device ptr is null!}");
         oal_free(pst_mgmt_frame->puc_buf);
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -875,7 +738,7 @@ oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem)
     /* 如果是auth帧或者assoc/reassoc req帧，上报给hostapd */
     if (WLAN_FC0_SUBTYPE_AUTH == (pst_ieee80211_mgmt->frame_control & 0xFC))
     {
-        OAM_WARNING_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::auth req!}\r\n");
+        OAM_WARNING_LOG0(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::auth req!}");
         /* tasklet直接上报auth帧可能跟ioctl调用死锁 采用workqueue异步上报 */
         g_st_rx_auth_to_host.pst_dev = pst_net_device;
         g_st_rx_auth_to_host.puc_buf = puc_buf;
@@ -894,10 +757,9 @@ oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem)
         ul_ret = oal_cfg80211_rx_mgmt_etc(pst_net_device, l_freq, uc_rssi, puc_buf, us_len, GFP_ATOMIC);
         if (OAL_SUCC != ul_ret)
         {
-            //OAL_IO_PRINT("wal_send_mgmt_to_host_etc::net_device_name:%s\r\n", pst_mgmt_frame->ac_name);
-            OAM_WARNING_LOG2(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::fc[0x%04x], if_type[%d]!}\r\n",
+            OAM_WARNING_LOG2(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::fc[0x%02x], if_type[%d]!}\r\n",
                             pst_ieee80211_mgmt->frame_control, pst_net_device->ieee80211_ptr->iftype);
-            OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::oal_cfg80211_rx_mgmt_etc fail[%d]!len[%d], freq[%d]}\r\n",
+            OAM_WARNING_LOG3(pst_event->st_event_hdr.uc_vap_id, OAM_SF_ANY, "{wal_send_mgmt_to_host_etc::oal_cfg80211_rx_mgmt_etc fail[%d]!len[%d], freq[%d]}",
                             ul_ret, us_len, l_freq);
             oal_free(puc_buf);
             return OAL_FAIL;
@@ -912,17 +774,16 @@ oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem)
 
 oal_uint32 wal_p2p_listen_timeout_etc(frw_event_mem_stru *pst_event_mem)
 {
-#if (_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1151)
-    frw_event_stru               *pst_event;
-    oal_wireless_dev_stru        *pst_wdev;
+    frw_event_stru               *pst_event = OAL_PTR_NULL;
+    oal_wireless_dev_stru        *pst_wdev = OAL_PTR_NULL;
     oal_uint64                    ull_cookie;
     oal_ieee80211_channel_stru    st_listen_channel;
-    hmac_p2p_listen_expired_stru *pst_p2p_listen_expired;
-    mac_device_stru              *pst_mac_device;
+    hmac_p2p_listen_expired_stru *pst_p2p_listen_expired = OAL_PTR_NULL;
+    mac_device_stru              *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
-        OAM_ERROR_LOG0(0, OAM_SF_P2P, "{wal_p2p_listen_timeout_etc::pst_event_mem is null!}\r\n");
+        OAM_ERROR_LOG0(0, OAM_SF_P2P, "{wal_p2p_listen_timeout_etc::pst_event_mem is null!}");
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -945,11 +806,72 @@ oal_uint32 wal_p2p_listen_timeout_etc(frw_event_mem_stru *pst_event_mem)
                                         &st_listen_channel,
                                         GFP_ATOMIC);
     OAM_WARNING_LOG1(0, OAM_SF_P2P, "{wal_p2p_listen_timeout_etc::END!cookie [%x]}\r\n", ull_cookie);
-#endif
 
     return OAL_SUCC;
 }
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+
+oal_uint32 wal_report_external_auth_req_etc(frw_event_mem_stru *pst_event_mem)
+{
+    frw_event_stru               *pst_event;
+    oal_net_device_stru          *pst_net_device;
+    hmac_external_auth_req_stru  *pst_ext_auth_req;
+    oal_cfg80211_external_auth_stru st_external_auth_req;
+    oal_int                       l_ret;
+    oal_int32                     l_memcpy_ret;
+
+    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_SAE, "{wal_report_external_auth_req_etc::pst_event_mem is null!}");
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    pst_event = frw_get_event_stru(pst_event_mem);
+
+    /* 获取net_device*/
+    pst_net_device = hmac_vap_get_net_device_etc(pst_event->st_event_hdr.uc_vap_id);
+    if (OAL_PTR_NULL == pst_net_device)
+    {
+        OAM_ERROR_LOG1(pst_event->st_event_hdr.uc_vap_id, OAM_SF_SAE,
+                        "{wal_report_external_auth_req_etc::get net device ptr is null! vap_id %d}",
+                        pst_event->st_event_hdr.uc_vap_id);
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+
+    pst_ext_auth_req = (hmac_external_auth_req_stru *)(pst_event->auc_event_data);
+
+    st_external_auth_req.action         = pst_ext_auth_req->en_action;
+    st_external_auth_req.key_mgmt_suite = pst_ext_auth_req->ul_key_mgmt_suite;
+    st_external_auth_req.status         = pst_ext_auth_req->us_status;
+    st_external_auth_req.ssid.ssid_len  = OAL_MIN(pst_ext_auth_req->st_ssid.uc_ssid_len, OAL_IEEE80211_MAX_SSID_LEN);
+    l_memcpy_ret = memcpy_s(st_external_auth_req.ssid.ssid, st_external_auth_req.ssid.ssid_len,
+                            pst_ext_auth_req->st_ssid.auc_ssid, st_external_auth_req.ssid.ssid_len);
+    l_memcpy_ret += memcpy_s(st_external_auth_req.bssid, OAL_ETH_ALEN_SIZE, pst_ext_auth_req->auc_bssid, OAL_ETH_ALEN);
+    if (l_memcpy_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_SAE, "wal_report_external_auth_req_etc::memcpy fail!");
+        return OAL_FAIL;
+    }
+
+    l_ret = oal_cfg80211_external_auth_request(pst_net_device,
+                                        &st_external_auth_req,
+                                        GFP_ATOMIC);
+
+    OAM_WARNING_LOG4(0, OAM_SF_SAE, "{wal_report_external_auth_req_etc::action %x, status %d, key_mgmt 0x%X, ssid_len %d}",
+                        st_external_auth_req.action,
+                        st_external_auth_req.status,
+                        st_external_auth_req.key_mgmt_suite,
+                        st_external_auth_req.ssid.ssid_len);
+
+    OAM_WARNING_LOG4(0, OAM_SF_SAE, "{wal_report_external_auth_req_etc::mac[%02X:XX:XX:XX:%02X:%02X], ret[%d]}",
+                    st_external_auth_req.bssid[0],
+                    st_external_auth_req.bssid[4],
+                    st_external_auth_req.bssid[5],
+                    l_ret);
+
+    return l_ret;
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
 #ifdef __cplusplus
     #if __cplusplus

@@ -126,6 +126,8 @@ extern "C" {
 #define WAL_GET_STATION_THRESHOLD        1000 /* 固定时间内允许一次抛事件读DMAC RSSI */
 #define WAL_VOWIFI_GET_STATION_THRESHOLD 200  /*亮屏且vowifi正在使用时*/
 
+#define WLAN_VAP_MODE_LEGACY_VAP(_uc_p2p_mode, _uc_vap_mode)  \
+    ((WLAN_LEGACY_VAP_MODE == (_uc_p2p_mode)) && (WLAN_VAP_MODE_BSS_STA == (_uc_vap_mode)))
 
 typedef struct cookie_arry
 {
@@ -140,7 +142,37 @@ typedef struct cookie_arry
     .hw_value       = (_rateid),                                \
     .flags          = (_flags),                                 \
 }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+#define CHAN2G(_channel, _freq, _flags)  \
+{                       \
+    .band                   = NL80211_BAND_2GHZ,            \
+    .center_freq            = (_freq),                      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
 
+#define CHAN5G(_channel, _flags) \
+{                                              \
+    .band                   = NL80211_BAND_5GHZ,            \
+    .center_freq            = 5000 + (5 * (_channel)),      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
+
+#define CHAN4_9G(_channel, _flags) \
+{                                              \
+    .band                   = NL80211_BAND_5GHZ,            \
+    .center_freq            = 4000 + (5 * (_channel)),      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
+#else
 #define CHAN2G(_channel, _freq, _flags)  \
 {                       \
     .band                   = IEEE80211_BAND_2GHZ,          \
@@ -170,6 +202,7 @@ typedef struct cookie_arry
     .max_antenna_gain       = 0,                            \
     .max_power              = 30,                           \
 }
+#endif
 
 #elif (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 
@@ -277,9 +310,7 @@ extern oal_void  wal_cfg80211_exit_etc(oal_void);
 extern oal_uint32  wal_cfg80211_init_etc(oal_void);
 
 extern oal_uint32  wal_cfg80211_init_evt_handle_etc(frw_event_mem_stru *pst_event_mem);
-#if ((_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1151) || ((_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_E5) && (_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_CPE)))//E5等hostapd适配后统一调试
 extern oal_uint32  wal_cfg80211_mgmt_tx_status_etc(frw_event_mem_stru *pst_event_mem);
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_VOWIFI
 extern oal_uint32  wal_cfg80211_vowifi_report_etc(frw_event_mem_stru *pst_event_mem);
@@ -303,15 +334,15 @@ extern oal_uint32 wal_cfg80211_add_vap_etc(mac_cfg_add_vap_param_stru *pst_add_v
 
 extern oal_void wal_cfg80211_reset_bands_etc(oal_uint8 uc_dev_id);
 extern oal_void wal_cfg80211_save_bands_etc(oal_uint8 uc_dev_id);
-#ifdef _PRE_WLAN_WEB_CMD_COMM
-extern oal_int32 wal_cfg2io_set_beacon(oal_net_device_stru   *pst_dev, struct wlan_ap_settings  *pst_ap_settings);
-#endif
+
 #ifdef _PRE_WLAN_FEATURE_M2S
 extern oal_uint32 wal_cfg80211_m2s_status_report(frw_event_mem_stru *pst_event_mem);
 #endif
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
 extern oal_uint32 wal_cfg80211_tas_rssi_access_report(frw_event_mem_stru *pst_event_mem);
 #endif
+extern oal_uint8 wal_cfg80211_get_station_filter_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac);
+
 #ifdef __cplusplus
     #if __cplusplus
         }

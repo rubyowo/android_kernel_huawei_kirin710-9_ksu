@@ -28,8 +28,15 @@ extern "C" {
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #include "plat_pm_wlan.h"
 #include <linux/pm_qos.h>
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#include <linux/hisi/hisi_cpufreq_req.h>
+#include <linux/cpufreq.h>
+#include <linux/hisi/hisi_core_ctl.h>
+#endif
 #endif
 
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_MAC_AUTO_ADJUST_FREQ_C
@@ -48,7 +55,12 @@ freq_lock_control_stru g_freq_lock_control_etc = {0};
 wifi_txrx_pkt_stat g_st_wifi_rxtx_total = {0};
 /* Wi-Fi驱动收发负载识别数据区 */
 freq_wifi_load_stru g_st_wifi_load = {0};
-
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+extern struct cpufreq_req g_ast_cpufreq_etc[OAL_BUS_MAXCPU_NUM];
+extern oal_uint32 g_aul_cpumaxfreq_etc[OAL_BUS_MAXCPU_NUM];
+extern oal_bool_enum_uint8 g_uc_lock_max_cpu_freq_switch;
+extern struct pm_qos_request g_st_pmqos_requset_etc;
+#endif
 #ifdef _PRE_WLAN_FEATURE_NEGTIVE_DET
 oal_bool_enum_uint8 g_en_pk_mode_swtich = OAL_TRUE;
 
@@ -154,139 +166,28 @@ extern hmac_rxdata_thread_stru     g_st_rxdata_thread_etc;
 
 OAL_STATIC oal_bool_enum_uint8 hmac_get_cpu_freq_raw(oal_uint8 uc_freq_type, oal_uint32 * pst_ul_freq_value)
 {
-#if 0
-    struct file* filp = NULL;
-    mm_segment_t old_fs;
-    oal_int8 buf[12] = {0};
-
-    if (uc_freq_type == SCALING_MAX_FREQ)
-        filp = filp_open(CPU_MAX_FREQ, O_RDONLY, 0);
-    else if (uc_freq_type == SCALING_MIN_FREQ)
-        filp = filp_open(CPU_MIN_FREQ, O_RDONLY, 0);
-    else
-        return -1;
-
-    if (OAL_IS_ERR_OR_NULL(filp))
-    {
-        OAM_ERROR_LOG1(0,OAM_SF_ANY,"{hmac_get_cpu_freq_raw:　freq　= %d error !}",uc_freq_type);
-        return -1;
-    }
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-    filp->f_pos = 0;
-    filp->f_op->read(filp, buf, 12, &filp->f_pos);
-    filp_close(filp, NULL);
-    set_fs(old_fs);
-
-    if (kstrtouint(buf, 10, pst_ul_freq_value) != 0)
-    {
-        OAM_ERROR_LOG0(0,OAM_SF_ANY,"{error to get cpu freq !}");
-        return -1;
-    }
-#endif
     return 0;
 }
 
 
 oal_bool_enum_uint8 hmac_set_cpu_freq_raw_etc(oal_uint8 uc_freq_type, oal_uint32 ul_freq_value)
 {
-#if 0
-    struct file* filp = NULL;
-    mm_segment_t old_fs;
-    oal_int8 buf[12] = {0};
-
-    OAL_SPRINTF(buf, 12, "%d", ul_freq_value);
-
-    if (uc_freq_type == SCALING_MIN_FREQ)
-        filp = filp_open(CPU_MIN_FREQ, O_RDWR, 0);
-    else if (uc_freq_type == SCALING_MAX_FREQ)
-        filp = filp_open(CPU_MAX_FREQ, O_RDWR, 0);
-    else
-        return -1;
-
-    if (OAL_IS_ERR_OR_NULL(filp))
-    {
-        OAM_WARNING_LOG2(0,OAM_SF_ANY,"{hmac_set_cpu_freq_raw_etc:freq type[%d]req　= %d error !}",uc_freq_type, ul_freq_value);
-        return -1;
-    }
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-    filp->f_pos = 0;
-    filp->f_op->write(filp, buf, 12, &filp->f_pos);
-    filp_close(filp, NULL);
-    set_fs(old_fs);
-#endif
     return 0;
 }
-
-#if 0
-
-OAL_STATIC oal_bool_enum_uint8 hmac_get_ddr_freq_raw(oal_uint8 uc_freq_type, oal_uint32 * pst_ul_freq_value)
-{
-    struct file* filp = NULL;
-    mm_segment_t old_fs;
-    oal_int8 buf[12] = {0};
-
-    if (uc_freq_type == SCALING_MAX_FREQ)
-        filp = filp_open(DDR_MAX_FREQ, O_RDONLY, 0);
-    else if (uc_freq_type == SCALING_MIN_FREQ)
-        filp = filp_open(DDR_MIN_FREQ, O_RDONLY, 0);
-    else
-        return -1;
-
-    if (OAL_IS_ERR_OR_NULL(filp))
-    {
-        OAM_ERROR_LOG1(0,OAM_SF_ANY,"{hmac_get_ddr_freq_raw:　freq　= %d error !}",uc_freq_type);
-        return -1;
-    }
-    old_fs = get_fs();
-    set_fs(KERNEL_DS);
-    filp->f_pos = 0;
-    filp->f_op->read(filp, buf, 12, &filp->f_pos);
-    filp_close(filp, NULL);
-    set_fs(old_fs);
-
-    if (kstrtouint(buf, 10, pst_ul_freq_value) != 0)
-    {
-        printk("error to get cpu freq\n");
-        return -1;
-    }
-    return 0;
-}
-#endif
-
 
 
 oal_bool_enum_uint8 hmac_set_ddr_freq_raw_etc(oal_uint8 uc_freq_type, oal_uint32 ul_freq_value)
 {
-#if 0
-    pm_qos_update_request(g_pst_wifi_auto_ddr_etc, ul_freq_value);
-#endif
     return 0;
 }
 
 oal_void hmac_wifi_auto_ddr_init_etc(oal_void)
 {
-#if 0
-    g_pst_wifi_auto_ddr_etc = kmalloc(sizeof(struct pm_qos_request), GFP_KERNEL);
-    if (g_pst_wifi_auto_ddr_etc == NULL)
-    {
-        OAL_IO_PRINT("[AUTODDR]pm_qos_request alloc memory failed.\n");
-        return;
-    }
-    g_pst_wifi_auto_ddr_etc->pm_qos_class = 0;
-    pm_qos_add_request(g_pst_wifi_auto_ddr_etc, PM_QOS_MEMORY_THROUGHPUT,
-                       PM_QOS_MEMORY_THROUGHPUT_DEFAULT_VALUE);
-#endif
     return;
 }
 oal_void hmac_wifi_auto_ddr_exit_etc(oal_void)
 {
-#if 0
-    pm_qos_remove_request(g_pst_wifi_auto_ddr_etc);
-    kfree(g_pst_wifi_auto_ddr_etc);
-    g_pst_wifi_auto_ddr_etc = NULL;
-#endif
+
 }
 #endif
 
@@ -434,11 +335,6 @@ oal_void hmac_adjust_freq_etc(oal_void)
     g_freq_lock_control_etc.ul_tx_pps         = (ul_tx_total*1000)/ul_sdio_dur_ms;
     g_freq_lock_control_etc.ul_rx_pps         = (ul_rx_total*1000)/ul_sdio_dur_ms;
 
-    //OAM_WARNING_LOG4(0,OAM_SF_ANY,"{SDIO perform tx statistic: packet_rate = %lu pps, sumlen = %lu B, [use time] = %lu ms,g_adjust_count = %d!}",
-        //g_freq_lock_control_etc.ul_total_sdio_pps , ul_trx_total, ul_sdio_dur_ms,g_freq_lock_control_etc.ul_adjust_count);
-    //OAM_WARNING_LOG2(0,OAM_SF_ANY,"{SDIO perform tx statistic: tx pps  = %lu pps, rx pps = %lu pps}",
-        //g_freq_lock_control_etc.ul_tx_pps, g_freq_lock_control_etc.ul_rx_pps);
-
     g_freq_lock_control_etc.uc_req_lock_level = hmac_get_freq_level_etc(g_freq_lock_control_etc.ul_total_sdio_pps);
 
     uc_req_lock_level = g_freq_lock_control_etc.uc_req_lock_level;
@@ -504,18 +400,12 @@ oal_void hmac_wifi_auto_freq_ctrl_init_etc(void)
 
         mutex_unlock(&g_freq_lock_control_etc.st_lock_freq_mtx);
     }
-
-    //OAL_INIT_WORK(&(g_freq_lock_control_etc.st_work), hmac_del_virtual_inf_worker_etc);
-
-    //hmac_freq_timer_init(); //定时器初始化
 #endif
 }
 
 oal_void hmac_wifi_auto_freq_ctrl_deinit_etc(void)
 {
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    //hmac_freq_timer_deinit();
-
     mutex_lock(&g_freq_lock_control_etc.st_lock_freq_mtx);
 
     if (OAL_TRUE == g_freq_lock_control_etc.en_is_inited)
@@ -526,7 +416,6 @@ oal_void hmac_wifi_auto_freq_ctrl_deinit_etc(void)
     {
         OAM_WARNING_LOG0(0,OAM_SF_ANY,"{hw_wifi_freq_ctrl_destroy freq lock has already been released!}");
     }
-    //oal_cancel_work_sync(&(pst_hmac_vap->st_del_virtual_inf_worker));
 
     mutex_unlock(&g_freq_lock_control_etc.st_lock_freq_mtx);
     mutex_destroy(&g_freq_lock_control_etc.st_lock_freq_mtx);
@@ -561,6 +450,29 @@ oal_bool_enum_uint8 hmac_wifi_rx_is_busy(oal_void)
     return g_st_wifi_load.en_wifi_rx_busy;
 }
 
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+OAL_STATIC OAL_INLINE oal_void hmac_lock_max_cpu_freq(oal_void)
+{
+    oal_uint8 uc_cpuid_loop = 0;
+    /* 所有核都锁定最高频率 */
+    for (uc_cpuid_loop = 0; uc_cpuid_loop < OAL_BUS_MAXCPU_NUM; uc_cpuid_loop++)
+    {
+        hisi_cpufreq_update_req(&g_ast_cpufreq_etc[uc_cpuid_loop], g_aul_cpumaxfreq_etc[uc_cpuid_loop]);
+        OAM_WARNING_LOG2(0, OAM_SF_ANY, "hmac_adjust_set_irq:lock cpu freq cpu[%d]->%d",uc_cpuid_loop,g_aul_cpumaxfreq_etc[uc_cpuid_loop]);
+    }
+}
+
+OAL_STATIC OAL_INLINE oal_void hmac_unlock_max_cpu_freq(oal_void)
+{
+    oal_uint8 uc_cpuid_loop = 0;
+    for (uc_cpuid_loop = 0; uc_cpuid_loop < OAL_BUS_MAXCPU_NUM; uc_cpuid_loop++)
+    {
+        hisi_cpufreq_update_req(&g_ast_cpufreq_etc[uc_cpuid_loop], 0);
+    }
+    OAM_WARNING_LOG0(0, OAM_SF_ANY, "hmac_thread_bind_fast_cpu:clear cpu lockfreq request");
+}
+#endif
+
 oal_void hmac_adjust_set_irq(oal_uint8 uc_cpu_id)
 {
     if (uc_cpu_id == g_freq_lock_control_etc.uc_cur_irq_cpu)
@@ -570,7 +482,6 @@ oal_void hmac_adjust_set_irq(oal_uint8 uc_cpu_id)
 
     g_freq_lock_control_etc.uc_cur_irq_cpu = uc_cpu_id;
 
-    //OAM_WARNING_LOG1(0,OAM_SF_PWR,"{hmac_adjust_set_irq: irq to cpu[%d]}",uc_cpu_id);
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
     hi110x_hcc_dev_bindcpu(uc_cpu_id >= WLAN_IRQ_AFFINITY_BUSY_CPU ? 1 : 0);
 
@@ -584,7 +495,6 @@ oal_void hmac_adjust_set_irq(oal_uint8 uc_cpu_id)
         {
             hisi_get_fast_cpus(&fast_cpus);
             cpumask_clear_cpu(OAL_BUS_HPCPU_NUM, &fast_cpus);
-            //cpumask_clear_cpu(OAL_BUS_HPCPU_NUM_1, &fast_cpus);
             set_cpus_allowed_ptr( g_st_rxdata_thread_etc.pst_rxdata_thread , &fast_cpus);
         }
         else
@@ -597,7 +507,25 @@ oal_void hmac_adjust_set_irq(oal_uint8 uc_cpu_id)
 #endif
 #endif
 
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    if (OAL_TRUE == g_uc_lock_max_cpu_freq_switch)
+    {
+        if (g_st_rxdata_thread_etc.uc_allowed_cpus >= WLAN_IRQ_AFFINITY_BUSY_CPU)
+        {
+            pm_qos_update_request(&g_st_pmqos_requset_etc, PM_QOS_THOUGHTPUT_VALUE);
+            /* 所有核都锁定最高频率 */
+            hmac_lock_max_cpu_freq();
+        }
+        else
+        {
+            pm_qos_update_request(&g_st_pmqos_requset_etc, PM_QOS_DEFAULT_VALUE);
+            hmac_unlock_max_cpu_freq();
+        }
+    }
 #endif
+#endif
+#endif/* _PRE_WLAN_FEATURE_AUTO_FREQ */
 }
 
 #ifdef _PRE_WLAN_FEATURE_NEGTIVE_DET
@@ -697,14 +625,7 @@ oal_void hmac_update_pk_mode(oal_uint32 ul_tx_throughput,
     {
         return;
     }
-    /* 避免低功耗时ul_dur_time统计时间变短，导致此处直接return，而无法退出PK MODE */
-#if 0
-    /* ul_dur_time入参小于检测间隔时间不做pk mode的更新 */
-    if (ul_dur_time < (WLAN_FREQ_TIMER_PERIOD * WLAN_THROUGHPUT_STA_PERIOD))
-    {
-        return;
-    }
-#endif
+
     pst_mac_device = mac_res_get_dev_etc(0);
     /* 如果非单VAP,则不开启硬件聚合 */
     if (1 != mac_device_calc_up_vap_num_etc(pst_mac_device))
@@ -791,6 +712,20 @@ oal_void hmac_update_pk_mode(oal_uint32 ul_tx_throughput,
     return;
 }
 #endif
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+OAL_STATIC OAL_INLINE oal_void hmac_lock_cpu_freq_high_throughput_proc(oal_void)
+{
+    if (OAL_TRUE == g_uc_lock_max_cpu_freq_switch)
+    {
+        /* 当前还存在锁频后频率会掉下来，并且后面也无法锁到最高频率，需要继续定位。后续需要调整锁频时间。以及确认是否每次需要重新req。 */
+        core_ctl_set_boost(20*WLAN_FREQ_TIMER_PERIOD*WLAN_THROUGHPUT_STA_PERIOD);
+        hmac_lock_max_cpu_freq();
+    }
+}
+#endif
+#endif
+
 
 
 void hmac_perform_calc_throughput(oal_uint32 ul_tx_throughput_mbps,
@@ -836,6 +771,12 @@ void hmac_perform_calc_throughput(oal_uint32 ul_tx_throughput_mbps,
         || (ul_trx_pps >= ul_limit_pps_high))
     {
         g_freq_lock_control_etc.uc_req_irq_cpu = WLAN_IRQ_AFFINITY_BUSY_CPU;
+        /* 关闭低功耗200ms,避免峰值跑流时CPU消耗过低被迁走 */
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+        hmac_lock_cpu_freq_high_throughput_proc();
+#endif
+#endif
     }
     else if((ul_tx_throughput_mbps < ul_limit_throughput_low)
            && (ul_rx_throughput_mbps <  ul_limit_throughput_low)
@@ -963,7 +904,7 @@ void hmac_adjust_throughput(oal_void)
 }
 
 
-oal_void hmac_wlan_freq_wdg_timeout(oal_void)
+OAL_STATIC oal_uint32 hmac_wlan_freq_wdg_timeout(oal_void *p_arg)
 {
 #ifdef _PRE_WLAN_FEATURE_AUTO_FREQ
     /* CPU调频 */
@@ -972,6 +913,7 @@ oal_void hmac_wlan_freq_wdg_timeout(oal_void)
     /* 吞吐统计 */
     hmac_adjust_throughput();
 
+    return OAL_SUCC;
 }
 
 
@@ -986,18 +928,16 @@ oal_void  hmac_freq_timer_init(oal_void)
 
     g_freq_lock_control_etc.ul_pre_time = jiffies;
     /* uc_timer_cycles 无需清零。避免停止跑流进入低功耗后，大小核切换、PK mode判断无法恢复问题 */
-    //g_freq_lock_control_etc.uc_timer_cycles = 0;
+
     /* 清空统计 */
-    OAL_MEMZERO(&g_st_wifi_rxtx_total, OAL_SIZEOF(g_st_wifi_rxtx_total));
+    memset_s(&g_st_wifi_rxtx_total, OAL_SIZEOF(g_st_wifi_rxtx_total), 0, OAL_SIZEOF(g_st_wifi_rxtx_total));
 
     FRW_TIMER_CREATE_TIMER(&g_freq_lock_control_etc.hmac_freq_timer, //pst_timeout
-                        (oal_void*)hmac_wlan_freq_wdg_timeout,   //p_timeout_func
+                        hmac_wlan_freq_wdg_timeout,             //p_timeout_func
                         WLAN_FREQ_TIMER_PERIOD,                 //ul_timeout
-                        OAL_PTR_NULL,                          // p_timeout_arg
-                        OAL_TRUE,                             //en_is_periodic
-                        OAM_MODULE_ID_HMAC,0 );             //en_module_id && ul_core_id
-
-    //OAM_WARNING_LOG1(0,OAM_SF_ANY,"{hmac_freq_timer_init: throughput timer period[%d]ms enabled!}",WLAN_FREQ_TIMER_PERIOD);
+                        OAL_PTR_NULL,                           // p_timeout_arg
+                        OAL_TRUE,                               //en_is_periodic
+                        OAM_MODULE_ID_HMAC,0 );                 //en_module_id && ul_core_id
 }
 
 

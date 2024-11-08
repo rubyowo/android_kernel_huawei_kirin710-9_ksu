@@ -26,10 +26,6 @@ extern "C" {
 #include "mac_data.h"
 #include "hmac_ext_if.h"
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-#include "hmac_vap.h"
-#endif
-
 #include "wal_main.h"
 #include "wal_linux_bridge.h"
 
@@ -50,15 +46,6 @@ extern "C" {
 /*****************************************************************************
   3 º¯ÊýÊµÏÖ
 *****************************************************************************/
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-
-
-oal_net_dev_tx_enum  wal_vap_start_xmit(oal_netbuf_stru *pst_buf, oal_net_device_stru *pst_dev)
-{
-    return hmac_vap_start_xmit(pst_buf, pst_dev);
-}
-
-#endif
 
 
 oal_uint8    g_sk_pacing_shift_etc = 8;

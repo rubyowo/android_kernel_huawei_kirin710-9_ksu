@@ -13,6 +13,8 @@ extern "C" {
 *****************************************************************************/
 
 #include "hmac_traffic_classify.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TRAFFIC_CLASSIFY_C
@@ -22,6 +24,7 @@ extern "C" {
 *****************************************************************************/
 #define RTP_VERSION                 2           /* RTP协议版本号，占2位，当前协议版本号为2 */
 #define RTP_VER_SHIFT               6           /* RTP协议版本号位移量 */
+#define RTP_PT_MASK                 BIT7        /* RTP的payload_type，有效载荷占前7位，bit7 mark位暂不使用 */
 #define RTP_CSRC_MASK               0x0f        /* CSRC计数器，占4位，指示CSRC标识符的个数 */
 #define RTP_CSRC_LEN_BYTE           4           /* 每个CSRC标识符占32位，共4字节 */
 #define RTP_HDR_LEN_BYTE            12          /* RTP帧头固定字节数(不包含CSRC字段) */
@@ -92,9 +95,10 @@ OAL_STATIC oal_uint32 hmac_tx_add_cfm_traffic(hmac_user_stru *pst_hmac_user, oal
     /* 更新列表 */
     pst_cfm_info = (pst_hmac_user->ast_cfm_flow_list + uc_mark);
 
-    oal_memcopy(&pst_cfm_info->st_cfm_flow_info,
-                &pst_max->st_flow_info,
-                OAL_SIZEOF(hmac_tx_flow_info_stru));
+    memcpy_s(&pst_cfm_info->st_cfm_flow_info,
+             OAL_SIZEOF(hmac_tx_flow_info_stru),
+             &pst_max->st_flow_info,
+             OAL_SIZEOF(hmac_tx_flow_info_stru));
 
     pst_cfm_info->us_cfm_tid      = uc_tid;
     pst_cfm_info->ul_last_jiffies = OAL_TIME_JIFFY;
@@ -137,7 +141,7 @@ OAL_STATIC oal_uint32 hmac_tx_traffic_judge(
         }
     }
 
-    ul_pt = (pst_major_flow->ul_payload_type & (~BIT7));
+    ul_pt = pst_major_flow->ul_payload_type;
     if (ul_pt <= RTP_PT_VO_G729)    /* 依据PayloadType判断RTP载荷类型 */
     {
         *puc_tid = WLAN_TIDNO_VOICE;
@@ -193,7 +197,11 @@ OAL_STATIC oal_uint32 hmac_tx_find_major_traffic(hmac_user_stru *pst_hmac_user, 
         }
 
         pst_judge_info->uc_flag = OAL_FALSE;
-        oal_memcopy(&st_mark, pst_judge_info, OAL_SIZEOF(hmac_tx_judge_info_stru));
+        if (EOK != memcpy_s(&st_mark, OAL_SIZEOF(hmac_tx_major_flow_stru),
+                            pst_judge_info, OAL_SIZEOF(hmac_tx_judge_info_stru))) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_tx_find_major_traffic::memcpy fail!");
+            return OAL_FAIL;
+        }
         st_mark.ul_wait_check_num = 1;
 
         for (uc_cache_idx_j = 0; uc_cache_idx_j < MAX_JUDGE_CACHE_LENGTH; uc_cache_idx_j++)
@@ -212,7 +220,8 @@ OAL_STATIC oal_uint32 hmac_tx_find_major_traffic(hmac_user_stru *pst_hmac_user, 
 
             if (st_mark.ul_wait_check_num > st_max.ul_wait_check_num)
             {
-                oal_memcopy(&st_max, &st_mark, OAL_SIZEOF(hmac_tx_major_flow_stru));
+                memcpy_s(&st_max, OAL_SIZEOF(hmac_tx_major_flow_stru),
+                         &st_mark, OAL_SIZEOF(hmac_tx_major_flow_stru));
                 if (st_max.ul_wait_check_num >= (MAX_JUDGE_CACHE_LENGTH >> 1))
                 {
                     /* 已找到主要业务流，不必继续搜索 */
@@ -277,6 +286,7 @@ oal_void hmac_tx_traffic_classify_etc(
                 MAC_GET_CB_FRAME_TYPE(pst_tx_ctl)    = WLAN_CB_FRAME_TYPE_DATA;
                 MAC_GET_CB_FRAME_SUBTYPE(pst_tx_ctl) = MAC_DATA_VIP_FRAME;
                 MAC_GET_CB_IS_NEEDRETRY(pst_tx_ctl)  = OAL_TRUE;
+                MAC_GET_CB_IS_RTSP(pst_tx_ctl)       = OAL_TRUE;
                 return;
             }
         }
@@ -329,19 +339,17 @@ oal_void hmac_tx_traffic_classify_etc(
     }
     pst_judge_list->ul_to_judge_num += 1;                   /* 更新队列长度 */
 
-    OAL_MEMZERO(pst_judge_info, OAL_SIZEOF(hmac_tx_judge_info_stru));
-    oal_memcopy(&(pst_judge_info->st_flow_info),
-                &st_flow_info,
-                OAL_SIZEOF(hmac_tx_flow_info_stru));
+    memset_s(pst_judge_info, OAL_SIZEOF(hmac_tx_judge_info_stru), 0, OAL_SIZEOF(hmac_tx_judge_info_stru));
+    memcpy_s(&(pst_judge_info->st_flow_info), OAL_SIZEOF(hmac_tx_flow_info_stru),
+             &st_flow_info, OAL_SIZEOF(hmac_tx_flow_info_stru));
 
 
     pst_rtp_hdr = (hmac_tx_rtp_hdr *)(pst_udp_hdr + 1);                 /* 偏移一个UDP头，取RTP头 */
 
     pst_judge_info->uc_flag         = OAL_TRUE;
-    //pst_judge_info->uc_udp_flag     = OAL_TRUE;
     pst_judge_info->ul_len          = OAL_NET2HOST_SHORT(pst_ip->us_tot_len) - OAL_SIZEOF(mac_ip_header_stru) - OAL_SIZEOF(udp_hdr_stru);
     pst_judge_info->uc_rtpver       = pst_rtp_hdr->uc_version_and_CSRC;
-    pst_judge_info->ul_payload_type = (oal_uint32)(pst_rtp_hdr->uc_payload_type);
+    pst_judge_info->ul_payload_type = (oal_uint32)((pst_rtp_hdr->uc_payload_type) & (~RTP_PT_MASK));
     pst_judge_info->ul_rtpssrc      = pst_rtp_hdr->ul_SSRC;
 
 
@@ -349,7 +357,7 @@ oal_void hmac_tx_traffic_classify_etc(
     if((pst_hmac_user->us_clear_judge_count < MAX_CLEAR_JUDGE_TH) &&
         (pst_judge_list->ul_to_judge_num >= 1))
     {
-        uc_rtp_payload_type = (pst_rtp_hdr->uc_payload_type) & (~BIT7) ;
+        uc_rtp_payload_type = (pst_rtp_hdr->uc_payload_type) & (~RTP_PT_MASK);
         uc_rtp_ver =  pst_rtp_hdr->uc_version_and_CSRC >> RTP_VER_SHIFT ;
         if(RTP_VERSION == uc_rtp_ver)
         {

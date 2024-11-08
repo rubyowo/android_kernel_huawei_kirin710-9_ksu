@@ -15,7 +15,8 @@ extern "C" {
 #include "mac_resource.h"
 #include "hmac_vap.h"
 #include "hmac_user.h"
-//#include "mac_11i.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_WAPI_H
@@ -55,11 +56,6 @@ extern "C" {
 #define WAPI_IE_SUITCNT_SIZE                2   /* wapi suit count所占字节数 */
 /*wapi key len*/
 
-
-//typedef void (* wapi_func)(void);
-
-
-
 #define WAPI_PORT_FLAG(pst_wapi) ((pst_wapi)->uc_port_valid)
 
 #define WAPI_IS_WORK(pst_hmac_vap)   ((pst_hmac_vap)->uc_wapi)
@@ -76,12 +72,16 @@ extern "C" {
 
 #define WAPI_RX_PN_ODD_ERR(pst_wapi, pn)                                        \
            do {(pst_wapi)->st_debug.ulrx_pn_odd_err++;                          \
-                oal_memcopy((pst_wapi)->st_debug.aucrx_pn, pn, WAPI_PN_LEN);    \
+                if (EOK != memcpy_s((pst_wapi)->st_debug.aucrx_pn, WAPI_PN_LEN, pn, WAPI_PN_LEN)) {   \
+                    OAM_ERROR_LOG0(0, OAM_SF_ANY, "WAPI_RX_PN_ODD_ERR::memcpy fail!");  \
+                }                                                              \
 }while(0)
 
 #define WAPI_RX_PN_REPLAY_ERR(pst_wapi, pn)                                    \
           do {(pst_wapi)->st_debug.ulrx_pn_replay_err++;                       \
-               oal_memcopy((pst_wapi)->st_debug.aucrx_pn, pn, WAPI_PN_LEN);    \
+               if (EOK != memcpy_s((pst_wapi)->st_debug.aucrx_pn, WAPI_PN_LEN, pn, WAPI_PN_LEN)) {    \
+                   OAM_ERROR_LOG0(0, OAM_SF_ANY, "WAPI_RX_PN_REPLAY_ERR::memcpy fail!");  \
+               }                                                               \
 }while(0)
 
 #define WAPI_RX_MEMALLOC_ERR(pst_wapi)          pst_wapi->st_debug.ulrx_memalloc_err++
@@ -169,7 +169,6 @@ typedef struct
 *****************************************************************************/
 extern oal_uint32 hmac_wapi_deinit_etc(hmac_wapi_stru *pst_wapi);
 extern oal_uint32 hmac_wapi_init_etc(hmac_wapi_stru *pst_wapi, oal_uint8 uc_pairwise);
-//extern oal_uint32 hmac_wapi_en(hmac_vap_stru *pst_hmac_vap, oal_bool_enum_uint8 en_on);
 #ifdef _PRE_WAPI_DEBUG
 oal_uint32 hmac_wapi_display_info_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_usr_idx);
 #endif /* #ifdef _PRE_DEBUG_MODE */

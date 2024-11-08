@@ -26,6 +26,8 @@ extern "C" {
 
 /* 扫描上报"最近时间" 范围内的扫描结果 */
 #define WAL_SCAN_REPORT_LIMIT         5000       /* 5000 milliseconds */
+#define WLAN_BOOTTIME_REFLUSH         500        /* 500 us */
+
 
 /*****************************************************************************
   3 枚举定义

@@ -56,8 +56,8 @@ OAL_STATIC oal_uint32  hmac_psta_find_net_dev(hmac_psta_rep_stru       *pst_dev_
                                                  oal_net_device_stru     **ppst_net_device)
 {
     oal_uint8              uc_hash_value;
-    hmac_vap_stru         *pst_hmac_vap;
-    oal_dlist_head_stru   *pst_entry;
+    hmac_vap_stru         *pst_hmac_vap = OAL_PTR_NULL;
+    oal_dlist_head_stru   *pst_entry = OAL_PTR_NULL;
 
     uc_hash_value = MAC_PROXYSTA_CALCULATE_HASH_VALUE(puc_mac_addr);
     oal_rw_lock_read_lock(&pst_dev_psta->st_lock);
@@ -85,8 +85,8 @@ OAL_STATIC oal_uint32  hmac_psta_find_net_dev(hmac_psta_rep_stru       *pst_dev_
 
 oal_uint32 hmac_psta_tx_process(oal_netbuf_stru *pst_buf, mac_vap_stru **ppst_vap)
 {
-    mac_ether_header_stru  *pst_ether_header;
-    hmac_vap_stru          *pst_hmac_vap;
+    mac_ether_header_stru  *pst_ether_header = OAL_PTR_NULL;
+    hmac_vap_stru          *pst_hmac_vap = OAL_PTR_NULL;
     oal_net_device_stru    *pst_net_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(!ppst_vap || !*ppst_vap))
@@ -137,13 +137,13 @@ oal_uint32 hmac_psta_tx_process(oal_netbuf_stru *pst_buf, mac_vap_stru **ppst_va
 
 oal_uint32  hmac_psta_rx_process(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hmac_vap)
 {
-    mac_ether_header_stru   *pst_ether_header;
+    mac_ether_header_stru   *pst_ether_header = OAL_PTR_NULL;
     oal_bool_enum_uint8      en_is_mcast;
-    hmac_vap_stru           *pst_tmp_hvap;
-    oal_dlist_head_stru     *pst_list;
-    hmac_psta_rep_stru      *pst_rep;
-    mac_device_stru         *pst_mac_device;
-    hmac_vap_stru           *pst_mainsta;
+    hmac_vap_stru           *pst_tmp_hvap = OAL_PTR_NULL;
+    oal_dlist_head_stru     *pst_list = OAL_PTR_NULL;
+    hmac_psta_rep_stru      *pst_rep = OAL_PTR_NULL;
+    mac_device_stru         *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru           *pst_mainsta = OAL_PTR_NULL;
 
     if (!pst_buf || !pst_hmac_vap)
     {
@@ -165,7 +165,7 @@ oal_uint32  hmac_psta_rx_process(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hm
     }
 
     pst_mac_device = mac_res_get_dev(pst_hmac_vap->st_vap_base_info.uc_device_id);
-    if (!pst_mac_device)
+    if (pst_mac_device == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG1(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_PROXYSTA, "{hmac_psta_rx_mat::null device id=%d}", pst_hmac_vap->st_vap_base_info.uc_vap_id);
         return OAL_FAIL;
@@ -203,7 +203,7 @@ oal_uint32  hmac_psta_rx_process(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hm
     }
 
     pst_mainsta = hmac_psta_get_msta(pst_hmac_vap);
-    if (!pst_mainsta)
+    if (pst_mainsta == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG0(0, OAM_SF_PROXYSTA, "{hmac_psta_rx_mat::no msta found on rep!}");
         return OAL_FAIL;
@@ -218,7 +218,7 @@ oal_uint32  hmac_psta_rx_process(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hm
 oal_uint32  hmac_psta_init_vap(hmac_vap_stru *pst_hmac_vap, mac_cfg_add_vap_param_stru *pst_param)
 {
     pst_hmac_vap->st_psta.uc_rep_id = pst_param->uc_rep_id;
-    oal_memset(pst_hmac_vap->st_psta.auc_oma, 0, WLAN_MAC_ADDR_LEN);
+    memset_s(pst_hmac_vap->st_psta.auc_oma, WLAN_MAC_ADDR_LEN, 0, WLAN_MAC_ADDR_LEN);
     oal_dlist_init_head(&pst_hmac_vap->st_psta.st_hash_entry);
     oal_dlist_init_head(&pst_hmac_vap->st_psta.st_xsta_entry);
 
@@ -232,9 +232,9 @@ oal_uint32  hmac_psta_add_vap(hmac_vap_stru *pst_hmac_vap)
     mac_device_stru *pst_mac_device = mac_res_get_dev(pst_hmac_vap->st_vap_base_info.uc_device_id);
     mac_vap_stru    *pst_mac_vap    = &pst_hmac_vap->st_vap_base_info;
 
-    hmac_psta_rep_stru  *pst_rep;
+    hmac_psta_rep_stru  *pst_rep = OAL_PTR_NULL;
 
-    if (!pst_mac_device)
+    if (pst_mac_device == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG0(0, OAM_SF_PROXYSTA, "{hmac_psta_add_vap::null dev ptr}");
         return OAL_FAIL;
@@ -290,13 +290,13 @@ oal_uint32  hmac_psta_del_vap(hmac_vap_stru *pst_hmac_vap)
     oal_uint32                   uc_hash_value;
     oal_uint32                   ul_psta_switch;
     oal_uint8                    auc_proxysta_oma[WLAN_MAC_ADDR_LEN];
-    oal_dlist_head_stru         *pst_hash_head;
-    oal_dlist_head_stru         *pst_entry;
-    oal_dlist_head_stru         *pst_entry_temp;
-    mac_device_stru             *pst_mac_device;
-    hmac_vap_stru               *pst_vap;
+    oal_dlist_head_stru         *pst_hash_head = OAL_PTR_NULL;
+    oal_dlist_head_stru         *pst_entry = OAL_PTR_NULL;
+    oal_dlist_head_stru         *pst_entry_temp = OAL_PTR_NULL;
+    mac_device_stru             *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru               *pst_vap = OAL_PTR_NULL;
     mac_vap_stru                *pst_mac_vap = &pst_hmac_vap->st_vap_base_info;
-    hmac_psta_rep_stru          *pst_rep;
+    hmac_psta_rep_stru          *pst_rep = OAL_PTR_NULL;
 
     if (!mac_vap_is_msta(pst_mac_vap) && !mac_vap_is_vsta(pst_mac_vap) && !mac_vap_is_pbss(pst_mac_vap))
     {
@@ -373,10 +373,11 @@ oal_int32   hmac_psta_write_proc (oal_file_stru *pst_file, const oal_int8 *pc_bu
 
 oal_int32 hmac_psta_read_proc(char *page, char **start, off_t off, int count, int *eof, void *data)
 {
-    hmac_psta_rep_stru  *pst_rep;
-    oal_dlist_head_stru *pst_list;
-    hmac_vap_stru       *pst_hmac_vap;
-    oal_uint8           *puc_vma, *puc_oma;
+    hmac_psta_rep_stru  *pst_rep = OAL_PTR_NULL;
+    oal_dlist_head_stru *pst_list = OAL_PTR_NULL;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
+    oal_uint8           *puc_vma = OAL_PTR_NULL;
+    oal_uint8           *puc_oma = OAL_PTR_NULL;
     oal_uint32           ul_rep_id;
 
     for (ul_rep_id = 0; ul_rep_id < WLAN_PROXY_STA_MAX_REP; ul_rep_id++)
@@ -432,7 +433,7 @@ hmac_psta_rep_stru *hmac_psta_get_rep(hmac_vap_stru *pst_hmac_vap)
 
 hmac_vap_stru *hmac_psta_get_msta(hmac_vap_stru *pst_hmac_vap)
 {
-    oal_dlist_head_stru *pst_list;
+    oal_dlist_head_stru *pst_list = OAL_PTR_NULL;
     hmac_psta_rep_stru  *pst_rep = hmac_psta_get_rep(pst_hmac_vap);
 
     // NOTE:do what you wish for multi-msta repeater!
@@ -475,7 +476,7 @@ oal_uint32  hmac_psta_mgr_init(oal_void)
     }
 
     en_inited = OAL_TRUE;
-    oal_memset(pst_mgr, 0, OAL_SIZEOF(hmac_psta_mgr_stru));
+    memset_s(pst_mgr, OAL_SIZEOF(hmac_psta_mgr_stru), 0, OAL_SIZEOF(hmac_psta_mgr_stru));
 
     for (ul_idx = 0; ul_idx < WLAN_PROXY_STA_MAX_REP; ul_idx++)
     {
@@ -553,7 +554,7 @@ OAL_STATIC oal_uint32 hmac_psta_rx_arp_mat(mac_vap_stru            *pst_mac_vap,
     oal_bool_enum_uint8 en_is_mcast;
     oal_uint32          ul_contig_len;
     oal_bool_enum_uint8 en_is_arp_mac_changed = OAL_FALSE;
-    hmac_vap_stru      *pst_hmac_vap;
+    hmac_vap_stru      *pst_hmac_vap = OAL_PTR_NULL;
 
     /***************************************************************************/
     /*                      ARP Frame Format                                   */
@@ -684,14 +685,14 @@ OAL_STATIC oal_uint32 hmac_psta_rx_ip_mat(mac_vap_stru           *pst_mac_vap,
     oal_ip_header_stru   *pst_ip_header    = OAL_PTR_NULL;
     oal_udp_header_stru  *pst_udp_header   = OAL_PTR_NULL;
     oal_dhcp_packet_stru *pst_dhcp_packet  = OAL_PTR_NULL;
-    hmac_vap_stru        *pst_hmac_temp_vap;
+    hmac_vap_stru        *pst_hmac_temp_vap = OAL_PTR_NULL;
     oal_uint8            *puc_eth_body     = OAL_PTR_NULL;
     oal_uint8            *puc_des_mac      = OAL_PTR_NULL;
     oal_uint16           us_ip_header_len;
     oal_uint8            uc_vap_idx;
     oal_bool_enum_uint8  en_is_mcast;
     oal_uint32           ul_contig_len;
-    hmac_vap_stru       *pst_hmac_vap;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
     /* 参数合法性检查 */
     if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_ether_header) || (OAL_PTR_NULL == pst_mac_device))
     {
@@ -877,13 +878,13 @@ OAL_STATIC oal_uint32 hmac_psta_rx_ip_mat(mac_vap_stru           *pst_mac_vap,
 
 oal_uint32  hmac_psta_rx_mat(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hmac_vap)
 {
-    mac_vap_stru            *pst_mac_vap;
-    mac_ether_header_stru   *pst_ether_header;
+    mac_vap_stru            *pst_mac_vap = OAL_PTR_NULL;
+    mac_ether_header_stru   *pst_ether_header = OAL_PTR_NULL;
     oal_uint16               us_ether_type;
-    oal_uint8               *puc_des_mac;
+    oal_uint8               *puc_des_mac = OAL_PTR_NULL;
     oal_uint32               ul_contig_len = OAL_SIZEOF(mac_ether_header_stru);
     oal_uint32               ul_pkt_len;
-    mac_device_stru         *pst_mac_device;
+    mac_device_stru         *pst_mac_device = OAL_PTR_NULL;
     oal_uint32               ul_ret;
 
     if (!pst_buf || !pst_hmac_vap)
@@ -906,7 +907,7 @@ oal_uint32  hmac_psta_rx_mat(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hmac_v
     }
 
     pst_mac_device = mac_res_get_dev(pst_hmac_vap->st_vap_base_info.uc_device_id);
-    if (!pst_mac_device)
+    if (pst_mac_device == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG1(pst_hmac_vap->st_vap_base_info.uc_vap_id, OAM_SF_PROXYSTA, "{hmac_psta_rx_mat::null device id=%d}", pst_hmac_vap->st_vap_base_info.uc_vap_id);
         return OAL_FAIL;
@@ -1355,11 +1356,11 @@ OAL_STATIC oal_uint32 hmac_psta_tx_icmpv6_mat(mac_vap_stru *pst_mac_vap,
 
 oal_uint32  hmac_psta_tx_mat(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hmac_vap)
 {
-    mac_ether_header_stru  *pst_ether_header;
-    mac_vap_stru           *pst_mac_vap;
-    oal_uint8              *puc_eth_body;
+    mac_ether_header_stru  *pst_ether_header = OAL_PTR_NULL;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
+    oal_uint8              *puc_eth_body = OAL_PTR_NULL;
     oal_uint16              us_ether_type;
-    oal_uint8              *puc_scr_mac;
+    oal_uint8              *puc_scr_mac = OAL_PTR_NULL;
     oal_uint32              ul_contig_len = OAL_SIZEOF(mac_ether_header_stru);
     oal_uint32              ul_pkt_len;
     oal_uint32              ul_ret = OAL_SUCC;
@@ -1445,7 +1446,7 @@ oal_uint32  hmac_psta_tx_mat(oal_netbuf_stru *pst_buf, hmac_vap_stru *pst_hmac_v
 
 oal_uint32 hmac_psta_pause_bss(hmac_vap_stru *pst_hmac_vap)
 {
-    if (!pst_hmac_vap)
+    if (pst_hmac_vap == OAL_PTR_NULL)
     {
         OAM_ERROR_LOG0(0, OAM_SF_PROXYSTA, "{hmac_psta_pause_bss::null pst_hmac_vap}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -1472,11 +1473,11 @@ oal_uint32 hmac_psta_resume_bss(hmac_vap_stru *pst_hmac_vap, mac_channel_stru *p
 
 oal_uint32  hmac_psta_proc_wait_join(hmac_vap_stru *pst_hmac_sta, hmac_join_req_stru *pst_join_req)
 {
-    mac_device_stru                     *pst_mac_device;
-    hmac_vap_stru                       *pst_hmac_vap_temp;
+    mac_device_stru                     *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru                       *pst_hmac_vap_temp = OAL_PTR_NULL;
     oal_uint8                            uc_vap_idx;
-    oal_dlist_head_stru                 *pst_list;
-    hmac_psta_rep_stru                  *pst_rep;
+    oal_dlist_head_stru                 *pst_list = OAL_PTR_NULL;
+    hmac_psta_rep_stru                  *pst_rep = OAL_PTR_NULL;
     oal_uint32                           ul_ret = OAL_SUCC;
 
     if (!pst_hmac_sta || !pst_join_req)
@@ -1505,7 +1506,7 @@ oal_uint32  hmac_psta_proc_wait_join(hmac_vap_stru *pst_hmac_sta, hmac_join_req_
     for (uc_vap_idx = 0; uc_vap_idx < pst_mac_device->uc_vap_num; uc_vap_idx++)
     {
         pst_hmac_vap_temp = mac_res_get_hmac_vap(pst_mac_device->auc_vap_id[uc_vap_idx]);
-        if (pst_hmac_vap_temp && pst_hmac_vap_temp->st_vap_base_info.en_vap_mode == WLAN_VAP_MODE_BSS_AP)
+        if ((pst_hmac_vap_temp != OAL_PTR_NULL) && (pst_hmac_vap_temp->st_vap_base_info.en_vap_mode == WLAN_VAP_MODE_BSS_AP))
         {
             if (OAL_SUCC != hmac_psta_pause_bss(pst_hmac_vap_temp))
             {
@@ -1532,14 +1533,14 @@ oal_uint32  hmac_psta_proc_wait_join(hmac_vap_stru *pst_hmac_sta, hmac_join_req_
 
 oal_uint32  hmac_psta_proc_join_result(hmac_vap_stru *pst_hmac_sta, oal_bool_enum_uint8 en_succ)
 {
-    mac_device_stru                     *pst_mac_device;
-    hmac_vap_stru                       *pst_hmac_vap_temp;
+    mac_device_stru                     *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru                       *pst_hmac_vap_temp = OAL_PTR_NULL;
     oal_uint8                            uc_vap_idx;
-    oal_dlist_head_stru                 *pst_list;
-    hmac_psta_rep_stru                  *pst_rep;
+    oal_dlist_head_stru                 *pst_list = OAL_PTR_NULL;
+    hmac_psta_rep_stru                  *pst_rep = OAL_PTR_NULL;
     oal_uint32                           ul_ret = OAL_SUCC;
 
-    if (!pst_hmac_sta)
+    if (pst_hmac_sta == OAL_PTR_NULL)
     {
        OAM_WARNING_LOG0(0, OAM_SF_ANY, "{hmac_psta_proc_join_result::pst_hmac_sta null.}");
        return OAL_ERR_CODE_PTR_NULL;

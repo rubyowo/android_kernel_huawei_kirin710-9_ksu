@@ -65,7 +65,7 @@ extern "C" {
 /*****************************************************************************
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
-oal_uint32 hmac_init_security_etc(mac_vap_stru *pst_mac_vap,oal_uint8 *puc_addr);
+oal_uint32 hmac_init_security_etc(mac_vap_stru *pst_mac_vap,oal_uint8 *puc_addr, oal_uint8 uc_mac_len);
 oal_uint32 hmac_sta_protocol_down_by_chipher(mac_vap_stru *pst_mac_vap, mac_bss_dscr_stru *pst_bss_dscr);
 oal_uint32 hmac_en_mic_etc(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, oal_netbuf_stru *pst_netbuf, oal_uint8 *puc_iv_len);
 oal_uint32 hmac_de_mic_etc(hmac_user_stru *pst_hmac_user, oal_netbuf_stru *pst_netbuf);

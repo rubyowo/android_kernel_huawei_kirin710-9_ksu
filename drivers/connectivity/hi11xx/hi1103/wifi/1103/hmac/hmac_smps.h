@@ -74,7 +74,6 @@ extern oal_uint32 hmac_smps_update_status(mac_vap_stru *pst_mac_vap, mac_user_st
 extern oal_uint32 hmac_smps_user_asoc_update(oal_uint8 uc_prev_smps_mode, mac_user_stru *pst_mac_user, mac_vap_stru *pst_mac_vap);
 extern oal_uint32  hmac_mgmt_rx_smps_frame(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_user, oal_uint8 *puc_data);
 extern oal_uint32 hmac_smps_update_user_status(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user);
-//extern oal_uint32 hmac_smps_update_user_capbility(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user);
 
 #endif /* end of _PRE_WLAN_FEATURE_SMPS*/
 

@@ -1172,9 +1172,12 @@ OAL_STATIC oal_void  hmac_rx_transmit_msdu_to_lan(hmac_vap_stru *pst_vap, dmac_m
     }
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0))
+    /* 4.11以上内核版本net_device结构体中没有last_rx字段 */
+#else
     /* 置位net_dev->jiffies变量 */
     OAL_NETDEVICE_LAST_RX(pst_device) = OAL_TIME_JIFFY;
-
+#endif
 }
 
 

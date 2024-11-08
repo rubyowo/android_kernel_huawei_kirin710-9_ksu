@@ -110,8 +110,9 @@ extern "C" {
 /* AMPDU Delimeter长度(4字节) */
 #define WLAN_DELIMETER_LENGTH               4
 
-    /* 取绝对值 */
+/* 取绝对值 */
 #define GET_ABS(val)                        ((val) > 0 ? (val) : -(val))
+#define GET_HEX_DECIMAL(val, bits)          ((val) < (1 << ((bits) - 1)) ? (val) : ((val) - (1 << (bits))))
 
 /* 配置命令最大长度: 从算法名称开始算起，不包括"alg" */
 #define DMAC_ALG_CONFIG_MAX_ARG     7
@@ -135,6 +136,19 @@ extern "C" {
 #define WLAN_MAX_VAP_NUM            2
 #define WLAN_2G_SUB_BAND_NUM        13
 #define WLAN_SIFS_OFDM_POWLVL_NUM   4
+
+/* type0表示帧内容为全0x00，type1表示帧内容为全1即0xFF */
+/* type2表示帧内容为全0x5A，type3表示帧内容为全0xA5 */
+/* TYPE_NUM为data type数量 */
+#define WLAN_PACKET_CHECK_DATA_TYPE0 0x00
+#define WLAN_PACKET_CHECK_DATA_TYPE1 0xFF
+#define WLAN_PACKET_CHECK_DATA_TYPE2 0x5A
+#define WLAN_PACKET_CHECK_DATA_TYPE3 0xA5
+#define WLAN_PACKET_CHECK_TYPE_NUM   4
+/* 广播校验帧长度 */
+#define WLAN_PACKET_CHECK_DATA_LEN     1560
+/* 接收到的广播校验帧的最小长度门限 */
+#define WLAN_PACKET_CHECK_DATA_MIN_LEN 1500
 
 /*****************************************************************************
   2.2 WME宏定义
@@ -184,21 +198,56 @@ extern "C" {
 /*****************************************************************************
   2.14 安全相关宏定义
 *****************************************************************************/
-    /* cipher suite selectors */
+/* 内核如果已经定义则使用内核的宏定义，但要注意内核宏定义值是否符合预期!! */
+/* cipher suite selectors */
+#ifndef WLAN_CIPHER_SUITE_USE_GROUP
 #define WLAN_CIPHER_SUITE_USE_GROUP 0x000FAC00
-#define WLAN_CIPHER_SUITE_WEP40     0x000FAC01
-#define WLAN_CIPHER_SUITE_TKIP      0x000FAC02
-    /* reserved:                0x000FAC03 */
-#define WLAN_CIPHER_SUITE_CCMP      0x000FAC04
-#define WLAN_CIPHER_SUITE_WEP104    0x000FAC05
-#define WLAN_CIPHER_SUITE_AES_CMAC  0x000FAC06
-#define WLAN_CIPHER_SUITE_GCMP      0x000FAC08
-#define WLAN_CIPHER_SUITE_GCMP_256  0x000FAC09
-#define WLAN_CIPHER_SUITE_CCMP_256  0x000FAC0A
-#define WLAN_CIPHER_SUITE_BIP_GMAC_128  0x000FAC0B
-#define WLAN_CIPHER_SUITE_BIP_GMAC_256  0x000FAC0C
-#define WLAN_CIPHER_SUITE_BIP_CMAC_256  0x000FAC0D
+#endif
 
+#ifndef WLAN_CIPHER_SUITE_WEP40
+#define WLAN_CIPHER_SUITE_WEP40     0x000FAC01
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_TKIP
+#define WLAN_CIPHER_SUITE_TKIP      0x000FAC02
+#endif
+
+/* reserved:                0x000FAC03 */
+#ifndef WLAN_CIPHER_SUITE_CCMP
+#define WLAN_CIPHER_SUITE_CCMP      0x000FAC04
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_WEP104
+#define WLAN_CIPHER_SUITE_WEP104    0x000FAC05
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_AES_CMAC
+#define WLAN_CIPHER_SUITE_AES_CMAC  0x000FAC06
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_GCMP
+#define WLAN_CIPHER_SUITE_GCMP      0x000FAC08
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_GCMP_256
+#define WLAN_CIPHER_SUITE_GCMP_256  0x000FAC09
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_CCMP_256
+#define WLAN_CIPHER_SUITE_CCMP_256  0x000FAC0A
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_GMAC_128
+#define WLAN_CIPHER_SUITE_BIP_GMAC_128  0x000FAC0B
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_GMAC_256
+#define WLAN_CIPHER_SUITE_BIP_GMAC_256  0x000FAC0C
+#endif
+
+#ifndef WLAN_CIPHER_SUITE_BIP_CMAC_256
+#define WLAN_CIPHER_SUITE_BIP_CMAC_256  0x000FAC0D
+#endif
 
 #undef  WLAN_CIPHER_SUITE_SMS4
 #define WLAN_CIPHER_SUITE_SMS4      0x00147201
@@ -379,6 +428,7 @@ typedef enum
     WLAN_RTS_RATE_SELECT_MODE_BUTT
 }wlan_rts_rate_select_mode_enum;
 
+#if IS_HOST
 typedef enum
 {
     WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
@@ -386,12 +436,29 @@ typedef enum
     WLAN_WITP_AUTH_FT,
     WLAN_WITP_AUTH_NETWORK_EAP,
     WLAN_WITP_AUTH_SAE,
-    WLAN_WITP_AUTH_NUM,
-    WLAN_WITP_AUTH_MAX = WLAN_WITP_AUTH_NUM - 1,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+    /* 4.10以上版本新增3个FILS相关认证类型 */
+    WLAN_WITP_AUTH_FILS_SK,
+    WLAN_WITP_AUTH_FILS_SK_PFS,
+    WLAN_WITP_AUTH_FILS_PK,
+#endif
     WLAN_WITP_AUTH_AUTOMATIC,
 
     WLAN_WITP_ALG_AUTH_BUTT
 }wlan_auth_alg_mode_enum;
+#else
+typedef enum
+{
+    WLAN_WITP_AUTH_OPEN_SYSTEM = 0,
+    WLAN_WITP_AUTH_SHARED_KEY,
+    WLAN_WITP_AUTH_FT,
+    WLAN_WITP_AUTH_NETWORK_EAP,
+    WLAN_WITP_AUTH_SAE,
+    WLAN_WITP_AUTH_FILS_SK,
+    WLAN_WITP_AUTH_FILS_SK_PFS,
+    WLAN_WITP_AUTH_FILS_PK,
+}wlan_auth_alg_mode_enum;
+#endif
 typedef oal_uint8 wlan_auth_alg_enum_uint8;
 
 typedef enum
@@ -652,6 +719,20 @@ typedef enum
     WLAN_CH_SWITCH_BUTT
 }wlan_ch_switch_status_enum;
 typedef oal_uint8 wlan_ch_switch_status_enum_uint8;
+
+typedef enum
+  {
+    WLAN_AP_CHIP_OUI_NORMAL     = 0,
+    WLAN_AP_CHIP_OUI_RALINK     = 1,   /* 芯片厂商为RALINK */
+    WLAN_AP_CHIP_OUI_RALINK1    = 2,
+    WLAN_AP_CHIP_OUI_ATHEROS    = 3,   /* 芯片厂商为ATHEROS */
+    WLAN_AP_CHIP_OUI_BCM        = 4,   /* 芯片厂商为BROADCOM */
+    WLAN_AP_CHIP_OUI_SHENZHEN   = 5,   /* 芯片厂商为SHENZHEN */
+    WLAN_AP_CHIP_OUI_REALTEKS   = 6,   /* 芯片厂商为REALTEKS */
+    WLAN_AP_CHIP_OUI_BUTT
+}wlan_ap_chip_oui_enum;
+
+typedef oal_uint8 wlan_ap_chip_oui_enum_uint8;
 
 typedef enum
 {
@@ -981,6 +1062,15 @@ typedef enum
 } wlan_extlna_bypass_enum;
 
 /*****************************************************************************
+  3.10 ROC场景枚举
+*****************************************************************************/
+typedef enum {
+    IEEE80211_ROC_TYPE_NORMAL  = 0,
+    IEEE80211_ROC_TYPE_MGMT_TX,
+    IEEE80211_ROC_TYPE_BUTT,
+}wlan_ieee80211_roc_type;
+typedef oal_uint8 wlan_ieee80211_roc_type_uint8;
+/*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
 
@@ -1006,6 +1096,20 @@ typedef struct
     oal_uint8                       auc_key[WLAN_WPA_KEY_LEN];      /*密钥*/
     oal_uint8                       auc_seq[WLAN_WPA_SEQ_LEN];      /*sequence*/
 }wlan_priv_key_param_stru;
+
+/* uc_packet_check_num0表示当前查找到的特定广播帧全0x00的个数*/
+/* uc_packet_check_num1表示当前查找到的特定广播帧全0xFF的个数*/
+/* uc_packet_check_num2表示当前查找到的特定广播帧全0x5A的个数*/
+/* uc_packet_check_num3表示当前查找到的特定广播帧全0xA5的个数*/
+typedef struct {
+    oal_uint16 us_pkt_check_send_num;
+    oal_uint8  uc_pkt_check_num0;
+    oal_uint8  uc_pkt_check_num1;
+    oal_uint8  uc_pkt_check_num2;
+    oal_uint8  uc_pkt_check_num3;
+    oal_uint8  resv[2];
+} wal_packet_check_rx_info_stru;
+
 
 /*****************************************************************************
   8 UNION定义

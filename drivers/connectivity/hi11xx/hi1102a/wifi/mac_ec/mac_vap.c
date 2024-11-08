@@ -18,7 +18,7 @@ extern "C" {
 #include "mac_device.h"
 #include "mac_resource.h"
 #include "mac_regdomain.h"
-
+#include "hmac_vap.h"
 #include "dmac_ext_if.h"
 #include "oal_main.h"
 
@@ -36,14 +36,14 @@ oal_uint8 g_uc_uapsd_cap = OAL_FALSE;
 #endif
 #endif
 #ifdef _PRE_WLAN_FEATURE_MULTI_NETBUF_AMSDU
-mac_tx_large_amsdu_ampdu_stru g_st_tx_large_amsdu     =  {1,1,1,1,1};
+mac_tx_large_amsdu_ampdu_stru tx_large_amsdu     =  {1,1,1,1,0,1};
 #endif
 
-mac_tcp_ack_buf_switch_stru   g_st_tcp_ack_buf_switch =  {0};
+mac_tcp_ack_buf_switch_stru   tcp_ack_buf_switch =  {0};
 
 /* WME初始参数定义，按照OFDM初始化 AP模式 值来自于TGn 9 Appendix D: Default WMM AC Parameters */
 
-mac_wme_param_stru g_ast_wmm_initial_params_ap[WLAN_WME_AC_BUTT] =
+mac_wme_param_stru wmm_initial_params_ap[WLAN_WME_AC_BUTT] =
 {
     /* BE */
     {
@@ -71,7 +71,7 @@ mac_wme_param_stru g_ast_wmm_initial_params_ap[WLAN_WME_AC_BUTT] =
 };
 
 /* WMM初始参数定义，按照OFDM初始化 STA模式 */
-mac_wme_param_stru g_ast_wmm_initial_params_sta[WLAN_WME_AC_BUTT] =
+mac_wme_param_stru wmm_initial_params_sta[WLAN_WME_AC_BUTT] =
 {
     /* BE */
     {
@@ -100,7 +100,7 @@ mac_wme_param_stru g_ast_wmm_initial_params_sta[WLAN_WME_AC_BUTT] =
 };
 
 /* WMM初始参数定义，aput建立的bss中STA的使用的EDCA参数 */
-mac_wme_param_stru g_ast_wmm_initial_params_bss[WLAN_WME_AC_BUTT] =
+mac_wme_param_stru wmm_initial_params_bss[WLAN_WME_AC_BUTT] =
 {
     /* BE */
     {
@@ -189,13 +189,13 @@ mac_wme_param_stru  *mac_get_wmm_cfg(wlan_vap_mode_enum_uint8 en_vap_mode)
     /* 参考认证项配置，没有按照协议配置，WLAN_VAP_MODE_BUTT表示是ap广播给sta的edca参数 */
     if (WLAN_VAP_MODE_BUTT == en_vap_mode)
     {
-        return (mac_wme_param_stru  *)g_ast_wmm_initial_params_bss;
+        return (mac_wme_param_stru  *)wmm_initial_params_bss;
     }
     else if(WLAN_VAP_MODE_BSS_AP == en_vap_mode)
     {
-       return (mac_wme_param_stru  *)g_ast_wmm_initial_params_ap;
+       return (mac_wme_param_stru  *)wmm_initial_params_ap;
     }
-    return (mac_wme_param_stru  *)g_ast_wmm_initial_params_sta;
+    return (mac_wme_param_stru  *)wmm_initial_params_sta;
 
 }
 
@@ -209,7 +209,7 @@ mac_wme_param_stru  *mac_get_wmm_cfg_multi_user_multi_ac(oal_traffic_type_enum_u
         return (mac_wme_param_stru  *)g_ast_wmm_multi_user_multi_ac_params_ap;
     }
 
-    return (mac_wme_param_stru  *)g_ast_wmm_initial_params_ap;
+    return (mac_wme_param_stru  *)wmm_initial_params_ap;
 
 }
 #endif
@@ -225,23 +225,38 @@ oal_uint32  mac_mib_set_station_id(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, 
 
     return OAL_SUCC;
 }
-#if 0
 
-oal_uint32  mac_mib_get_station_id(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_param)
-{
-    mac_cfg_staion_id_param_stru   *pst_param;
 
-    pst_param = (mac_cfg_staion_id_param_stru *)puc_param;
 
-    oal_memcopy(pst_param->auc_station_id,
-                pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.auc_dot11StationID,
-                WLAN_MAC_ADDR_LEN);
 
-    *puc_len = OAL_SIZEOF(mac_cfg_staion_id_param_stru);
 
-    return OAL_SUCC;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 oal_uint32  mac_mib_set_bss_type(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param)
 {
@@ -268,7 +283,7 @@ oal_uint32  mac_mib_set_ssid(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_ui
 {
     mac_cfg_ssid_param_stru    *pst_param;
     oal_uint8                   uc_ssid_len;
-    oal_uint8                  *puc_mib_ssid;
+    oal_uint8                  *puc_mib_ssid = OAL_PTR_NULL;
 
     pst_param   = (mac_cfg_ssid_param_stru *)puc_param;
     uc_ssid_len = pst_param->uc_ssid_len;       /* 长度不包括字符串结尾'\0' */
@@ -384,29 +399,60 @@ oal_uint32  mac_mib_get_shpreamble(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len
     return OAL_SUCC;
 
 }
-#if 0
-
-oal_uint32  mac_mib_get_GroupReceivedFrameCount(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_len, oal_uint8 *puc_group_count)
-{
-    *((oal_uint32*)puc_group_count) = pst_mac_vap->pst_mib_info->st_wlan_mib_counters.ul_dot11GroupReceivedFrameCount;
-
-    *puc_len = OAL_SIZEOF(oal_uint32);
-
-    return OAL_SUCC;
-}
 
 
-oal_uint32  mac_mib_set_GroupReceivedFrameCount(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_group_count)
-{
-    oal_uint32      ul_value;
 
-    ul_value = *((oal_uint32 *)puc_group_count);
 
-    pst_mac_vap->pst_mib_info->st_wlan_mib_counters.ul_dot11GroupReceivedFrameCount = ul_value;
 
-    return OAL_SUCC;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef _PRE_WLAN_FEATURE_SMPS
 
@@ -486,8 +532,8 @@ oal_uint8  mac_vap_get_uapsd_en(mac_vap_stru *pst_mac_vap)
 
 oal_uint32 mac_vap_user_exist(oal_dlist_head_stru *pst_new, oal_dlist_head_stru *pst_head)
 {
-    oal_dlist_head_stru      *pst_user_list_head;
-    oal_dlist_head_stru      *pst_member_entry;
+    oal_dlist_head_stru      *pst_user_list_head = OAL_PTR_NULL;
+    oal_dlist_head_stru      *pst_member_entry = OAL_PTR_NULL;
 
 
     OAL_DLIST_SEARCH_FOR_EACH_SAFE(pst_member_entry,pst_user_list_head,pst_head)
@@ -505,8 +551,8 @@ oal_uint32 mac_vap_user_exist(oal_dlist_head_stru *pst_new, oal_dlist_head_stru 
 
 oal_uint32  mac_vap_add_assoc_user(mac_vap_stru *pst_vap, oal_uint16 us_user_idx)
 {
-    mac_user_stru              *pst_user;
-    oal_dlist_head_stru        *pst_dlist_head;
+    mac_user_stru              *pst_user = OAL_PTR_NULL;
+    oal_dlist_head_stru        *pst_dlist_head = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap))
     {
@@ -569,10 +615,10 @@ oal_uint32  mac_vap_add_assoc_user(mac_vap_stru *pst_vap, oal_uint16 us_user_idx
 
 oal_uint32  mac_vap_del_user(mac_vap_stru *pst_vap, oal_uint16 us_user_idx)
 {
-    mac_user_stru          *pst_user;
-    mac_user_stru          *pst_user_temp;
-    oal_dlist_head_stru    *pst_hash_head;
-    oal_dlist_head_stru    *pst_entry;
+    mac_user_stru          *pst_user = OAL_PTR_NULL;
+    mac_user_stru          *pst_user_temp = OAL_PTR_NULL;
+    oal_dlist_head_stru    *pst_hash_head = OAL_PTR_NULL;
+    oal_dlist_head_stru    *pst_entry = OAL_PTR_NULL;
     oal_dlist_head_stru    *pst_dlist_tmp       = OAL_PTR_NULL;
     oal_uint32              ul_ret              = OAL_FAIL;
     oal_uint8               uc_txop_ps_user_cnt = 0;
@@ -693,9 +739,9 @@ oal_uint32  mac_vap_del_user(mac_vap_stru *pst_vap, oal_uint16 us_user_idx)
 
 oal_uint32  mac_vap_find_user_by_macaddr( mac_vap_stru *pst_vap, oal_uint8 *puc_sta_mac_addr, oal_uint16 *pus_user_idx)
 {
-    mac_user_stru              *pst_mac_user;
+    mac_user_stru              *pst_mac_user = OAL_PTR_NULL;
     oal_uint32                  ul_user_hash_value;
-    oal_dlist_head_stru        *pst_entry;
+    oal_dlist_head_stru        *pst_entry = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY((OAL_PTR_NULL == pst_vap)
                   || (OAL_PTR_NULL == puc_sta_mac_addr)
@@ -766,7 +812,7 @@ oal_uint32  mac_device_find_user_by_macaddr(
                 oal_uint16          *pus_user_idx)
 {
     mac_device_stru            *pst_device;
-    mac_vap_stru               *pst_mac_vap;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                   uc_vap_id;
     oal_uint8                   uc_vap_idx;
     oal_uint32                  ul_ret;
@@ -817,15 +863,29 @@ oal_uint32  mac_device_find_user_by_macaddr(
 
     return OAL_FAIL;
 }
-#if 0
 
-oal_uint32  mac_vap_update_user(mac_vap_stru *pst_vap, oal_uint32   ul_user_dix)
-{
-    /* 非OFFLOAD方案下不需要实现 */
 
-    return OAL_SUCC;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 oal_uint32  mac_vap_init_wme_param(mac_vap_stru *pst_mac_vap)
 {
@@ -892,7 +952,7 @@ oal_void mibset_RSNAClearWpa2PairwiseCipherImplemented(mac_vap_stru *pst_vap)
 
 oal_void  mac_vap_init_mib_11n(mac_vap_stru  *pst_mac_vap)
 {
-    wlan_mib_ieee802dot11_stru    *pst_mib_info;
+    wlan_mib_ieee802dot11_stru    *pst_mib_info = OAL_PTR_NULL;
     mac_device_stru               *pst_dev;
 
     pst_dev = mac_res_get_dev(pst_mac_vap->uc_device_id);
@@ -1075,7 +1135,7 @@ oal_void  mac_vap_init_11ac_mcs_doublenss(
 
 oal_void  mac_vap_init_mib_11ac(mac_vap_stru  *pst_mac_vap)
 {
-    wlan_mib_ieee802dot11_stru      *pst_mib_info;
+    wlan_mib_ieee802dot11_stru      *pst_mib_info = OAL_PTR_NULL;
     mac_device_stru                 *pst_mac_dev;
 
     pst_mac_dev = mac_res_get_dev(pst_mac_vap->uc_device_id);
@@ -1114,7 +1174,14 @@ oal_void  mac_vap_init_mib_11ac(mac_vap_stru  *pst_mac_vap)
     pst_mib_info->st_wlan_mib_vht_sta_config.en_dot11VHTControlFieldSupported           = OAL_FALSE;
     pst_mib_info->st_wlan_mib_vht_sta_config.ul_dot11VHTMaxRxAMPDUFactor                = 7;            /* 2^(13+1)-1字节 */
 #ifdef _PRE_WLAN_FEATURE_OPMODE_NOTIFY
-    pst_mib_info->st_wlan_mib_sta_config.en_dot11OperatingModeNotificationImplemented   = OAL_TRUE;
+    if (WLAN_VAP_MODE_BSS_AP == pst_mac_vap->en_vap_mode)
+    {
+        pst_mib_info->st_wlan_mib_sta_config.en_dot11OperatingModeNotificationImplemented   = OAL_FALSE; //1102A APUT单流不支持此功能模式
+    }
+    else
+    {
+        pst_mib_info->st_wlan_mib_sta_config.en_dot11OperatingModeNotificationImplemented   = OAL_TRUE;
+    }
 #endif
 }
 
@@ -1133,21 +1200,31 @@ oal_void  mac_vap_init_mib_11i(mac_vap_stru  *pst_vap)
 #ifdef _PRE_WLAN_FEATURE_11K
 oal_void  mac_vap_init_mib_11k(mac_vap_stru  *pst_vap)
 {
+    if(!IS_LEGACY_STA(pst_vap))
+    {
+        return;
+    }
     pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RadioMeasurementActivated = OAL_TRUE;
 
     pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RMBeaconActiveMeasurementActivated    = OAL_TRUE;
     pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RMBeaconPassiveMeasurementActivated   = OAL_TRUE;
     pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RMBeaconTableMeasurementActivated     = OAL_TRUE;
-    pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RMLinkMeasurementActivated            = OAL_TRUE;
 
+    pst_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11RMLinkMeasurementActivated            = OAL_TRUE;
     pst_vap->pst_mib_info->st_wlan_mib_sta_config.ul_dot11RMMaxMeasurementDuration              = 1200; //1.2s
 }
 #endif
+
 
 #if defined(_PRE_WLAN_FEATURE_11V) || defined(_PRE_WLAN_FEATURE_11V_ENABLE)
 /* 默认支持11v 如需关闭请上层调用接口 */
 OAL_STATIC oal_void  mac_vap_init_mib_11v(mac_vap_stru  *pst_vap)
 {
+    if(!IS_LEGACY_STA(pst_vap))
+    {
+        return;
+    }
+
     /*en_dot11MgmtOptionBSSTransitionActivated 初始化时为TRUE,由定制化或命令打开or关闭 */
     mac_mib_set_MgmtOptionBSSTransitionActivated(pst_vap, OAL_TRUE);
     mac_mib_set_MgmtOptionBSSTransitionImplemented(pst_vap, OAL_TRUE);
@@ -1162,8 +1239,8 @@ oal_void mac_vap_init_legacy_rates(mac_vap_stru *pst_vap,mac_data_rate_stru *pst
 {
     oal_uint8                      uc_rate_index;
     oal_uint8                      uc_curr_rate_index = 0;
-    mac_data_rate_stru            *puc_orig_rate;
-    mac_data_rate_stru            *puc_curr_rate;
+    mac_data_rate_stru            *puc_orig_rate = OAL_PTR_NULL;
+    mac_data_rate_stru            *puc_curr_rate = OAL_PTR_NULL;
     oal_uint8                      uc_rates_num;
 
     /* 初始化速率集 */
@@ -1215,8 +1292,8 @@ oal_void mac_vap_init_11b_rates(mac_vap_stru *pst_vap,mac_data_rate_stru *pst_ra
 {
     oal_uint8                      uc_rate_index;
     oal_uint8                      uc_curr_rate_index = 0;
-    mac_data_rate_stru            *puc_orig_rate;
-    mac_data_rate_stru            *puc_curr_rate;
+    mac_data_rate_stru            *puc_orig_rate = OAL_PTR_NULL;
+    mac_data_rate_stru            *puc_curr_rate = OAL_PTR_NULL;
     oal_uint8                      uc_rates_num;
 
     /* 初始化速率集 */
@@ -1268,8 +1345,8 @@ oal_void mac_vap_init_11b_rates(mac_vap_stru *pst_vap,mac_data_rate_stru *pst_ra
 oal_void mac_vap_init_11g_mixed_one_rates(mac_vap_stru *pst_vap,mac_data_rate_stru *pst_rates)
 {
     oal_uint8                      uc_rate_index;
-    mac_data_rate_stru            *puc_orig_rate;
-    mac_data_rate_stru            *puc_curr_rate;
+    mac_data_rate_stru            *puc_orig_rate = OAL_PTR_NULL;
+    mac_data_rate_stru            *puc_curr_rate = OAL_PTR_NULL;
     oal_uint8                      uc_rates_num;
 
     /* 初始化速率集 */
@@ -1305,8 +1382,8 @@ oal_void mac_vap_init_11g_mixed_one_rates(mac_vap_stru *pst_vap,mac_data_rate_st
 oal_void mac_vap_init_11g_mixed_two_rates(mac_vap_stru *pst_vap,mac_data_rate_stru *pst_rates)
 {
     oal_uint8                      uc_rate_index;
-    mac_data_rate_stru            *puc_orig_rate;
-    mac_data_rate_stru            *puc_curr_rate;
+    mac_data_rate_stru            *puc_orig_rate = OAL_PTR_NULL;
+    mac_data_rate_stru            *puc_curr_rate = OAL_PTR_NULL;
     oal_uint8                      uc_rates_num;
 
     /* 初始化速率集 */
@@ -1550,7 +1627,7 @@ oal_void mac_vap_init_rates(mac_vap_stru *pst_vap)
 {
     mac_device_stru               *pst_mac_dev;
     wlan_protocol_enum_uint8       en_vap_protocol;
-    mac_data_rate_stru            *pst_rates;
+    mac_data_rate_stru            *pst_rates = OAL_PTR_NULL;
 
     pst_mac_dev = mac_res_get_dev(pst_vap->uc_device_id);
 
@@ -1575,7 +1652,7 @@ oal_void mac_sta_init_bss_rates(mac_vap_stru *pst_vap, oal_void *pst_bss_dscr)
 {
     mac_device_stru               *pst_mac_dev;
     wlan_protocol_enum_uint8       en_vap_protocol;
-    mac_data_rate_stru            *pst_rates;
+    mac_data_rate_stru            *pst_rates = OAL_PTR_NULL;
     oal_uint32                     i,j;
     mac_bss_dscr_stru             *pst_bss = (mac_bss_dscr_stru *)pst_bss_dscr;
 
@@ -1611,35 +1688,63 @@ oal_void mac_sta_init_bss_rates(mac_vap_stru *pst_vap, oal_void *pst_bss_dscr)
     mac_vap_init_rates_by_protocol(pst_vap, en_vap_protocol, pst_rates);
 }
 
-#if 0
-#ifdef _PRE_WLAN_DFT_STAT
 
-OAL_STATIC oal_uint32  mac_vap_dft_stat_init(mac_vap_stru *pst_vap)
-{
-    OAL_MEMZERO(&pst_vap->st_vap_dft, OAL_SIZEOF(mac_vap_dft_stru));
 
-    return OAL_SUCC;
-}
-#endif
 
-oal_uint32  mac_vap_dft_stat_clear(mac_vap_stru *pst_vap)
-{
-    pst_vap->st_vap_dft.ul_flg = 0;
 
-    if (OAL_TRUE == pst_vap->st_vap_dft.st_vap_dft_timer.en_is_registerd)
-    {
-        FRW_TIMER_IMMEDIATE_DESTROY_TIMER(&pst_vap->st_vap_dft.st_vap_dft_timer);
-    }
 
-    if (OAL_PTR_NULL != pst_vap->st_vap_dft.pst_vap_dft_stats)
-    {
-        OAL_MEM_FREE(pst_vap->st_vap_dft.pst_vap_dft_stats, OAL_TRUE);
-    }
 
-    return OAL_SUCC;
-}
 
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 oal_void mac_vap_set_tx_power(mac_vap_stru *pst_vap, oal_uint8 uc_tx_power)
@@ -1734,19 +1839,47 @@ oal_void mac_vap_set_rifs_tx_on(mac_vap_stru *pst_vap, oal_uint8 uc_value)
 {
     pst_vap->st_cap_flag.bit_rifs_tx_on = uc_value;
 }
-#if 0
-
-oal_void mac_vap_set_tdls_prohibited(mac_vap_stru *pst_vap, oal_uint8 uc_value)
-{
-    pst_vap->st_cap_flag.bit_tdls_prohibited = uc_value;
-}
 
 
-oal_void mac_vap_set_tdls_channel_switch_prohibited(mac_vap_stru *pst_vap, oal_uint8 uc_value)
-{
-    pst_vap->st_cap_flag.bit_tdls_channel_switch_prohibited = uc_value;
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #ifdef _PRE_WLAN_FEATURE_VOWIFI
 
 oal_void mac_vap_vowifi_init(mac_vap_stru *pst_mac_vap)
@@ -1979,7 +2112,7 @@ oal_uint32 mac_vap_save_app_ie(mac_vap_stru *pst_mac_vap, oal_app_ie_stru *pst_a
  
 oal_uint32 mac_vap_exit(mac_vap_stru *pst_vap)
 {
-    mac_device_stru               *pst_device;
+    mac_device_stru               *pst_device = OAL_PTR_NULL;
     oal_uint8                      uc_index;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_vap))
@@ -2085,7 +2218,7 @@ oal_uint32 mac_vap_exit(mac_vap_stru *pst_vap)
 oal_uint32 mac_vap_check_signal_bridge(mac_vap_stru *pst_mac_vap)
 {
     mac_device_stru *pst_mac_device;
-    mac_vap_stru    *pst_other_vap;
+    mac_vap_stru    *pst_other_vap = OAL_PTR_NULL;
     oal_uint8        uc_vap_idx;
 
     pst_mac_device = (mac_device_stru *)mac_res_get_dev(pst_mac_vap->uc_device_id);
@@ -2124,7 +2257,7 @@ oal_uint32 mac_vap_check_signal_bridge(mac_vap_stru *pst_mac_vap)
 
 oal_void  mac_init_mib(mac_vap_stru *pst_mac_vap)
 {
-    wlan_mib_ieee802dot11_stru *pst_mib_info;
+    wlan_mib_ieee802dot11_stru *pst_mib_info = OAL_PTR_NULL;
     oal_uint8 uc_idx;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap))
@@ -2166,7 +2299,7 @@ oal_void  mac_init_mib(mac_vap_stru *pst_mac_vap)
     mac_mib_set_HtProtection(pst_mac_vap, WLAN_MIB_HT_NO_PROTECTION);
     mac_mib_set_RifsMode(pst_mac_vap, OAL_TRUE);
     mac_mib_set_NonGFEntitiesPresent(pst_mac_vap, OAL_FALSE);
-    mac_mib_set_LsigTxopFullProtectionActivated(pst_mac_vap, OAL_TRUE);
+    mac_mib_set_LsigTxopFullProtectionActivated(pst_mac_vap, OAL_FALSE);
 
     pst_mib_info->st_wlan_mib_operation.en_dot11DualCTSProtection       = OAL_FALSE;
     pst_mib_info->st_wlan_mib_operation.en_dot11PCOActivated            = OAL_FALSE;
@@ -2293,12 +2426,6 @@ oal_uint32 mac_vap_config_vht_ht_mib_by_protocol(mac_vap_stru *pst_mac_vap)
     }
 #endif
 
-    if (g_uc_hitalk_status & NARROW_BAND_ON_MASK)
-    {
-        pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11HighThroughputOptionImplemented = OAL_FALSE;
-        pst_mac_vap->pst_mib_info->st_wlan_mib_sta_config.en_dot11VHTOptionImplemented = OAL_FALSE;
-    }
-
     return OAL_SUCC;
 }
 
@@ -2422,7 +2549,7 @@ oal_uint32 mac_vap_init(
                 mac_cfg_add_vap_param_stru *pst_param)
 {
     oal_uint32                     ul_loop;
-    wlan_mib_ieee802dot11_stru    *pst_mib_info;
+    wlan_mib_ieee802dot11_stru    *pst_mib_info = OAL_PTR_NULL;
     mac_device_stru               *pst_mac_device = mac_res_get_dev(uc_device_id);
     oal_uint32                     ul_cb_ret = OAL_SUCC;/* rom cb函数返回值 */
 
@@ -2528,7 +2655,7 @@ oal_uint32 mac_vap_init(
 
             mac_vap_set_peer_obss_scan(pst_vap, OAL_FALSE);
 
-            //OAL_MEMZERO(&(pst_vap->st_key_mgmt), sizeof(mac_key_mgmt_stru));
+
 
             /* 初始化协议模式与带宽为非法值，需通过配置命令配置 */
             pst_vap->st_channel.en_band         = WLAN_BAND_BUTT;
@@ -2745,7 +2872,7 @@ oal_uint8  mac_vap_get_curr_baserate(mac_vap_stru *pst_mac_ap,oal_uint8 uc_br_id
     oal_uint8          uc_loop;
     oal_uint8          uc_found_br_num = 0;
     oal_uint8          uc_rate_num;
-    mac_rateset_stru  *pst_rate;
+    mac_rateset_stru  *pst_rate = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_mac_ap)
     {
@@ -2838,8 +2965,8 @@ oal_void  mac_vap_get_bandwidth_cap(mac_vap_stru *pst_mac_vap, wlan_bw_cap_enum_
 
 oal_uint32 mac_dump_protection(mac_vap_stru *pst_mac_vap, oal_uint8* puc_param)
 {
-    mac_h2d_protection_stru     *pst_h2d_prot;
-    mac_protection_stru         *pst_protection;
+    mac_h2d_protection_stru     *pst_h2d_prot = OAL_PTR_NULL;
+    mac_protection_stru         *pst_protection = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == puc_param)
     {
@@ -2878,14 +3005,14 @@ oal_uint32 mac_dump_protection(mac_vap_stru *pst_mac_vap, oal_uint8* puc_param)
 }
 
 
-#if 0
-oal_void  mac_vap_set_p2p_channel(mac_vap_stru *pst_mac_vap, mac_channel_stru * pst_p2p_home_channel)
-{
-    /*
-    TBD
-    */
-}
-#endif
+
+
+
+
+
+
+
+
 
 wlan_prot_mode_enum_uint8 mac_vap_get_user_protection_mode(mac_vap_stru *pst_mac_vap_sta, mac_user_stru *pst_mac_user)
 {
@@ -2974,7 +3101,7 @@ oal_void mac_protection_set_rts_tx_param(mac_vap_stru *pst_mac_vap,oal_switch_en
     if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_rts_tx_param))
     {
         OAM_ERROR_LOG2(0, OAM_SF_ASSOC, "{mac_protection_set_rts_tx_param::param null,pst_mac_vap[%p] pst_rts_tx_param[%p]}",
-                                     pst_mac_vap ,pst_rts_tx_param);
+                                     (uintptr_t)pst_mac_vap, (uintptr_t)pst_rts_tx_param);
         return;
     }
     /*只有启用erp保护时候，RTS[0~2]速率才设为11Mpbs(11b), 其余时候都为24Mpbs(leagcy ofdm) */
@@ -3025,8 +3152,8 @@ OAL_STATIC oal_uint32 mac_vap_init_pmf(mac_vap_stru  *pst_mac_vap,
 {
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_vap) || OAL_UNLIKELY(OAL_PTR_NULL == pst_mac_security_param))
     {
-        OAM_ERROR_LOG2(0, OAM_SF_PMF,"mac_11w_init_privacy::Null input,pst_mac_vap[%d],security_param[%d]!!",
-                        pst_mac_vap,pst_mac_security_param );
+        OAM_ERROR_LOG2(0, OAM_SF_PMF,"mac_11w_init_privacy::Null input,pst_mac_vap[%x],security_param[%x]!!",
+                        (uintptr_t)pst_mac_vap, (uintptr_t)pst_mac_security_param );
         return OAL_ERR_CODE_PTR_NULL;
     }
     if (OAL_TRUE != mac_mib_get_rsnaactivated(pst_mac_vap))
@@ -3113,7 +3240,7 @@ oal_uint32 mac_vap_add_wep_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal
     }
     mac_mib_set_privacyinvoked(pst_mac_vap, OAL_TRUE);
     /* 初始化WEP组播加密套件 */
-    //mac_mib_set_RSNAGroupCipherSelected(pst_mac_vap, uc_wep_cipher_type);
+
 
     /*初始化组播用户的安全信息*/
     if (pst_wep_addkey_params->en_default_key == OAL_TRUE)
@@ -3135,8 +3262,8 @@ oal_uint32 mac_vap_add_wep_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal
     /* TBD 挪出去 初始化组播用户的发送信息 */
     pst_multi_user->st_user_tx_info.st_security.en_cipher_key_type      = pst_wep_addkey_params->uc_key_index + HAL_KEY_TYPE_PTK;
     pst_multi_user->st_user_tx_info.st_security.en_cipher_protocol_type = uc_wep_cipher_type;
-    //OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_WPA,
-    //              "{mac_config_11i_add_wep_key::set multiuser ciphertype[%d] ok}", uc_wep_cipher_type);
+
+
     return OAL_SUCC;
 }
 
@@ -3144,7 +3271,7 @@ oal_uint32 mac_vap_add_wep_key(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal
 oal_uint32 mac_vap_init_privacy(mac_vap_stru *pst_mac_vap, mac_cfg80211_connect_security_stru *pst_mac_security_param)
 {
     mac_wep_key_param_stru              st_wep_key = {0};
-    mac_cfg80211_crypto_settings_stru  *pst_crypto;
+    mac_cfg80211_crypto_settings_stru  *pst_crypto = OAL_PTR_NULL;
     oal_uint32                          ul_ret  = OAL_SUCC;
 
     mac_mib_set_privacyinvoked(pst_mac_vap, OAL_FALSE);
@@ -3238,6 +3365,11 @@ oal_uint32 mac_vap_init_privacy(mac_vap_stru *pst_mac_vap, mac_cfg80211_connect_
 
 oal_void mac_mib_set_wep(mac_vap_stru *pst_mac_vap, oal_uint8 uc_key_id)
 {
+    if (uc_key_id >= WLAN_NUM_DOT11WEPDEFAULTKEYVALUE)
+    {
+        return;
+    }
+
     /*初始化wep相关MIB信息*/
     if (OAL_PTR_NULL != pst_mac_vap->pst_mib_info)
     {
@@ -3401,7 +3533,7 @@ oal_uint8 mac_vap_get_default_key_id(mac_vap_stru *pst_mac_vap)
 oal_uint32 mac_vap_set_default_key(mac_vap_stru *pst_mac_vap, oal_uint8  uc_key_index)
 {
     wlan_priv_key_param_stru     *pst_wep_key = OAL_PTR_NULL;
-    mac_user_stru                *pst_multi_user;
+    mac_user_stru                *pst_multi_user = OAL_PTR_NULL;
 
     /* 1.1 如果非wep 加密，则直接返回 */
     if (OAL_TRUE != mac_is_wep_enabled(pst_mac_vap))
@@ -3470,7 +3602,7 @@ oal_uint32 mac_vap_set_default_mgmt_key(mac_vap_stru *pst_mac_vap, oal_uint8 uc_
 void mac_vap_init_user_security_port(mac_vap_stru  *pst_mac_vap,
                                         mac_user_stru *pst_mac_user)
 {
-    oal_uint8 auc_auth_policy[1] = {WLAN_AUTH_SUITE_1X};
+    oal_uint8 auc_auth_policy[WLAN_AUTHENTICATION_SUITES] = {WLAN_AUTH_SUITE_1X, 0};
     mac_user_set_port(pst_mac_user, OAL_TRUE);
 
     if (OAL_TRUE != mac_mib_get_rsnaactivated(pst_mac_vap))
@@ -3487,19 +3619,19 @@ void mac_vap_init_user_security_port(mac_vap_stru  *pst_mac_vap,
 
     /* STA需要检测是否采用802.1X 认证方式 */
     if ((WLAN_VAP_MODE_BSS_STA == pst_mac_vap->en_vap_mode
-        && OAL_TRUE == mac_check_auth_policy(pst_mac_vap, auc_auth_policy, DMAC_RSNA_802_11I))
+        && OAL_SUCC == mac_check_auth_policy(pst_mac_vap, auc_auth_policy, DMAC_RSNA_802_11I))
         || (WLAN_VAP_MODE_BSS_AP == pst_mac_vap->en_vap_mode))
     {
         mac_user_set_port(pst_mac_user, OAL_FALSE);
     }
 
-    //mac_user_init_key(pst_mac_user);
+
 }
 
 
 oal_uint32 mac_vap_set_beacon(mac_vap_stru *pst_mac_vap, mac_beacon_param_stru *pst_beacon_param)
 {
-    mac_user_stru *pst_multi_user;
+    mac_user_stru *pst_multi_user = OAL_PTR_NULL;
     oal_uint32     ul_ret = OAL_SUCC;
 
     if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == pst_beacon_param))
@@ -3607,6 +3739,7 @@ oal_uint8* mac_vap_get_mac_addr(mac_vap_stru *pst_mac_vap)
 
 oal_uint32 mac_mib_init_ft_cfg(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mde)
 {
+    hmac_vap_stru *pst_hmac_vap = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_mac_vap)
     {
@@ -3618,6 +3751,18 @@ oal_uint32 mac_mib_init_ft_cfg(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mde)
     {
         OAM_ERROR_LOG0(0, OAM_SF_WPA, "{mac_mib_init_ft_cfg::pst_mib_info null.}");
         return OAL_ERR_CODE_PTR_NULL;
+    }
+    pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
+    if (OAL_PTR_NULL == pst_hmac_vap)
+    {
+        OAM_ERROR_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{mac_mib_init_ft_cfg::hmac_vap_info null[%d]}",
+          pst_mac_vap->uc_vap_id);
+        return OAL_ERR_CODE_PTR_NULL;
+    }
+    if (WLAN_WITP_AUTH_FT != pst_hmac_vap->en_auth_mode)
+    {
+        pst_mac_vap->pst_mib_info->st_wlan_mib_fast_bss_trans_cfg.en_dot11FastBSSTransitionActivated = OAL_FALSE;
+        return OAL_SUCC;
     }
 
     if ((OAL_PTR_NULL == puc_mde) || (puc_mde[0] != MAC_EID_MOBILITY_DOMAIN) || (puc_mde[1] != 3))
@@ -3667,8 +3812,6 @@ oal_uint32 mac_mib_get_md_id(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_mdid)
     {
         return OAL_FAIL;
     }
-
-    pst_mac_vap->pst_mib_info->st_wlan_mib_fast_bss_trans_cfg.en_dot11FastBSSTransitionActivated = OAL_TRUE;
 
     *pus_mdid = *(oal_uint16*)(pst_mac_vap->pst_mib_info->st_wlan_mib_fast_bss_trans_cfg.auc_dot11FTMobilityDomainID);
 
@@ -4152,7 +4295,7 @@ oal_uint8 mac_mib_get_rsn_akm_suites(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_s
 }
 
 /*lint -e19*/
-//oal_module_symbol(mac_vap_set_p2p_channel);
+
 #ifdef _PRE_WLAN_FEATURE_UAPSD
 oal_module_symbol(g_uc_uapsd_cap);
 #endif
@@ -4161,9 +4304,9 @@ oal_module_symbol(mac_vap_set_current_channel);
 oal_module_symbol(mac_vap_init_wme_param);
 oal_module_symbol(mac_mib_set_station_id);
 oal_module_symbol(mac_vap_state_change);
-#if 0
-oal_module_symbol(mac_mib_get_station_id);
-#endif
+
+
+
 oal_module_symbol(mac_mib_set_bss_type);
 oal_module_symbol(mac_get_bss_type);
 oal_module_symbol(mac_mib_set_ssid);
@@ -4175,12 +4318,12 @@ oal_module_symbol(mac_mib_set_dtim_period);
 oal_module_symbol(mac_vap_set_uapsd_en);
 oal_module_symbol(mac_vap_get_uapsd_en);
 #endif
-#if 0
-oal_module_symbol(mac_mib_get_GroupReceivedFrameCount);
-oal_module_symbol(mac_mib_set_GroupReceivedFrameCount);
-oal_module_symbol(mac_vap_get_user_wme_info);
-oal_module_symbol(mac_vap_set_user_wme_info);
-#endif
+
+
+
+
+
+
 oal_module_symbol(mac_mib_set_shpreamble);
 oal_module_symbol(mac_mib_get_shpreamble);
 oal_module_symbol(mac_vap_add_assoc_user);
@@ -4197,7 +4340,7 @@ oal_module_symbol(mac_vap_init_by_protocol);
 oal_module_symbol(mibset_RSNAClearWpaPairwiseCipherImplemented);
 oal_module_symbol(mibset_RSNAClearWpa2PairwiseCipherImplemented);
 oal_module_symbol(mac_vap_config_vht_ht_mib_by_protocol);
-//oal_module_symbol(mac_mib_set_RSNAAuthenticationSuiteSelected);
+
 oal_module_symbol(mac_vap_check_bss_cap_info_phy_ap);
 oal_module_symbol(mac_get_wmm_cfg);
 #ifdef _PRE_WLAN_FEATURE_EDCA_MULTI_USER_MULTI_AC
@@ -4217,10 +4360,10 @@ oal_module_symbol(mac_vap_set_al_tx_first_run);
 oal_module_symbol(mac_vap_set_multi_user_idx);
 oal_module_symbol(mac_vap_set_wmm_params_update_count);
 oal_module_symbol(mac_vap_set_rifs_tx_on);
-#if 0
-oal_module_symbol(mac_vap_set_tdls_prohibited);
-oal_module_symbol(mac_vap_set_tdls_channel_switch_prohibited);
-#endif
+
+
+
+
 oal_module_symbol(mac_vap_set_11ac2g);
 oal_module_symbol(mac_vap_set_hide_ssid);
 oal_module_symbol(mac_get_p2p_mode);

@@ -60,7 +60,7 @@ extern "C" {
 /*****************************************************************************
   10 º¯ÊıÉùÃ÷
 *****************************************************************************/
-extern oal_uint16  hmac_mgmt_encap_deauth_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, oal_uint8 *puc_da, oal_uint16 us_err_code);
+extern oal_uint16  hmac_mgmt_encap_deauth_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, const unsigned char *puc_da, oal_uint16 us_err_code);
 extern oal_uint16  hmac_mgmt_encap_disassoc_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, oal_uint8 *puc_da, oal_uint16 us_err_code);
 extern oal_uint16  hmac_encap_sa_query_req_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, oal_uint8 *puc_da,oal_uint16 us_trans_id);
 extern oal_uint16  hmac_encap_sa_query_rsp_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *pst_hdr, oal_uint8 *puc_data);

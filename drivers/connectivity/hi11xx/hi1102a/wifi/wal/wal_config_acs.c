@@ -44,8 +44,8 @@ oal_uint32  wal_acs_netlink_recv(oal_uint8 *puc_data, oal_uint32 ul_len)
 {
     oal_uint32        ul_device_num;
     oal_uint32        ul_ret;
-    mac_device_stru  *pst_mac_dev;
-    mac_vap_stru     *pst_mac_vap;
+    mac_device_stru  *pst_mac_dev = OAL_PTR_NULL;
+    mac_vap_stru     *pst_mac_vap = OAL_PTR_NULL;
     mac_acs_cmd_stru *pst_acs_cmd_hdr;
 
     pst_acs_cmd_hdr = (mac_acs_cmd_stru *)puc_data;
@@ -122,7 +122,7 @@ oal_uint32  wal_acs_timer_handler(void *p_arg)
     oal_uint8   auc_buf[8];
     oal_uint32  ul_len = 4;
 
-    OAL_MEMZERO(auc_buf, 4);
+    memset_s(auc_buf, OAL_SIZEOF(auc_buf), 0, ul_len);
     auc_buf[0] = 2;  /* ACS PING COMMAND */
 
     wal_acs_netlink_recv(auc_buf, ul_len);

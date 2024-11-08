@@ -133,7 +133,7 @@ typedef struct
                         bit_pco_phase                         : 1,
                         bit_resv6                             : 2;
 
-    oal_uint8           auc_resv[1];
+    oal_uint8           uc_chan_center_freq_seg2;
 
     oal_uint8           auc_basic_mcs_set[16];
 
@@ -176,16 +176,21 @@ typedef mac_max_he_mcs_map_stru mac_rx_max_he_mcs_map_stru;
 
 typedef struct
 {
-    oal_bool_enum_uint8                en_he_capable;                   /* HE capable*/
     mac_frame_he_cap_ie_stru           st_he_cap_ie;                    /*HE Cap ie*/
     /*HE Operation*/
     mac_frame_he_oper_ie_stru          st_he_oper_ie;
+    oal_bool_enum_uint8                en_he_capable;                   /* HE capable*/
     wlan_mib_vht_op_width_enum_uint8   en_channel_width;                /* 解析VHT Operation IE */
     oal_uint16                         us_max_mpdu_length;
-    oal_uint8                          bit_bss_color       :6,          /*保存bss color change announcement ie数据*/
-                                       bit_bss_color_exist : 2;
-    oal_uint8                          _rom[3];                         /* 11ax rom */
+
+    oal_uint8                          bit_change_announce_bss_color       : 6,         /*保存bss color change announcement ie数据*/
+                                       bit_change_announce_bss_color_exist : 1,
+                                       bit_he_oper_bss_color_exist         : 1;
+    oal_uint8                          bit_he_duration_rts_threshold_exist : 1,
+                                       bit_resv                            : 7;
+    oal_uint8                          auc_resv[2];
 }mac_he_hdl_stru;
+
 #endif
 
 typedef struct
@@ -227,15 +232,15 @@ typedef struct
                 bit_vht_link_adaptation     : 2,
                 bit_rx_ant_pattern          : 1,
                 bit_tx_ant_pattern          : 1,
-                bit_resv1                   : 2;                       /* 解析vht Capabilities IE: VHT Capabilities Info field */
+                bit_extend_nss_bw_supp      : 2;                       /* 解析vht Capabilities IE: VHT Capabilities Info field */
 
     mac_tx_max_mcs_map_stru     st_tx_max_mcs_map;
     mac_rx_max_mcs_map_stru     st_rx_max_mcs_map;
 
-    oal_uint16  bit_rx_highest_rate : 13,
-                bit_resv2           : 3;
-    oal_uint16  bit_tx_highest_rate : 13,
-                bit_resv3           : 3;                                /* 解析vht Capabilities IE: VHT Supported MCS Set field */
+    oal_uint32  bit_rx_highest_rate : 13,
+                bit_tx_highest_rate : 13,
+                bit_user_num_spatial_stream_160M :4,
+                bit_resv3           : 2;                                /* 解析vht Capabilities IE: VHT Supported MCS Set field */
 
     oal_bool_enum_uint8 en_vht_capable;                                /* VHT capable */
 
@@ -244,6 +249,7 @@ typedef struct
                                                              /* uc_channel_width的取值，0 -- 20/40M, 1 -- 80M, 2 -- 160M */
     oal_uint8           uc_channel_center_freq_seg0;
     oal_uint8           uc_channel_center_freq_seg1;
+
 } mac_vht_hdl_stru;
 
 /* user结构体，对SA Query流程信息的保存结构 */
@@ -355,6 +361,8 @@ typedef struct
     oal_uint16            us_user_idx;
     wlan_nss_enum_uint8   en_avail_num_spatial_stream;            /* Tx和Rx支持Nss的交集,供算法调用 */
     wlan_nss_enum_uint8   en_user_num_spatial_stream;             /* 用户支持的空间流个数 */
+    wlan_nss_enum_uint8   en_user_num_spatial_stream_160M;        /* 用户带宽为160M时支持的空间流个数 */
+    oal_uint8             auc_reserv[3];
 }mac_user_nss_stru;
 
 /* m2s user信息结构体 */
@@ -412,6 +420,36 @@ typedef enum
 typedef oal_uint8 mac_user_qos_enhance_state_enum_uint8;
 #endif
 
+
+typedef struct
+{
+#if defined(_PRE_WLAN_FEATURE_11AX)
+    mac_he_hdl_stru                         st_he_hdl; /*HE Capability IE*/
+#endif
+    oal_uint8                               auc_rsv[4];
+}mac_user_rom_stru;
+
+extern mac_user_rom_stru g_mac_user_rom[];
+
+#define MAC_USER_ROM_STRU(_user)          ((mac_user_rom_stru*)(((mac_user_stru *)_user)->_rom))
+#if defined(_PRE_WLAN_FEATURE_11AX)
+#define MAC_USER_HE_HDL_STRU(_user)       (&((MAC_USER_ROM_STRU(_user))->st_he_hdl))
+#define MAC_USER_IS_HE_USER(_user)        (MAC_USER_HE_HDL_STRU(_user)->en_he_capable)
+#define MAC_USER_IS_SUPPORT_OM(_user) ((MAC_USER_IS_HE_USER(_user)) && (MAC_USER_HE_HDL_STRU(_user)->st_he_cap_ie.st_he_mac_cap.bit_om_control_support))
+#endif
+
+/* vht cap ie Extended nss bw support 字段枚举 */
+typedef enum
+{
+    WLAN_EXTEND_NSS_BW_SUPP0,
+    WLAN_EXTEND_NSS_BW_SUPP1,
+    WLAN_EXTEND_NSS_BW_SUPP2,
+    WLAN_EXTEND_NSS_BW_SUPP3,
+
+    WLAN_EXTEND_NSS_BW_SUPP_BUTT
+}wlan_extend_nss_bw_supp_enum;
+typedef oal_uint8 wlan_extend_nss_bw_supp_enum_uint8;
+
 /* mac user结构体, hmac_user_stru和dmac_user_stru公共部分 */
 typedef struct
 {
@@ -444,12 +482,8 @@ typedef struct
     mac_user_asoc_state_enum_uint8          en_user_asoc_state;                     /* 用户关联状态 */
 
     oal_uint16                              us_amsdu_maxsize;                       /* 如果支持amsdu 保存协商后amsdu发送的最大值 */
-#ifdef _PRE_WLAN_PRODUCT_1151V200
-    oal_bool_enum_uint8                     en_is_reauth_user;                     /* 标示是否在关联状态进行了auth和关联 */
-#else
-    oal_uint8                               auc_resv1;
-#endif
-    oal_uint8                               auc_resv2;
+    oal_uint8                               uc_resource_req_buffer_threshold_exp;   /* 资源请求缓存阈值指数 */
+    oal_uint8                               uc_resv1;
 
 #ifdef _PRE_WLAN_FEATURE_WMMAC
     mac_ts_stru                             st_ts_info[WLAN_WME_AC_BUTT];           /*保存ts相关信息。*/
@@ -460,29 +494,28 @@ typedef struct
     mac_vht_hdl_stru                        st_vht_hdl;                             /* VHT capability IE和 operation IE的解析信息 */
 
 #if defined(_PRE_WLAN_FEATURE_11AX) || defined(_PRE_WLAN_FEATURE_11AX_ROM)
-    mac_he_hdl_stru                         st_he_hdl;                              /*HE Capability IE*/
+    oal_bool_enum_uint8                     en_he_hdl_rom_no_use;                            /*rom 化位置不能改变*/
+    oal_uint8                               auc_he_hdl_rom_rsv1[28];
+    oal_uint8                               bit_he_hdl_rom_rsv2                        : 5,
+                                            bit_he_hdl_rom_vht_present_no_use          : 1,  /*rom 化位置不能改变*/
+                                            bit_he_hdl_rom_rsv3                        : 2;
+    oal_uint8                               auc_he_hdl_rom_rsv4[4];
+    oal_uint8                               uc_he_hdl_rom_bw_no_use;                         /*rom 化位置不能改变*/
+    oal_uint8                               uc_he_hdl_rom_center_freq_seg0_no_use;           /*rom 化位置不能改变*/
+    oal_uint8                               auc_he_hdl_rom_rsv5[8];
 #endif
-
     mac_key_mgmt_stru                       st_key_info;
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-    oal_uint32                              ul_max_phy_rate_kbps;                   /* 该用户的最大物理层速率 */
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_11K_EXTERN
     mac_rrm_enabled_cap_ie_stru             st_rrm_enabled_cap;
 #endif
     /* 当前VAP工作在AP模式，以下字段为user是STA时独有字段，新添加字段请注意!!! */
-
-#ifdef _PRE_WLAN_FEATURE_USER_EXTEND
-    oal_dlist_head_stru                     st_active_user_dlist_entry;             /* 活跃用户遍历 */
-#endif
 #ifdef _PRE_WLAN_FEATURE_QOS_ENHANCE
         mac_user_qos_enhance_state_enum_uint8    en_qos_enhance_sta_state;   /* 判断是否是远端设备 */
         oal_uint8                                auc_resv9[3];  /* 4字节对齐 */
 #endif
 
-    oal_uint8                               _rom[4];
+    oal_void                                    *_rom;
 }mac_user_stru;
 
 #ifdef _PRE_WLAN_FEATURE_UAPSD
@@ -518,6 +551,22 @@ if(!(_cond))\
 }while(0);
 
 #define MAC_11I_IS_PTK(en_macaddr_is_zero, en_pairwise)   ((OAL_TRUE != en_macaddr_is_zero) && (OAL_TRUE == en_pairwise))
+
+typedef oal_void  (*p_mac_user_init_cb)( mac_user_stru  *pst_mac_user,
+                                         oal_uint16      us_user_idx,
+                                         oal_uint8      *puc_mac_addr,
+                                         oal_uint8       uc_chip_id,
+                                         oal_uint8       uc_device_id,
+                                         oal_uint8       uc_vap_id);
+typedef oal_uint32  (*p_mac_user_update_ap_bandwidth_cap_cb)(mac_user_stru *pst_mac_user);
+
+typedef struct
+{
+    p_mac_user_init_cb                          p_mac_user_init;
+    p_mac_user_update_ap_bandwidth_cap_cb       p_mac_user_update_ap_bandwidth_cap;
+}mac_user_rom_cb;
+
+extern mac_user_rom_cb g_st_mac_user_rom_other_cb;
 
 
 /*****************************************************************************
@@ -572,6 +621,8 @@ extern oal_void mac_user_set_bandwidth_info_etc(mac_user_stru *pst_mac_user,
 extern oal_void  mac_user_get_sta_cap_bandwidth_etc(mac_user_stru *pst_mac_user, wlan_bw_cap_enum_uint8 *pen_bandwidth_cap);
 extern oal_uint32  mac_user_update_bandwidth(mac_user_stru *pst_mac_user, wlan_bw_cap_enum_uint8 en_bwcap);
 extern oal_uint32  mac_user_update_ap_bandwidth_cap(mac_user_stru *pst_mac_user);
+extern oal_uint32  mac_user_update_ap_bandwidth_cap_cb(mac_user_stru *pst_mac_user);
+
 #ifdef _PRE_DEBUG_MODE_USER_TRACK
 extern oal_uint32  mac_user_change_info_event(
                                     oal_uint8  auc_user_macaddr[],
@@ -618,10 +669,15 @@ extern oal_uint32 mac_user_set_key_etc(mac_user_stru *pst_multiuser,
                                             oal_uint8       uc_keyid);
 
 extern oal_uint32 mac_user_update_wep_key_etc(mac_user_stru *pst_mac_usr, oal_uint16 us_multi_user_idx);
-extern oal_bool_enum_uint8 mac_addr_is_zero_etc(oal_uint8 *puc_mac);
+extern oal_bool_enum_uint8 mac_addr_is_zero_etc(const unsigned char *puc_mac);
 extern oal_void*  mac_res_get_mac_user_etc(oal_uint16 us_idx);
 
-
+extern oal_uint32  mac_user_init_rom(mac_user_stru  *pst_mac_user, oal_uint16      us_user_idx);
+extern oal_void mac_user_set_num_spatial_stream_160M(mac_user_stru *pst_mac_user, oal_uint8 uc_value);
+extern oal_uint8 mac_user_get_sta_cap_bandwidth_11ac(wlan_channel_band_enum_uint8 en_band,
+                                                     mac_user_ht_hdl_stru *pst_mac_ht_hdl,
+                                                     mac_vht_hdl_stru *pst_mac_vht_hdl,
+                                                     mac_user_stru *pst_mac_user);
 
 #ifdef __cplusplus
     #if __cplusplus

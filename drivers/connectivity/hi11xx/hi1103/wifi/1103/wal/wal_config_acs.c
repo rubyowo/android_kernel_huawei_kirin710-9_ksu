@@ -22,6 +22,8 @@ extern "C" {
 #include "mac_device.h"
 #include "hmac_ext_if.h"
 #include "dmac_acs.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_CONFIG_ACS_C
@@ -42,9 +44,9 @@ oal_uint32  wal_acs_netlink_recv_handle(frw_event_mem_stru *pst_event_mem)
 {
     oal_uint32              ul_device_num;
     oal_uint32              ul_ret;
-    mac_device_stru        *pst_mac_dev;
-    mac_vap_stru           *pst_mac_vap;
-    mac_acs_cmd_stru       *pst_acs_cmd_hdr;
+    mac_device_stru        *pst_mac_dev = OAL_PTR_NULL;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
+    mac_acs_cmd_stru       *pst_acs_cmd_hdr = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -99,9 +101,9 @@ oal_uint32  wal_acs_netlink_recv_handle(frw_event_mem_stru *pst_event_mem)
 oal_uint32  wal_acs_netlink_recv(oal_uint8 *puc_data, oal_uint32 ul_len)
 {
     mac_device_stru        *pst_mac_dev;
-    mac_vap_stru           *pst_mac_vap;
-    frw_event_mem_stru     *pst_event_mem;
-    frw_event_stru         *pst_event;
+    mac_vap_stru           *pst_mac_vap = OAL_PTR_NULL;
+    frw_event_mem_stru     *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru         *pst_event = OAL_PTR_NULL;
 
     //随便获取一个dev
     pst_mac_dev = mac_res_get_dev_etc(0);
@@ -150,7 +152,11 @@ oal_uint32  wal_acs_netlink_recv(oal_uint8 *puc_data, oal_uint32 ul_len)
                        pst_mac_vap->uc_device_id,
                        pst_mac_vap->uc_vap_id);
 
-    oal_memcopy(frw_get_event_payload(pst_event_mem), puc_data, ul_len);
+    if (EOK != memcpy_s(frw_get_event_payload(pst_event_mem), ul_len, puc_data, ul_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_DFS, "wal_acs_netlink_recv::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        return OAL_FAIL;
+    }
 
     OAM_WARNING_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{wal_acs_netlink_recv:: send acs msg to wal}\r\n");
 

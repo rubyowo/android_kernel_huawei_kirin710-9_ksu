@@ -287,7 +287,7 @@ OAL_STATIC oal_void hmac_fsm_init_sta(oal_void)
 #endif //_PRE_WLAN_FEATURE_ROAM
 
     /* 增加 HotSpot中状态机sta侧处理函数 */
-#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P) || defined(_PRE_WLAN_FEATURE_HILINK)
+#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P)
     g_pa_hmac_sta_fsm_func[MAC_VAP_STATE_STA_SCAN_COMP][HMAC_FSM_INPUT_RX_MGMT]      = hmac_sta_not_up_rx_mgmt_etc;
     g_pa_hmac_sta_fsm_func[MAC_VAP_STATE_STA_WAIT_SCAN][HMAC_FSM_INPUT_RX_MGMT]      = hmac_sta_not_up_rx_mgmt_etc;
 #endif

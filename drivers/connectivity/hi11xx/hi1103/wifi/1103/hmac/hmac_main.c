@@ -15,6 +15,13 @@ extern "C" {
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
 #include "oal_profiling.h"
 #endif
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+#include <linux/hisi/hisi_cpufreq_req.h>
+#include <linux/cpufreq.h>
+#include <linux/pm_qos.h>
+#endif
+#endif
 
 #include "oam_ext_if.h"
 #include "oam_trace.h"
@@ -81,9 +88,7 @@ extern "C" {
 #include "hmac_ext_if.h"
 #include "hmac_auto_adjust_freq.h"
 #endif
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-#include "hmac_proxysta.h"
-#endif
+
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 #include "plat_pm_wlan.h"
 #endif
@@ -95,6 +100,9 @@ extern "C" {
 #include  <hwnet/ipv4/wifi_delayst.h>
 #include "mac_vap.h"
 #endif
+
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_MAIN_C
@@ -111,7 +119,14 @@ oal_wakelock_stru g_st_hmac_wakelock_etc;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 hmac_rxdata_thread_stru     g_st_rxdata_thread_etc;
 #endif
-
+/* 锁频接口 */
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+struct cpufreq_req g_ast_cpufreq_etc[OAL_BUS_MAXCPU_NUM];
+oal_uint32 g_aul_cpumaxfreq_etc[OAL_BUS_MAXCPU_NUM];
+/* 默认不开启 */
+oal_bool_enum_uint8  g_uc_lock_max_cpu_freq_switch = OAL_FALSE;
+struct pm_qos_request g_st_pmqos_requset_etc;
+#endif
 
 OAL_STATIC oal_uint32  hmac_create_ba_event(frw_event_mem_stru  *pst_event_mem);
 OAL_STATIC oal_uint32  hmac_del_ba_event(frw_event_mem_stru  *pst_event_mem);
@@ -160,10 +175,10 @@ oal_void  hmac_board_get_instance_etc(mac_board_stru **ppst_hmac_board)
 
  oal_uint32 hmac_init_event_process_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru        *pst_event;             /* 事件结构体 */
-    mac_data_rate_stru    *pst_data_rate;
-    dmac_tx_event_stru    *pst_ctx_event;
-    mac_device_stru       *pst_mac_device;
+    frw_event_stru        *pst_event = OAL_PTR_NULL;             /* 事件结构体 */
+    mac_data_rate_stru    *pst_data_rate = OAL_PTR_NULL;
+    dmac_tx_event_stru    *pst_ctx_event = OAL_PTR_NULL;
+    mac_device_stru       *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -185,49 +200,22 @@ oal_void  hmac_board_get_instance_etc(mac_board_stru **ppst_hmac_board)
         return OAL_ERR_CODE_MAC_DEVICE_NULL;
     }
 
-    oal_memcopy((oal_uint8 *)(pst_mac_device->st_mac_rates_11g),
-        (oal_uint8 *)pst_data_rate,
-        sizeof(mac_data_rate_stru) * MAC_DATARATES_PHY_80211G_NUM);
+    if (EOK != memcpy_s((oal_uint8 *)(pst_mac_device->st_mac_rates_11g),
+                        sizeof(mac_data_rate_stru) * MAC_DATARATES_PHY_80211G_NUM,
+                        (oal_uint8 *)pst_data_rate,
+                        sizeof(mac_data_rate_stru) * MAC_DATARATES_PHY_80211G_NUM)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_init_event_process_etc::memcpy fail!");
+        /* 释放掉02同步消息所用的netbuf信息 */
+        oal_netbuf_free(pst_ctx_event->pst_netbuf);
+        return OAL_FAIL;
+    }
 
     /* 释放掉02同步消息所用的netbuf信息 */
     oal_netbuf_free(pst_ctx_event->pst_netbuf);
 
     return OAL_SUCC;
 }
-#else
 
- oal_uint32 hmac_init_event_process_etc(frw_event_mem_stru *pst_event_mem)
-{
-    oal_uint32             ul_return;
-    oal_uint32             ul_chip_max_num;
-
-    if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_init_event_process_etc::pst_event_mem null.}");
-        return OAL_ERR_CODE_PTR_NULL;
-    }
-
-    /* chip支持的最大数由PCIe总线处理提供; */
-    ul_chip_max_num = oal_bus_get_chip_num_etc();
-
-    if (OAL_UNLIKELY(ul_chip_max_num > WLAN_CHIP_MAX_NUM_PER_BOARD))
-    {
-        OAM_ERROR_LOG1(0, OAM_SF_ANY, "{hmac_init_event_process_etc::invalid ul_chip_max_num[%d].}", ul_chip_max_num);
-        return OAL_ERR_CODE_ARRAY_OVERFLOW;
-    }
-
-    ul_return = hmac_board_init_etc(ul_chip_max_num);
-    if (OAL_SUCC != ul_return)
-    {
-         return OAL_FAIL;
-    }
-
-    return OAL_SUCC;
-}
-
-
-#endif
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 
 OAL_STATIC oal_void hmac_event_fsm_tx_adapt_subtable_register(oal_void)
 {
@@ -238,7 +226,10 @@ OAL_STATIC oal_void hmac_event_fsm_tx_adapt_subtable_register(oal_void)
     g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_EDCA_REG].p_tx_adapt_func = hmac_proc_set_edca_param_tx_adapt_etc;
 #ifdef _PRE_WLAN_FEATURE_11AX
     g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_MU_EDCA_REG].p_tx_adapt_func = hmac_proc_set_mu_edca_param_tx_adapt;
+    g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_SPATIAL_REUSE_REG].p_tx_adapt_func = hmac_proc_set_spatial_reuse_param_tx_adapt;
+    g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_TWT_SETUP].p_tx_adapt_func = hmac_proc_rx_process_twt_sync_event_tx_adapt_etc;
 #endif
+
     g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SCAN_REQ].p_tx_adapt_func = hmac_scan_proc_scan_req_event_tx_adapt_etc;
     g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_HMAC2DMAC].p_tx_adapt_func = hmac_send_event_netbuf_tx_adapt;
     g_ast_dmac_wlan_ctx_event_sub_table_etc[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_MATRIX_HMAC2DMAC].p_tx_adapt_func  = hmac_send_event_netbuf_tx_adapt;
@@ -357,10 +348,10 @@ OAL_STATIC oal_void hmac_event_fsm_rx_adapt_subtable_register(oal_void)
 
 OAL_STATIC oal_uint32  hmac_bandwidth_info_syn_event(frw_event_mem_stru  *pst_event_mem)
 {
-    frw_event_stru           *pst_event;
-    frw_event_hdr_stru       *pst_event_hdr;
-    dmac_set_chan_stru       *pst_set_chan;
-    mac_vap_stru             *pst_mac_vap;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
+    frw_event_hdr_stru       *pst_event_hdr = OAL_PTR_NULL;
+    dmac_set_chan_stru       *pst_set_chan = OAL_PTR_NULL;
+    mac_vap_stru             *pst_mac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -391,10 +382,10 @@ OAL_STATIC oal_uint32  hmac_bandwidth_info_syn_event(frw_event_mem_stru  *pst_ev
 
 OAL_STATIC oal_uint32  hmac_protection_info_syn_event(frw_event_mem_stru  *pst_event_mem)
 {
-    frw_event_stru           *pst_event;
-    frw_event_hdr_stru       *pst_event_hdr;
-    mac_h2d_protection_stru  *pst_h2d_prot;
-    mac_vap_stru             *pst_mac_vap;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
+    frw_event_hdr_stru       *pst_event_hdr = OAL_PTR_NULL;
+    mac_h2d_protection_stru  *pst_h2d_prot = OAL_PTR_NULL;
+    mac_vap_stru             *pst_mac_vap = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -415,13 +406,11 @@ OAL_STATIC oal_uint32  hmac_protection_info_syn_event(frw_event_mem_stru  *pst_e
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memcopy((oal_uint8*)&pst_mac_vap->st_protection, (oal_uint8*)&pst_h2d_prot->st_protection,
-                OAL_SIZEOF(mac_protection_stru));
+    memcpy_s((oal_uint8*)&pst_mac_vap->st_protection, OAL_SIZEOF(mac_protection_stru),
+             (oal_uint8*)&pst_h2d_prot->st_protection, OAL_SIZEOF(mac_protection_stru));
 
     mac_mib_set_HtProtection(pst_mac_vap, pst_h2d_prot->en_dot11HTProtection);
     mac_mib_set_RifsMode(pst_mac_vap, pst_h2d_prot->en_dot11RIFSMode);
-    //mac_mib_set_LsigTxopFullProtectionActivated(pst_mac_vap, pst_h2d_prot->en_dot11LSIGTXOPFullProtectionActivated);
-    //mac_mib_set_NonGFEntitiesPresent(pst_mac_vap, pst_h2d_prot->en_dot11NonGFEntitiesPresent);
 
     return OAL_SUCC;
 }
@@ -429,10 +418,10 @@ OAL_STATIC oal_uint32  hmac_protection_info_syn_event(frw_event_mem_stru  *pst_e
 
 OAL_STATIC oal_uint32  hmac_ch_status_info_syn_event(frw_event_mem_stru  *pst_event_mem)
 {
-    frw_event_stru           *pst_event;
-    frw_event_hdr_stru       *pst_event_hdr;
-    mac_ap_ch_info_stru      *past_ap_ch_list;
-    mac_device_stru          *pst_mac_device;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
+    frw_event_hdr_stru       *pst_event_hdr = OAL_PTR_NULL;
+    mac_ap_ch_info_stru      *past_ap_ch_list = OAL_PTR_NULL;
+    mac_device_stru          *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -453,7 +442,11 @@ OAL_STATIC oal_uint32  hmac_ch_status_info_syn_event(frw_event_mem_stru  *pst_ev
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memcopy(pst_mac_device->st_ap_channel_list, (oal_uint8 *)past_ap_ch_list, OAL_SIZEOF(mac_ap_ch_info_stru)*MAC_MAX_SUPP_CHANNEL);
+    if (EOK != memcpy_s(pst_mac_device->st_ap_channel_list, OAL_SIZEOF(mac_ap_ch_info_stru) * MAC_MAX_SUPP_CHANNEL,
+                        (oal_uint8 *)past_ap_ch_list, OAL_SIZEOF(mac_ap_ch_info_stru) * MAC_MAX_SUPP_CHANNEL)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_ch_status_info_syn_event::memcpy fail!");
+        return OAL_FAIL;
+    }
 
     return OAL_SUCC;
 }
@@ -515,7 +508,6 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 
 #ifdef _PRE_WLAN_FEATURE_DFS
     g_ast_hmac_wlan_misc_event_sub_table_etc[DMAC_MISC_SUB_TYPE_RADAR_DETECT].p_func          = hmac_dfs_radar_detect_event_etc;
-   // frw_event_table_register_etc(FRW_EVENT_TYPE_DMAC_MISC, FRW_EVENT_PIPELINE_STAGE_1, g_ast_hmac_wlan_misc_event_sub_table_etc);
 #endif   /* end of _PRE_WLAN_FEATURE_DFS */
     g_ast_hmac_wlan_misc_event_sub_table_etc[DMAC_MISC_SUB_TYPE_DISASOC].p_func               = hmac_proc_disasoc_misc_event_etc;
 
@@ -526,14 +518,7 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 #ifdef _PRE_WLAN_FEATURE_ROAM
     g_ast_hmac_wlan_misc_event_sub_table_etc[DMAC_MISC_SUB_TYPE_ROAM_TRIGGER].p_func          = hmac_proc_roam_trigger_event_etc;
 #endif //_PRE_WLAN_FEATURE_ROAM
-//    frw_event_table_register_etc(FRW_EVENT_TYPE_DMAC_MISC, FRW_EVENT_PIPELINE_STAGE_1, g_ast_hmac_wlan_misc_event_sub_table_etc);
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    g_ast_hmac_host_drx_event_sub_table[HMAC_TX_HOST_DRX].p_func = hmac_tx_event_process;
-    frw_event_table_register(FRW_EVENT_TYPE_HOST_DRX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_hmac_host_drx_event_sub_table);
-#endif
-
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     g_ast_hmac_wlan_ctx_event_sub_table_etc[DMAC_TO_HMAC_ALG_INFO_SYN].p_func           = hmac_syn_info_event;
     g_ast_hmac_wlan_ctx_event_sub_table_etc[DMAC_TO_HMAC_VOICE_AGGR].p_func             = hmac_voice_aggr_event;
 
@@ -551,7 +536,6 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 #ifdef _PRE_WLAN_FEATURE_M2S
     g_ast_hmac_wlan_ctx_event_sub_table_etc[DMAC_TO_HMAC_M2S_DATA].p_func = hmac_m2s_sync_event;
 #endif
-#endif
 
     g_ast_hmac_wlan_ctx_event_sub_table_etc[DMAC_TO_HMAC_BANDWIDTH_INFO_SYN].p_func           = hmac_bandwidth_info_syn_event;
     g_ast_hmac_wlan_ctx_event_sub_table_etc[DMAC_TO_HMAC_PROTECTION_INFO_SYN].p_func           = hmac_protection_info_syn_event;
@@ -561,14 +545,11 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 
 oal_uint32  hmac_event_fsm_register_etc(oal_void)
 {
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-
     /*注册所有事件的tx adapt子表*/
     hmac_event_fsm_tx_adapt_subtable_register();
 
     /*注册所有事件的rx adapt子表*/
     hmac_event_fsm_rx_adapt_subtable_register();
-#endif
 
     /*注册所有事件的执行函数子表*/
     hmac_event_fsm_action_subtable_register();
@@ -599,7 +580,7 @@ oal_int32 hmac_param_check_etc(oal_void)
     return OAL_SUCC;
 }
 
-#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
+#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT)
 /*debug sysfs*/
 extern oal_int32 hmac_tx_event_pkts_info_print_etc(oal_void* data, char* buf, oal_int32 buf_len);
 OAL_STATIC oal_kobject* g_conn_syfs_hmac_object = NULL;
@@ -616,31 +597,37 @@ OAL_STATIC oal_int32 hmac_print_vap_stat(oal_void* data, char* buf, oal_int32 bu
         {
             continue;
         }
-        ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "vap %2u info:\n",uc_vap_id);
-        ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "vap_state %2u,protocol:%2u,user nums:%2u,init:%u\n",
-                                                    pst_hmac_vap->st_vap_base_info.en_vap_state,
-                                                    pst_hmac_vap->st_vap_base_info.en_protocol,
-                                                    pst_hmac_vap->st_vap_base_info.us_user_nums,
-                                                    pst_hmac_vap->st_vap_base_info.uc_init_flag);
+        ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1, "vap %2u info:\n",uc_vap_id);
+        ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                           "vap_state %2u, protocol:%2u, user nums:%2u,init:%u\n",
+                           pst_hmac_vap->st_vap_base_info.en_vap_state,
+                           pst_hmac_vap->st_vap_base_info.en_protocol,
+                           pst_hmac_vap->st_vap_base_info.us_user_nums,
+                           pst_hmac_vap->st_vap_base_info.uc_init_flag);
         pst_net_device = pst_hmac_vap->pst_net_device;
         if(NULL != pst_net_device)
         {
-        	oal_int32 i;
-        	ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "net name:%s\n",netdev_name(pst_net_device));
-            ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tx [%d]queues info,state [bit0:DRV_OFF],[bit1:STACK_OFF],[bit2:FROZEN]\n",
-                                                        pst_net_device->num_tx_queues);
-        	for (i = 0; i < pst_net_device->num_tx_queues; i++) {
-        		struct netdev_queue *txq = netdev_get_tx_queue(pst_net_device, i);
-        		if(txq->state)
-        		    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "net queue[%2d]'s state:0x%lx\n",i,txq->state);
-        	}
+            oal_int32 i;
+            ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                               "net name:%s\n", netdev_name(pst_net_device));
+            ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                               "tx [%d]queues info, state [bit0:DRV_OFF], [bit1:STACK_OFF], [bit2:FROZEN]\n",
+                               pst_net_device->num_tx_queues);
+            for (i = 0; i < pst_net_device->num_tx_queues; i++) {
+                struct netdev_queue *txq = netdev_get_tx_queue(pst_net_device, i);
+                if(txq->state) {
+                    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                                       "net queue[%2d]'s state:0x%lx\n", i, txq->state);
+                }
+            }
         }
-        ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "\n");
+        ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1, "\n");
     }
+
     return ret;
 }
 
-OAL_STATIC ssize_t  hmac_get_vap_stat(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_get_vap_stat(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     int ret = 0;
 
@@ -665,9 +652,10 @@ OAL_STATIC ssize_t  hmac_get_vap_stat(struct device *dev, struct device_attribut
     ret += hmac_print_vap_stat(NULL,buf,PAGE_SIZE - ret);
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(vap_info, S_IRUGO, hmac_get_vap_stat, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_vap_info =
+    __ATTR(vap_info, S_IRUGO, hmac_get_vap_stat, NULL);
 
-OAL_STATIC ssize_t  hmac_get_adapt_info(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_get_adapt_info(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     int ret = 0;
 
@@ -700,17 +688,17 @@ oal_int32 hmac_wakelock_info_print_etc(char* buf, oal_int32 buf_len)
 #ifdef CONFIG_PRINTK
     if(g_st_hmac_wakelock_etc.locked_addr)
     {
-        ret +=  OAL_SPRINTF(buf + ret , buf_len - ret,"wakelocked by:%pf\n",
-                    (oal_void*)g_st_hmac_wakelock_etc.locked_addr);
+        ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1, "wakelocked by:%pf\n",
+                           (oal_void*)g_st_hmac_wakelock_etc.locked_addr);
     }
 #endif
 
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret,"hold %lu locks\n", g_st_hmac_wakelock_etc.lock_count);
+    ret +=  snprintf_s(buf + ret, buf_len - ret, (buf_len - ret) - 1, "hold %lu locks\n", g_st_hmac_wakelock_etc.lock_count);
 
     return ret;
 }
 
-OAL_STATIC ssize_t  hmac_get_wakelock_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  hmac_get_wakelock_info(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     int ret = 0;
 
@@ -737,10 +725,12 @@ OAL_STATIC ssize_t  hmac_get_wakelock_info(struct device *dev, struct device_att
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(adapt_info, S_IRUGO, hmac_get_adapt_info, NULL);
-OAL_STATIC DEVICE_ATTR(wakelock, S_IRUGO, hmac_get_wakelock_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_adapt_info =
+    __ATTR(adapt_info, S_IRUGO, hmac_get_adapt_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_wakelock =
+    __ATTR(wakelock, S_IRUGO, hmac_get_wakelock_info, NULL);
 
-OAL_STATIC ssize_t  hmac_show_roam_status(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_show_roam_status(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     oal_int32               ret = 0;
     oal_uint8               uc_vap_id;
@@ -762,7 +752,8 @@ OAL_STATIC ssize_t  hmac_show_roam_status(struct device *dev, struct device_attr
 
     if ((OAL_PTR_NULL == dev) || (OAL_PTR_NULL == attr))
     {
-        ret +=  OAL_SPRINTF(buf , PAGE_SIZE, "roam_status=0\n");
+        ret +=  snprintf_s(buf, PAGE_SIZE, PAGE_SIZE - 1, "roam_status=0\n");
+
         return ret;
     }
 
@@ -819,14 +810,16 @@ OAL_STATIC ssize_t  hmac_show_roam_status(struct device *dev, struct device_attr
     /* 先出一个版本强制关闭arp探测，测试下效果 */
     //uc_roming_now = 1;
 
-    ret +=  OAL_SPRINTF(buf , PAGE_SIZE, "roam_status=%1d\n", uc_roming_now);
+    ret +=  snprintf_s(buf, PAGE_SIZE, PAGE_SIZE - 1, "roam_status=%1d\n", uc_roming_now);
+
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(roam_status, S_IRUGO, hmac_show_roam_status, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_roam_status =
+    __ATTR(roam_status, S_IRUGO, hmac_show_roam_status, NULL);
 
 
-OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+OAL_STATIC ssize_t hmac_set_rxthread_enable(struct kobject *dev, struct kobj_attribute *attr, const char *buf, size_t count)
 {
     oal_uint32 ul_val;
 
@@ -848,7 +841,7 @@ OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_at
         return 0;
     }
 
-    if ((OAL_SSCANF(buf, "%u", &ul_val) != 1))
+    if ((sscanf(buf, "%u", &ul_val) != 1))
     {
         OAL_IO_PRINT("set value one char!\n");
         return -OAL_EINVAL;
@@ -858,7 +851,7 @@ OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_at
 
     return count;
 }
-OAL_STATIC ssize_t hmac_get_rxthread_info(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t hmac_get_rxthread_info(struct kobject *dev, struct kobj_attribute *attr, char *buf)
 {
     int ret = 0;
 
@@ -880,12 +873,16 @@ OAL_STATIC ssize_t hmac_get_rxthread_info(struct device *dev, struct device_attr
         return 0;
     }
 
-    ret +=  OAL_SPRINTF(buf , PAGE_SIZE, "rxthread_enable=%d\nrxthread_queue_len=%d\nrxthread_pkt_loss=%d\n",
-            g_st_rxdata_thread_etc.en_rxthread_enable, oal_netbuf_list_len(&g_st_rxdata_thread_etc.st_rxdata_netbuf_head), g_st_rxdata_thread_etc.ul_pkt_loss_cnt);
+    ret += snprintf_s(buf , PAGE_SIZE, PAGE_SIZE - 1,
+                      "rxthread_enable=%d\nrxthread_queue_len=%d\nrxthread_pkt_loss=%d\n",
+                      g_st_rxdata_thread_etc.en_rxthread_enable,
+                      oal_netbuf_list_len(&g_st_rxdata_thread_etc.st_rxdata_netbuf_head),
+                      g_st_rxdata_thread_etc.ul_pkt_loss_cnt);
 
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(rxdata_info, S_IRUGO|S_IWUSR, hmac_get_rxthread_info, hmac_set_rxthread_enable);
+OAL_STATIC struct kobj_attribute dev_attr_rxdata_info =
+    __ATTR(rxdata_info, S_IRUGO|S_IWUSR, hmac_get_rxthread_info, hmac_set_rxthread_enable);
 
 OAL_STATIC struct attribute *hmac_sysfs_entries[] = {
         &dev_attr_vap_info.attr,
@@ -1030,7 +1027,7 @@ oal_void hmac_register_pm_callback_etc(oal_void)
 
     pst_wifi_srv_handler = wlan_pm_get_wifi_srv_handler_etc();
 
-    if(pst_wifi_srv_handler)
+    if(pst_wifi_srv_handler != OAL_PTR_NULL)
     {
         pst_wifi_srv_handler ->p_wifi_srv_get_pm_pause_func = hmac_get_pm_pause_func_etc;
         pst_wifi_srv_handler->p_wifi_srv_open_notify = hmac_wifi_state_notify;
@@ -1053,8 +1050,6 @@ oal_bool_enum_uint8 hmac_get_rxthread_enable_etc(oal_void)
 
 oal_void hmac_rxdata_sched_etc(oal_void)
 {
-    //OAL_IO_PRINT("[hcc]timestamp:%llu , netbuf_num:%d.", oal_cpu_clock(), oal_netbuf_list_len(&g_st_rxdata_netbuf_head));
-    //OAL_WAIT_QUEUE_WAKE_UP_INTERRUPT(&g_st_rxdata_wq);
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     up(&g_st_rxdata_thread_etc.st_rxdata_sema);
 #endif
@@ -1066,7 +1061,7 @@ oal_void hmac_rxdata_update_napi_weight_etc(oal_netdev_priv_stru  * pst_netdev_p
 #if defined(CONFIG_ARCH_HISI)
 
     oal_uint32            ul_now;
-    oal_uint8             uc_new_napi_weight; 
+    oal_uint8             uc_new_napi_weight;
 
     /* 根据pps水线调整napi weight,调整周期1s */
     ul_now = (oal_uint32)OAL_TIME_GET_STAMP_MS();
@@ -1117,33 +1112,15 @@ oal_void hmac_rxdata_netbuf_enqueue_etc(oal_netbuf_stru  *pst_netbuf)
 
     pst_netdev_priv->ul_period_pkts++;
 
-#if defined(CONFIG_ARCH_HISI)
-#ifdef CONFIG_NR_CPUS
-#if CONFIG_NR_CPUS > OAL_BUS_HPCPU_NUM
-    if (NAPI_POLL_WEIGHT_MAX == (oal_netbuf_list_len(&pst_netdev_priv->st_rx_netbuf_queue)) &&
-        (OAL_TRUE == g_st_rxdata_thread_etc.en_rxthread_enable) &&
-        (WLAN_IRQ_AFFINITY_IDLE_CPU == g_st_rxdata_thread_etc.uc_allowed_cpus))
-    {
-        struct cpumask        st_cpus;
-        /* 使用napi接口后,如果队列中缓存的报文太多，造成cpu1达到100%,需要尽快切到大核 */
-        hisi_get_fast_cpus(&st_cpus);
-        cpumask_clear_cpu(OAL_BUS_HPCPU_NUM, &st_cpus);
-        set_cpus_allowed_ptr( g_st_rxdata_thread_etc.pst_rxdata_thread , &st_cpus);
-        g_st_rxdata_thread_etc.uc_allowed_cpus = WLAN_IRQ_AFFINITY_BUSY_CPU;
-    }
-#endif
-#endif
-#endif
 }
 
 OAL_STATIC oal_int32 hmac_rxdata_thread(oal_void* p_data)
 {
-    //oal_int32           l_ret = 20000;
     oal_netbuf_stru      *pst_netbuf = OAL_PTR_NULL;
-    mac_device_stru      *pst_mac_device;
+    mac_device_stru      *pst_mac_device = OAL_PTR_NULL;
     oal_uint8             uc_vap_idx;
-    hmac_vap_stru        *pst_hmac_vap;
-    oal_netdev_priv_stru *pst_netdev_priv;
+    hmac_vap_stru        *pst_hmac_vap = OAL_PTR_NULL;
+    oal_netdev_priv_stru *pst_netdev_priv = OAL_PTR_NULL;
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     struct sched_param       param;
 
@@ -1193,7 +1170,7 @@ OAL_STATIC oal_int32 hmac_rxdata_thread(oal_void* p_data)
             else
             {
                 pst_netbuf = oal_netbuf_delist(&pst_netdev_priv->st_rx_netbuf_queue);
-                if(pst_netbuf)
+                if(pst_netbuf != OAL_PTR_NULL)
                 {
                 #ifdef _PRE_WLAN_PKT_TIME_STAT
                     if (DELAY_STATISTIC_SWITCH_ON && IS_NEED_RECORD_DELAY(pst_netbuf,TP_SKB_HMAC_RX))
@@ -1218,11 +1195,30 @@ oal_int32 hmac_rxdata_polling(struct napi_struct *pst_napi, oal_int32 l_weight)
     oal_netdev_priv_stru    *pst_netdev_priv;
     oal_int32                l_rx_num = 0;
     oal_netbuf_head_stru    *netbuf_hdr;
+    oal_int32                l_rx_max = l_weight;//默认最大接收数为l_weight
 
     pst_netdev_priv = OAL_CONTAINER_OF(pst_napi, oal_netdev_priv_stru, st_napi);
     netbuf_hdr = &pst_netdev_priv->st_rx_netbuf_queue;
 
-    while (l_rx_num < l_weight)
+    /* 当rx_data线程切到大核，但是软中断仍在小核时会出现100%，内核bug */
+    /* 因此需要检查这种场景并提前结束本次软中断，引导内核在大核上启动软中断 */
+    /* 少上报一帧可以让软中断认为没有更多报文从而防止repoll */
+#if defined(CONFIG_ARCH_HISI)
+#ifdef CONFIG_NR_CPUS
+#if CONFIG_NR_CPUS > OAL_BUS_HPCPU_NUM
+    if (g_st_rxdata_thread_etc.uc_allowed_cpus == WLAN_IRQ_AFFINITY_BUSY_CPU)
+    {
+        if (get_cpu() < OAL_BUS_HPCPU_NUM)
+        {
+            l_rx_max = l_weight - 1;
+        }
+        put_cpu();
+    }
+#endif
+#endif
+#endif
+
+    while (l_rx_num < l_rx_max)
     {
         pst_netbuf = oal_netbuf_delist(&pst_netdev_priv->st_rx_netbuf_queue);
 
@@ -1253,6 +1249,10 @@ oal_int32 hmac_rxdata_polling(struct napi_struct *pst_napi, oal_int32 l_weight)
     if (l_rx_num < l_weight)
     {
         oal_napi_complete(pst_napi);
+        if (l_rx_num == l_rx_max)
+        {
+            hmac_rxdata_sched_etc();//内核认为已经没包了，所以需要重新调度一次
+        }
     }
 
     return l_rx_num;
@@ -1319,7 +1319,7 @@ OAL_STATIC oal_void hmac_hisi_thread_exit(oal_void)
         hcc_get_110x_handler()->hcc_transer_info.hcc_transfer_thread_etc = NULL;
     }
 #endif
-    if (g_st_rxdata_thread_etc.pst_rxdata_thread)
+    if (g_st_rxdata_thread_etc.pst_rxdata_thread != OAL_PTR_NULL)
     {
         oal_thread_stop_etc(g_st_rxdata_thread_etc.pst_rxdata_thread, &g_st_rxdata_thread_etc.st_rxdata_sema);
         g_st_rxdata_thread_etc.pst_rxdata_thread = NULL;
@@ -1327,29 +1327,74 @@ OAL_STATIC oal_void hmac_hisi_thread_exit(oal_void)
 }
 #endif
 
-/*lint -save -e578 -e19 */
-DEFINE_GET_BUILD_VERSION_FUNC(hmac);
-/*lint -restore*/
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+
+oal_uint32 hisi_cpufreq_get_maxfreq_etc(unsigned int cpu)
+{
+    struct cpufreq_policy *policy = cpufreq_cpu_get_raw(cpu);
+    oal_uint32 ret_freq = 0;
+
+    if (!policy)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hisi_cpufreq_get_maxfreq_etc: get cpufreq policy fail!");
+        return 0;
+    }
+
+    ret_freq = policy->cpuinfo.max_freq;
+    cpufreq_cpu_put(policy);
+    return ret_freq;
+}
+
+OAL_STATIC oal_uint32 hmac_hisi_cpufreq_init(oal_void)
+{
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    oal_uint8    uc_cpuid;
+
+    if (OAL_FALSE == g_uc_lock_max_cpu_freq_switch)
+    {
+        return OAL_SUCC;
+    }
+
+    for(uc_cpuid=0; uc_cpuid<OAL_BUS_MAXCPU_NUM; uc_cpuid++)
+    {
+        hisi_cpufreq_init_req(&g_ast_cpufreq_etc[uc_cpuid], uc_cpuid);
+        g_aul_cpumaxfreq_etc[uc_cpuid] = hisi_cpufreq_get_maxfreq_etc(uc_cpuid);
+    }
+
+    pm_qos_add_request(&g_st_pmqos_requset_etc, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+#endif
+    return OAL_SUCC;
+}
+OAL_STATIC oal_uint32 hmac_hisi_cpufreq_exit(oal_void)
+{
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    oal_uint8    uc_cpuid;
+
+    if (OAL_FALSE == g_uc_lock_max_cpu_freq_switch)
+    {
+        return OAL_SUCC;
+    }
+
+    for(uc_cpuid=0; uc_cpuid<OAL_BUS_MAXCPU_NUM; uc_cpuid++)
+    {
+        hisi_cpufreq_exit_req(&g_ast_cpufreq_etc[uc_cpuid]);
+    }
+    pm_qos_remove_request(&g_st_pmqos_requset_etc);
+#endif
+    return OAL_SUCC;
+}
+#endif
 
 
 oal_int32  hmac_main_init_etc(oal_void)
 {
     oal_uint32            ul_return;
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-
-#endif
     frw_init_enum_uint16  en_init_state;
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    frw_event_mem_stru   *pst_event_mem;
-    frw_event_stru       *pst_event;
-#endif
 #if (_PRE_TARGET_PRODUCT_TYPE_E5 == _PRE_CONFIG_TARGET_PRODUCT)
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     oal_int32 l_priv_val = 0;
 
     extern oal_uint8 g_auc_mac_device_radio_cap[];
-
-    OAL_RET_ON_MISMATCH(hmac, -OAL_EFAIL);
 
     /**************************** 获取5g开关 ******************************/
     ul_return = hwifi_get_init_priv_value(WLAN_CFG_PRIV_DBDC_RADIO_0, &l_priv_val);
@@ -1370,18 +1415,11 @@ oal_int32  hmac_main_init_etc(oal_void)
         return -OAL_EFAIL;//lint !e527
     }
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     hmac_hcc_adapt_init_etc();
-
-#endif
 
     en_init_state = frw_get_init_state_etc();
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     if (OAL_UNLIKELY((FRW_INIT_STATE_BUTT == en_init_state) || (en_init_state < FRW_INIT_STATE_FRW_SUCC)))
-#else
-    if (OAL_UNLIKELY((FRW_INIT_STATE_BUTT == en_init_state) || (en_init_state < FRW_INIT_STATE_DMAC_CONFIG_VAP_SUCC)))
-#endif
     {
         OAL_IO_PRINT("hmac_main_init_etc:en_init_state is error %d\n", en_init_state);
         frw_timer_delete_all_timer_etc();
@@ -1391,7 +1429,6 @@ oal_int32  hmac_main_init_etc(oal_void)
     hmac_wifi_auto_freq_ctrl_init_etc();
 #endif
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     ul_return = hmac_hisi_thread_init();
     if (OAL_SUCC != ul_return)
     {
@@ -1401,6 +1438,10 @@ oal_int32  hmac_main_init_etc(oal_void)
         return -OAL_EFAIL;
     }
 
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+    hmac_hisi_cpufreq_init();
+#endif
+
     ul_return = mac_res_init_etc();
     if (OAL_SUCC != ul_return)
     {
@@ -1408,7 +1449,6 @@ oal_int32  hmac_main_init_etc(oal_void)
         frw_timer_delete_all_timer_etc();
         return -OAL_EFAIL;
     }
-#endif
 
     /* hmac资源初始化 */
     hmac_res_init_etc();
@@ -1422,7 +1462,6 @@ oal_int32  hmac_main_init_etc(oal_void)
         /* 事件注册 */
         hmac_event_fsm_register_etc();
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
         ul_return = hmac_board_init_etc(g_pst_mac_board);
         if (OAL_SUCC != ul_return)
         {
@@ -1432,34 +1471,6 @@ oal_int32  hmac_main_init_etc(oal_void)
             hmac_res_exit_etc(g_pst_mac_board);  /* 释放hmac res资源 */
             return OAL_FAIL;
         }
-#else
-        /* 抛事件给dmac,执行dmac init hardware */
-        pst_event_mem = FRW_EVENT_ALLOC(OAL_SIZEOF(mac_chip_stru) * WLAN_CHIP_MAX_NUM_PER_BOARD);
-        if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
-        {
-            OAL_IO_PRINT("hmac_main_init_etc: FRW_EVENT_ALLOC result = OAL_PTR_NULL.\n");
-            frw_timer_delete_all_timer_etc();
-            return -OAL_EFAIL;//lint !e527
-        }
-
-        pst_event = frw_get_event_stru(pst_event_mem);
-
-        /* 填写事件头 */
-        FRW_EVENT_HDR_INIT(&(pst_event->st_event_hdr),
-                        FRW_EVENT_TYPE_HOST_CRX,
-                        HMAC_TO_DMAC_SYN_INIT,
-                        0,
-                        FRW_EVENT_PIPELINE_STAGE_1,
-                        0,0,0);
-        ul_return = frw_event_dispatch_event_etc(pst_event_mem);
-        if (OAL_SUCC != ul_return)
-        {
-            OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_main_init_etc::frw_event_dispatch_event_etc failed[%d].}", ul_return);
-        }
-
-        /* 释放事件 */
-        FRW_EVENT_FREE(pst_event_mem);
-#endif
 
         frw_set_init_state_etc(FRW_INIT_STATE_HMAC_CONFIG_VAP_SUCC);
 
@@ -1491,7 +1502,7 @@ oal_int32  hmac_main_init_etc(oal_void)
     oal_profiling_mips_init();
 #endif
 
-#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
+#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT)
     hmac_sysfs_entry_init();
 #endif
 
@@ -1504,11 +1515,6 @@ oal_int32  hmac_main_init_etc(oal_void)
 #ifdef _PRE_SUPPORT_ACS
     hmac_acs_init();
 #endif
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    hmac_psta_mgr_init();
-#endif
-
     return OAL_SUCC;
 }
 
@@ -1517,30 +1523,23 @@ oal_void  hmac_main_exit_etc(oal_void)
 {
     oal_uint32 ul_return;
 
-#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
+#if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT)
     hmac_sysfs_entry_exit();
 #endif
     event_fsm_unregister_etc();
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     hmac_hisi_thread_exit();
+
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+    hmac_hisi_cpufreq_exit();
 #endif
 
-#if 0
-    ul_return = mac_device_board_destroy(&g_st_hmac_board_etc);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_return))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_main_exit_etc::mac_device_board_destroy failed[%d].}", ul_return);
-        return ;
-    }
-#else
     ul_return = hmac_board_exit_etc(g_pst_mac_board);
     if (OAL_UNLIKELY(OAL_SUCC != ul_return))
     {
         OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_main_exit_etc::hmac_board_exit_etc failed[%d].}", ul_return);
         return ;
     }
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_DAQ
     hmac_data_acq_exit();
@@ -1552,11 +1551,8 @@ oal_void  hmac_main_exit_etc(oal_void)
     hmac_wifi_auto_freq_ctrl_deinit_etc();
 #endif
 
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     frw_set_init_state_etc(FRW_INIT_STATE_FRW_SUCC);
-#else
-    frw_set_init_state_etc(FRW_INIT_STATE_DMAC_CONFIG_VAP_SUCC);
-#endif
+
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && defined(_PRE_WLAN_CHIP_TEST_ALG)
     hmac_alg_test_main_common_exit();
 #endif
@@ -1565,10 +1561,6 @@ oal_void  hmac_main_exit_etc(oal_void)
 
 #ifdef _PRE_SUPPORT_ACS
     hmac_acs_exit();
-#endif
-
-#ifdef _PRE_WLAN_FEATURE_PROXYSTA
-    hmac_psta_mgr_exit();
 #endif
 
     frw_timer_clean_timer(OAM_MODULE_ID_HMAC);
@@ -1581,7 +1573,7 @@ oal_uint32  hmac_sdt_recv_reg_cmd_etc(
                             oal_uint16     us_len)
 {
     frw_event_mem_stru          *pst_event_mem;
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
 
     pst_event_mem = FRW_EVENT_ALLOC(us_len - OAL_IF_NAME_SIZE);
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -1602,7 +1594,12 @@ oal_uint32  hmac_sdt_recv_reg_cmd_etc(
                        pst_mac_vap->uc_device_id,
                        pst_mac_vap->uc_vap_id);
 
-    oal_memcopy(pst_event->auc_event_data, puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE);
+    if (EOK != memcpy_s(pst_event->auc_event_data, us_len - OAL_IF_NAME_SIZE,
+                        puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_sdt_recv_reg_cmd_etc::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        return OAL_FAIL;
+    }
 
     frw_event_dispatch_event_etc(pst_event_mem);
     FRW_EVENT_FREE(pst_event_mem);
@@ -1613,9 +1610,9 @@ oal_uint32  hmac_sdt_recv_reg_cmd_etc(
 
 oal_uint32  hmac_sdt_up_reg_val_etc(frw_event_mem_stru  *pst_event_mem)
 {
-    frw_event_stru      *pst_event;
-    hmac_vap_stru       *pst_hmac_vap;
-    oal_uint32          *pst_reg_val;
+    frw_event_stru      *pst_event = OAL_PTR_NULL;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
+    oal_uint32          *pst_reg_val = OAL_PTR_NULL;
 
     pst_event = frw_get_event_stru(pst_event_mem);
 
@@ -1675,9 +1672,13 @@ oal_uint32  hmac_sdt_up_dpd_data(frw_event_mem_stru  *pst_event_mem)
     }
 
     /* ???????OAM_REPORT_MAX_STRING_LEN,???oam_print_etc */
-    OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+    memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
-    oal_memcopy(pc_print_buff, puc_payload, us_payload_len);
+    if (EOK != memcpy_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, puc_payload, us_payload_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_WPA, "hmac_sdt_up_dpd_data::memcpy fail!");
+        OAL_MEM_FREE(pc_print_buff, OAL_TRUE);
+        return OAL_FAIL;
+    }
 
     pc_print_buff[us_payload_len] = '\0';
     oam_print_etc(pc_print_buff);
@@ -1717,7 +1718,12 @@ oal_uint32  hmac_sdt_recv_sample_cmd(
                        pst_mac_vap->uc_device_id,
                        pst_mac_vap->uc_vap_id);
 
-    oal_memcopy(pst_event->auc_event_data, puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE);
+    if (EOK != memcpy_s(pst_event->auc_event_data, us_len - OAL_IF_NAME_SIZE,
+                        puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_sdt_recv_sample_cmd::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        return OAL_FAIL;
+    }
 
     frw_event_dispatch_event_etc(pst_event_mem);
     FRW_EVENT_FREE(pst_event_mem);
@@ -1769,7 +1775,12 @@ oal_uint32  hmac_sdt_up_sample_data(frw_event_mem_stru  *pst_event_mem)
                        pst_event_hdr->uc_device_id,
                        pst_event_hdr->uc_vap_id);
 
-    oal_memcopy(pst_event_up->auc_event_data,(oal_uint8 *)frw_get_event_payload(pst_event_mem), us_payload_len);
+    if (EOK != memcpy_s(pst_event_up->auc_event_data, us_payload_len,
+                        (oal_uint8 *)frw_get_event_payload(pst_event_mem), us_payload_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_sdt_up_sample_data::memcpy fail!");
+        FRW_EVENT_FREE(pst_hmac_event_mem);
+        return OAL_FAIL;
+    }
 
     /* 分发事件 */
     frw_event_dispatch_event_etc(pst_hmac_event_mem);
@@ -1837,7 +1848,8 @@ oal_uint32  hmac_sdt_recv_autocali_cmd(
                        pst_mac_vap->uc_device_id,
                        pst_mac_vap->uc_vap_id);
 
-    oal_memcopy(pst_event->auc_event_data, puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE);
+    memcpy_s(pst_event->auc_event_data, us_len - OAL_IF_NAME_SIZE,
+             puc_buf + OAL_IF_NAME_SIZE, us_len - OAL_IF_NAME_SIZE);
 
     frw_event_dispatch_event_etc(pst_event_mem);
     FRW_EVENT_FREE(pst_event_mem);
@@ -1892,7 +1904,10 @@ oal_uint32  hmac_sdt_send_autocali_data(frw_event_mem_stru  *pst_event_mem)
         OAL_IO_PRINT("hmac_sdt_autocali_data::oam_alloc_data2sdt_etc return null, us_payload_len[%d].\r\n", OAL_NETBUF_LEN(pst_autocali_event->pst_netbuf));
         return OAL_ERR_CODE_PTR_NULL;
     }
-    oal_memcopy(oal_netbuf_data(pst_net_buf_repot), OAL_NETBUF_DATA(pst_autocali_event->pst_netbuf), OAL_NETBUF_LEN(pst_autocali_event->pst_netbuf));
+    memcpy_s(oal_netbuf_data(pst_net_buf_repot),
+             OAL_NETBUF_LEN(pst_autocali_event->pst_netbuf),
+             OAL_NETBUF_DATA(pst_autocali_event->pst_netbuf),
+             OAL_NETBUF_LEN(pst_autocali_event->pst_netbuf));
     oal_netbuf_free(pst_autocali_event->pst_netbuf);
 
     *(oal_netbuf_stru**)pst_event_up->auc_event_data = pst_net_buf_repot;
@@ -1909,10 +1924,10 @@ oal_uint32  hmac_sdt_send_autocali_data(frw_event_mem_stru  *pst_event_mem)
 OAL_STATIC oal_uint32  hmac_create_ba_event(frw_event_mem_stru  *pst_event_mem)
 {
     oal_uint8            uc_tidno;
-    frw_event_stru      *pst_event;
-    hmac_user_stru      *pst_hmac_user;
-    hmac_vap_stru       *pst_hmac_vap;
-    dmac_to_hmac_ctx_event_stru    *pst_create_ba_event;
+    frw_event_stru      *pst_event = OAL_PTR_NULL;
+    hmac_user_stru      *pst_hmac_user = OAL_PTR_NULL;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
+    dmac_to_hmac_ctx_event_stru    *pst_create_ba_event = OAL_PTR_NULL;
 
     pst_event           = frw_get_event_stru(pst_event_mem);
     pst_create_ba_event = (dmac_to_hmac_ctx_event_stru *)pst_event->auc_event_data;
@@ -1949,12 +1964,12 @@ OAL_STATIC oal_uint32  hmac_create_ba_event(frw_event_mem_stru  *pst_event_mem)
 OAL_STATIC oal_uint32  hmac_del_ba_event(frw_event_mem_stru  *pst_event_mem)
 {
     oal_uint8           uc_tid;
-    frw_event_stru     *pst_event;
-    hmac_user_stru     *pst_hmac_user;
-    hmac_vap_stru      *pst_hmac_vap;
+    frw_event_stru     *pst_event = OAL_PTR_NULL;
+    hmac_user_stru     *pst_hmac_user = OAL_PTR_NULL;
+    hmac_vap_stru      *pst_hmac_vap = OAL_PTR_NULL;
 
     mac_action_mgmt_args_stru       st_action_args;   /* 用于填写ACTION帧的参数 */
-    hmac_tid_stru                  *pst_hmac_tid;
+    hmac_tid_stru                  *pst_hmac_tid = OAL_PTR_NULL;
     oal_uint32                      ul_ret;
     dmac_to_hmac_ctx_event_stru    *pst_del_ba_event;
 
@@ -2020,9 +2035,9 @@ OAL_STATIC oal_uint32  hmac_del_ba_event(frw_event_mem_stru  *pst_event_mem)
 
 OAL_STATIC oal_uint32  hmac_syn_info_event(frw_event_mem_stru  *pst_event_mem)
 {
-    frw_event_stru      *pst_event;
-    hmac_user_stru      *pst_hmac_user;
-    mac_vap_stru        *pst_mac_vap;
+    frw_event_stru      *pst_event = OAL_PTR_NULL;
+    hmac_user_stru      *pst_hmac_user = OAL_PTR_NULL;
+    mac_vap_stru        *pst_mac_vap = OAL_PTR_NULL;
     oal_uint32           ul_relt;
 
     dmac_to_hmac_syn_info_event_stru    *pst_syn_info_event;
@@ -2091,16 +2106,16 @@ oal_uint32 hmac_config_set_acs_cmd(mac_vap_stru *pst_mac_vap, oal_uint16 us_len,
     /* 获取device */
     pst_hmac_device = hmac_res_get_mac_dev_etc(pst_mac_vap->uc_device_id);
 
-    if ((OAL_PTR_NULL == pst_hmac_device) || OAL_PTR_NULL == pst_hmac_device->pst_device_base_info || (OAL_PTR_NULL == puc_param))
+    if (OAL_ANY_NULL_PTR3(pst_hmac_device,pst_hmac_device->pst_device_base_info,puc_param))
     {
         OAM_ERROR_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_config_set_acs_cmd::null param,pst_hmac_device=%x puc_param=%x}",
-                       pst_hmac_device, puc_param);
+                       (uintptr_t)pst_hmac_device, (uintptr_t)puc_param);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
     pst_mac_device = pst_hmac_device->pst_device_base_info;
 
-    if (pst_mac_device == OAL_PTR_NULL || OAL_PTR_NULL == pst_mac_device->pst_acs)
+    if (OAL_ANY_NULL_PTR2(pst_mac_device,pst_mac_device->pst_acs))
     {
         OAM_ERROR_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{hmac_config_set_acs_cmd::pst_acs null.}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -2245,10 +2260,6 @@ OAL_STATIC oal_uint32  hmac_m2s_sync_event(frw_event_mem_stru  *pst_event_mem)
 #endif
 
 /*lint -e578*//*lint -e19*/
-#if (_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID)
-oal_module_init(hmac_main_init_etc);
-oal_module_exit(hmac_main_exit_etc);
-#endif
 oal_module_symbol(hmac_board_get_instance_etc);
 oal_module_symbol(hmac_sdt_recv_reg_cmd_etc);
 #if defined(_PRE_WLAN_FEATURE_DATA_SAMPLE) || defined(_PRE_WLAN_FEATURE_PSD_ANALYSIS)

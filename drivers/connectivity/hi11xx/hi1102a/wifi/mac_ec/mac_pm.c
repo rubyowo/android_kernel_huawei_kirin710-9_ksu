@@ -198,7 +198,7 @@ oal_void mac_pm_arbiter_to_state(mac_device_stru *pst_device, mac_vap_stru *pst_
        /*操作hal层接口*/
        if(OAL_SUCC == mac_pm_set_hal_state(pst_device, pst_mac_vap, uc_state_to))
        {
-           //OAM_INFO_LOG1(pst_device->uc_cfg_vap_id, OAM_SF_PWR, "PM arbiter:set device to state %d",uc_state_to);
+
 
            pst_pm_arbiter->uc_cur_state  = uc_state_to;
        }
@@ -250,7 +250,7 @@ oal_void  mac_pm_wow_release_probe_resp(dmac_vap_stru *pst_dmac_vap)
 
 oal_uint32  mac_pm_wow_prepare_null_data(dmac_vap_stru *pst_dmac_vap)
 {
-    dmac_user_stru* pst_dmac_user;
+    dmac_user_stru* pst_dmac_user = OAL_PTR_NULL;
 
 
     /*仅需要为STA模式的VAP准备null data帧，做keep alive*/

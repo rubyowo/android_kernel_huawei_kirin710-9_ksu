@@ -31,6 +31,8 @@ extern "C" {
 #include "hmac_roam_alg.h"
 #endif
 #include "hmac_scan.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_11V_C
@@ -47,8 +49,8 @@ extern "C" {
 
 oal_uint32 hmac_11v_roam_scan_check(hmac_vap_stru *pst_hmac_vap)
 {
-    hmac_user_stru            *pst_hmac_user;
-    hmac_user_11v_ctrl_stru   *pst_11v_ctrl_info;
+    hmac_user_stru            *pst_hmac_user = OAL_PTR_NULL;
+    hmac_user_11v_ctrl_stru   *pst_11v_ctrl_info = OAL_PTR_NULL;
     hmac_roam_info_stru       *pst_roam_info;
 
     pst_roam_info = (hmac_roam_info_stru *)pst_hmac_vap->pul_roam_info;
@@ -103,7 +105,7 @@ oal_uint32 hmac_rx_bsst_req_candidate_info_check(hmac_vap_stru *pst_hmac_vap, oa
 
     if (OAL_SUCC != ul_check && OAL_PTR_NULL == pst_bss_dscr)
     {/*无效信道*/
-        OAM_WARNING_LOG3(0, OAM_SF_CFG,"{hmac_rx_bsst_req_candidate_info_check:jolly:uc_channel=[%d] is invalid,but bssid:XX:XX:XX:XX:%02X:%02X not in scan list}",
+        OAM_WARNING_LOG3(0, OAM_SF_CFG,"{hmac_rx_bsst_req_candidate_info_check::uc_channel=[%d] is invalid,but bssid:XX:XX:XX:XX:%02X:%02X not in scan list}",
                          uc_candidate_channel, puc_bssid[4], puc_bssid[5]);
         return OAL_FAIL;
     }
@@ -120,27 +122,55 @@ oal_uint32 hmac_rx_bsst_req_candidate_info_check(hmac_vap_stru *pst_hmac_vap, oa
 
     return OAL_SUCC;
 }
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_rx_bsst_is_rejected(hmac_bsst_req_info_stru st_bsst_req_info, mac_user_stru *pst_mac_user)
+{
+    return ((ETHER_IS_BROADCAST(st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr) ||
+            ETHER_IS_ALL_ZERO(st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr) ||
+            (st_bsst_req_info.us_disassoc_time < HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ONE_CHANNEL_TIME) ||
+            !oal_memcmp(pst_mac_user->auc_user_mac_addr, st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr, WLAN_MAC_ADDR_LEN)) &&
+            (st_bsst_req_info.us_disassoc_time > 0));
+}
+
+OAL_STATIC OAL_INLINE oal_bool_enum_uint8 hmac_rx_bsst_check_disassoc_time(oal_uint16 us_disassoc_time)
+{
+    return us_disassoc_time >=  HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ONE_CHANNEL_TIME
+        && us_disassoc_time < HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ALL_CHANNEL_TIME;
+}
+
+OAL_STATIC oal_void hmac_rx_bsst_free_res(hmac_bsst_req_info_stru *pst_bsst_req_info)
+{
+    if (pst_bsst_req_info->puc_session_url != OAL_PTR_NULL) {
+        OAL_MEM_FREE(pst_bsst_req_info->puc_session_url, OAL_TRUE);
+        pst_bsst_req_info->puc_session_url = OAL_PTR_NULL;
+    }
+
+    if (pst_bsst_req_info->pst_neighbor_bss_list != OAL_PTR_NULL) {
+        OAL_MEM_FREE(pst_bsst_req_info->pst_neighbor_bss_list, OAL_TRUE);
+        pst_bsst_req_info->pst_neighbor_bss_list = OAL_PTR_NULL;
+    }
+}
 
 
 oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *pst_hmac_user, oal_netbuf_stru *pst_netbuf)
 {
     oal_uint16                      us_handle_len = 0;
-    dmac_rx_ctl_stru               *pst_rx_ctrl;
-    mac_rx_ctl_stru                *pst_rx_info;
+    dmac_rx_ctl_stru               *pst_rx_ctrl = OAL_PTR_NULL;
+    mac_rx_ctl_stru                *pst_rx_info = OAL_PTR_NULL;
     oal_uint16                      us_frame_len = 0;
     oal_uint8                      *puc_data = OAL_PTR_NULL;
     hmac_bsst_req_info_stru         st_bsst_req_info;
     hmac_bsst_rsp_info_stru         st_bsst_rsp_info;
     oal_uint16                      us_url_count = 0;
-    hmac_user_11v_ctrl_stru        *pst_11v_ctrl_info;
-    mac_user_stru                  *pst_mac_user;
+    hmac_user_11v_ctrl_stru        *pst_11v_ctrl_info = OAL_PTR_NULL;
+    mac_user_stru                  *pst_mac_user = OAL_PTR_NULL;
     oal_uint32                      ul_ret;
+    oal_int32                       l_ret = EOK;
     hmac_roam_info_stru            *pst_roam_info;
     oal_bool_enum_uint8             en_need_roam = OAL_TRUE;
 
-    if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == pst_netbuf))
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_netbuf))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action::null param, vap:0x%x user:0x%x buf:0x%x.}", pst_hmac_vap, pst_hmac_user, pst_netbuf);
+        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action::null param, vap:0x%x user:0x%x buf:0x%x.}", (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_netbuf);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -159,7 +189,7 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
     }
 
     pst_11v_ctrl_info = &(pst_hmac_user->st_11v_ctrl_info);
-    OAL_MEMZERO(pst_11v_ctrl_info, OAL_SIZEOF(hmac_user_11v_ctrl_stru));
+    memset_s(pst_11v_ctrl_info, OAL_SIZEOF(hmac_user_11v_ctrl_stru), 0, OAL_SIZEOF(hmac_user_11v_ctrl_stru));
 
     pst_rx_ctrl         = (dmac_rx_ctl_stru *)oal_netbuf_cb(pst_netbuf);
     pst_rx_info         = (mac_rx_ctl_stru *)(&(pst_rx_ctrl->st_rx_info));
@@ -170,7 +200,7 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
     OAM_WARNING_LOG0(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action::handle 11v bsst req start.}");
 #endif
     /* 帧体的最小长度为7 小于7则格式异常 */
-    if (HMAC_11V_REQUEST_FRAME_BODY_FIX > us_frame_len)
+    if (us_frame_len < HMAC_11V_REQUEST_FRAME_BODY_FIX)
     {
         OAM_ERROR_LOG1(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action:: frame length error %d.}", us_frame_len);
         return OAL_FAIL;
@@ -183,7 +213,7 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
         pst_11v_ctrl_info->uc_user_bsst_token = puc_data[2];
     }
     /* 解析request mode */
-    oal_memset(&st_bsst_req_info, 0, sizeof(st_bsst_req_info));
+    memset_s(&st_bsst_req_info, sizeof(st_bsst_req_info), 0, sizeof(st_bsst_req_info));
     st_bsst_req_info.st_request_mode.bit_candidate_list_include = puc_data[3]&BIT0;
     st_bsst_req_info.st_request_mode.bit_abridged = (puc_data[3]&BIT1)? OAL_TRUE : OAL_FALSE;
     st_bsst_req_info.st_request_mode.bit_bss_disassoc_imminent = (puc_data[3]&BIT2)? OAL_TRUE : OAL_FALSE;
@@ -191,8 +221,7 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
     st_bsst_req_info.st_request_mode.bit_ess_disassoc_imminent = (puc_data[3]&BIT4)? OAL_TRUE : OAL_FALSE;
 
     st_bsst_req_info.us_disassoc_time = ((oal_uint16)(puc_data[5]) << 8 ) | puc_data[4];
-    if((st_bsst_req_info.us_disassoc_time >=  HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ONE_CHANNEL_TIME)
-        && st_bsst_req_info.us_disassoc_time < HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ALL_CHANNEL_TIME)
+    if (hmac_rx_bsst_check_disassoc_time(st_bsst_req_info.us_disassoc_time))
     {
         pst_11v_ctrl_info->en_only_scan_one_time = OAL_TRUE;
     }
@@ -200,30 +229,32 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
     st_bsst_req_info.uc_validity_interval = puc_data[6];
     us_handle_len = 7;              /* 前面7个字节已被处理完 */
     /* 12字节的termination duration 如果有的话 */
-    if (st_bsst_req_info.st_request_mode.bit_termination_include)
+    if ((st_bsst_req_info.st_request_mode.bit_termination_include) &&
+        (us_frame_len >= us_handle_len + MAC_IE_HDR_LEN + HMAC_11V_TERMINATION_TSF_LENGTH + 2))
     {
         us_handle_len += MAC_IE_HDR_LEN;                /* 去掉元素头 */
-        oal_memcopy(st_bsst_req_info.st_term_duration.auc_termination_tsf, puc_data+us_handle_len, HMAC_11V_TERMINATION_TSF_LENGTH);
+        l_ret += memcpy_s(st_bsst_req_info.st_term_duration.auc_termination_tsf, HMAC_11V_TERMINATION_TSF_LENGTH,
+                          puc_data+us_handle_len, HMAC_11V_TERMINATION_TSF_LENGTH);
         us_handle_len += HMAC_11V_TERMINATION_TSF_LENGTH;
-        st_bsst_req_info.st_term_duration.us_duration_min = (((oal_uint16)puc_data[us_handle_len+1]) << 8) | (puc_data[us_handle_len]);
+        st_bsst_req_info.st_term_duration.us_duration_min = (((oal_uint16)puc_data[us_handle_len + 1]) << 8) | (puc_data[us_handle_len]);
         us_handle_len += 2;
     }
     /* 解析URL */
     /* URL字段 如果有的话 URL第一个字节为URL长度 申请动态内存保存 */
     st_bsst_req_info.puc_session_url = OAL_PTR_NULL;
-    if (st_bsst_req_info.st_request_mode.bit_ess_disassoc_imminent)
-    {
-        if (0 != puc_data[us_handle_len])
-        {
+    if ((st_bsst_req_info.st_request_mode.bit_ess_disassoc_imminent) &&
+        (us_frame_len >= us_handle_len + 1)) {
+        if ((0 != puc_data[us_handle_len]) &&
+            (us_frame_len >= ((us_handle_len + 1) + puc_data[us_handle_len]))) {
             /* 申请内存数量加1 用于存放字符串结束符 */
             us_url_count = puc_data[us_handle_len]*OAL_SIZEOF(oal_uint8)+1;
-            st_bsst_req_info.puc_session_url = (oal_uint8 *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL,us_url_count,OAL_TRUE);
-            if (OAL_PTR_NULL == st_bsst_req_info.puc_session_url)
-            {
+            st_bsst_req_info.puc_session_url = (oal_uint8 *)OAL_MEM_ALLOC(OAL_MEM_POOL_ID_LOCAL, us_url_count, OAL_TRUE);
+            if (st_bsst_req_info.puc_session_url == OAL_PTR_NULL) {
                 OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action:: puc_session_url alloc fail.}");
                 return OAL_FAIL;
             }
-            oal_memcopy(st_bsst_req_info.puc_session_url, puc_data+(us_handle_len+1), puc_data[us_handle_len]);
+
+            l_ret += memcpy_s(st_bsst_req_info.puc_session_url, us_url_count, puc_data + (us_handle_len + 1), puc_data[us_handle_len]);
             /* 转化成字符串 */
             st_bsst_req_info.puc_session_url[puc_data[us_handle_len]] = '\0';
         }
@@ -283,13 +314,14 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
                 en_need_roam = OAL_FALSE;
             }
 
-            oal_memset(&st_bsst_rsp_info, 0, sizeof(st_bsst_rsp_info));
+            memset_s(&st_bsst_rsp_info, sizeof(st_bsst_rsp_info), 0, sizeof(st_bsst_rsp_info));
             /* 选取第一个BSS 作为目标BSS 发送Response给AP */
             st_bsst_rsp_info.uc_status_code = 0;                            /* 默认设置为同意切换 */
             st_bsst_rsp_info.uc_termination_delay = 0;                      /* 仅当状态码为5时有效，此次无意义设为0 */
             st_bsst_rsp_info.uc_chl_num = st_bsst_req_info.pst_neighbor_bss_list->uc_chl_num;
             /* 调试用不作判断 认为request帧中带有候选AP列表集 */
-            oal_memcopy(st_bsst_rsp_info.auc_target_bss_addr, st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr, WLAN_MAC_ADDR_LEN);
+            l_ret += memcpy_s(st_bsst_rsp_info.auc_target_bss_addr, WLAN_MAC_ADDR_LEN,
+                              st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr, WLAN_MAC_ADDR_LEN);
             st_bsst_rsp_info.c_rssi = hmac_get_rssi_from_scan_result(pst_hmac_vap, pst_hmac_vap->st_vap_base_info.auc_bssid);
 
             /* register BSS Transition Response callback function:
@@ -298,14 +330,17 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
 
 #ifdef _PRE_WLAN_FEATURE_ROAM
             pst_roam_info = (hmac_roam_info_stru *)pst_hmac_vap->pul_roam_info;
-            oal_memcopy(&(pst_roam_info->st_bsst_rsp_info), &st_bsst_rsp_info, sizeof(st_bsst_rsp_info));
+            if (!pst_roam_info)
+            {
+                OAM_ERROR_LOG0(pst_hmac_vap->st_vap_base_info.us_assoc_vap_id, OAM_SF_ANY, "{hmac_rx_bsst_req_action::roam info is null}");
+                goto out;
+            }
+
+            l_ret += memcpy_s(&(pst_roam_info->st_bsst_rsp_info), sizeof(pst_roam_info->st_bsst_rsp_info),
+                                &st_bsst_rsp_info, sizeof(st_bsst_rsp_info));
 
             /* broadcast address or assocaited AP's address, && disassociation time > 0,disassociation time < 100ms, BSST reject */
-            if ((ETHER_IS_BROADCAST(st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr)
-                || ETHER_IS_ALL_ZERO(st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr)
-                || (st_bsst_req_info.us_disassoc_time < HMAC_11V_REQUEST_DISASSOC_TIME_SCAN_ONE_CHANNEL_TIME)
-                || !oal_memcmp(pst_mac_user->auc_user_mac_addr, st_bsst_req_info.pst_neighbor_bss_list->auc_mac_addr, WLAN_MAC_ADDR_LEN))
-                && (st_bsst_req_info.us_disassoc_time > 0))
+            if (hmac_rx_bsst_is_rejected(st_bsst_req_info, pst_mac_user))
             {
                 OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_rx_bsst_req_action::bsst req candidate bssid is invalid, us_disassoc_time=%d, will reject}",
                                  st_bsst_req_info.us_disassoc_time);
@@ -335,18 +370,13 @@ oal_uint32 hmac_rx_bsst_req_action(hmac_vap_stru *pst_hmac_vap, hmac_user_stru *
 #endif
         }
     }
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_rx_bsst_req_action::memcpy fail!");
+    }
 
+out:
     /* 释放指针 */
-    if (OAL_PTR_NULL != st_bsst_req_info.puc_session_url)
-    {
-        OAL_MEM_FREE(st_bsst_req_info.puc_session_url, OAL_TRUE);
-        st_bsst_req_info.puc_session_url = OAL_PTR_NULL;
-    }
-    if (OAL_PTR_NULL != st_bsst_req_info.pst_neighbor_bss_list)
-    {
-        OAL_MEM_FREE(st_bsst_req_info.pst_neighbor_bss_list, OAL_TRUE);
-        st_bsst_req_info.pst_neighbor_bss_list = OAL_PTR_NULL;
-    }
+    hmac_rx_bsst_free_res(&st_bsst_req_info);
 
     return OAL_SUCC;
 }
@@ -357,15 +387,15 @@ oal_uint32 hmac_tx_bsst_rsp_action(void *pst_void1, void *pst_void2, void *pst_v
     hmac_vap_stru                 *pst_hmac_vap = (hmac_vap_stru *)pst_void1;
     hmac_user_stru                *pst_hmac_user = (hmac_user_stru *)pst_void2;
     hmac_bsst_rsp_info_stru       *pst_bsst_rsp_info = (hmac_bsst_rsp_info_stru *) pst_void3;
-    oal_netbuf_stru               *pst_bsst_rsp_buf;
+    oal_netbuf_stru               *pst_bsst_rsp_buf = OAL_PTR_NULL;
     oal_uint16                     us_frame_len;
-    mac_tx_ctl_stru               *pst_tx_ctl;
+    mac_tx_ctl_stru               *pst_tx_ctl = OAL_PTR_NULL;
     oal_uint32                     ul_ret;
-    hmac_user_11v_ctrl_stru       *pst_11v_ctrl_info;
+    hmac_user_11v_ctrl_stru       *pst_11v_ctrl_info = OAL_PTR_NULL;
 
-    if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == pst_bsst_rsp_info))
+    if (OAL_ANY_NULL_PTR3(pst_hmac_vap,pst_hmac_user,pst_bsst_rsp_info))
     {
-        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_tx_bsst_rsp_action::null param, %x %x %x.}", pst_hmac_vap, pst_hmac_user, pst_bsst_rsp_info);
+        OAM_ERROR_LOG3(0, OAM_SF_ANY, "{hmac_tx_bsst_rsp_action::null param, %x %x %x.}", (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_bsst_rsp_info);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -394,7 +424,7 @@ oal_uint32 hmac_tx_bsst_rsp_action(void *pst_void1, void *pst_void2, void *pst_v
         return OAL_FAIL;
     }
     /* 初始化CB */
-    OAL_MEMZERO(oal_netbuf_cb(pst_bsst_rsp_buf), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_bsst_rsp_buf), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_bsst_rsp_buf);
     MAC_GET_CB_TX_USER_IDX(pst_tx_ctl) = pst_hmac_user->st_user_base_info.us_assoc_id;
     MAC_GET_CB_WME_AC_TYPE(pst_tx_ctl) = WLAN_WME_AC_MGMT;
@@ -438,12 +468,12 @@ oal_uint16 hmac_encap_bsst_rsp_action(hmac_vap_stru *pst_hmac_vap,
     oal_uint16               us_index = 0;
     oal_uint8               *puc_mac_header   = OAL_PTR_NULL;
     oal_uint8               *puc_payload_addr = OAL_PTR_NULL;
-    hmac_user_11v_ctrl_stru *pst_11v_ctrl_info;
+    hmac_user_11v_ctrl_stru *pst_11v_ctrl_info = OAL_PTR_NULL;
 
-    if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == pst_bsst_rsp_info) || (OAL_PTR_NULL == pst_buffer))
+    if (OAL_ANY_NULL_PTR4(pst_hmac_vap,pst_hmac_user,pst_bsst_rsp_info,pst_buffer))
     {
         OAM_ERROR_LOG4(0, OAM_SF_ANY, "{hmac_encap_bsst_rsp_action::null param.vap:%x user:%x info:%x buf:%x}",
-            pst_hmac_vap, pst_hmac_user, pst_bsst_rsp_info, pst_buffer);
+            (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)pst_bsst_rsp_info, (uintptr_t)pst_buffer);
         return 0;
     }
 
@@ -507,7 +537,11 @@ oal_uint16 hmac_encap_bsst_rsp_action(hmac_vap_stru *pst_hmac_vap,
     /* 设置Target BSSID */
     if (0 == pst_bsst_rsp_info->uc_status_code)
     {
-        oal_memcopy(puc_payload_addr+us_index, pst_bsst_rsp_info->auc_target_bss_addr, WLAN_MAC_ADDR_LEN);
+        if (EOK != memcpy_s(puc_payload_addr + us_index, WLAN_MGMT_NETBUF_SIZE - us_index,
+                            pst_bsst_rsp_info->auc_target_bss_addr, WLAN_MAC_ADDR_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "hwifi_config_init_fcc_ce_txpwr_nvram::memcpy fail!");
+            return 0;
+        }
         us_index += WLAN_MAC_ADDR_LEN;
     }
     /* 可选的候选AP列表 不添加 减少带宽占用 */
@@ -516,9 +550,40 @@ oal_uint16 hmac_encap_bsst_rsp_action(hmac_vap_stru *pst_hmac_vap,
 #endif
     return (oal_uint16)(us_index + MAC_80211_FRAME_LEN);
 }
+OAL_STATIC OAL_INLINE oal_void hmac_handle_ie_by_data_length(oal_int16 *ps_sub_ie_len,
+    oal_uint8 **ppuc_ie_data, hmac_neighbor_bss_info_stru *pst_bss_list_alloc, oal_uint8 uc_bss_list_index)
+{
+    while (0 < *ps_sub_ie_len)
+    {
+        switch ((*ppuc_ie_data)[0])
+        {
+            case HMAC_NEIGH_SUB_ID_BSS_CANDIDATE_PERF:      /* 占用3个字节 */
+                pst_bss_list_alloc[uc_bss_list_index].uc_candidate_perf = (*ppuc_ie_data)[2];
+                *ps_sub_ie_len -= (HMAC_11V_PERFERMANCE_ELEMENT_LEN + MAC_IE_HDR_LEN );
+                (*ppuc_ie_data) += (HMAC_11V_PERFERMANCE_ELEMENT_LEN + MAC_IE_HDR_LEN );
+                break;
+            case HMAC_NEIGH_SUB_ID_TERM_DURATION:   /* 占用12个字节 */
+                if (EOK != memcpy_s(pst_bss_list_alloc[uc_bss_list_index].st_term_duration.auc_termination_tsf,
+                                    sizeof(pst_bss_list_alloc[uc_bss_list_index].st_term_duration.auc_termination_tsf),
+                                    (*ppuc_ie_data)+2, HMAC_11V_TERMINATION_TSF_LENGTH)) {
+                    OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_handle_ie_by_data_length::memcpy fail!");
+                    return;
+                }
+                pst_bss_list_alloc[uc_bss_list_index].st_term_duration.us_duration_min = (((oal_uint16)(*ppuc_ie_data)[11])<<8) | ((*ppuc_ie_data)[10]);
+                *ps_sub_ie_len -= (HMAC_11V_TERMINATION_ELEMENT_LEN + MAC_IE_HDR_LEN);
+                (*ppuc_ie_data) +=  (HMAC_11V_TERMINATION_ELEMENT_LEN + MAC_IE_HDR_LEN);
+                break;
+            /* 其他IE跳过 不处理 */
+            default:
+                *ps_sub_ie_len -= ((*ppuc_ie_data)[1] +MAC_IE_HDR_LEN );
+                (*ppuc_ie_data) += ((*ppuc_ie_data)[1] +MAC_IE_HDR_LEN );
+                break;
+        }
+    }
+}
 
 
-hmac_neighbor_bss_info_stru * hmac_get_neighbor_ie(oal_uint8 *puc_data, oal_uint16 us_len, oal_uint8 *puc_bss_num)
+hmac_neighbor_bss_info_stru *hmac_get_neighbor_ie(oal_uint8 *puc_data, oal_uint16 us_len, oal_uint8 *puc_bss_num)
 {
     oal_uint8   *puc_ie_data_find = OAL_PTR_NULL;
     oal_uint8   *puc_ie_data = OAL_PTR_NULL;
@@ -528,11 +593,11 @@ hmac_neighbor_bss_info_stru * hmac_get_neighbor_ie(oal_uint8 *puc_data, oal_uint
     oal_uint8   uc_bss_list_index = 0;
     oal_uint8   uc_neighbor_ie_len = 0;
     oal_int16   s_sub_ie_len = 0;
-    hmac_neighbor_bss_info_stru *pst_bss_list_alloc;
+    hmac_neighbor_bss_info_stru *pst_bss_list_alloc = OAL_PTR_NULL;
 
-    if ((OAL_PTR_NULL == puc_data) || (OAL_PTR_NULL == puc_bss_num) )
+    if (OAL_ANY_NULL_PTR2(puc_data,puc_bss_num))
     {
-        OAM_WARNING_LOG2(0, OAM_SF_ANY, "{hmac_get_neighbor_ie::null pointer puc_data[%x] puc_bss_num[%x].}", puc_data, puc_bss_num);
+        OAM_WARNING_LOG2(0, OAM_SF_ANY, "{hmac_get_neighbor_ie::null pointer puc_data[%x] puc_bss_num[%x].}", (uintptr_t)puc_data, (uintptr_t)puc_bss_num);
         if (OAL_PTR_NULL != puc_bss_num)
         {
             *puc_bss_num = 0;
@@ -600,7 +665,12 @@ hmac_neighbor_bss_info_stru * hmac_get_neighbor_ie(oal_uint8 *puc_data, oal_uint
 
         uc_neighbor_ie_len = puc_ie_data[1];            // 元素长度
         /* 解析Neighbor Report IE结构体 帧中只含有subelement 3 4，其他subelement已被过滤掉 */
-        oal_memcopy(pst_bss_list_alloc[uc_bss_list_index].auc_mac_addr, puc_ie_data+2, WLAN_MAC_ADDR_LEN);
+        if (EOK != memcpy_s(pst_bss_list_alloc[uc_bss_list_index].auc_mac_addr,
+                            sizeof(pst_bss_list_alloc[uc_bss_list_index].auc_mac_addr),
+                            puc_ie_data + 2, WLAN_MAC_ADDR_LEN)) {
+            OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_get_neighbor_ie::memcpy fail!");
+            return OAL_PTR_NULL;
+        }
         /* 解析BSSID Information */
         pst_bss_list_alloc[uc_bss_list_index].st_bssid_info.bit_ap_reachability = (puc_ie_data[8]&BIT1)|(puc_ie_data[8]&BIT0);        /* bit0-1 */
         pst_bss_list_alloc[uc_bss_list_index].st_bssid_info.bit_security = (puc_ie_data[8]&BIT2)? OAL_TRUE: OAL_FALSE;                /* bit2 */
@@ -622,34 +692,7 @@ hmac_neighbor_bss_info_stru * hmac_get_neighbor_ie(oal_uint8 *puc_data, oal_uint
         {
             s_sub_ie_len = uc_neighbor_ie_len - uc_minmum_ie_len;        /* subelement长度 */
             puc_ie_data += (uc_minmum_ie_len + MAC_IE_HDR_LEN);           /* 帧体数据移动到subelement处 */
-            while (0 < s_sub_ie_len)
-            {
-                switch (puc_ie_data[0])
-                {
-                case HMAC_NEIGH_SUB_ID_BSS_CANDIDATE_PERF:      /* 占用3个字节 */
-                    {
-                        pst_bss_list_alloc[uc_bss_list_index].uc_candidate_perf = puc_ie_data[2];
-                        s_sub_ie_len -= (HMAC_11V_PERFERMANCE_ELEMENT_LEN +MAC_IE_HDR_LEN );
-                        puc_ie_data += (HMAC_11V_PERFERMANCE_ELEMENT_LEN +MAC_IE_HDR_LEN );
-                    }
-                    break;
-                case HMAC_NEIGH_SUB_ID_TERM_DURATION:   /* 占用12个字节 */
-                    {
-                        oal_memcopy(pst_bss_list_alloc[uc_bss_list_index].st_term_duration.auc_termination_tsf, puc_ie_data+2, 8);
-                        pst_bss_list_alloc[uc_bss_list_index].st_term_duration.us_duration_min = (((oal_uint16)puc_ie_data[11])<<8) | (puc_ie_data[10]);
-                        s_sub_ie_len -= (HMAC_11V_TERMINATION_ELEMENT_LEN + MAC_IE_HDR_LEN);
-                        puc_ie_data +=  (HMAC_11V_TERMINATION_ELEMENT_LEN + MAC_IE_HDR_LEN);
-                    }
-                    break;
-                /* 其他IE跳过 不处理 */
-                default:
-                    {
-                        s_sub_ie_len -= (puc_ie_data[1] +MAC_IE_HDR_LEN );
-                        puc_ie_data += (puc_ie_data[1] +MAC_IE_HDR_LEN );
-                    }
-                    break;
-                }
-            }
+            hmac_handle_ie_by_data_length(&s_sub_ie_len, &puc_ie_data, pst_bss_list_alloc, uc_bss_list_index);
         }
         puc_ie_data_find += (uc_neighbor_ie_len + MAC_IE_HDR_LEN);
         us_len_find -= (uc_neighbor_ie_len + MAC_IE_HDR_LEN);

@@ -18,6 +18,8 @@ extern "C" {
 #include "mac_vap.h"
 #include "mac_ie.h"
 #include "hmac_config.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_PROTECTION_C
@@ -38,7 +40,7 @@ OAL_STATIC oal_uint32 hmac_protection_set_mode(
  oal_uint32 hmac_protection_set_autoprot(mac_vap_stru *pst_mac_vap, oal_switch_enum_uint8 en_mode)
 {
     oal_uint32      ul_ret = OAL_SUCC;
-    hmac_user_stru *pst_hmac_user;
+    hmac_user_stru *pst_hmac_user = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_mac_vap)
     {
@@ -103,7 +105,7 @@ OAL_STATIC OAL_INLINE oal_uint32 hmac_protection_set_erp_protection(mac_vap_stru
 
 OAL_STATIC oal_bool_enum hmac_protection_lsigtxop_check(mac_vap_stru *pst_mac_vap)
 {
-    mac_user_stru  *pst_mac_user;
+    mac_user_stru  *pst_mac_user = OAL_PTR_NULL;
 
     /*如果不是11n站点，则不支持lsigtxop保护*/
     if ((WLAN_HT_MODE != pst_mac_vap->en_protocol)
@@ -216,10 +218,10 @@ OAL_STATIC oal_uint32 hmac_protection_set_ht_protection(mac_vap_stru *pst_mac_va
 oal_bool_enum_uint8 hmac_protection_need_sync(mac_vap_stru *pst_mac_vap,
                                 mac_h2d_protection_stru *pst_h2d_prot)
 {
-    mac_h2d_protection_stru *pst_prot_old;
+    mac_h2d_protection_stru *pst_prot_old = OAL_PTR_NULL;
     hmac_vap_stru       *pst_hmac_vap;
-    mac_protection_stru *pst_old;
-    mac_protection_stru *pst_new;
+    mac_protection_stru *pst_old = OAL_PTR_NULL;
+    mac_protection_stru *pst_new = OAL_PTR_NULL;
 
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
     if (OAL_PTR_NULL == pst_hmac_vap)
@@ -263,10 +265,10 @@ oal_bool_enum_uint8 hmac_protection_need_sync(mac_vap_stru *pst_mac_vap,
 OAL_STATIC oal_uint32 hmac_protection_sync_data(mac_vap_stru *pst_mac_vap)
 {
     mac_h2d_protection_stru           st_h2d_prot;
-    wlan_mib_Dot11OperationEntry_stru *pst_mib;
+    wlan_mib_Dot11OperationEntry_stru *pst_mib = OAL_PTR_NULL;
     oal_uint32                        ul_ret = OAL_SUCC;
 
-    OAL_MEMZERO(&st_h2d_prot, OAL_SIZEOF(st_h2d_prot));
+    memset_s(&st_h2d_prot, OAL_SIZEOF(st_h2d_prot), 0, OAL_SIZEOF(st_h2d_prot));
 
     st_h2d_prot.ul_sync_mask |= H2D_SYNC_MASK_MIB;
     st_h2d_prot.ul_sync_mask |= H2D_SYNC_MASK_PROT;
@@ -369,7 +371,6 @@ oal_uint32 hmac_protection_update_mib_ap(mac_vap_stru *pst_mac_vap)
 {
     oal_uint32           ul_ret         = OAL_SUCC;
     mac_protection_stru *pst_protection = OAL_PTR_NULL;
-    oal_bool_enum_uint8  en_lsig_txop_full_protection_activated;
     oal_bool_enum_uint8  en_non_gf_entities_present;
     oal_bool_enum_uint8  en_rifs_mode;
     oal_bool_enum_uint8  en_ht_protection;
@@ -384,11 +385,6 @@ oal_uint32 hmac_protection_update_mib_ap(mac_vap_stru *pst_mac_vap)
     /*更新vap的en_dot11NonGFEntitiesPresent字段*/
     en_non_gf_entities_present = (0 != pst_protection->uc_sta_non_gf_num) ? OAL_TRUE : OAL_FALSE;
     mac_mib_set_NonGFEntitiesPresent(pst_mac_vap, en_non_gf_entities_present);
-
-    /*更新vap的en_dot11LSIGTXOPFullProtectionActivated字段*/
-    en_lsig_txop_full_protection_activated = (0 == pst_protection->uc_sta_no_lsig_txop_num) ? OAL_TRUE : OAL_FALSE;
-
-    mac_mib_set_LsigTxopFullProtectionActivated(pst_mac_vap, en_lsig_txop_full_protection_activated);
 
     ul_ret = hmac_protection_update_ht_protection(pst_mac_vap);
     if(OAL_SUCC != ul_ret)
@@ -700,9 +696,9 @@ oal_uint32 hmac_protection_del_user(mac_vap_stru *pst_mac_vap, mac_user_stru *ps
 
 oal_uint32  hmac_protection_obss_update_timer(void *p_arg)
 {
-    mac_device_stru     *pst_mac_device;
+    mac_device_stru     *pst_mac_device = OAL_PTR_NULL;
     oal_uint8            uc_vap_idx;
-    mac_vap_stru        *pst_mac_vap;
+    mac_vap_stru        *pst_mac_vap = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == p_arg)
     {

@@ -65,14 +65,6 @@ extern "C" {
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
 extern oal_net_dev_tx_enum  wal_bridge_vap_xmit_etc(oal_netbuf_stru *pst_buf, oal_net_device_stru *pst_dev);
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-oal_net_dev_tx_enum  wal_vap_start_xmit(oal_netbuf_stru *pst_buf, oal_net_device_stru *pst_dev);
-#endif
-
-
-
-
-
 
 
 #ifdef __cplusplus

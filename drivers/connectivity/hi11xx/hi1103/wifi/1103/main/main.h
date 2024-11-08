@@ -69,9 +69,6 @@ extern oal_uint8  device_psm_main_function(oal_void);
 #elif (defined(_PRE_PRODUCT_ID_HI110X_HOST))
 extern oal_int32  hi110x_host_main_init(oal_void);
 extern oal_void   hi110x_host_main_exit(oal_void);
-#elif  (_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID)
-extern oal_int32  hi1151_main_init(oal_void);
-extern oal_void   hi1151_main_exit(oal_void);
 #endif
 
 

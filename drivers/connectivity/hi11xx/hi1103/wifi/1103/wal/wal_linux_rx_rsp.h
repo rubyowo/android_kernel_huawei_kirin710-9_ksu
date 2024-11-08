@@ -112,16 +112,9 @@ extern oal_uint32  wal_mic_failure_proc_etc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  wal_send_mgmt_to_host_etc(frw_event_mem_stru *pst_event_mem);
 extern oal_uint32  wal_p2p_listen_timeout_etc(frw_event_mem_stru *pst_event_mem);
 
-#ifdef _PRE_WLAN_FEATURE_HILINK_TEMP_PROTECT
-
-extern oal_void wal_init_all_sta_rssi_info(oal_void);
-extern oal_uint32 wal_get_rssi_by_mac_addr(oal_net_device_stru *pst_dev, oal_uint8 *puc_mac_addr, oal_uint32 *pul_rssi);
-extern oal_uint32 wal_receive_all_sta_rssi_proc(frw_event_mem_stru *pst_event_mem);
-
+#ifdef _PRE_WLAN_FEATURE_SAE
+oal_uint32 wal_report_external_auth_req_etc(frw_event_mem_stru *pst_event_mem);
 #endif
-
-
-
 
 #ifdef __cplusplus
     #if __cplusplus

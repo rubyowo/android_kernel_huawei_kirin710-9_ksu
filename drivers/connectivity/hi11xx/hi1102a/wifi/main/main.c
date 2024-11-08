@@ -44,6 +44,8 @@ extern "C" {
 #include "dmac_pm_sta.h"
 #include "hal_rf.h"
 
+#include "dcxo_manager.h"
+
 #ifdef _PRE_WLAN_FEATURE_BTCOEX
 #include "dmac_btcoex.h"
 #endif
@@ -270,7 +272,11 @@ oal_int32 platform_module_init(oal_void)
     oal_int32  l_return   = OAL_FAIL;
     oal_uint16  us_bitmap  = 0;
 
-    //WLAN_EDA_TRACE_TAG(0x4110UL);
+    // 这里考虑共存dfr恢复场景，需要清除上一次异常时候的状态标志
+    if (dcxo_support() == TRUE) {
+        dcxo_flg_clean(SUB_WIFI);
+    }
+
     l_return = oal_main_init();
     if (OAL_SUCC != l_return)
     {
@@ -301,7 +307,7 @@ oal_int32 platform_module_init(oal_void)
     #endif
 #endif
 #endif
-    //WLAN_EDA_TRACE_TAG(0x4120UL);
+
     l_return = frw_main_init();
     if (OAL_SUCC != l_return)
     {
@@ -323,7 +329,7 @@ oal_int32  device_module_init(oal_void)
     oal_int32  l_return  = OAL_FAIL;
     oal_uint16 us_bitmap = 0;
 
-    //WLAN_EDA_TRACE_TAG(0x4210UL);
+
     l_return = hal_main_init();
     if (OAL_SUCC != l_return)
     {
@@ -331,7 +337,7 @@ oal_int32  device_module_init(oal_void)
         return l_return;
     }
 
-    //WLAN_EDA_TRACE_TAG(0x4220UL);
+
     l_return = dmac_main_init();
     if (OAL_SUCC != l_return)
     {
@@ -353,7 +359,7 @@ oal_int32  device_module_init(oal_void)
 #endif
 #endif
 
-    //WLAN_EDA_TRACE_TAG(0x4240UL);
+
     /*启动完成后，输出打印*/
     OAL_IO_PRINT("device_module_init:: device_module_init finish!\r\n");
 
@@ -383,7 +389,7 @@ oal_int32  host_module_init(oal_void)
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
     /* 读定制化配置文件&NVRAM */
-    hwifi_custom_host_read_cfg_init();
+    hwifi_custom_host_force_read_cfg_init();
     hwifi_config_host_global_dts_param();
 #endif /* #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE */
 
@@ -405,12 +411,12 @@ oal_int32  host_module_init(oal_void)
 
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)&&(_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
-    g_uc_custom_cali_done = OAL_FALSE;
+    custom_cali_done = OAL_FALSE;
 
     wlan_pm_open();
 #endif
-    //mdelay(7);
-    //wlan_pm_close();
+
+
 
     /*启动完成后，输出打印*/
     OAL_IO_PRINT("host_module_init:: host_main_init finish!");
@@ -425,9 +431,9 @@ oal_int32  hi1102_device_main_init(oal_void)
 {
     oal_int32  l_return  = OAL_FAIL;
     oal_uint16  us_bitmap;
-    //frw_event_mem_stru *pst_event_mem;
 
-    //WLAN_EDA_TRACE_TAG(0x4100UL);
+
+
     l_return = platform_module_init();
     if (OAL_SUCC != l_return)
     {
@@ -449,7 +455,7 @@ oal_int32  hi1102_device_main_init(oal_void)
     }
 #endif
 
-    //WLAN_EDA_TRACE_TAG(0x4200UL);
+
     l_return = device_module_init();
     if (OAL_SUCC != l_return)
     {
@@ -461,7 +467,7 @@ oal_int32  hi1102_device_main_init(oal_void)
 
     #if (!defined(HI110x_EDA))
     /*device_ready:调用HCC接口通知Hmac,Dmac已经完成初始化 TBD*/
-    //hcc_send_msg2host(D2H_MSG_WLAN_READY);
+
     pfn_SDIO_SendMsgSync(D2H_MSG_WLAN_READY);
     #endif
     /*启动完成后，输出打印*/
@@ -533,11 +539,12 @@ oal_uint8 device_psm_main_function(oal_void)
     hal_dual_antenna_switch(pst_hal_device->ul_dual_antenna_status, 1, &ul_result);
 #endif
 
+#ifdef _PRE_WLAN_FEATURE_BTCOEX
+    hal_btcoex_process_bt_status(pst_hal_device, OAL_TRUE);
+#endif
+
     device_main_function();
 
-#ifdef _PRE_WLAN_FEATURE_BTCOEX
-    hal_btcoex_process_bt_status(pst_hal_device, 0);
-#endif
     return OAL_SUCC;
 }
 
@@ -669,7 +676,7 @@ oal_void  hi1151_main_exit(oal_void)
 oal_int32 g_wifi_init_flag = 0;
 oal_int32 g_wifi_init_ret;
 /*built-in*/
-ssize_t  wifi_sysfs_set_init(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+OAL_STATIC ssize_t  wifi_sysfs_set_init(struct kobject *dev, struct kobj_attribute *attr, const char *buf, size_t count)
 {
     char            mode[128] = {0};
     if (NULL == buf)
@@ -691,7 +698,7 @@ ssize_t  wifi_sysfs_set_init(struct device *dev, struct device_attribute *attr, 
     }
 
 
-    if ((OAL_SSCANF(buf, "%20s", mode) != 1))
+    if ((sscanf(buf, "%20s", mode) != 1))
     {
         OAL_IO_PRINT("set value one param!\n");
         return -OAL_EINVAL;
@@ -718,7 +725,7 @@ ssize_t  wifi_sysfs_set_init(struct device *dev, struct device_attribute *attr, 
     return count;
 }
 
-ssize_t  wifi_sysfs_get_init(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wifi_sysfs_get_init(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -758,7 +765,8 @@ ssize_t  wifi_sysfs_get_init(struct device *dev, struct device_attribute *attr, 
 
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(wifi, S_IRUGO | S_IWUSR, wifi_sysfs_get_init, wifi_sysfs_set_init);
+STATIC struct kobj_attribute dev_attr_wifi =
+    __ATTR(wifi, S_IRUGO | S_IWUSR, wifi_sysfs_get_init, wifi_sysfs_set_init);
 OAL_STATIC struct attribute *wifi_init_sysfs_entries[] = {
         &dev_attr_wifi.attr,
         NULL

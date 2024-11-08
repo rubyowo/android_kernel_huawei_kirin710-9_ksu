@@ -24,6 +24,8 @@ extern "C" {
 #include "frw_ext_if.h"
 #include "hmac_resource.h"
 #include "hmac_encap_frame.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_CHAN_MGMT_C
@@ -45,9 +47,9 @@ extern "C" {
 
 oal_uint32 hmac_dump_chan_etc(mac_vap_stru *pst_mac_vap, oal_uint8* puc_param)
 {
-    dmac_set_chan_stru *pst_chan;
+    dmac_set_chan_stru *pst_chan = OAL_PTR_NULL;
 
-    if ( (OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_param) )
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,puc_param))
     {
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -69,7 +71,6 @@ oal_uint32 hmac_dump_chan_etc(mac_vap_stru *pst_mac_vap, oal_uint8* puc_param)
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "uc_end_chan_idx=%d\r\n", pst_chan->st_ch_switch_info.uc_end_chan_idx);
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "en_user_pref_bandwidth=%d\r\n", pst_chan->st_ch_switch_info.en_user_pref_bandwidth);
 
-    //OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "en_bw_change=%d\r\n", pst_chan->st_ch_switch_info.en_bw_change);
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "uc_new_channel=%d\r\n", pst_chan->st_ch_switch_info.uc_new_channel);
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "en_new_bandwidth=%d\r\n", pst_chan->st_ch_switch_info.en_new_bandwidth);
     OAM_INFO_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_2040, "en_waiting_to_shift_channel=%d\r\n",
@@ -84,11 +85,11 @@ oal_uint32 hmac_dump_chan_etc(mac_vap_stru *pst_mac_vap, oal_uint8* puc_param)
 
 oal_void  hmac_chan_initiate_switch_to_new_channel(mac_vap_stru *pst_mac_vap, oal_uint8 uc_channel, wlan_channel_bandwidth_enum_uint8 en_bandwidth)
 {
-    frw_event_mem_stru            *pst_event_mem;
-    frw_event_stru                *pst_event;
+    frw_event_mem_stru            *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru                *pst_event = OAL_PTR_NULL;
     oal_uint32                     ul_ret;
-    dmac_set_ch_switch_info_stru  *pst_ch_switch_info;
-    mac_device_stru               *pst_mac_device;
+    dmac_set_ch_switch_info_stru  *pst_ch_switch_info = OAL_PTR_NULL;
+    mac_device_stru               *pst_mac_device = OAL_PTR_NULL;
 
     /* AP准备切换信道 */
     pst_mac_vap->st_ch_switch_info.en_ch_switch_status    = WLAN_CH_SWITCH_STATUS_1;
@@ -164,7 +165,7 @@ oal_uint32 hmac_check_ap_channel_follow_sta(mac_vap_stru *pst_check_mac_vap,cons
     oal_uint8       uc_vap_idx;
     mac_vap_stru   *pst_index_mac_vap = OAL_PTR_NULL;
 
-    if(OAL_PTR_NULL == pst_set_mac_channel || OAL_PTR_NULL == puc_ap_follow_channel || OAL_PTR_NULL == pst_check_mac_vap)
+    if(OAL_ANY_NULL_PTR3(pst_set_mac_channel,puc_ap_follow_channel,pst_check_mac_vap))
     {
         OAM_ERROR_LOG0(0, OAM_SF_2040,"{hmac_check_ap_channel_follow_sta:: input param is null,return}");
         return OAL_ERR_CODE_PTR_NULL;
@@ -373,8 +374,8 @@ oal_void  hmac_chan_multi_switch_to_new_channel_etc(mac_vap_stru *pst_mac_vap, o
 oal_void  hmac_chan_multi_switch_to_new_channel_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_channel, wlan_channel_bandwidth_enum_uint8 en_bandwidth)
 {
     oal_uint8          uc_vap_idx;
-    mac_device_stru   *pst_device;
-    mac_vap_stru      *pst_ap;
+    mac_device_stru   *pst_device = OAL_PTR_NULL;
+    mac_vap_stru      *pst_ap = OAL_PTR_NULL;
 
     OAM_INFO_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_2040,
         "{hmac_chan_multi_switch_to_new_channel_etc::uc_channel=%d,en_bandwidth=%d}",
@@ -419,18 +420,24 @@ oal_void  hmac_chan_multi_switch_to_new_channel_etc(mac_vap_stru *pst_mac_vap, o
 
 oal_void  hmac_chan_sync_init_etc(mac_vap_stru *pst_mac_vap, dmac_set_chan_stru *pst_set_chan)
 {
-    oal_memset(pst_set_chan, 0, OAL_SIZEOF(dmac_set_chan_stru));
-    oal_memcopy(&pst_set_chan->st_channel, &pst_mac_vap->st_channel,
-                    OAL_SIZEOF(mac_channel_stru));
-    oal_memcopy(&pst_set_chan->st_ch_switch_info, &pst_mac_vap->st_ch_switch_info,
-                    OAL_SIZEOF(mac_ch_switch_info_stru));
+    oal_int32 l_ret;
+
+    memset_s(pst_set_chan, OAL_SIZEOF(dmac_set_chan_stru), 0, OAL_SIZEOF(dmac_set_chan_stru));
+    l_ret = memcpy_s(&pst_set_chan->st_channel, OAL_SIZEOF(mac_channel_stru),
+                     &pst_mac_vap->st_channel, OAL_SIZEOF(mac_channel_stru));
+    l_ret += memcpy_s(&pst_set_chan->st_ch_switch_info, OAL_SIZEOF(mac_ch_switch_info_stru),
+                      &pst_mac_vap->st_ch_switch_info, OAL_SIZEOF(mac_ch_switch_info_stru));
+    if (l_ret != EOK) {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hmac_chan_sync_init_etc::memcpy fail!");
+        return;
+    }
 }
 
 
 oal_void  hmac_chan_do_sync_etc(mac_vap_stru *pst_mac_vap, dmac_set_chan_stru *pst_set_chan)
 {
-    frw_event_mem_stru       *pst_event_mem;
-    frw_event_stru           *pst_event;
+    frw_event_mem_stru       *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
     oal_uint32                ul_ret;
     oal_uint8                 uc_idx;
 
@@ -469,7 +476,12 @@ oal_void  hmac_chan_do_sync_etc(mac_vap_stru *pst_mac_vap, dmac_set_chan_stru *p
                     pst_mac_vap->uc_device_id,
                     pst_mac_vap->uc_vap_id);
 
-    oal_memcopy(frw_get_event_payload(pst_event_mem), (oal_uint8 *)pst_set_chan, OAL_SIZEOF(dmac_set_chan_stru));
+    if (EOK != memcpy_s(frw_get_event_payload(pst_event_mem), OAL_SIZEOF(dmac_set_chan_stru),
+                        (oal_uint8 *)pst_set_chan, OAL_SIZEOF(dmac_set_chan_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_SCAN, "hmac_chan_do_sync_etc::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        return;
+    }
 
     /* 分发事件 */
     ul_ret = frw_event_dispatch_event_etc(pst_event_mem);
@@ -506,8 +518,8 @@ oal_void hmac_chan_sync_etc(mac_vap_stru *pst_mac_vap,
 oal_void  hmac_chan_multi_select_channel_mac_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_channel, wlan_channel_bandwidth_enum_uint8 en_bandwidth)
 {
     oal_uint8          uc_vap_idx;
-    mac_device_stru   *pst_device;
-    mac_vap_stru      *pst_vap;
+    mac_device_stru   *pst_device = OAL_PTR_NULL;
+    mac_vap_stru      *pst_vap = OAL_PTR_NULL;
 
     OAM_WARNING_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_2040, "{hmac_chan_multi_select_channel_mac_etc::uc_channel=%d,en_bandwidth=%d}",
             uc_channel, en_bandwidth);
@@ -612,7 +624,7 @@ oal_void  hmac_chan_reval_bandwidth_sta_etc(mac_vap_stru *pst_mac_vap, oal_uint3
 OAL_STATIC oal_void  hmac_chan_ctrl_machw_tx(mac_vap_stru *pst_mac_vap, oal_uint8 uc_sub_type)
 {
     frw_event_mem_stru       *pst_event_mem;
-    frw_event_stru           *pst_event;
+    frw_event_stru           *pst_event = OAL_PTR_NULL;
     oal_uint32                ul_ret;
 
     /* 申请事件内存 */
@@ -721,7 +733,7 @@ oal_void  hmac_cac_chan_ctrl_machw_tx(mac_vap_stru *pst_mac_vap, oal_uint8 uc_ca
     {
         return;
     }
-    
+
     hmac_cac_chan_ctrl_machw_tx_event(pst_mac_vap, uc_cac_machw_en);
 }
 #endif
@@ -798,12 +810,10 @@ oal_uint32  hmac_start_bss_in_available_channel_etc(hmac_vap_stru *pst_hmac_vap)
     /* 入网优化，不同频段下的能力不一样 */
     if (WLAN_BAND_2G == pst_hmac_vap->st_vap_base_info.st_channel.en_band)
     {
-//        mac_mib_set_ShortPreambleOptionImplemented(&(pst_hmac_vap->st_vap_base_info), WLAN_LEGACY_11B_MIB_SHORT_PREAMBLE);
         mac_mib_set_SpectrumManagementRequired(&(pst_hmac_vap->st_vap_base_info), OAL_FALSE);
     }
     else
     {
-//        mac_mib_set_ShortPreambleOptionImplemented(&(pst_hmac_vap->st_vap_base_info), WLAN_LEGACY_11B_MIB_LONG_PREAMBLE);
         mac_mib_set_SpectrumManagementRequired(&(pst_hmac_vap->st_vap_base_info), OAL_TRUE);
     }
 
@@ -834,8 +844,8 @@ oal_uint32  hmac_chan_start_bss_etc(hmac_vap_stru *pst_hmac_vap, mac_channel_str
 
 oal_uint32  hmac_chan_restart_network_after_switch_etc(mac_vap_stru *pst_mac_vap)
 {
-    frw_event_mem_stru   *pst_event_mem;
-    frw_event_stru       *pst_event;
+    frw_event_mem_stru   *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru       *pst_event = OAL_PTR_NULL;
     oal_uint32            ul_ret;
 
     OAM_INFO_LOG0(pst_mac_vap->uc_vap_id, OAM_SF_2040, "{hmac_chan_restart_network_after_switch_etc}");
@@ -879,11 +889,11 @@ oal_uint32  hmac_chan_restart_network_after_switch_etc(mac_vap_stru *pst_mac_vap
 
 oal_uint32  hmac_chan_switch_to_new_chan_complete_etc(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru     *pst_event;
-    mac_device_stru    *pst_mac_device;
-    hmac_vap_stru      *pst_hmac_vap;
-    mac_vap_stru       *pst_mac_vap;
-    dmac_set_chan_stru *pst_set_chan;
+    frw_event_stru     *pst_event = OAL_PTR_NULL;
+    mac_device_stru    *pst_mac_device = OAL_PTR_NULL;
+    hmac_vap_stru      *pst_hmac_vap = OAL_PTR_NULL;
+    mac_vap_stru       *pst_mac_vap = OAL_PTR_NULL;
+    dmac_set_chan_stru *pst_set_chan = OAL_PTR_NULL;
     oal_uint32          ul_ret;
     oal_uint8           uc_idx;
 #if defined(_PRE_PRODUCT_ID_HI110X_HOST)
@@ -937,8 +947,6 @@ oal_uint32  hmac_chan_switch_to_new_chan_complete_etc(frw_event_mem_stru *pst_ev
     pst_mac_vap->st_channel.en_bandwidth   = pst_set_chan->st_channel.en_bandwidth;
     pst_mac_vap->st_channel.uc_chan_idx         = uc_idx;
 
-
-    //pst_mac_vap->st_ch_switch_info.en_waiting_for_ap = pst_set_chan->st_ch_switch_info.en_waiting_for_ap;
     pst_mac_vap->st_ch_switch_info.en_waiting_to_shift_channel = pst_set_chan->st_ch_switch_info.en_waiting_to_shift_channel;
 
     pst_mac_vap->st_ch_switch_info.en_ch_switch_status = pst_set_chan->st_ch_switch_info.en_ch_switch_status;
@@ -1023,7 +1031,7 @@ oal_void hmac_40M_intol_sync_data(mac_vap_stru *pst_mac_vap, wlan_channel_bandwi
 {
     mac_bandwidth_stru           st_band_prot;
 
-    OAL_MEMZERO(&st_band_prot, OAL_SIZEOF(mac_bandwidth_stru));
+    memset_s(&st_band_prot, OAL_SIZEOF(mac_bandwidth_stru), 0, OAL_SIZEOF(mac_bandwidth_stru));
 
     st_band_prot.en_40M_bandwidth = en_40M_bandwidth;
     st_band_prot.en_40M_intol_user = en_40M_intol_user;

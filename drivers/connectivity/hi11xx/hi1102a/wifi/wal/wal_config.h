@@ -44,8 +44,8 @@ typedef oal_uint32  (*wal_config_set_func)(mac_vap_stru *pst_mac_vap, oal_uint16
     } while(0)
 
 /* 获取msg序列号宏 */
-extern oal_atomic g_wal_config_seq_num;
-#define WAL_GET_MSG_SN()     (oal_atomic_inc_return(&g_wal_config_seq_num))
+extern oal_atomic wal_config_seq_num;
+#define WAL_GET_MSG_SN()     (oal_atomic_inc_return(&wal_config_seq_num))
 
 #define WAL_MSG_WRITE_MSG_HDR_LENGTH   (OAL_SIZEOF(wal_msg_hdr_stru))
 
@@ -85,8 +85,8 @@ typedef enum
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-extern oal_uint8 g_wlan_fast_check_cnt;  //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
-extern oal_uint8 g_wlan_ps_mode;
+extern oal_uint8 wlan_fast_check_cnt;  //device每20ms检查一次如果检查g_wlan_fast_check_cnt依旧无数据收发则进入低功耗模式
+extern oal_uint8 wlan_ps_mode;
 /*****************************************************************************
   5 消息头定义
 *****************************************************************************/
@@ -190,7 +190,7 @@ typedef struct
 }wal_msg_rep_hdr;
 
 #define DECLARE_WAL_MSG_REQ_STRU(name)  wal_msg_request_stru name;
-#define WAL_MSG_REQ_STRU_INIT(name) do{oal_memset((oal_void*)(&name), 0,OAL_SIZEOF(name));name.ul_request_address = (oal_ulong)&name;}while(0)
+#define WAL_MSG_REQ_STRU_INIT(name) do{oal_memset((oal_void*)(&name), 0,OAL_SIZEOF(name));name.ul_request_address = (oal_ulong)(uintptr_t)&name;}while(0)
 
 typedef struct
 {
@@ -217,7 +217,6 @@ typedef struct
   10 函数声明
 *****************************************************************************/
 extern oal_uint32  wal_config_process_pkt(frw_event_mem_stru *pst_event_mem);
-extern oal_uint32  wal_config_get_wmm_params(oal_net_device_stru *pst_net_dev, oal_uint8 *puc_param);
 extern oal_int32   wal_recv_config_cmd(oal_uint8 *puc_buf, oal_uint16 us_len);
 extern oal_uint32  wal_config_get_assoc_req_ie(mac_vap_stru *pst_mac_vap, oal_uint16 *pus_len, oal_uint8 *puc_param);
 #ifdef _PRE_WLAN_FEATURE_HILINK

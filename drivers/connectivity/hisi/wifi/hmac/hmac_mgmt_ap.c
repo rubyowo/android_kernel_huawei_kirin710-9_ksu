@@ -1193,6 +1193,7 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
 #ifdef _PRE_WLAN_FEATURE_TXBF
     oal_uint8                  *puc_vendor_ie;
 #endif
+    oal_uint8                  *puc_ssid_ie;
 
     *pen_status_code = MAC_SUCCESSFUL_STATUSCODE;
     us_offset        = MAC_CAP_INFO_LEN + MAC_LISTEN_INT_LEN;
@@ -1226,7 +1227,8 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
     }
 
     /* 判断SSID,长度或内容不一致时,认为是SSID不一致 */
-    if (MAC_EID_SSID == puc_payload[us_msg_idx])
+    puc_ssid_ie = mac_find_ie(MAC_EID_SSID, puc_payload + us_msg_idx, (oal_int32)(ul_msg_len - us_msg_idx));
+    if (OAL_PTR_NULL != puc_ssid_ie)
     {
         us_ssid_len = 0;
 
@@ -1234,7 +1236,7 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
 
         hmac_config_get_ssid(pst_mac_vap, &us_ssid_len, (oal_uint8 *)(&st_cfg_ssid));
 
-        if (st_cfg_ssid.uc_ssid_len != puc_payload[(us_msg_idx + 1)])
+        if (st_cfg_ssid.uc_ssid_len != puc_ssid_ie[1])
         {
             *pen_status_code = MAC_UNSPEC_FAIL;
             OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ASSOC,
@@ -1242,7 +1244,7 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
             return OAL_FAIL;
         }
 
-        if (0 != oal_memcmp(&puc_payload[(us_msg_idx + 2)], st_cfg_ssid.ac_ssid, st_cfg_ssid.uc_ssid_len))
+        if (0 != oal_memcmp(&puc_ssid_ie[2], st_cfg_ssid.ac_ssid, st_cfg_ssid.uc_ssid_len))
         {
             *pen_status_code = MAC_UNSPEC_FAIL;
             OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_ASSOC,
@@ -1250,8 +1252,6 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
             return OAL_FAIL;
         }
     }
-
-    us_msg_idx += puc_payload[(us_msg_idx + 1)] + MAC_IE_HDR_LEN;
 
     /* 当前用户已关联 */
     ul_rslt = hmac_ap_up_update_sta_sup_rates(puc_payload, pst_hmac_user, pen_status_code, ul_msg_len, us_msg_idx, &uc_num_rates, &us_rate_len);
@@ -1261,8 +1261,6 @@ OAL_STATIC   oal_uint32  hmac_ap_up_update_sta_user(
                          "{hmac_ap_up_update_sta_user::AP refuse STA assoc, update support rates failed, status_code[%d] ul_rslt[%d].}", *pen_status_code, ul_rslt);
         return ul_rslt;
     }
-
-    us_msg_idx += us_rate_len;
 
 #if defined(_PRE_WLAN_FEATURE_WPA) || defined(_PRE_WLAN_FEATURE_WPA2)
     /* 检查接收到的ASOC REQ消息中的SECURITY参数.如出错,则返回对应的错误码 */
@@ -2431,13 +2429,31 @@ OAL_STATIC oal_void  hmac_ap_up_rx_probe_req(hmac_vap_stru *pst_hmac_vap, oal_ne
 {
     dmac_rx_ctl_stru           *pst_rx_ctrl;
     mac_rx_ctl_stru            *pst_rx_info;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    enum nl80211_band           en_band;
+#else
     enum ieee80211_band         en_band;
+#endif
     oal_int                     l_freq;
 
     pst_rx_ctrl     = (dmac_rx_ctl_stru *)oal_netbuf_cb(pst_netbuf);
     pst_rx_info     = (mac_rx_ctl_stru *)(&(pst_rx_ctrl->st_rx_info));
 
     /* 获取AP 当前信道 */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+    if (WLAN_BAND_2G == pst_hmac_vap->st_vap_base_info.st_channel.en_band)
+    {
+        en_band = NL80211_BAND_2GHZ;
+    }
+    else if(WLAN_BAND_5G == pst_hmac_vap->st_vap_base_info.st_channel.en_band)
+    {
+        en_band = NL80211_BAND_5GHZ;
+    }
+    else
+    {
+        en_band = NUM_NL80211_BANDS;
+    }
+#else
     if (WLAN_BAND_2G == pst_hmac_vap->st_vap_base_info.st_channel.en_band)
     {
         en_band = IEEE80211_BAND_2GHZ;
@@ -2450,6 +2466,7 @@ OAL_STATIC oal_void  hmac_ap_up_rx_probe_req(hmac_vap_stru *pst_hmac_vap, oal_ne
     {
         en_band = IEEE80211_NUM_BANDS;
     }
+#endif
     l_freq = oal_ieee80211_channel_to_frequency(pst_hmac_vap->st_vap_base_info.st_channel.uc_chan_number,
                                                 en_band);
 

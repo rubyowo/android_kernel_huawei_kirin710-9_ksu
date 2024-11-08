@@ -15,6 +15,8 @@ extern "C" {
 #include "hmac_wmmac.h"
 #include "hmac_mgmt_bss_comm.h"
 #include "hmac_encap_frame_sta.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_WMMAC_C
@@ -97,8 +99,8 @@ OAL_STATIC oal_uint16  hmac_mgmt_encap_addts_req(
 OAL_STATIC oal_uint32  hmac_mgmt_tx_addts_req_timeout(oal_void *p_arg)
 {
     hmac_vap_stru                      *pst_vap = OAL_PTR_NULL;         /* vap指针 */
-    hmac_user_stru                     *pst_hmac_user;
-    mac_ts_stru                        *pst_ts_args;
+    hmac_user_stru                     *pst_hmac_user = OAL_PTR_NULL;
+    mac_ts_stru                        *pst_ts_args = OAL_PTR_NULL;
     mac_wmm_tspec_stru                  st_addts_args;
 
     if (OAL_PTR_NULL == p_arg)
@@ -143,19 +145,19 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_addts_req(
 {
 
     mac_vap_stru               *pst_mac_vap;
-    mac_device_stru            *pst_device;
-    oal_netbuf_stru            *pst_addts_req;
+    mac_device_stru            *pst_device = OAL_PTR_NULL;
+    oal_netbuf_stru            *pst_addts_req = OAL_PTR_NULL;
     oal_uint16                  us_frame_len;
-    frw_event_mem_stru         *pst_event_mem;      /* 申请事件返回的内存指针 */
+    frw_event_mem_stru         *pst_event_mem = OAL_PTR_NULL;      /* 申请事件返回的内存指针 */
     oal_uint32                  ul_ret;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     mac_tx_ctl_stru            *pst_tx_ctl;
 #endif
-    frw_event_stru             *pst_hmac_to_dmac_ctx_event;
-    dmac_tx_event_stru         *pst_tx_event;
+    frw_event_stru             *pst_hmac_to_dmac_ctx_event = OAL_PTR_NULL;
+    dmac_tx_event_stru         *pst_tx_event = OAL_PTR_NULL;
     dmac_ctx_action_event_stru  st_wlan_ctx_action;
     oal_uint8                   uc_ac_num;
-    mac_ts_stru                *pst_ts;
+    mac_ts_stru                *pst_ts = OAL_PTR_NULL;
 
     pst_mac_vap = &(pst_hmac_vap->st_vap_base_info);
     /* 确定vap处于工作状态 */
@@ -183,7 +185,7 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_addts_req(
     }
 
     OAL_MEM_NETBUF_TRACE(pst_addts_req, OAL_TRUE);
-    OAL_MEMZERO(oal_netbuf_cb(pst_addts_req), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_addts_req), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_addts_req);
@@ -198,7 +200,7 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_addts_req(
     /* 调用封装管理帧接口 */
     us_frame_len = hmac_mgmt_encap_addts_req(pst_hmac_vap,oal_netbuf_data(pst_addts_req), pst_addts_args);
 
-    OAL_MEMZERO((oal_uint8*)&st_wlan_ctx_action, OAL_SIZEOF(st_wlan_ctx_action));
+    memset_s((oal_uint8*)&st_wlan_ctx_action, OAL_SIZEOF(st_wlan_ctx_action), 0, OAL_SIZEOF(st_wlan_ctx_action));
     /* 赋值要传入Dmac的信息 */
     st_wlan_ctx_action.us_frame_len        = us_frame_len;
     st_wlan_ctx_action.uc_hdr_len          = MAC_80211_FRAME_LEN;
@@ -416,7 +418,7 @@ OAL_STATIC oal_uint16  hmac_mgmt_encap_delts(hmac_vap_stru    *pst_vap,
 
     puc_data[us_index++] = 0; /* Status 固定值为0 */
 
-    OAL_MEMZERO(&st_addts_args, OAL_SIZEOF(st_addts_args));
+    memset_s(&st_addts_args, OAL_SIZEOF(st_addts_args), 0, OAL_SIZEOF(st_addts_args));
     st_addts_args.ts_info.bit_tsid = uc_tsid;
 
     /* 设置WMM AC参数，除了TSID，delts其他值均为0 */
@@ -436,15 +438,15 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_delts(
 {
 
     mac_vap_stru               *pst_mac_vap;
-    oal_netbuf_stru            *pst_delts;
+    oal_netbuf_stru            *pst_delts = OAL_PTR_NULL;
     oal_uint16                  us_frame_len;
-    frw_event_mem_stru         *pst_event_mem;      /* 申请事件返回的内存指针 */
+    frw_event_mem_stru         *pst_event_mem = OAL_PTR_NULL;      /* 申请事件返回的内存指针 */
     oal_uint32                  ul_ret;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     mac_tx_ctl_stru            *pst_tx_ctl;
 #endif
-    frw_event_stru             *pst_hmac_to_dmac_ctx_event;
-    dmac_tx_event_stru         *pst_tx_event;
+    frw_event_stru             *pst_hmac_to_dmac_ctx_event = OAL_PTR_NULL;
+    dmac_tx_event_stru         *pst_tx_event = OAL_PTR_NULL;
     dmac_ctx_action_event_stru  st_wlan_ctx_action;
     oal_uint8                   uc_ac_num = 0;
 
@@ -490,7 +492,7 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_delts(
 
     OAL_MEM_NETBUF_TRACE(pst_delts, OAL_TRUE);
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_delts), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_delts), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_delts);
@@ -505,7 +507,7 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_delts(
                                          pst_hmac_user->st_user_base_info.auc_user_mac_addr,
                                          (oal_uint8)pst_delts_args->ts_info.bit_tsid);
 
-    OAL_MEMZERO((oal_uint8*)&st_wlan_ctx_action, OAL_SIZEOF(st_wlan_ctx_action));
+    memset_s((oal_uint8*)&st_wlan_ctx_action, OAL_SIZEOF(st_wlan_ctx_action), 0, OAL_SIZEOF(st_wlan_ctx_action));
 
     /* 赋值要传入Dmac的信息 */
     st_wlan_ctx_action.us_frame_len        = us_frame_len;
@@ -559,7 +561,7 @@ OAL_STATIC oal_uint32  hmac_mgmt_tx_delts(
     if (IS_STA(&pst_hmac_vap->st_vap_base_info)&& (uc_ac_num < WLAN_WME_AC_BUTT))
     {
         /* 更新对应的TS信息 */
-        //OAL_MEMZERO(&(pst_hmac_user->st_user_base_info.st_ts_info[uc_ac_num]), OAL_SIZEOF(mac_ts_stru));
+
         pst_hmac_user->st_user_base_info.st_ts_info[uc_ac_num].en_ts_status = MAC_TS_INIT;
         pst_hmac_user->st_user_base_info.st_ts_info[uc_ac_num].uc_tsid      = 0xFF;
     }
@@ -573,19 +575,19 @@ oal_uint32  hmac_mgmt_rx_addts_rsp(
                 hmac_user_stru             *pst_hmac_user,
                 oal_uint8                  *puc_payload)
 {
-    mac_vap_stru               *pst_mac_vap;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                   uc_user_prio;
     oal_uint8                   uc_ac_num;
     oal_uint8                   uc_tsid;
     oal_uint8                   uc_dialog_token;
     mac_wmm_tspec_stru          st_tspec_args;
-    mac_wmm_tspec_stru         *pst_tspec_info;
-    mac_ts_stru                *pst_ts;
-    mac_ts_stru                *pst_ts_tmp;
+    mac_wmm_tspec_stru         *pst_tspec_info = OAL_PTR_NULL;
+    mac_ts_stru                *pst_ts = OAL_PTR_NULL;
+    mac_ts_stru                *pst_ts_tmp = OAL_PTR_NULL;
 
     if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == puc_payload))
     {
-        OAM_WARNING_LOG3(0, OAM_SF_WMMAC, "{hmac_mgmt_rx_addts_rsp::null param, %p %p %p.}", pst_hmac_vap, pst_hmac_user, puc_payload);
+        OAM_WARNING_LOG3(0, OAM_SF_WMMAC, "{hmac_mgmt_rx_addts_rsp::null param, %p %p %p.}", (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)puc_payload);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -667,7 +669,7 @@ oal_uint32  hmac_mgmt_rx_addts_rsp(
     }
     else
     {
-        OAL_MEMZERO(pst_ts, OAL_SIZEOF(mac_ts_stru));
+        memset_s(pst_ts, OAL_SIZEOF(mac_ts_stru), 0, OAL_SIZEOF(mac_ts_stru));
         pst_ts->en_ts_status = MAC_TS_INIT;
     }
 
@@ -692,14 +694,14 @@ oal_uint32  hmac_mgmt_rx_delts(
                 hmac_user_stru             *pst_hmac_user,
                 oal_uint8                  *puc_payload)
 {
-    mac_vap_stru               *pst_mac_vap;
+    mac_vap_stru               *pst_mac_vap = OAL_PTR_NULL;
     oal_uint8                   uc_ac_num;
     oal_uint8                   uc_tsid;
-    mac_wmm_tspec_stru         *pst_tspec_info;
-    mac_ts_stru                *pst_ts;
+    mac_wmm_tspec_stru         *pst_tspec_info = OAL_PTR_NULL;
+    mac_ts_stru                *pst_ts = OAL_PTR_NULL;
     if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_hmac_user) || (OAL_PTR_NULL == puc_payload))
     {
-        OAM_WARNING_LOG3(0, OAM_SF_WMMAC, "{hmac_mgmt_rx_delts::null param, %p %p %p.}", pst_hmac_vap, pst_hmac_user, puc_payload);
+        OAM_WARNING_LOG3(0, OAM_SF_WMMAC, "{hmac_mgmt_rx_delts::null param, %p %p %p.}", (uintptr_t)pst_hmac_vap, (uintptr_t)pst_hmac_user, (uintptr_t)puc_payload);
         return OAL_ERR_CODE_PTR_NULL;
     }
 
@@ -741,7 +743,7 @@ oal_uint32  hmac_mgmt_rx_delts(
         {
             FRW_TIMER_IMMEDIATE_DESTROY_TIMER(&(pst_ts->st_addts_timer));
         }
-        OAL_MEMZERO(pst_ts, OAL_SIZEOF(mac_ts_stru));
+        memset_s(pst_ts, OAL_SIZEOF(mac_ts_stru), 0, OAL_SIZEOF(mac_ts_stru));
         if(1 == pst_hmac_vap->st_vap_base_info.pst_mib_info->st_wlan_mib_qap_edac[uc_ac_num].en_dot11QAPEDCATableMandatory)
         {
             pst_ts->en_ts_status = MAC_TS_INIT;
@@ -759,20 +761,20 @@ oal_uint32  hmac_mgmt_rx_delts(
 
 oal_uint32  hmac_mgmt_rx_addts_req_frame(hmac_vap_stru *pst_hmac_vap, oal_netbuf_stru *pst_netbuf)
 {
-    mac_user_stru              *pst_mac_user;
-    dmac_rx_ctl_stru           *pst_rx_ctrl;
+    mac_user_stru              *pst_mac_user = OAL_PTR_NULL;
+    dmac_rx_ctl_stru           *pst_rx_ctrl = OAL_PTR_NULL;
     oal_uint16                  us_user_idx = 0;
     oal_uint8                   auc_sta_addr[WLAN_MAC_ADDR_LEN];
     oal_uint32                  ul_ret;
 
-    oal_netbuf_stru            *pst_addts_rsp;
-    mac_tx_ctl_stru            *pst_tx_ctl;
+    oal_netbuf_stru            *pst_addts_rsp = OAL_PTR_NULL;
+    mac_tx_ctl_stru            *pst_tx_ctl = OAL_PTR_NULL;
     oal_uint16                  us_frame_len;
 
     if ((OAL_PTR_NULL == pst_hmac_vap) || (OAL_PTR_NULL == pst_netbuf))
     {
         OAM_WARNING_LOG2(0, OAM_SF_WMMAC, "{hmac_mgmt_rx_addts_req_frame::pst_hmac_vap = [%x], pst_netbuf = [%x]!}\r\n",
-                       pst_hmac_vap, pst_netbuf);
+                       (uintptr_t)pst_hmac_vap, (uintptr_t)pst_netbuf);
 
         return OAL_ERR_CODE_PTR_NULL;
     }
@@ -806,7 +808,7 @@ oal_uint32  hmac_mgmt_rx_addts_req_frame(hmac_vap_stru *pst_hmac_vap, oal_netbuf
 
     OAL_MEM_NETBUF_TRACE(pst_addts_rsp, OAL_TRUE);
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_addts_rsp), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_addts_rsp), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     pst_tx_ctl = (mac_tx_ctl_stru *)oal_netbuf_cb(pst_addts_rsp);
 
@@ -842,9 +844,9 @@ oal_uint32  hmac_mgmt_rx_addts_req_frame(hmac_vap_stru *pst_hmac_vap, oal_netbuf
 
 oal_uint32  hmac_config_addts_req(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    mac_cfg_wmm_tspec_stru_param_stru   *pst_addts_req;
-    hmac_user_stru                      *pst_hmac_user;
-    hmac_vap_stru                       *pst_hmac_vap;
+    mac_cfg_wmm_tspec_stru_param_stru   *pst_addts_req = OAL_PTR_NULL;
+    hmac_user_stru                      *pst_hmac_user = OAL_PTR_NULL;
+    hmac_vap_stru                       *pst_hmac_vap = OAL_PTR_NULL;
     mac_wmm_tspec_stru                   st_addts_args;
     oal_uint8                            uc_ac = WLAN_WME_AC_BE;
 
@@ -898,9 +900,9 @@ oal_uint32  hmac_config_addts_req(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, 
 
 oal_uint32  hmac_config_delts(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    mac_cfg_wmm_tspec_stru_param_stru   *pst_delts;
-    hmac_user_stru                      *pst_hmac_user;
-    hmac_vap_stru                       *pst_hmac_vap;
+    mac_cfg_wmm_tspec_stru_param_stru   *pst_delts = OAL_PTR_NULL;
+    hmac_user_stru                      *pst_hmac_user = OAL_PTR_NULL;
+    hmac_vap_stru                       *pst_hmac_vap = OAL_PTR_NULL;
     mac_wmm_tspec_stru                   st_delts_args;
 
     if (OAL_FALSE == g_en_wmmac_switch)
@@ -937,8 +939,8 @@ oal_uint32  hmac_config_wmmac_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_le
     oal_uint32                           ul_ret;
     oal_uint8                            uc_wmmac_switch;
     oal_uint8                            uc_ac_idx;
-    hmac_user_stru                      *pst_hmac_user;
-    mac_user_stru                       *pst_mac_user;
+    hmac_user_stru                      *pst_hmac_user = OAL_PTR_NULL;
+    mac_user_stru                       *pst_mac_user = OAL_PTR_NULL;
 
     uc_wmmac_switch = *(oal_uint8 *)puc_param;
 
@@ -964,7 +966,7 @@ oal_uint32  hmac_config_wmmac_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_le
             {
                 FRW_TIMER_IMMEDIATE_DESTROY_TIMER(&(pst_mac_user->st_ts_info[uc_ac_idx].st_addts_timer));
             }
-            OAL_MEMZERO(&(pst_mac_user->st_ts_info[uc_ac_idx]), OAL_SIZEOF(mac_ts_stru));
+            memset_s(&(pst_mac_user->st_ts_info[uc_ac_idx]), OAL_SIZEOF(mac_ts_stru), 0, OAL_SIZEOF(mac_ts_stru));
             pst_mac_user->st_ts_info[uc_ac_idx].en_ts_status        = MAC_TS_NONE;
             pst_mac_user->st_ts_info[uc_ac_idx].uc_tsid             = 0xFF;
 
@@ -972,7 +974,7 @@ oal_uint32  hmac_config_wmmac_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_le
             {
                 FRW_TIMER_IMMEDIATE_DESTROY_TIMER(&(pst_mac_user->st_ts_tmp_info[uc_ac_idx].st_addts_timer));
             }
-            OAL_MEMZERO(&(pst_mac_user->st_ts_tmp_info[uc_ac_idx]), OAL_SIZEOF(mac_ts_stru));
+            memset_s(&(pst_mac_user->st_ts_tmp_info[uc_ac_idx]), OAL_SIZEOF(mac_ts_stru), 0, OAL_SIZEOF(mac_ts_stru));
             pst_mac_user->st_ts_tmp_info[uc_ac_idx].en_ts_status    = MAC_TS_NONE;
             pst_mac_user->st_ts_tmp_info[uc_ac_idx].uc_tsid         = 0xFF;
         }
@@ -996,16 +998,16 @@ oal_uint32  hmac_config_wmmac_switch(mac_vap_stru *pst_mac_vap, oal_uint16 us_le
 
 oal_uint32  hmac_tx_mgmt_reassoc_req(hmac_vap_stru *pst_hmac_vap_sta)
 {
-    oal_netbuf_stru            *pst_asoc_req_frame;
-    mac_tx_ctl_stru            *pst_tx_ctl;
-    hmac_user_stru             *pst_hmac_user_ap;
+    oal_netbuf_stru            *pst_asoc_req_frame = OAL_PTR_NULL;
+    mac_tx_ctl_stru            *pst_tx_ctl = OAL_PTR_NULL;
+    hmac_user_stru             *pst_hmac_user_ap = OAL_PTR_NULL;
     oal_uint32                  ul_asoc_frame_len;
     oal_uint32                  ul_ret;
-    oal_uint8                  *puc_curr_bssid;
+    oal_uint8                  *puc_curr_bssid = OAL_PTR_NULL;
 
     if (OAL_PTR_NULL == pst_hmac_vap_sta)
     {
-        OAM_WARNING_LOG1(0, OAM_SF_ASSOC, "{hmac_tx_mgmt_reassoc_req,%p.}", pst_hmac_vap_sta);
+        OAM_WARNING_LOG1(0, OAM_SF_ASSOC, "{hmac_tx_mgmt_reassoc_req,%p.}", (uintptr_t)pst_hmac_vap_sta);
         return OAL_ERR_CODE_PTR_NULL;
     }
     pst_hmac_vap_sta->bit_reassoc_flag = OAL_TRUE;
@@ -1019,10 +1021,10 @@ oal_uint32  hmac_tx_mgmt_reassoc_req(hmac_vap_stru *pst_hmac_vap_sta)
     }
     OAL_MEM_NETBUF_TRACE(pst_asoc_req_frame, OAL_TRUE);
 
-    OAL_MEMZERO(oal_netbuf_cb(pst_asoc_req_frame), OAL_NETBUF_CB_SIZE());
+    memset_s(oal_netbuf_cb(pst_asoc_req_frame), OAL_NETBUF_CB_SIZE(), 0, OAL_NETBUF_CB_SIZE());
 
     /* 将mac header清零 */
-    OAL_MEMZERO((oal_uint8 *)oal_netbuf_header(pst_asoc_req_frame), MAC_80211_FRAME_LEN);
+    memset_s((oal_uint8 *)oal_netbuf_header(pst_asoc_req_frame), MAC_80211_FRAME_LEN, 0, MAC_80211_FRAME_LEN);
 
     /* 组帧 (Re)Assoc_req_Frame */
     puc_curr_bssid = pst_hmac_vap_sta->st_vap_base_info.auc_bssid;
@@ -1064,7 +1066,7 @@ oal_uint32  hmac_tx_mgmt_reassoc_req(hmac_vap_stru *pst_hmac_vap_sta)
 
 oal_uint32  hmac_config_reassoc_req(mac_vap_stru *pst_mac_vap)
 {
-    hmac_vap_stru                       *pst_hmac_vap;
+    hmac_vap_stru                       *pst_hmac_vap = OAL_PTR_NULL;
 
     if (OAL_FALSE == g_en_wmmac_switch)
     {

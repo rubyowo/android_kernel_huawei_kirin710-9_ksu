@@ -33,6 +33,9 @@ extern "C" {
 #include "hmac_dfs.h"
 #endif
 
+#include "securec.h"
+#include "securectype.h"
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_ACS_C
 
@@ -51,10 +54,10 @@ extern "C" {
 OAL_STATIC oal_void hmac_acs_get_simple_bss_stats_info(mac_scan_bss_stats_simple_stru  *pst_simple_bss_stats,
                                                        hmac_scan_record_stru           *pst_scan_record)
 {
-    hmac_bss_mgmt_stru              *pst_bss_mgmt;
-    mac_bss_dscr_stru               *pst_bss_dscr;
-    hmac_scanned_bss_info           *pst_scanned_bss;
-    oal_dlist_head_stru             *pst_entry;
+    hmac_bss_mgmt_stru              *pst_bss_mgmt = OAL_PTR_NULL;
+    mac_bss_dscr_stru               *pst_bss_dscr = OAL_PTR_NULL;
+    hmac_scanned_bss_info           *pst_scanned_bss = OAL_PTR_NULL;
+    oal_dlist_head_stru             *pst_entry = OAL_PTR_NULL;
     oal_uint32                       ul_idx = 0;
 
     /* 根据扫描运行结果获取简单的bss统计信息 */
@@ -155,20 +158,20 @@ OAL_STATIC oal_void hmac_acs_get_simple_channel_stats_info(mac_scan_chan_stats_s
 frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan_record,
                                                oal_bool_enum_uint8      en_need_rank)
 {
-    mac_scan_event_stru                 *pst_scan_event;
-    mac_scan_chan_stats_simple_stru     *pst_chan_results;
-    mac_scan_bss_stats_simple_stru      *pst_bss_results;
-    oal_uint8                           *puc_result;
-    mac_acs_response_hdr_stru           *pst_msg_hdr;
-    frw_event_mem_stru                  *pst_event_mem;
-    frw_event_stru                      *pst_event;
+    mac_scan_event_stru                 *pst_scan_event = OAL_PTR_NULL;
+    mac_scan_chan_stats_simple_stru     *pst_chan_results = OAL_PTR_NULL;
+    mac_scan_bss_stats_simple_stru      *pst_bss_results = OAL_PTR_NULL;
+    oal_uint8                           *puc_result = OAL_PTR_NULL;
+    mac_acs_response_hdr_stru           *pst_msg_hdr = OAL_PTR_NULL;
+    frw_event_mem_stru                  *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru                      *pst_event = OAL_PTR_NULL;
     oal_uint32                           ul_size;
     oal_uint32                           ul_cmd_id = 0;
     oal_uint32                           ul_bss_num = pst_scan_record->st_bss_mgmt.ul_bss_num;
     oal_uint8                            uc_chip_id   = pst_scan_record->uc_chip_id;
     oal_uint8                            uc_device_id = pst_scan_record->uc_device_id;
     mac_device_stru                      *pst_mac_devce = OAL_PTR_NULL;
-    mac_vap_stru                         *pst_mac_vap;
+    mac_vap_stru                         *pst_mac_vap = OAL_PTR_NULL;
 
     pst_mac_devce = mac_res_get_dev_etc(uc_device_id);
     if (OAL_PTR_NULL == pst_mac_devce)
@@ -208,7 +211,7 @@ frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan
         return OAL_PTR_NULL;
     }
 
-    oal_memset(puc_result, 0, ul_size);
+    memset_s(puc_result, ul_size, 0, ul_size);
     pst_event = frw_get_event_stru(pst_event_mem);
 
     FRW_EVENT_HDR_INIT(&(pst_event->st_event_hdr),
@@ -232,12 +235,17 @@ frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan
     *(oal_uint32 *)(pst_msg_hdr + 1) = (oal_uint32)puc_result;
 
     /* 结果包首先是一个重复的response */
-    oal_memcopy(puc_result, pst_msg_hdr, OAL_SIZEOF(mac_acs_response_hdr_stru));
+    if (EOK != memcpy_s(puc_result, ul_size, pst_msg_hdr, OAL_SIZEOF(mac_acs_response_hdr_stru))) {
+        OAM_ERROR_LOG0(0, OAM_SF_ACS, "hmac_acs_setup_scan_result::memcpy fail!");
+        FRW_EVENT_FREE(pst_event_mem);
+        OAL_MEM_FREE(puc_result, OAL_TRUE);
+        return OAL_PTR_NULL;
+    }
     pst_scan_event    = (mac_scan_event_stru *)(puc_result + OAL_SIZEOF(mac_acs_response_hdr_stru));
     pst_chan_results  = (mac_scan_chan_stats_simple_stru *)(pst_scan_event + 1);
     pst_bss_results   = (mac_scan_bss_stats_simple_stru *)(pst_chan_results + pst_scan_record->uc_chan_numbers);
 
-    oal_memset(pst_scan_event, 0, OAL_SIZEOF(mac_scan_event_stru));
+    memset_s(pst_scan_event, OAL_SIZEOF(mac_scan_event_stru), 0, OAL_SIZEOF(mac_scan_event_stru));
     pst_scan_event->uc_chip_id      = uc_chip_id;
     pst_scan_event->uc_device_id    = uc_device_id;
     pst_scan_event->uc_need_rank    = en_need_rank;
@@ -277,7 +285,7 @@ frw_event_mem_stru *hmac_acs_setup_scan_result(hmac_scan_record_stru   *pst_scan
 oal_bool_enum_uint8  hmac_acs_try_switch_channel(hmac_device_stru *pst_hmac_device)
 {
     mac_device_stru                 *pst_mac_device;
-    mac_vap_stru                    *pst_vap;
+    mac_vap_stru                    *pst_vap = OAL_PTR_NULL;
     oal_uint8                       uc_vap_idx;
     mac_channel_stru                *pst_ch = pst_hmac_device->ast_best_channel;
 
@@ -341,7 +349,7 @@ oal_bool_enum_uint8  hmac_acs_try_switch_channel(hmac_device_stru *pst_hmac_devi
 
 oal_uint32  hmac_acs_got_init_rank(hmac_device_stru *pst_hmac_device, mac_vap_stru *pst_mac_vap, mac_acs_cmd_stru *pst_cmd)
 {
-    mac_channel_stru    *pst_ch;
+    mac_channel_stru    *pst_ch = OAL_PTR_NULL;
     oal_uint8            uc_chip_id;
     oal_uint8            uc_device_id;
 
@@ -379,7 +387,7 @@ oal_uint32  hmac_acs_got_init_rank(hmac_device_stru *pst_hmac_device, mac_vap_st
     {
         OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_ACS, "{hmac_acs_got_init_rank::invalid 2G channel band=%d bw=%d ch=%d",
                          pst_ch->en_band, pst_ch->en_bandwidth, pst_ch->uc_chan_number);
-        oal_memset(pst_ch, 0, OAL_SIZEOF(mac_channel_stru));
+        memset_s(pst_ch, OAL_SIZEOF(mac_channel_stru), 0, OAL_SIZEOF(mac_channel_stru));
     }
 
     pst_ch++;
@@ -392,7 +400,7 @@ oal_uint32  hmac_acs_got_init_rank(hmac_device_stru *pst_hmac_device, mac_vap_st
     {
         OAM_WARNING_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_ACS, "{hmac_acs_got_init_rank::invalid 5G channel band=%d bw=%d ch=%d",
                          pst_ch->en_band, pst_ch->en_bandwidth, pst_ch->uc_chan_number);
-        oal_memset(pst_ch, 0, OAL_SIZEOF(mac_channel_stru));
+        memset_s(pst_ch, OAL_SIZEOF(mac_channel_stru), 0, OAL_SIZEOF(mac_channel_stru));
     }
 
     OAL_IO_PRINT("got init rank result [%d %d %d] -  [%d %d %d] init=%d for %d:%d\n",
@@ -463,10 +471,10 @@ oal_uint32  hmac_acs_init_scan_hook(hmac_scan_record_stru   *pst_scan_record,
 oal_bool_enum_uint8 hmac_acs_idle_device(mac_device_stru *pst_mac_dev)
 {
     oal_uint8       uc_vap_idx;
-    mac_vap_stru   *pst_mac_vap;
+    mac_vap_stru   *pst_mac_vap = OAL_PTR_NULL;
     oal_bool_enum_uint8  en_has_up_vap = OAL_FALSE;
 
-    if (!pst_mac_dev)
+    if (pst_mac_dev == OAL_PTR_NULL)
     {
         return OAL_FALSE;
     }
@@ -499,7 +507,7 @@ oal_bool_enum_uint8 hmac_acs_idle_device(mac_device_stru *pst_mac_dev)
 oal_uint32  hmac_acs_rescan_handler(void *p_arg)
 {
     hmac_device_stru    *pst_dev = hmac_res_get_mac_dev_etc((oal_uint32)p_arg);
-    mac_vap_stru        *pst_mac_vap;
+    mac_vap_stru        *pst_mac_vap = OAL_PTR_NULL;
 
     oal_uint8           uc_vap_idx;
     hmac_acs_cfg_stru   st_acs_cfg;
@@ -507,7 +515,7 @@ oal_uint32  hmac_acs_rescan_handler(void *p_arg)
 
     OAM_WARNING_LOG0(0, OAM_SF_ACS, "{hmac_acs_rescan_handler::in.}");
 
-    if (!pst_dev || !pst_dev->pst_device_base_info || MAC_ACS_SW_NONE == mac_get_acs_switch(pst_dev->pst_device_base_info) || pst_dev->en_init_scan)
+    if (pst_dev == OAL_PTR_NULL || pst_dev->pst_device_base_info == OAL_PTR_NULL || MAC_ACS_SW_NONE == mac_get_acs_switch(pst_dev->pst_device_base_info) || pst_dev->en_init_scan)
     {
         return OAL_SUCC;
     }
@@ -553,7 +561,7 @@ oal_uint32  hmac_acs_register_rescan_timer(oal_uint32 ul_dev_id)
 {
     hmac_device_stru    *pst_hmac_dev = hmac_res_get_mac_dev_etc(ul_dev_id);
 
-    if (!pst_hmac_dev || !pst_hmac_dev->pst_device_base_info)
+    if (pst_hmac_dev == OAL_PTR_NULL || pst_hmac_dev->pst_device_base_info == OAL_PTR_NULL)
     {
         return  OAL_FAIL;
     }
@@ -571,8 +579,8 @@ oal_uint32  hmac_acs_register_rescan_timer(oal_uint32 ul_dev_id)
 
 oal_uint32  hmac_acs_process_rescan_event(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru          *pst_event;
-    dmac_acs_req_rescan_param_stru  *pst_req_param;
+    frw_event_stru          *pst_event = OAL_PTR_NULL;
+    dmac_acs_req_rescan_param_stru  *pst_req_param = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -592,12 +600,12 @@ oal_uint32  hmac_acs_process_rescan_event(frw_event_mem_stru *pst_event_mem)
 oal_uint32  hmac_acs_init(oal_void)
 {
     oal_uint32           ul_dev_id;
-    hmac_device_stru    *pst_dev;
+    hmac_device_stru    *pst_dev = OAL_PTR_NULL;
 
     for (ul_dev_id = 0; ul_dev_id < MAC_RES_MAX_DEV_NUM; ul_dev_id++)
     {
         pst_dev = hmac_res_get_mac_dev_etc(ul_dev_id);
-        if (pst_dev && pst_dev->pst_device_base_info)
+        if (pst_dev != OAL_PTR_NULL && pst_dev->pst_device_base_info != OAL_PTR_NULL)
         {
             pst_dev->ul_rescan_timeout = HMAC_ACS_RECHECK_INTERVAL;
             FRW_TIMER_CREATE_TIMER(&pst_dev->st_rescan_timer,
@@ -616,12 +624,12 @@ oal_uint32  hmac_acs_init(oal_void)
 oal_uint32  hmac_acs_exit(oal_void)
 {
     oal_uint32           ul_dev_id;
-    hmac_device_stru    *pst_dev;
+    hmac_device_stru    *pst_dev = OAL_PTR_NULL;
 
     for (ul_dev_id = 0; ul_dev_id < MAC_RES_MAX_DEV_NUM; ul_dev_id++)
     {
         pst_dev = hmac_res_get_mac_dev_etc(ul_dev_id);
-        if (pst_dev && pst_dev->st_rescan_timer.en_is_registerd)
+        if (pst_dev != OAL_PTR_NULL && pst_dev->st_rescan_timer.en_is_registerd)
         {
             FRW_TIMER_IMMEDIATE_DESTROY_TIMER(&pst_dev->st_rescan_timer);
         }

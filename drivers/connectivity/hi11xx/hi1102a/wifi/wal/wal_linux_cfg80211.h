@@ -115,7 +115,8 @@ extern "C" {
 #define IEEE80211_STYPE_ACTION          0x00D0
 
 #define WAL_COOKIE_ARRAY_SIZE           8       /* 采用8bit 的map 作为保存cookie 的索引状态 */
-#define WAL_MGMT_TX_TIMEOUT_MSEC        100     /* WAL 发送管理帧超时时间 */
+#define WAL_COOKIE_FULL_MASK            0xFF    /* cookie全部用尽掩码 */
+#define WAL_MGMT_TX_TIMEOUT_MSEC        500    
 #define WAL_MGMT_TX_RETRY_CNT           8       /* WAL 发送管理帧最大重传次数 */
 
 #define IEEE80211_FCTL_FTYPE            0x000c
@@ -138,7 +139,37 @@ typedef struct cookie_arry
     .hw_value       = (_rateid),                                \
     .flags          = (_flags),                                 \
 }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
+#define CHAN2G(_channel, _freq, _flags)  \
+{                       \
+    .band                   = NL80211_BAND_2GHZ,            \
+    .center_freq            = (_freq),                      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
 
+#define CHAN5G(_channel, _flags) \
+{                                              \
+    .band                   = NL80211_BAND_5GHZ,            \
+    .center_freq            = 5000 + (5 * (_channel)),      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
+
+#define CHAN4_9G(_channel, _flags) \
+{                                              \
+    .band                   = NL80211_BAND_5GHZ,            \
+    .center_freq            = 4000 + (5 * (_channel)),      \
+    .hw_value               = (_channel),                   \
+    .flags                  = (_flags),                     \
+    .max_antenna_gain       = 0,                            \
+    .max_power              = 30,                           \
+}
+#else
 #define CHAN2G(_channel, _freq, _flags)  \
 {                       \
     .band                   = IEEE80211_BAND_2GHZ,          \
@@ -168,6 +199,8 @@ typedef struct cookie_arry
     .max_antenna_gain       = 0,                            \
     .max_power              = 30,                           \
 }
+
+#endif
 
 #elif (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 
@@ -230,7 +263,7 @@ typedef struct cookie_arry
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-extern oal_workqueue_stru  *g_pst_del_virtual_inf_workqueue;
+extern oal_workqueue_stru  *del_virtual_inf_workqueue;
 #if (_PRE_OS_VERSION_WIN32 == _PRE_OS_VERSION)
 extern oal_uint8 g_uc_vowifi_report_cnt;
 #endif
@@ -300,6 +333,13 @@ extern oal_uint32 wal_cfg80211_add_vap(mac_cfg_add_vap_param_stru *pst_add_vap_p
 
 extern oal_void wal_cfg80211_reset_bands(oal_void);
 extern oal_void wal_cfg80211_save_bands(oal_void);
+oal_int32 wal_cfg80211_get_station(oal_wiphy_stru *pst_wiphy,
+                                   oal_net_device_stru *pst_dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0))
+                                   const
+#endif
+                                   oal_uint8 *puc_mac,
+                                   oal_station_info_stru *pst_sta_info);
 
 #ifdef __cplusplus
     #if __cplusplus

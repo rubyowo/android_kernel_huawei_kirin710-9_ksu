@@ -16,6 +16,9 @@ extern "C" {
 #include "wlan_types.h"
 #include "oam_ext_if.h"
 
+#include "securec.h"
+#include "securectype.h"
+
 /* 此文件中定义的结构体与协议相关，需要1字节对齐 */
 
 #undef  THIS_FILE_ID
@@ -73,6 +76,10 @@ extern "C" {
 #define MAC_ERP_IE_LEN              1
 #define MAC_OBSS_SCAN_IE_LEN        14
 #define MAC_MIN_XCAPS_LEN           1
+#ifdef _PRE_WLAN_FEATURE_11AX
+#define MAC_XCAPS_EX_TWT_LEN        10    /* 初始值为5，由于11ac Operating Mode Notification特性标志为bit62长度修改为8,ftm特性需要长度为9, twt特性需要长度为10 */
+#endif
+
 #define MAC_XCAPS_EX_FTM_LEN        9    /* 初始值为5，由于11ac Operating Mode Notification特性标志为bit62长度修改为8,ftm特性需要长度为9 */
 #define MAC_XCAPS_EX_LEN            8    /* 初始值为5，由于11ac Operating Mode Notification特性标志为bit62长度修改为8,ftm特性需要长度为9 */
 #define MAC_WMM_PARAM_LEN           24   /* WMM parameters ie */
@@ -142,7 +149,6 @@ extern "C" {
 
 /* WPA 信息元素相关定义 */
 #define MAC_WPA_IE_VERSION          1
-#define WLAN_AKM_SUITE_WAPI_CERT    0x000FAC12
 
 /* OUI相关定义 */
 #define MAC_OUI_LEN                 3
@@ -181,28 +187,20 @@ extern "C" {
 #define MAC_QOS_CTL_LEN             2   /* QOS CONTROL字段的长度 */
 
 #ifdef _PRE_WLAN_FEATURE_11AX
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-#define MAC_HE_MAC_CAP_LEN                  5
-#else
 #define MAC_HE_MAC_CAP_LEN                  6
-#endif
-#define MAC_HE_PHY_CAP_LEN                  9
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-#define MAC_HE_OPE_PARAM_LEN                4
-#else
-//#define MAC_HE_OPE_PARAM_LEN                3
-#endif
+#define MAC_HE_PHY_CAP_LEN                  11
+#define MAC_HE_OPE_PARAM_LEN                3
 #define MAC_HE_OPE_BASIC_MCS_NSS_LEN        2
 #define MAC_HE_VHT_OPERATION_INFO_LEN       3
 #define MAC_HE_MU_EDCA_PARAMETER_SET_LEN    14
 #define MAC_HE_MCS_NSS_MIN_LEN              2
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-#define MAC_HE_CAP_MIN_LEN                  19
-#else
 #define MAC_HE_CAP_MIN_LEN                  20
-#endif
 #define MAC_HE_OPERAION_MIN_LEN             7
+#define MAC_MULTIPLE_BSSID_IE_MIN_LEN       11
+
+
 #endif
+#define MAC_HE_NDP_FEEDBACK_REPORT_LEN      2
 #define MAC_HE_BSS_COLOR_CHANGE_ANNOUNCEMENT_LEN 3
 
 #define MAC_QOS_CTRL_FIELD_OFFSET           24
@@ -254,12 +252,7 @@ extern "C" {
 #define MAC_WLAN_OUI_HUAWEI                 0x00E0fC
 #define MAC_WLAN_OUI_TYPE_HUAWEI_CASCADE    0xA0
 #define MAC_WLAN_OUI_TYPE_HAUWEI_4ADDR      0x40        /* 4地址IE的OUI TYPE字段 */
-#ifdef _PRE_WLAN_FEATURE_HILINK
-#define MAC_WLAN_OUI_TYPE_HUAWEI_HILINK     0x80
-#ifdef _PRE_WLAN_FEATURE_11K_EXTERN
-#define MAC_BCN_MEASURE_INTERVAL            100
-#endif
-#endif
+#define MAC_WLAN_OUI_TYPE_HAUWEI_COWORK     0x20        /* 端管联调Adaptive 11r*/
 
 #define MAC_HUAWEI_VENDER_IE                               0xAC853D /* 打桩HW IE */
 #define MAC_HISI_HISTREAM_IE                               0x11     /* histream IE */
@@ -415,6 +408,14 @@ extern "C" {
 #define MAC_AMSDU_SKB_LEN_UP_LIMIT     1544
 
 #endif
+
+#if (_PRE_WLAN_FEATURE_PMF != _PRE_PMF_NOT_SUPPORT)
+#define MAC_IS_RSN_ENABLE_PMF(us_rsn_cap_info)   (((us_rsn_cap_info) & BIT7) ? MAC_PMF_ENABLED : MAC_PMF_DISABLED)
+
+/* PMF能力为使能，非强制 */
+#define MAC_IS_RSN_PMF_ONLY_ENABLE(us_rsn_cap_info)   (((us_rsn_cap_info) & BIT7) && !((us_rsn_cap_info) & BIT6))
+#endif
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -485,10 +486,35 @@ typedef enum
     MAC_ACTION_CATEGORY_WMMAC_QOS                   = 17,
 #endif
     MAC_ACTION_CATEGORY_VHT                         = 21,
+#ifdef _PRE_WLAN_FEATURE_11AX
+    MAC_ACTION_CATEGORY_S1G                         = 22,
+#endif
     MAC_ACTION_CATEGORY_VENDOR_SPECIFIC_PROTECTED   = 126,
     MAC_ACTION_CATEGORY_VENDOR                      = 127,
 }mac_action_category_enum;
 typedef oal_uint8 mac_category_enum_uint8;
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+/* S1G下的Action值的枚举 */
+typedef enum{
+    MAC_S1G_ACTION_AID_SWITCH_REQ       = 0,
+    MAC_S1G_ACTION_AID_SWITCH_RESP     = 1,
+    MAC_S1G_ACTION_SYNC_CONTROL           = 2,
+    MAC_S1G_ACTION_STA_INFORMATION_ANNOUNCEMENT       = 3,
+    MAC_S1G_ACTION_EDCA_PARAMETER_SET     = 4,
+    MAC_S1G_ACTION_EL_OPERATION           = 5,
+    MAC_S1G_ACTION_TWT_SETUP       = 6,
+    MAC_S1G_ACTION_TWT_TEARDOWN     = 7,
+    MAC_S1G_ACTION_SECTORIZED_GROUP_ID_LIST          = 8,
+    MAC_S1G_ACTION_SECTOR_ID_FEEDBACK       = 9,
+    MAC_S1G_ACTION_RESERVE     = 10,
+    MAC_S1G_ACTION_TWT_INFORMATION           = 11,
+
+    MAC_S1G_ACTION_BUTT
+}mac_s1g_action_type_enum;
+typedef oal_uint8 mac_s1g_action_type_enum_uint8;
+#endif
+
 
 /* HT Category下的Action值的枚举 */
 typedef enum{
@@ -777,6 +803,7 @@ typedef enum
     MAC_DST_STA_NOT_IN_QBSS         = 49,
     MAC_DST_STA_NOT_QSTA            = 50,
     MAC_LARGE_LISTEN_INT            = 51,
+    MAC_FINITE_CYCLIC_GROUP_NOT_SUPPORTED = 77,
     MAC_MISMATCH_VHTCAP             = 104,
 
     /*私有的定义*/
@@ -882,10 +909,13 @@ typedef enum
     MAC_EID_WAPI                   = 68,   /*IE for WAPI*/
     MAC_EID_TIME_ADVERTISEMENT     = 69,
     MAC_EID_RRM                    = 70,   /* Radio resource measurement */
+    MAC_EID_MULTI_BSSID            = 71,   /* Multiple BSSID Element   */
     MAC_EID_2040_COEXT             = 72,   /* 20/40 BSS Coexistence IE */
     MAC_EID_2040_INTOLCHREPORT     = 73,   /* 20/40 BSS Intolerant Channel Report IE */
     MAC_EID_OBSS_SCAN              = 74,   /* Overlapping BSS Scan Parameters IE */
     MAC_EID_MMIE                   = 76,   /* 802.11w Management MIC IE */
+    MAC_EID_NONTRANSMITTED_BSSID_CAP = 83,
+    MAC_EID_MULTI_BSSID_INDEX      = 85,   /*  m-bssid 相关*/
     MAC_EID_FMS_DESCRIPTOR         = 86,   /* 802.11v FMS descriptor IE */
     MAC_EID_FMS_REQUEST            = 87,   /* 802.11v FMS request IE */
     MAC_EID_FMS_RESPONSE           = 88,   /* 802.11v FMS response IE */
@@ -906,6 +936,9 @@ typedef enum
     MAC_EID_WIDE_BW_CH_SWITCH      = 194,  /* Wide Bandwidth Channel Switch IE */
     MAC_EID_OPMODE_NOTIFY          = 199,  /* Operating Mode Notification IE */
     MAC_EID_FTMP                   = 206,
+#ifdef _PRE_WLAN_FEATURE_11AX
+    MAC_EID_TWT                     = 216,
+#endif
     MAC_EID_FTMSI                  = 255,
     MAC_EID_VENDOR                 = 221,  /* vendor private */
     MAC_EID_WMM                    = 221,
@@ -913,29 +946,28 @@ typedef enum
     MAC_EID_WPS                    = 221,
     MAC_EID_P2P                    = 221,
     MAC_EID_WFA_TPC_RPT            = 221,
+    MAC_EID_EXTENSION              = 255,
 #ifdef _PRE_WLAN_FEATURE_11AX
     MAC_EID_HE                     = 255,
 #endif
 }mac_eid_enum;
 typedef oal_uint8 mac_eid_enum_uint8;
 
-#ifdef _PRE_WLAN_FEATURE_11AX
+/* Element ID Extension (EID 255) values */
 typedef enum
 {
+    MAC_EID_EXT_FTMSI                                 = 9,
+    MAC_EID_EXT_OWE_DH_PARAM                          = 32,
+#ifdef _PRE_WLAN_FEATURE_11AX
     MAC_EID_EXT_HE_CAP                                = 35,
     MAC_EID_EXT_HE_OPERATION                          = 36,
     MAC_EID_EXT_HE_EDCA                               = 38,
     MAC_EID_EXT_HE_SRP                                = 39,
+    MAC_EID_EXT_HE_NDP_FEEDBACK_REPORT                = 41,
     MAC_EID_EXT_HE_BSS_COLOR_CHANGE_ANNOUNCEMENT      = 42,
-
-    MAC_EID_EXT_BUT
-}mac_eid_extension_num;
-typedef oal_uint8 mac_eid_extension_num_uint8;
 #endif
 
-typedef enum
-{
-    MAC_EID_EXT_FTMSI              = 9,
+    MAC_EID_EXT_BUT
 }mac_eid_extension_enum;
 typedef oal_uint8 mac_eid_extension_enum_uint8;
 
@@ -1111,6 +1143,22 @@ typedef enum {
     RM_BCN_REQ_MEAS_MODE_BUTT
 } rm_bcn_req_meas_mode_enum;
 typedef oal_uint8 rm_bcn_req_meas_mode_enum_uint8;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+/* TWT命令类型 */
+typedef enum
+{
+    MAC_TWT_COMMAND_REQUEST    = 0,
+    MAC_TWT_COMMAND_SUGGEST    = 1,
+    MAC_TWT_COMMAND_DEMAND     = 2,
+    MAC_TWT_COMMAND_GROUPING   = 3,
+    MAC_TWT_COMMAND_ACCEPT     = 4,
+    MAC_TWT_COMMAND_ALTERNATE  = 5,
+    MAC_TWT_COMMAND_DICTATE    = 6,
+    MAC_TWT_COMMAND_REJECT     = 7,
+}mac_twt_command_enum;
+typedef oal_uint8 mac_twt_command_enum_uint8;
 #endif
 
 #define MAC_WLAN_OUI_WFA                    0x506f9a
@@ -1520,11 +1568,42 @@ struct mac_vht_cap_info
                 bit_vht_link_adaptation     : 2,
                 bit_rx_ant_pattern          : 1,
                 bit_tx_ant_pattern          : 1,
-                bit_resv                    : 2;
+                bit_extend_nss_bw_supp      : 2;
 };
 typedef struct mac_vht_cap_info mac_vht_cap_info_stru;
 
 #if defined(_PRE_WLAN_FEATURE_11AX) || defined(_PRE_WLAN_FEATURE_11AX_ROM)
+
+typedef enum
+{
+    MAC_FRAME_HE_TRIG_TYPE_BASIC     = 0,
+    MAC_FRAME_HE_TRIG_TYPE_BRRP      = 1,
+    MAC_FRAME_HE_TRIG_TYPE_MU_BAR    = 2,
+    MAC_FRAME_HE_TRIG_TYPE_MU_RTS    = 3,
+    MAC_FRAME_HE_TRIG_TYPE_BSRP      = 4,
+    MAC_FRAME_HE_TRIG_TYPE_GCR_MUBAR = 5,
+    MAC_FRAME_HE_TRIG_TYPE_BQRP      = 6,
+    MAC_FRAME_HE_TRIG_TYPE_NFRP      = 7,
+
+    MAC_FRAME_HE_TRIG_TYPE_BUTT
+} mac_frame_he_trig_type_enum;
+typedef oal_uint8 mac_frame_he_trig_type_enum_uint8;
+
+typedef enum
+{
+    MAC_HTC_A_CONTROL_TYPE_TRS   = 0,
+    MAC_HTC_A_CONTROL_TYPE_OM    = 1,
+    MAC_HTC_A_CONTROL_TYPE_HLA   = 2,
+    MAC_HTC_A_CONTROL_TYPE_BSRP  = 3,
+    MAC_HTC_A_CONTROL_TYPE_UPH   = 4,
+    MAC_HTC_A_CONTROL_TYPE_BQR   = 5,
+    MAC_HTC_A_CONTROL_TYPE_CAS   = 6,
+
+    MAC_HTC_A_CONTROL_TYPE_BUTT
+}mac_htc_a_contorl_type_enum;
+typedef oal_uint8 mac_htc_a_contorl_type_enum_uint8;
+
+
 #pragma pack(push,1)
 struct mac_frame_he_trig
 {
@@ -1602,45 +1681,35 @@ struct mac_frame_he_mac_cap
                         bit_mu_cascading_support                               : 1,/*B22-mu csacade*/
                         bit_ack_enabled_aggregation_support                    : 1;/*B23-A-MPDU ack使能*/
 
-    oal_uint8           bit_group_addressed_msta_ba_dl_mu_support              : 1,/*B24-*/
+    oal_uint8           bit_reserved_b24                                       : 1,/*B24-*/
                         bit_om_control_support                                 : 1,/*B25-A-Control 支持OMI  */
                         bit_ofdma_ra_support                                   : 1,/*B26-OFDMA 随机接入*/
                         bit_max_ampdu_length_exponent                          : 2,/*B27-A-MPDU最大长度*/
-                        bit_amsdu_fragment_support                             : 1,/*B29-*/
+                        bit_amsdu_fragment_support                             : 1,/*B29-A-MSDU Fragmentation Support*/
                         bit_flex_twt_schedule_support                          : 1,/*B30-*/
                         bit_rx_control_frame_to_multibss                       : 1;/*B31-*/
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-    oal_uint8           bit_bsrp_bqrp_ampdu_addregation                        : 1,/*B32-*/
+
+    oal_uint16          bit_bsrp_bqrp_ampdu_addregation                        : 1,/*B32-*/
                         bit_qtp_support                                        : 1,/*B33-*/
                         bit_bqr_support                                        : 1,/*B34-*/
                         bit_sr_responder                                       : 1,/*B35-*/
                         bit_ndp_feedback_report_support                        : 1,/*B36-*/
                         bit_ops_support                                        : 1,/*B37-*/
-                        bit_amsdu_ampdu_support                                : 1,/*B38-*/
-                        bit_reserved                                           : 1;/*B39-*/
-#else
-    oal_uint16          bit_bsrp_bqrp_ampdu_addregation                        : 1,/*B32-*/
-                        bit_qtp_support                                        : 1,
-                        bit_bqr_support                                        : 1,
-                        bit_sr_responder                                       : 1,
-                        bit_ndp_feedback_report_support                        : 1,
-                        bit_ops_support                                        : 1,
-                        bit_amsdu_ampdu_support                                : 1,
-                        bit_mtid_aggregation_tx_support                        : 3,
-                        bit_reserved                                           : 6;
-
-#endif
+                        bit_amsdu_ampdu_support                                : 1,/*B38*/
+                        bit_mtid_aggregation_tx_support                        : 3,/*B39-41*/
+                        bit_he_subchannel_select_transmission                  : 1,/*B42*/
+                        bit_ul_2x996_ru_support                                : 1,/*B43*/
+                        bit_om_control_ul_mu_data_disable_rx_support           : 1,/*B44*/
+                        bit_he_dynamic_sm_power_save                           : 1,/*B45*/
+                        bit_punctured_sounding_support                         : 1,/*B46*/
+                        bit_he_and_vht_trigger_frame_rx_support                : 1;/*B47*/
 }__OAL_DECLARE_PACKED;
 typedef struct mac_frame_he_mac_cap mac_frame_he_mac_cap_stru;
 
-/*HE_CAP: PHY Cap 字段 Len=9   */
+/*HE_CAP: PHY Cap 字段 Len=11   */
 struct mac_frame_he_phy_cap
 {
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-    oal_uint8           bit_dual_band_support                                  : 1,/*B0-  */
-#else
-    oal_uint8           bit_reserved                                           : 1,/*  */
-#endif
+    oal_uint8           bit_reserved                                           : 1,/*B0  */
                         bit_channel_width_set                                  : 7;/*B1-7:*/
 
     oal_uint16          bit_punctured_preamble_rx                              : 4,/*B8-11:*/
@@ -1676,7 +1745,7 @@ struct mac_frame_he_phy_cap
     oal_uint8           bit_codebook_42_su_feedback                            : 1,/*B48-*/
                         bit_codebook_75_mu_feedback                            : 1,/*B49-*/
                         bit_trigger_su_beamforming_feedback                    : 1,/*B50-*/
-                        bit_trigger_mu_beamforming_feedback                    : 1,/*B51-*/
+                        bit_trigger_mu_beamforming_partialBW_feedback          : 1,/*B51-*/
                         bit_trigger_cqi_feedback                               : 1,/*B52-*/
                         bit_partial_bandwidth_extended_range                   : 1,/*B53-*/
                         bit_partial_bandwidth_dl_mu_mimo                       : 1,/*B54-*/
@@ -1695,9 +1764,19 @@ struct mac_frame_he_phy_cap
                         bit_80mhz_in_160mhz_he_ppdu                            : 1,/*B67-*/
                         bit_he_er_su_ppdu_1xltf_08us_gi                        : 1,/*B68-*/
                         bit_midamble_rx_2x_1x_he_ltf                           : 1,/*B69-*/
-                        bit_reserved2                                          : 2;/*B70-*/
+                        bit_dcm_max_bw                                         : 2;/*B70-71*/
+
+    oal_uint16          bit_longer_than_16_he_sigb_support                     : 1,/*B42-*/
+                        bit_non_triggered_cqi_feedback                         : 1,/*B73*/
+                        bit_tx_1024qam_242ru_support                           : 1,/*B74*/
+                        bit_rx_1024qam_242ru_support                           : 1,/*B75*/
+                        bit_rx_full_bw_su_ppdu_with_compressed_sigb            : 1,/*B76*/
+                        bit_rx_full_bw_su_ppdu_with_non_compressed_sigb        : 1,/*B77*/
+                        bit_nominal_packet_padding                             : 2,/*B78_79:*/
+                        bit_reserv                                             : 8;/*B80_87:*/
+
 }__OAL_DECLARE_PACKED;
-typedef struct mac_frame_he_phy_cap mac_frame_he_phy_cap_stru;
+typedef struct mac_frame_he_phy_cap mac_frame_he_phy_cap_stru; /*协议规定的 phy cap 格式*/
 
 /*HE CAP:Tx Rx MCS NSS Support*/
 struct mac_frame_he_mcs_nss_bit_map
@@ -1717,6 +1796,10 @@ struct mac_fram_he_mac_nsss_set
 {
     mac_frame_he_mcs_nss_bit_map_stru        st_rx_he_mcs_below_80mhz;
     mac_frame_he_mcs_nss_bit_map_stru        st_tx_he_mcs_below_80mhz;
+    mac_frame_he_mcs_nss_bit_map_stru        st_rx_he_mcs_160mhz;
+    mac_frame_he_mcs_nss_bit_map_stru        st_tx_he_mcs_160mhz;
+    mac_frame_he_mcs_nss_bit_map_stru        st_rx_he_mcs_8080mhz;
+    mac_frame_he_mcs_nss_bit_map_stru        st_tx_he_mcs_8080mhz;
 }__OAL_DECLARE_PACKED;
 typedef struct mac_fram_he_mac_nsss_set mac_fram_he_mac_nsss_set_stru;
 
@@ -1747,74 +1830,36 @@ typedef struct
 
 }__OAL_DECLARE_PACKED mac_frame_ppe_thresholds_pre_field_stru;
 
-
-
-/*HE_CAP:固定长度部分*/
 typedef struct
 {
     mac_frame_he_mac_cap_stru          st_he_mac_cap;
     mac_frame_he_phy_cap_stru          st_he_phy_cap;
     mac_fram_he_mac_nsss_set_stru      st_he_mcs_nss;
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-    oal_uint8                          auc_rsv[8];
-#else
-    oal_uint8                          auc_rsv[7];
-#endif
 }__OAL_DECLARE_PACKED mac_frame_he_cap_ie_stru;
+
 
 struct mac_frame_he_mcs_nss
 {
-    oal_uint8          bit_mcs                                                 : 4, /**/
+    oal_uint8           bit_mcs                                                 : 4, /**/
                         bit_nss                                                : 3,              /**/
                         bit_last_mcs_nss                                       : 1;/* */
 }__OAL_DECLARE_PACKED;
 typedef struct mac_frame_he_mcs_nss mac_frame_he_mcs_nss_stru;
 
+/*协议规定帧格式*/
 struct mac_frame_he_operation_param
 {
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-    oal_uint32          bit_bss_color                                          : 6, /**/
-                        bit_default_pe_duration                                : 3,              /**/
-                        bit_twt_required                                       : 1,/* */
-                        bit_he_duration_rts_threshold                          : 10,/**/
-                        bit_partial_bss_color                                  : 1,
-                        bit_vht_operation_info_present                         : 1,/*Bit21*/
-                        bit_reserved                                           : 6,
-                        bit_multi_bssid_ap                                     : 1,
-                        bit_tx_bssid_indicator                                 : 1,
-                        bit_bss_color_disableed                                : 1,
-                        bit_dual_beacon                                        : 1;
-#else
-oal_uint16              bit_default_pe_duration                                : 3, /**/
-                        bit_twt_required                                       : 1,/* */
-                        bit_he_duration_rts_threshold                          : 10,/**/
-                        bit_reserved1                                          : 1,/*rom化考虑*/
-                        bit_max_bssid_indicator                                : 1;
+    oal_uint16          bit_default_pe_duration                                : 3, /*B0_2:*/
+                        bit_twt_required                                       : 1, /*B3: */
+                        bit_he_duration_rts_threshold                          : 10,/*B4_13:*/
+                        bit_vht_operation_info_present                         : 1, /*B14:*/
+                        bit_co_located_bss                                     : 1; /*B15*/
 
-oal_uint8               bit_tx_bssid_indicator                                 : 1,
-                        bit_reserved2                                          : 4,
-                        bit_vht_operation_info_present                         : 1,
-                        bit_reserved3                                          : 2;
-#endif
+    oal_uint8           bit_er_su_disable                                      : 1, /*B16；*/
+                        bit_6g_oper_info_present                               : 1, /*B17: */
+                        bit_reserved                                           : 6; /*B18_23:*/
 }__OAL_DECLARE_PACKED;
 typedef struct mac_frame_he_operation_param mac_frame_he_operation_param_stru;
-
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-typedef mac_frame_he_operation_param_stru mac_frame_he_operation_format_stru;
-#else
-struct mac_frame_he_operation_format
-{
-    oal_uint16          bit_default_pe_duration                                : 3, /**/
-                        bit_twt_required                                       : 1,/* */
-                        bit_he_duration_rts_threshold                          : 10,/**/
-                        bit_vht_operation_info_present                         : 1,
-                        bit_max_bssid_indicator                                : 1;
-
-    oal_uint8           bit_tx_bssid_indicator                                 : 1,
-                        bit_reserved                                           : 7;
-}__OAL_DECLARE_PACKED;
-typedef struct mac_frame_he_operation_format mac_frame_he_operation_format_stru;
-#endif
 
 struct mac_frame_he_bss_color_info
 {
@@ -1834,16 +1879,12 @@ typedef struct mac_frame_vht_operation_info mac_frame_vht_operation_info_stru;
 
 typedef struct
 {
-    mac_frame_he_operation_param_stru  st_he_oper_param;
-#ifdef _PRE_WLAN_FEATURE_11AX_BELOW_DRAFT22
-
-#else
-    mac_frame_he_bss_color_info_stru   st_bss_color;
-#endif
-    mac_frame_he_mcs_nss_bit_map_stru  st_he_basic_mcs_nss;
-    oal_uint8                          auc_rsv[1];
-    mac_frame_vht_operation_info_stru  st_vht_operation_info;
+    mac_frame_he_operation_param_stru      st_he_oper_param;
+    mac_frame_he_bss_color_info_stru       st_bss_color;
+    mac_frame_he_mcs_nss_bit_map_stru      st_he_basic_mcs_nss;
+    mac_frame_vht_operation_info_stru      st_vht_operation_info;
 }__OAL_DECLARE_PACKED mac_frame_he_oper_ie_stru;
+
 
 /*he mu edca param*/
 typedef struct
@@ -1876,22 +1917,24 @@ typedef struct
 typedef struct
 {
     oal_uint8           bit_srp_disallowed                                     : 1;
-    oal_uint8           bit_obss_pdsr_disallowed                               : 1;
+    oal_uint8           bit_non_srg_obss_pd_sr_disallowed                      : 1;
     oal_uint8           bit_non_srg_offset_present                             : 1;
     oal_uint8           bit_srg_information_present                            : 1;
-    oal_uint8           bit_srp_disable                                        : 4;
+    oal_uint8           bit_hesiga_sr_value15_allowed                          : 1;
+    oal_uint8           bit_resvered                                           : 3;
 }__OAL_DECLARE_PACKED mac_frame_he_sr_control_stru;
 
+#define MAC_HE_SRG_BSS_COLOR_BITMAP_LEN      8
+#define MAC_HE_SRG_PARTIAL_BSSID_BITMAP_LEN  8
 typedef struct
 {
     mac_frame_he_sr_control_stru       st_sr_control;
-    oal_uint8                          uc_non_srg_boss_pd_offset_max;
-    oal_uint8                          uc_srg_obss_pd_offset_min;
-    oal_uint8                          uc_srg_obss_pd_offset_max;
-    oal_uint8                          ac_srg_bss_color_bitmap[8];
-    oal_uint8                          ac_srg_partial_bssid_bitmap[8];
+    oal_uint8                          uc_non_srg_obss_pd_max_offset;
+    oal_uint8                          uc_srg_obss_pd_min_offset;
+    oal_uint8                          uc_srg_obss_pd_max_offset;
+    oal_uint8                          auc_srg_bss_color_bitmap[MAC_HE_SRG_BSS_COLOR_BITMAP_LEN];
+    oal_uint8                          auc_srg_partial_bssid_bitmap[MAC_HE_SRG_PARTIAL_BSSID_BITMAP_LEN];
 }__OAL_DECLARE_PACKED mac_frame_he_spatial_reuse_parameter_set_ie_stru;
-
 
 typedef struct
 {
@@ -1900,9 +1943,48 @@ typedef struct
                                        bit_reserved                            :2;
 }__OAL_DECLARE_PACKED mac_frame_bss_color_change_annoncement_ie_stru;
 
+typedef union
+{
+    oal_uint32                              ul_htc_value;
+    union
+    {
+        struct
+        {
+            oal_uint32                      bit_vht_flag                       : 1,
+                                            bit_he_flag                        : 1,
+                                            bit_om_id                          : 4,
+                                            bit_rx_nss                         : 3,
+                                            bit_channel_width                  : 2,
+                                            bit_ul_mu_disable                  : 1,
+                                            bit_tx_nsts                        : 3,
+                                            bit_er_su_disable                  : 1,
+                                            bit_dl_mu_mimo_resound_recommendation : 1,
+                                            bit_ul_mu_data_disable             : 1,
+                                            bit_rsv                            : 14;
+        }st_om_info;
+        /*后续数据帧中携带om 使用*/
+        struct
+        {
+            oal_uint32                      bit_vht_flag                       : 1,
+                                            bit_he_flag                        : 1,
+                                            bit_uph_id                         : 4,
+                                            bit_ul_power_headroom              : 5,
+                                            bit_min_transmit_power_flag        : 1,
+                                            bit_uph_rsv                        : 2,
+                                            bit_om_id                          : 4,
+                                            bit_rx_nss                         : 3,
+                                            bit_channel_width                  : 2,
+                                            bit_ul_mu_disable                  : 1,
+                                            bit_tx_nsts                        : 3,
+                                            bit_er_su_disable                  : 1,
+                                            bit_dl_mu_mimo_resound_recommendation : 1,
+                                            bit_ul_mu_data_disable             : 1,
+                                            bit_rsv                            : 2;
+        }st_uph_om_info;
 
+    }un_a_control_info;
+}__OAL_DECLARE_PACKED mac_htc_a_control_field_union;
 #endif /*end _PRE_WLAN_FEATURE_11AX*/
-
 
 struct mac_11ntxbf_info
 {
@@ -1916,7 +1998,6 @@ struct mac_11ntxbf_vendor_ie
 {
     oal_uint8                        uc_id;          /* element ID */
     oal_uint8                        uc_len;         /* length in bytes */
-    //oal_uint8                        auc_reserve[2];
     oal_uint8                        auc_oui[3];
     oal_uint8                        uc_ouitype;
     mac_11ntxbf_info_stru            st_11ntxbf;
@@ -1931,18 +2012,6 @@ struct mac_ieee80211_vendor_ie {
     oal_uint8 uc_oui_type;
 } __OAL_DECLARE_PACKED;
 typedef struct mac_ieee80211_vendor_ie mac_ieee80211_vendor_ie_stru;
-
-#ifdef _PRE_WLAN_FEATURE_HILINK
-struct mac_hilink_okc_ie {
-    oal_uint8 uc_element_id;
-    oal_uint8 uc_len;
-    oal_uint8 auc_oui[3];
-    oal_uint8 auc_hilink_okc[4];
-    oal_uint8 auc_version[2];
-    oal_uint8 auc_target_macaddr[WLAN_MAC_ADDR_LEN];
-} __OAL_DECLARE_PACKED;
-typedef struct mac_hilink_okc_ie mac_hilink_okc_ie_stru;
-#endif
 
 /* TIM信息元素结构体 */
 struct mac_tim_ie {
@@ -2055,7 +2124,9 @@ struct mac_ext_cap_ie
                 bit_resv13               : 3;   /* bit13~bit15 */
     oal_uint8   bit_resv5                : 3,
                 bit_bss_transition       : 1,   /* bit19 */
-                bit_resv14               : 4;   /* bit20~bit23 */
+                bit_resv14               : 2,   /* bit20~bit21 */
+                bit_multi_bssid          : 1,   /*bit22 Multi bssid*/
+                bit_resv15               : 1;   /*bit23*/
     oal_uint8   bit_resv6                : 7,
                 bit_interworking         : 1;
     oal_uint8   bit_resv7                         : 5,
@@ -2108,6 +2179,97 @@ struct mac_ext_cap_ftm_ie
                 bit_ftm_int                       : 1; /* bit71 Fine Timing Measurement Initiator*/
 }__OAL_DECLARE_PACKED;
 typedef struct mac_ext_cap_ftm_ie mac_ext_cap_ftm_ie_stru;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+struct mac_ext_cap_twt_ie
+{
+    oal_uint8   bit_2040_coexistence_mgmt: 1,
+                bit_resv1                : 1,
+                bit_ext_chan_switch      : 1,
+                bit_resv2                : 1,
+                bit_psmp                 : 1,
+                bit_resv3                : 1,
+                bit_s_psmp               : 1,
+                bit_event                : 1;
+    oal_uint8   bit_resv4                : 4,
+                bit_proxyarp             : 1,
+                bit_resv13               : 3;   /* bit13~bit15 */
+    oal_uint8   bit_resv5                : 3,
+                bit_bss_transition       : 1,   /* bit19 */
+                bit_resv14               : 4;   /* bit20~bit23 */
+    oal_uint8   bit_resv6                : 7,
+                bit_interworking         : 1;
+    oal_uint8   bit_resv7                         : 5,
+                bit_tdls_prhibited                : 1,
+                bit_tdls_channel_switch_prhibited : 1,
+                bit_resv8                         : 1;
+
+    oal_uint8   bit_resv9                : 8;
+    oal_uint8   bit_resv10               : 8;
+
+    oal_uint8   bit_resv11                        : 6,
+                bit_operating_mode_notification   : 1, /* 11ac Operating Mode Notification特性标志 */
+                bit_resv12                        : 1;
+
+    oal_uint8   bit_resv15                        : 6,
+                bit_ftm_resp                      : 1, /* bit70 Fine Timing Measurement Responder*/
+                bit_ftm_int                       : 1; /* bit71 Fine Timing Measurement Initiator*/
+
+    oal_uint8   bit_resv16                : 5,
+                bit_twt_requester_support   : 1,  /* 11ax TWT requester 特性标志 */
+                bit_resv17                        : 2;
+}__OAL_DECLARE_PACKED;
+typedef struct mac_ext_cap_twt_ie mac_ext_cap_twt_ie_stru;
+
+struct mac_twt_request_type
+{
+    oal_uint16  bit_request         : 1;
+    oal_uint16  bit_setup_command   : 3;
+    oal_uint16  bit_trigger         : 1;
+    oal_uint16  bit_implicit        : 1;
+    oal_uint16  bit_flow_type       : 1;
+    oal_uint16  bit_flow_id         : 3;
+    oal_uint16  bit_exponent        : 5;
+    oal_uint16  bit_protection      : 1;
+}__OAL_DECLARE_PACKED;
+typedef struct mac_twt_request_type mac_twt_request_type_stru;
+
+struct mac_twt_control_field
+{
+    oal_uint8   bit_ndp_paging_indicator    : 1;
+    oal_uint8   bit_responder_pm_mode       : 1;
+    oal_uint8   bit_negotiation             : 2;
+    oal_uint8   bit_resv                    : 4;
+}__OAL_DECLARE_PACKED;
+typedef struct mac_twt_control_field mac_twt_control_field_stru;
+
+struct mac_twt_element_ie_individual
+{
+    oal_uint8                  uc_category;
+    oal_uint8                  uc_action;
+    oal_uint8                  uc_dialog_token;
+    oal_uint8                  uc_element_id;
+    oal_uint8                  uc_len;
+    mac_twt_control_field_stru      st_control;
+    mac_twt_request_type_stru st_request_type;
+    oal_uint64                 ull_twt;
+    oal_uint8                  uc_min_duration;
+    oal_uint16                 us_mantissa;  // TODO:可能对不齐
+    oal_uint8                  uc_channel;
+} __OAL_DECLARE_PACKED;
+typedef struct mac_twt_element_ie_individual mac_twt_element_ie_individual_stru;
+
+struct mac_twt_teardown
+{
+    oal_uint8                  uc_category;
+    oal_uint8                  uc_action;
+    oal_uint8               bit_twt_flow_id                 : 3,
+                                bit_resv1                          : 2,
+                                bit_nego_type                  : 2,
+                                bit_resv2                            : 1;
+} __OAL_DECLARE_PACKED;
+typedef struct mac_twt_teardown mac_twt_teardown_stru;
 #endif
 
 /* qos info字段结构体定义 */
@@ -2177,16 +2339,28 @@ struct mac_sup_mcs_set
 typedef struct mac_sup_mcs_set mac_sup_mcs_set_stru;
 
 
+/* vht信息元素，支持的mcs集字段,16版11ac协议新增bit30，涉及rom,原始结构体不再使用 */
+typedef struct
+{
+    oal_uint32  bit_rx_mcs_rom_map            : 16,
+                bit_rx_highest_rom_rate       : 13,
+                bit_resv                      : 3;
+    oal_uint32  bit_tx_mcs_rom_map            : 16,
+                bit_tx_highest_rom_rate       : 13,
+                bit_resv2                     : 3;
+}mac_vht_sup_mcs_set_rom_stru;
 /* vht信息元素，支持的mcs集字段 */
 typedef struct
 {
-    oal_uint32  bit_rx_mcs_map      : 16,
-                bit_rx_highest_rate : 13,
-                bit_resv            : 3;
-    oal_uint32  bit_tx_mcs_map      : 16,
-                bit_tx_highest_rate : 13,
-                bit_resv2           : 3;
+    oal_uint32  bit_rx_mcs_map                : 16,
+                bit_rx_highest_rate           : 13,
+                bit_resv                      : 3;
+    oal_uint32  bit_tx_mcs_map                : 16,
+                bit_tx_highest_rate           : 13,
+                bit_vht_extend_nss_bw_capable : 1,
+                bit_resv2                     : 2;
 }mac_vht_sup_mcs_set_stru;
+
 
 /* ht capabilities信息元素支持的extended cap.字段结构体定义 */
 struct mac_ext_cap
@@ -2270,12 +2444,41 @@ struct mac_ht_opern
 }__OAL_DECLARE_PACKED;
 typedef struct mac_ht_opern mac_ht_opern_stru;
 
+/* ht opern元素, 802.11-2016 11ac */
+struct mac_ht_opern_ac
+{
+    oal_uint8   uc_primary_channel;
+
+    oal_uint8   bit_secondary_chan_offset             : 2,
+                bit_sta_chan_width                    : 1,
+                bit_rifs_mode                         : 1,
+                bit_resv1                             : 4;
+    oal_uint16  bit_HT_protection                     : 2,
+                bit_nongf_sta_present                 : 1,
+                bit_resv2                             : 1,
+                bit_obss_nonht_sta_present            : 1,
+                bit_chan_center_freq_seg2             : 8,
+                bit_resv3                             : 3;
+    oal_uint8   bit_resv4                             : 6,
+                bit_dual_beacon                       : 1,
+                bit_dual_cts_protection               : 1;
+    oal_uint8   bit_secondary_beacon                  : 1,
+                bit_lsig_txop_protection_full_support : 1,
+                bit_pco_active                        : 1,
+                bit_pco_phase                         : 1,
+                bit_resv5                             : 4;
+
+    oal_uint8   auc_basic_mcs_set[MAC_HT_BASIC_MCS_SET_LEN];
+}__OAL_DECLARE_PACKED;
+typedef struct mac_ht_opern_ac mac_ht_opern_ac_stru;
+
 /* vht opern结构体 */
 /*lint -e958*//* 屏蔽字节对齐错误 */
 struct mac_opmode_notify
 {
     oal_uint8   bit_channel_width   : 2,     /* 当前最大允许带宽能力 */
-                bit_resv            : 2,     /* Dynamic Extended NSS BW,VHT下set 0 */
+                bit_160or8080       : 1,     /* 是否是160M */
+                bit_noLDPC          : 1,
                 bit_rx_nss          : 3,     /* 当前最大允许空间流能力 */
                 bit_rx_nss_type     : 1;     /* 是否为TXBF下的rx nss能力，1-是，0-不是 */
 }__OAL_DECLARE_PACKED;
@@ -2330,6 +2533,16 @@ struct mac_action_neighbor_req
     oal_uint8   auc_subelm[1];
 }__OAL_DECLARE_PACKED;
 typedef struct mac_action_neighbor_req mac_action_neighbor_req_stru;
+
+/* Neighbor Report Response */
+struct mac_action_neighbor_rsp
+{
+    oal_uint8   uc_category;
+    oal_uint8   uc_action_code;
+    oal_uint8   uc_dialog_token;
+    oal_uint8   neighbor_rpt_ies[1];
+}__OAL_DECLARE_PACKED;
+typedef struct mac_action_neighbor_rsp mac_action_neighbor_rsp_stru;
 
 /* Radio Measurement Report */
 struct mac_action_rm_rpt
@@ -2760,6 +2973,22 @@ typedef struct
     oal_uint8      *puc_arg5;
 }mac_action_mgmt_args_stru;
 
+#ifdef _PRE_WLAN_FEATURE_11AX
+/* TWT ACTION帧的参数格式 */
+typedef struct
+{
+    oal_uint8       uc_category;    /* ACTION的类别 */
+    oal_uint8       uc_action;      /* 不同ACTION类别下的分类 */
+    oal_uint8                        uc_twt_setup_cmd;
+    oal_uint8                        uc_twt_flow_type;
+    oal_uint8                        uc_twt_flow_id;
+    oal_uint32                       ul_twt_start_time_offset;   /* us after TSF*/
+    oal_uint32                       ul_twt_exponent;                       /* interval_exponent */
+    oal_uint32                       ul_twt_duration;                       /* wake_duration */
+    oal_uint32                       ul_intrval_mantissa;                         /* interval_mantissa */
+}mac_twt_action_mgmt_args_stru;
+#endif
+
 #if defined(_PRE_WLAN_FEATURE_WMMAC) || (defined(_PRE_WLAN_FEATURE_11K))
 struct mac_ts_info
 {
@@ -2840,21 +3069,32 @@ typedef oal_void (*set_vht_opern_ie)(oal_void *pst_vap, oal_uint8 *puc_buffer, o
 typedef oal_void (*set_wpa_ie)(oal_void  *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len);
 typedef oal_void (*set_nb_ie)( oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len);
 typedef oal_void  (*set_vht_capinfo_field)(oal_void *pst_vap, oal_uint8 *puc_buffer);
+typedef oal_void  (*set_opmode_field)(oal_uint8 *pst_vap, oal_uint8 *puc_buffer, wlan_nss_enum_uint8 en_nss);
+typedef oal_void  (*rx_report_80211_frame_etc)(oal_uint8 *pst_vap,
+                                                     oal_uint8 *pst_rx_cb,
+                                                     oal_netbuf_stru *pst_netbuf,
+                                                     oam_ota_type_enum_uint8 en_ota_type);
+typedef struct
+{
+    set_ext_cap_ie                  set_ext_cap_ie_cb;
+    set_ht_cap_ie                   set_ht_cap_ie_cb;
+    set_ht_opern_ie                 set_ht_opern_ie_cb;
+    set_rsn_ie                      set_rsn_ie_cb;
+    set_vht_cap_ie                  set_vht_cap_ie_cb;
+    set_vht_opern_ie                set_vht_opern_ie_cb;
+    set_wpa_ie                      set_wpa_ie_cb;
+    set_nb_ie                       set_nb_ie_cb;
+    set_vht_capinfo_field           set_vht_capinfo_field_cb;
+
+}mac_frame_cb;
 
 typedef struct
 {
-    set_ext_cap_ie   set_ext_cap_ie_cb;
-    set_ht_cap_ie    set_ht_cap_ie_cb;
-    set_ht_opern_ie  set_ht_opern_ie_cb;
-    set_rsn_ie       set_rsn_ie_cb;
-    set_vht_cap_ie   set_vht_cap_ie_cb;
-    set_vht_opern_ie set_vht_opern_ie_cb;
-    set_wpa_ie       set_wpa_ie_cb;
-    set_nb_ie        set_nb_ie_cb;
-    set_vht_capinfo_field  set_vht_capinfo_field_cb;
+    set_opmode_field  set_opmode_cb;
+    rx_report_80211_frame_etc       rx_report_80211_frame_etc_cb;
+}mac_frame_other_cb;
+extern mac_frame_other_cb g_st_mac_frame_other_rom_cb;
 
-}mac_frame_cb;
-extern mac_frame_cb g_st_mac_frame_rom_cb;
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
@@ -2872,6 +3112,7 @@ extern mac_frame_cb g_st_mac_frame_rom_cb;
 extern oal_uint8 *mac_find_p2p_attribute_etc(oal_uint8 uc_eid, oal_uint8 *puc_ies, oal_int32 l_len);
 #endif
 extern oal_uint8 *mac_find_ie_etc(oal_uint8 uc_eid, oal_uint8 *puc_ies, oal_int32 l_len);
+extern oal_uint8 *mac_find_ie_sec_etc(oal_uint8 uc_eid, oal_uint8 *puc_ies, oal_int32 l_len, oal_uint32 *pul_len);
 extern oal_uint8 *mac_find_vendor_ie_etc(oal_uint32              ul_oui,
                                         oal_uint8            uc_oui_type,
                                         oal_uint8           *puc_ies,
@@ -2943,6 +3184,7 @@ extern oal_void  mac_set_vht_capabilities_ie_etc(oal_void *pst_vap, oal_uint8 *p
 extern oal_void  mac_set_vht_opern_ie_etc(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len);
 #ifdef _PRE_WLAN_FEATURE_11AX
 extern oal_void  mac_set_he_capabilities_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len);
+extern oal_void mac_set_htc_om_field(oal_uint8 uc_nss, oal_uint8 uc_bw, oal_uint8 uc_mimo_resound,oal_uint32 *pul_htc_value);
 #endif
 extern oal_uint8 *mac_find_ie_ext_ie(oal_uint8 uc_eid,oal_uint8 uc_ext_ie, oal_uint8 *puc_ies, oal_int32 l_len);
 oal_uint32  mac_set_csa_bw_ie(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len);
@@ -3096,8 +3338,13 @@ OAL_STATIC OAL_INLINE oal_uint8  mac_get_ack_policy(oal_uint8 *puc_header, oal_b
 }
 
 
-OAL_STATIC OAL_INLINE oal_void mac_null_data_encap(oal_uint8* header, oal_uint16 us_fc, oal_uint8 *puc_da, oal_uint8 *puc_sa)
+OAL_STATIC OAL_INLINE oal_void mac_null_data_encap_s(oal_uint8* header,  oal_uint8 uc_data_len,
+    oal_uint16 us_fc, oal_uint8 *puc_da, oal_uint8 *puc_sa)
 {
+    if (uc_data_len < 6 + 16) {
+        return;
+    }
+
     mac_hdr_set_frame_control(header, us_fc);
 
     if ((us_fc & WLAN_FRAME_FROM_AP) && !(us_fc & WLAN_FRAME_TO_AP))
@@ -3121,6 +3368,35 @@ OAL_STATIC OAL_INLINE oal_void mac_null_data_encap(oal_uint8* header, oal_uint16
         oal_set_mac_addr((header + 16), puc_da);
     }
 }
+
+OAL_STATIC OAL_INLINE oal_void mac_null_data_encap(oal_uint8* header,
+    oal_uint16 us_fc, oal_uint8 *puc_da, oal_uint8 *puc_sa)
+{
+
+    mac_hdr_set_frame_control(header, us_fc);
+
+    if ((us_fc & WLAN_FRAME_FROM_AP) && !(us_fc & WLAN_FRAME_TO_AP))
+    {
+            /* 设置ADDR1为DA */
+        oal_set_mac_addr((header + 4), puc_da);
+
+        /* 设置ADDR2为BSSID */
+        oal_set_mac_addr((header + 10), puc_sa);
+
+            /* 设置ADDR3为SA */
+        oal_set_mac_addr((header + 16), puc_sa);
+    }
+    if (!(us_fc & WLAN_FRAME_FROM_AP) && (us_fc & WLAN_FRAME_TO_AP))
+    {
+        /* 设置ADDR1为BSSID */
+        oal_set_mac_addr((header + 4), puc_da);
+        /* 设置ADDR2为SA */
+        oal_set_mac_addr((header + 10), puc_sa);
+        /* 设置ADDR3为DA */
+        oal_set_mac_addr((header + 16), puc_da);
+    }
+}
+
 
 
 OAL_STATIC OAL_INLINE oal_void mac_rx_get_da(
@@ -3217,52 +3493,6 @@ OAL_STATIC OAL_INLINE oal_uint8  mac_get_frame_sub_type(oal_uint8 *puc_mac_heade
 {
     return (puc_mac_header[0] & 0xF0);
 }
-#if 0
-
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_addba_req_frame(oal_netbuf_stru *pst_netbuf, oal_uint8 *puc_tid)
-{
-    oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
-#endif
-
-    /* Management frame */
-    if ((WLAN_FC0_SUBTYPE_ACTION|WLAN_FC0_TYPE_MGT) == mac_get_frame_type_and_subtype(puc_mac_header))
-    {
-        if ((MAC_ACTION_CATEGORY_BA == puc_mac_payload[0]) && (MAC_BA_ACTION_ADDBA_REQ == puc_mac_payload[1]))
-        {
-            *puc_tid     = (puc_mac_payload[3] & 0x3C) >> 2;
-            return OAL_TRUE;
-        }
-    }
-
-    return OAL_FALSE;
-}
-
-
-OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_addba_rsp_frame(oal_netbuf_stru *pst_netbuf)
-{
-    oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
-    oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
-#endif
-
-    /* Management frame */
-    if ((WLAN_FC0_SUBTYPE_ACTION|WLAN_FC0_TYPE_MGT) == mac_get_frame_type_and_subtype(puc_mac_header))
-    {
-        if ((MAC_ACTION_CATEGORY_BA == puc_mac_payload[0]) && (MAC_BA_ACTION_ADDBA_RSP == puc_mac_payload[1]))
-        {
-            return OAL_TRUE;
-        }
-    }
-
-    return OAL_FALSE;
-}
-#endif
 
 
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_delba_frame(oal_netbuf_stru *pst_netbuf, oal_uint8 *puc_tid)
@@ -3270,8 +3500,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_delba_frame(oal_netbuf_stru *ps
     oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
 #endif
 
     /* Management frame */
@@ -3293,8 +3521,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_ftm_frame(oal_netbuf_stru *pst_
     oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
 #endif
 
     /* Management frame */
@@ -3315,8 +3541,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_ftm_req_frame(oal_netbuf_stru *
     oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
 #endif
 
     /* Management frame */
@@ -3337,8 +3561,6 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 mac_is_ftm_related_frame(oal_netbuf_st
     oal_uint8 *puc_mac_header  = oal_netbuf_header(pst_netbuf);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     oal_uint8 *puc_mac_payload = oal_netbuf_data(pst_netbuf);
-#else
-    oal_uint8 *puc_mac_payload = puc_mac_header + MAC_80211_FRAME_LEN;
 #endif
 
     /* Management frame */
@@ -3452,6 +3674,18 @@ OAL_STATIC OAL_INLINE oal_uint16  mac_get_auth_status(oal_uint8 *puc_mac_hdr)
 }
 
 
+OAL_STATIC OAL_INLINE oal_uint16  mac_get_ft_status(oal_uint8 *puc_mac_hdr)
+{
+    oal_uint16 us_auth_status = 0;
+
+    /* 读取ft rsp中的ft status, 相对header的偏移量为14个字节 */
+    us_auth_status = puc_mac_hdr[MAC_80211_FRAME_LEN + 15];
+    us_auth_status = (oal_uint16)((us_auth_status << 8) | puc_mac_hdr[MAC_80211_FRAME_LEN + 14]);
+
+    return us_auth_status;
+}
+
+
 OAL_STATIC OAL_INLINE oal_uint16  mac_get_auth_seq_num(oal_uint8 *puc_mac_hdr)
 {
     oal_uint16 us_auth_seq = 0;
@@ -3517,34 +3751,41 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8  mac_is_4addr(oal_uint8 *puc_mac_hdr)
 }
 
 
+OAL_STATIC OAL_INLINE oal_void  mac_get_addr1(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr, oal_uint8 uc_addr_len)
+{
+    memcpy_s(puc_addr, uc_addr_len,  puc_mac_hdr + 4, WLAN_MAC_ADDR_LEN);
+}
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1103_DEV)
 
 OAL_STATIC OAL_INLINE oal_void  mac_get_address1(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr)
 {
-    oal_memcopy(puc_addr, puc_mac_hdr + 4, 6);
+    memcpy(puc_addr, puc_mac_hdr + 4, 6);
 }
+#endif
 
-
-OAL_STATIC OAL_INLINE oal_void  mac_get_address2(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr)
+OAL_STATIC OAL_INLINE oal_void  mac_get_address2(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr, oal_uint8 uc_addr_len)
 {
-    oal_memcopy(puc_addr, puc_mac_hdr + 10, 6);
+    memcpy_s(puc_addr, uc_addr_len,  puc_mac_hdr + 10, WLAN_MAC_ADDR_LEN);
 }
 
 
-OAL_STATIC OAL_INLINE oal_void  mac_get_address3(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr)
+OAL_STATIC OAL_INLINE oal_void  mac_get_address3(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_addr, oal_uint8 uc_addr_len)
 {
-    oal_memcopy(puc_addr, puc_mac_hdr + 16, 6);
+    memcpy_s(puc_addr, uc_addr_len,  puc_mac_hdr + 16, WLAN_MAC_ADDR_LEN);
 }
 
 
-OAL_STATIC OAL_INLINE oal_void  mac_get_qos_ctrl(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_qos_ctrl)
+OAL_STATIC OAL_INLINE oal_void  mac_get_qos_ctrl(oal_uint8 *puc_mac_hdr,
+                                                       oal_uint8 *puc_qos_ctrl,
+                                                       oal_uint8 uc_qos_ctl_len)
 {
     if (OAL_TRUE != mac_is_4addr(puc_mac_hdr))
     {
-        oal_memcopy(puc_qos_ctrl, puc_mac_hdr + MAC_QOS_CTRL_FIELD_OFFSET, MAC_QOS_CTL_LEN);
+        memcpy_s(puc_qos_ctrl, uc_qos_ctl_len, puc_mac_hdr + MAC_QOS_CTRL_FIELD_OFFSET, MAC_QOS_CTL_LEN);
         return;
     }
 
-    oal_memcopy(puc_qos_ctrl, puc_mac_hdr + MAC_QOS_CTRL_FIELD_OFFSET_4ADDR, MAC_QOS_CTL_LEN);
+    memcpy_s(puc_qos_ctrl, uc_qos_ctl_len, puc_mac_hdr + MAC_QOS_CTRL_FIELD_OFFSET_4ADDR, MAC_QOS_CTL_LEN);
     return;
 }
 
@@ -3571,19 +3812,19 @@ OAL_STATIC OAL_INLINE oal_uint16 mac_get_asoc_id(oal_uint8 *puc_mac_payload)
 }
 
 
-OAL_STATIC OAL_INLINE oal_void mac_get_bssid(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_bssid)
+OAL_STATIC OAL_INLINE oal_void mac_get_bssid(oal_uint8 *puc_mac_hdr, oal_uint8 *puc_bssid, oal_uint8 uc_addr_len)
 {
     if (1 == mac_hdr_get_from_ds(puc_mac_hdr))
     {
-        mac_get_address2(puc_mac_hdr, puc_bssid);
+        mac_get_address2(puc_mac_hdr, puc_bssid, uc_addr_len);
     }
     else if (1 == mac_hdr_get_to_ds(puc_mac_hdr))
     {
-        mac_get_address1(puc_mac_hdr, puc_bssid);
+        mac_get_addr1(puc_mac_hdr, puc_bssid, uc_addr_len);
     }
     else
     {
-        mac_get_address3(puc_mac_hdr, puc_bssid);
+        mac_get_address3(puc_mac_hdr, puc_bssid, uc_addr_len);
     }
 }
 
@@ -3593,6 +3834,96 @@ OAL_STATIC OAL_INLINE oal_bool_enum mac_frame_is_eapol(mac_llc_snap_stru *pst_ma
     return (ETHER_ONE_X_TYPE == oal_byteorder_host_to_net_uint16(pst_mac_llc_snap->us_ether_type))?OAL_TRUE:OAL_FALSE;
 }
 extern oal_uint16 mac_get_rsn_capability_etc(const oal_uint8 *puc_rsn_ie);
+
+#define DEFAULT_AKM_VALUE 0xff
+#define TYPE_TLV_CAPABILITY 0
+#define TYPE_TLV_DC_ROAM_INFO 7
+
+#pragma pack(1)
+typedef struct
+{
+    oal_uint8                   en_app_ie_type;
+    oal_uint8                   ul_ie_len;
+    oal_uint8                   huawei_OUI[3];
+    oal_uint8                   feature_id;
+    oal_uint8                   cap_tlv_type; // 0
+    oal_uint8                   cap_len; // 2
+    oal_uint8                   support_adaptive_11r:1;
+    oal_uint8                   support_conflict_stat:1;
+    oal_uint8                   support_5G:1;
+    oal_uint8                   support_dual_5G:1;
+    oal_uint8                   support_11ad:1;
+    oal_uint8                   support_24G_channel_mode:2;
+    oal_uint8                   support_neighbor_report:1;
+    oal_uint8                   AP_AKM;
+    oal_uint8                   dc_roaming_type; // 7
+    oal_uint8                   dc_roaming_len;  // 8
+    oal_uint8                   other_radio_mac[6];
+    oal_uint8                   other_radio_channel;
+    oal_uint8                   other_radio_bandwidth;
+    oal_uint8                   other_radio_erip;
+}oal_sta_ap_cowork_ie;
+
+typedef struct
+{
+    oal_uint8                   real_akm_val;
+    oal_uint32                 akm_suite;
+} oal_sta_ap_cowork_akm_para_stru;
+
+typedef struct
+{
+    oal_uint8                   tlv_type;   // cap_tlv_type
+    oal_uint8                   tlv_len;    // cap_len
+    oal_uint8                   support_adaptive_11r:1;
+    oal_uint8                   support_conflict_stat:1;
+    oal_uint8                   support_5G:1;
+    oal_uint8                   support_dual_5G:1;
+    oal_uint8                   support_11ad:1;
+    oal_uint8                   support_24G_channel_mode:2;
+    oal_uint8                   support_neighbor_report:1;
+    oal_uint8                   akm_suite_val:4;
+    oal_uint8                   mdid_flag:1;
+    oal_uint8                   ft_over_ds:1;
+    oal_uint8                   support_res_req_proto:1;
+    oal_uint8                   resv:1;
+    oal_uint16                  mdid;
+} oal_cowork_ie_capa_bitmap_stru;
+
+typedef struct
+{
+    oal_uint8               tlv_type;   //dc_roaming_type
+    oal_uint8               tlv_len;    //dc_roaming_len
+    oal_uint8               other_radio_mac[6];
+    oal_uint8               other_radio_channel;
+    oal_uint8               other_radio_bandwidth;
+    oal_uint8               other_radio_erip;
+} oal_cowork_ie_dc_roaming_stru;
+
+typedef struct
+{
+    oal_uint8                           en_app_ie_type;
+    oal_uint8                           ul_ie_len;
+    oal_uint8                           huawei_OUI[3];
+    oal_uint8                           feature_id;
+    oal_cowork_ie_capa_bitmap_stru      capa_bitmap;
+    oal_cowork_ie_dc_roaming_stru       dc_roaming;
+} oal_sta_ap_cowork_ie_beacon;
+
+typedef struct
+{
+    oal_uint8               tag_num;
+    oal_uint8               tag_len;
+    oal_uint16              mdid;
+    oal_uint8               ft_over_ds:1;
+    oal_uint8               support_res_req_proto:1;
+    oal_uint8               resv:6;
+} oal_cowork_md_ie;
+
+#pragma pack()
+
+#ifdef _PRE_WLAN_FEATURE_ADAPTIVE11R
+oal_void mac_add_cowork_ie_etc(oal_void *pst_hmac_sta, oal_uint8 *puc_buffer, oal_uint16 *pus_ie_len);
+#endif
 
 oal_void mac_add_app_ie_etc(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint16 *pus_ie_len, en_app_ie_type_uint8 en_type);
 oal_void mac_add_wps_ie_etc(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint16 *pus_ie_len, en_app_ie_type_uint8 en_type);

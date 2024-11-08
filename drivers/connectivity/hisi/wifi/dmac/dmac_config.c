@@ -2177,41 +2177,37 @@ oal_uint32  dmac_config_set_shortgi(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len,
 
 OAL_STATIC oal_uint32  dmac_config_vap_state_syn(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param)
 {
-//#if defined(_PRE_WLAN_FEATURE_STA_PM) || defined(_PRE_WLAN_FEATURE_20_40_80_COEXIST)
     dmac_vap_stru *pst_dmac_vap;
     pst_dmac_vap = (dmac_vap_stru *)mac_res_get_dmac_vap(pst_mac_vap->uc_vap_id);
-    if (OAL_PTR_NULL == pst_dmac_vap)
-    {
-        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_PWR, "{dmac_config_vap_state_syn::mac_res_get_dmac_vap fail,vap_id:%u.}",
-                         pst_mac_vap->uc_vap_id);
+    if (pst_dmac_vap == OAL_PTR_NULL) {
+        OAM_WARNING_LOG1(pst_mac_vap->uc_vap_id, OAM_SF_PWR,
+                        "{dmac_config_vap_state_syn::mac_res_get_dmac_vap fail,vap_id:%u.}",
+                        pst_mac_vap->uc_vap_id);
         return OAL_FAIL;
     }
 
-//#endif
+    pst_mac_vap->en_vap_state = (mac_vap_state_enum_uint8)(*puc_param);
 
-    //OAM_INFO_LOG2(pst_mac_vap->uc_vap_id, OAM_SF_CFG, "{dmac_config_vap_state_syn::uc_len = %d, en state = %d.}", uc_len, *puc_param);
-
-    /* 同步vap状态 */
-    //if (!(IS_P2P_CL(pst_mac_vap) && (pst_mac_vap->us_user_nums > 0)))
-    {
-        pst_mac_vap->en_vap_state = (mac_vap_state_enum_uint8)(*puc_param);
-    }
-
-    /* STA 模式下只有UP状态才开启keepalive定时器 */
-    if ((MAC_VAP_STATE_UP == pst_mac_vap->en_vap_state)
-        && (pst_mac_vap->en_vap_mode == WLAN_VAP_MODE_BSS_STA))
-    {
+    if (pst_mac_vap->en_vap_mode == WLAN_VAP_MODE_BSS_STA) {
 #ifdef _PRE_WLAN_FEATURE_STA_PM
-        dmac_pm_sta_post_event(pst_dmac_vap, STA_PWR_EVENT_KEEPALIVE, 0, OAL_PTR_NULL);
+        /* STA 模式下只有UP状态才开启keepalive定时器 */
+        if (pst_mac_vap->en_vap_state == MAC_VAP_STATE_UP) {
+            dmac_pm_sta_post_event(pst_dmac_vap, STA_PWR_EVENT_KEEPALIVE, 0, OAL_PTR_NULL);
+        }
 #endif
-    }
-    /* STA 模式下只有UP状态才开启keepalive定时器 */
-    if ((MAC_VAP_STATE_UP != pst_mac_vap->en_vap_state)
-    && (pst_mac_vap->en_vap_mode == WLAN_VAP_MODE_BSS_STA))
-    {
-        /* 此时关闭keepalive */
-        pst_dmac_vap->st_vap_base_info.st_cap_flag.bit_keepalive   =  OAL_FALSE;
 
+        /* STA 模式下只有UP状态才开启keepalive定时器 */
+        if (pst_mac_vap->en_vap_state != MAC_VAP_STATE_UP) {
+            /* 此时关闭keepalive */
+            pst_dmac_vap->st_vap_base_info.st_cap_flag.bit_keepalive = OAL_FALSE;
+        }
+
+#ifdef _PRE_WLAN_FEATURE_BTCOEX
+        if ((pst_mac_vap->en_vap_state == MAC_VAP_STATE_STA_FAKE_UP) &&
+            (pst_dmac_vap->pst_hal_device != OAL_PTR_NULL)) {
+            dmac_btcoex_ps_pause_check_and_notify(pst_dmac_vap->pst_hal_device);
+        }
+#endif
     }
 
     return OAL_SUCC;
@@ -4875,8 +4871,8 @@ OAL_STATIC oal_uint32  dmac_config_set_country(mac_vap_stru *pst_mac_vap, oal_ui
     pst_hal_device = pst_mac_device->pst_device_stru;
     /* 根据是否FCC认证要求国家，更新标志位 */
     pst_hal_device->en_current_reg_domain = (hal_regdomain_enum)pst_mac_regdom->uc_regdomain_type;
-    OAM_WARNING_LOG3(0, OAM_SF_DFS, "{dmac_config_set_country::set country %c%c, reg_domain: %d}",
-                pst_mac_regdom->ac_country[0], pst_mac_regdom->ac_country[1], pst_hal_device->en_current_reg_domain);
+    OAM_WARNING_LOG1(0, OAM_SF_DFS, "{dmac_config_set_country::set country, reg_domain: %d}",
+                pst_hal_device->en_current_reg_domain);
 #endif
 
     return OAL_SUCC;

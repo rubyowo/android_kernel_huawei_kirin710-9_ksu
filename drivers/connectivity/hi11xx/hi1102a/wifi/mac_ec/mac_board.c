@@ -24,13 +24,13 @@ extern "C" {
 *****************************************************************************/
 
 /* HOST CRX子表 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_host_crx_table[HMAC_TO_DMAC_SYN_BUTT];
 
 /* DMAC模块，HOST_DRX事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_tx_host_drx[DMAC_TX_HOST_DRX_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_tx_host_drx[DMAC_TX_HOST_DRX_BUTT];
 
 /* DMAC模块，WLAN_DTX事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_tx_wlan_dtx[DMAC_TX_WLAN_DTX_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_tx_wlan_dtx[DMAC_TX_WLAN_DTX_BUTT];
 
 #ifndef _PRE_WLAN_PROFLING_MIPS
 #if (_PRE_OS_VERSION_RAW == _PRE_OS_VERSION) && defined (__CC_ARM)
@@ -38,25 +38,25 @@ DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_tx_wlan_dtx[DMAC_TX_WLAN_DTX
 #endif
 #endif
 /* DMAC模块，WLAN_CTX事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块,WLAN_DRX事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_wlan_drx_event_sub_table[HAL_WLAN_DRX_EVENT_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_wlan_drx_event_sub_table[HAL_WLAN_DRX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块，ERROR_IRQ事件处理函数注册结构体定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_high_prio_event_sub_table[HAL_EVENT_ERROR_IRQ_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_high_prio_event_sub_table[HAL_EVENT_ERROR_IRQ_SUB_TYPE_BUTT];
 
 /* DMAC模块,WLAN_CRX事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_wlan_crx_event_sub_table[HAL_WLAN_CRX_EVENT_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_wlan_crx_event_sub_table[HAL_WLAN_CRX_EVENT_SUB_TYPE_BUTT];
 
 /* DMAC模块，TX_COMP事件处理函数注册结构定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_tx_comp_event_sub_table[HAL_TX_COMP_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_tx_comp_event_sub_table[HAL_TX_COMP_SUB_TYPE_BUTT];
 
 /* DMAC模块, TBTT事件处理函数表定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_tbtt_event_sub_table[HAL_EVENT_TBTT_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_tbtt_event_sub_table[HAL_EVENT_TBTT_SUB_TYPE_BUTT];
 
 /*DMAC模块, MISC事件处理函数表定义 */
-DRAM_RAM_B frw_event_sub_table_item_stru g_ast_dmac_misc_event_sub_table[HAL_EVENT_DMAC_MISC_SUB_TYPE_BUTT];
+DRAM_RAM_B frw_event_sub_table_item_stru dmac_misc_event_sub_table[HAL_EVENT_DMAC_MISC_SUB_TYPE_BUTT];
 
 /* WLAN_DTX 事件子类型表 */
 DRAM_RAM_B frw_event_sub_table_item_stru g_ast_hmac_wlan_dtx_event_sub_table[DMAC_TX_WLAN_DTX_BUTT];
@@ -92,16 +92,16 @@ DRAM_RAM_B frw_event_sub_table_item_stru g_ast_hmac_hcc_rx_event_sub_table[DMAC_
 
 #endif
 
-frw_event_sub_table_item_stru *g_past_dmac_host_crx_table            = g_ast_dmac_host_crx_table;
-frw_event_sub_table_item_stru *g_past_dmac_tx_host_drx               = g_ast_dmac_tx_host_drx;
-frw_event_sub_table_item_stru *g_past_dmac_tx_wlan_dtx               = g_ast_dmac_tx_wlan_dtx;
-frw_event_sub_table_item_stru *g_past_dmac_wlan_ctx_event_sub_table  = g_ast_dmac_wlan_ctx_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_wlan_drx_event_sub_table  = g_ast_dmac_wlan_drx_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_high_prio_event_sub_table = g_ast_dmac_high_prio_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_wlan_crx_event_sub_table  = g_ast_dmac_wlan_crx_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_tx_comp_event_sub_table   = g_ast_dmac_tx_comp_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_tbtt_event_sub_table      = g_ast_dmac_tbtt_event_sub_table;
-frw_event_sub_table_item_stru *g_past_dmac_misc_event_sub_table      = g_ast_dmac_misc_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_host_crx_table            = dmac_host_crx_table;
+frw_event_sub_table_item_stru *g_past_dmac_tx_host_drx               = dmac_tx_host_drx;
+frw_event_sub_table_item_stru *g_past_dmac_tx_wlan_dtx               = dmac_tx_wlan_dtx;
+frw_event_sub_table_item_stru *g_past_dmac_wlan_ctx_event_sub_table  = dmac_wlan_ctx_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_wlan_drx_event_sub_table  = dmac_wlan_drx_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_high_prio_event_sub_table = dmac_high_prio_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_wlan_crx_event_sub_table  = dmac_wlan_crx_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_tx_comp_event_sub_table   = dmac_tx_comp_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_tbtt_event_sub_table      = dmac_tbtt_event_sub_table;
+frw_event_sub_table_item_stru *g_past_dmac_misc_event_sub_table      = dmac_misc_event_sub_table;
 frw_event_sub_table_item_stru *g_past_hmac_wlan_dtx_event_sub_table  = g_ast_hmac_wlan_dtx_event_sub_table;
 frw_event_sub_table_item_stru *g_past_hmac_wlan_drx_event_sub_table  = g_ast_hmac_wlan_drx_event_sub_table;
 frw_event_sub_table_item_stru *g_past_hmac_wlan_crx_event_sub_table  = g_ast_hmac_wlan_crx_event_sub_table;
@@ -113,16 +113,16 @@ frw_event_sub_table_item_stru *g_past_hmac_wlan_misc_event_sub_table = g_ast_hma
 frw_event_sub_table_item_stru *g_past_hmac_hcc_rx_event_sub_table = g_ast_hmac_hcc_rx_event_sub_table;
 #endif
 
-oal_uint16 g_us_dmac_high_prio_event_sub_table_size   = OAL_SIZEOF(g_ast_dmac_high_prio_event_sub_table);
-oal_uint16 g_us_dmac_wlan_drx_event_sub_table_size    = OAL_SIZEOF(g_ast_dmac_wlan_drx_event_sub_table);
-oal_uint16 g_us_dmac_wlan_crx_event_sub_table_size    = OAL_SIZEOF(g_ast_dmac_wlan_crx_event_sub_table);
-oal_uint16 g_us_dmac_wlan_ctx_event_sub_table_size    = OAL_SIZEOF(g_ast_dmac_wlan_ctx_event_sub_table);
-oal_uint16 g_us_dmac_tx_comp_event_sub_table_size     = OAL_SIZEOF(g_ast_dmac_tx_comp_event_sub_table);
-oal_uint16 g_us_dmac_tbtt_event_sub_table_size        = OAL_SIZEOF(g_ast_dmac_tbtt_event_sub_table);
-oal_uint16 g_us_dmac_misc_event_sub_table_size        = OAL_SIZEOF(g_ast_dmac_misc_event_sub_table);
-oal_uint16 g_us_dmac_tx_host_drx_table_size           = OAL_SIZEOF(g_ast_dmac_tx_host_drx);
-oal_uint16 g_us_dmac_host_crx_table_size              = OAL_SIZEOF(g_ast_dmac_host_crx_table);
-oal_uint16 g_us_dmac_tx_wlan_dtx_table_size           = OAL_SIZEOF(g_ast_dmac_tx_wlan_dtx);
+oal_uint16 g_us_dmac_high_prio_event_sub_table_size   = OAL_SIZEOF(dmac_high_prio_event_sub_table);
+oal_uint16 g_us_dmac_wlan_drx_event_sub_table_size    = OAL_SIZEOF(dmac_wlan_drx_event_sub_table);
+oal_uint16 g_us_dmac_wlan_crx_event_sub_table_size    = OAL_SIZEOF(dmac_wlan_crx_event_sub_table);
+oal_uint16 g_us_dmac_wlan_ctx_event_sub_table_size    = OAL_SIZEOF(dmac_wlan_ctx_event_sub_table);
+oal_uint16 g_us_dmac_tx_comp_event_sub_table_size     = OAL_SIZEOF(dmac_tx_comp_event_sub_table);
+oal_uint16 g_us_dmac_tbtt_event_sub_table_size        = OAL_SIZEOF(dmac_tbtt_event_sub_table);
+oal_uint16 g_us_dmac_misc_event_sub_table_size        = OAL_SIZEOF(dmac_misc_event_sub_table);
+oal_uint16 g_us_dmac_tx_host_drx_table_size           = OAL_SIZEOF(dmac_tx_host_drx);
+oal_uint16 g_us_dmac_host_crx_table_size              = OAL_SIZEOF(dmac_host_crx_table);
+oal_uint16 g_us_dmac_tx_wlan_dtx_table_size           = OAL_SIZEOF(dmac_tx_wlan_dtx);
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 oal_uint16 g_us_hmac_wlan_hcc_rx_event_sub_table_size = OAL_SIZEOF(g_ast_hmac_hcc_rx_event_sub_table);
@@ -140,7 +140,7 @@ oal_uint16 g_us_hal_event_dmac_misc_sub_type_butt     = HAL_EVENT_DMAC_MISC_SUB_
 DFX公用全局变量定义
 *****************************************************************************/
 #ifdef _PRE_WLAN_DFT_STAT
-dfx_performance_log_switch_enum_uint8 g_auc_dfx_performance_log_switch[DFX_PERFORMANCE_LOG_BUTT] = {0};
+dfx_performance_log_switch_enum_uint8 auc_dfx_performance_log_switch[DFX_PERFORMANCE_LOG_BUTT] = {0};
 #endif
 
 /*****************************************************************************
@@ -341,7 +341,7 @@ DFX公用函数实现
 
 oal_uint32 dfx_get_performance_log_switch_enable(dfx_performance_log_switch_enum_uint8 uc_performance_log_switch_type)
 {
-    return g_auc_dfx_performance_log_switch[uc_performance_log_switch_type];
+    return auc_dfx_performance_log_switch[uc_performance_log_switch_type];
 }
 
 
@@ -352,7 +352,7 @@ oal_void dfx_set_performance_log_switch_enable(dfx_performance_log_switch_enum_u
         OAM_WARNING_LOG1(0, OAM_SF_ANY, "dfx_set_performance_log_switch_enable::log_switch type:%d.", uc_performance_log_switch_type);
         return;
     }
-    g_auc_dfx_performance_log_switch[uc_performance_log_switch_type] = uc_value;
+    auc_dfx_performance_log_switch[uc_performance_log_switch_type] = uc_value;
 }
 #endif
 

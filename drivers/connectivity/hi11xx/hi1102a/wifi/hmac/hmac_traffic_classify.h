@@ -9,7 +9,6 @@ extern "C" {
 #endif
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN
 
 /*****************************************************************************
   1头文件包含
@@ -94,7 +93,6 @@ extern oal_void hmac_tx_traffic_classify(
                 mac_ip_header_stru  *pst_ip, 
                 oal_uint8           *puc_tid);
 
-#endif /* endif _PRE_WLAN_FEATURE_TX_CLASSIFY_LAN_TO_WLAN */
 
 
 #ifdef __cplusplus

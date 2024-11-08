@@ -34,11 +34,6 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-#if defined (_PRE_PRODUCT_ID_HI110X_HOST) || defined (_PRE_PRODUCT_ID_HI110X_DEV)
-#define DMAC_UCAST_FRAME_TX_COMP_TIMES      10          /* 建立BA会话前，需要产生单播帧的发送完成中断 */
-#else
-#define DMAC_UCAST_FRAME_TX_COMP_TIMES      5           /* 建立BA会话前，需要产生单播帧的发送完成中断 */
-#endif /* _PRE_PRODUCT_ID_HI110X_DEV */
 
 /* DMAC CB中用于不同算法对帧进行标记 */
 #define DMAC_CB_ALG_TAGS_MUCTRL_MASK        0x1         /* CB中用于多用户流控算法对帧进行标记 */
@@ -96,23 +91,13 @@ extern "C" {
 #define DMAX_TX_QUEUE_SINGLE_DEPTH   2
 #define DMAC_TX_QEUEU_MAX_PPDU_NUM   2
 #define DMAC_TX_QUEUE_FAIL_CHECK_NUM    1000
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-#ifdef _PRE_WLAN_DFT_STAT
-#define DMAC_TID_STATS_INCR(_member, _cnt)      ((_member) += (_cnt))
-#else
+
 #define DMAC_TID_STATS_INCR(_member, _cnt)
-#endif
-#else
-#define DMAC_TID_STATS_INCR(_member, _cnt)
-#endif
 
 #ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
 #define CUSTOM_MSG_DATA_HDR_LEN      (OAL_SIZEOF(custom_cfgid_enum_uint32) + OAL_SIZEOF(oal_uint32))   /*抛往dmac侧消息头的长度*/
 #endif //#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
 
-#if (defined(_PRE_DEBUG_MODE) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE))
-extern oal_uint32 g_ul_desc_addr[HAL_TX_QUEUE_BUTT];
-#endif
 #ifdef _PRE_WLAN_FEATURE_IP_FILTER
 extern oal_uint8 g_auc_ip_filter_btable[MAC_MAX_IP_FILTER_BTABLE_SIZE];  /* rx ip过滤功能的黑名单 */
 #endif //_PRE_WLAN_FEATURE_IP_FILTER
@@ -127,6 +112,10 @@ extern oal_uint8 g_auc_ip_filter_btable[MAC_MAX_IP_FILTER_BTABLE_SIZE];  /* rx i
 #define DMAC_WLAN_EVENT_TAS_ANT_MEASURE_TIMEOUT_TYPE (-131)                    /* 上报TAS天线测量超时事件 */
 
 #define DMAC_WLAN_TAS_RSSI_MEASURE_TIMER_PERIOD     (5000)                    /*动态校准每帧定时器5s定时*/
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+#define DMAC_WLAN_NRCOEX_INTERFERE_RULE_NUM     (4) /* 5gnr共存干扰参数表，目前共4组 */
 #endif
 
 /*****************************************************************************
@@ -218,7 +207,11 @@ typedef enum
 
 #ifdef _PRE_WLAN_FEATURE_11AX
     DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_MU_EDCA_REG,       /* STA收到beacon和assoc rsp时，更新MU EDCA寄存器 */
+    DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_SPATIAL_REUSE_REG,
+    DMAC_WLAN_CTX_EVENT_SUB_TYPE_TWT_SETUP,  /* STA收到twt 时，更新寄存器 */
+    DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_NDP_FEEDBACK_REPORT_REG,   /* STA收到beacon和assoc rsp时，更新NDP Feedback report寄存器 */
 #endif
+
     DMAC_WLAN_CTX_EVENT_SUB_TYPE_BUTT
 }dmac_wlan_ctx_event_sub_type_enum;
 typedef oal_uint8 dmac_wlan_ctx_event_sub_type_enum_uint8;
@@ -334,6 +327,7 @@ typedef enum
     CUSTOM_CFGID_PRIV_FASTSCAN_SWITCH_ID,
     CUSTOM_CFGID_PRIV_ANT_SWITCH_ID,
     CUSTOM_CFGID_PRIV_LINKLOSS_THRESHOLD_FIXED_ID,
+    CUSTOM_CFGID_PRIV_RADAR_ISR_FORBID_ID,
     CUSTOM_CFGID_PRIV_INI_BW_MAX_WITH_ID,
     CUSTOM_CFGID_PRIV_INI_LDPC_CODING_ID,
     CUSTOM_CFGID_PRIV_INI_RX_STBC_ID,
@@ -360,11 +354,17 @@ typedef enum
     CUSTOM_CFGID_PRIV_INI_VOE_SWITCH_ID,
     CUSTOM_CFGID_PRIV_M2S_FUNCTION_MASK_ID,
     CUSTOM_CFGID_PRIV_INI_11AX_SWITCH_ID,
+    CUSTOM_CFGID_PRIV_INI_MBSSID_SWITCH_ID,
     CUSTOM_CFGID_PRIV_DYN_BYPASS_EXTLNA_ID,
     CUSTOM_CFGID_PRIV_CTRL_FRAME_TX_CHAIN_ID,
     CUSTOM_CFGID_PRIV_CTRL_UPC_FOR_18DBM_C0_ID,
     CUSTOM_CFGID_PRIV_CTRL_UPC_FOR_18DBM_C1_ID,
+    CUSTOM_CFGID_PRIV_CTRL_11B_DOUBLE_CHAIN_BO_POW_ID,
     CUSTOM_CFGID_PRIV_INI_LDAC_M2S_TH_ID,
+    CUSTOM_CFGID_PRIV_INI_NRCOEX_ID,
+    CUSTOM_CFGID_PRIV_INI_HCC_FLOWCTRL_TYPE_ID,
+    CUSTOM_CFGID_PRIV_DC_FLOWCTRL_ID,
+    CUSTOM_CFGID_PRIV_DDR_SWITCH_ID,
 
     CUSTOM_CFGID_INI_BUTT,
 }custom_cfgid_h2d_ini_enum;
@@ -411,9 +411,6 @@ typedef enum{
     DMAC_DISASOC_MISC_KEEPALIVE            = 1,
     DMAC_DISASOC_MISC_CHANNEL_MISMATCH     = 2,
     DMAC_DISASOC_MISC_LOW_RSSI             = 3,
-#ifdef _PRE_WLAN_FEATURE_BAND_STEERING
-    DMAC_DISASOC_MISC_BSD                  = 4,
-#endif
     DMAC_DISASOC_MISC_GET_CHANNEL_IDX_FAIL = 5,
 #ifdef _PRE_FEATURE_FAST_AGING
     DMAC_DISASOC_MISC_FAST_AGINIG          = 6,
@@ -510,34 +507,12 @@ typedef enum
       DMAC_TX_KEY_SEARCH_FAIL,              /* Key search failed*/
       DMAC_TX_AMPDU_MISMATCH,               /*描述符异常*/
       DMAC_TX_PENDING,                      /*02:没有中断均为pending;03:发送过程中为pending */
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102_DEV)
-      DMAC_TX_FAIL_ACK_ERROR,               /*发送失败（超过重传限制：接收到的响应帧错误）*/
-      DMAC_TX_RTS_FAIL_CTS_ERROR,           /*RTS发送失败（超出重传限制：接收到的CTS错误）*/
-#else
       DMAC_TX_FAIL_RESV,                    /* resv */
       DMAC_TX_FAIL_BW_TOO_BIG,              /* 带宽超过PHY的最大工作带宽或流数超过最大天线数， 软件回收该帧 */
-#endif
       DMAC_TX_FAIL_ABORT,                   /*发送失败（因为abort）*/
       DMAC_TX_FAIL_STATEMACHINE_PHY_ERROR,  /*MAC发送该帧异常结束（状态机超时、phy提前结束等原因）*/
       DMAC_TX_SOFT_PSM_BACK,                /*软件节能回退*/
       DMAC_TX_AMPDU_BITMAP_MISMATCH,        /*硬件解析bitmap，当前mpdu未被确认*/
-} dmac_tx_dscr_status_enum;
-#else
-/* Type of Tx Descriptor status */
-typedef enum
-{
-      DMAC_TX_INVALID   = 0,
-      DMAC_TX_SUCC,
-      DMAC_TX_FAIL,
-      DMAC_TX_TIMEOUT,
-      DMAC_TX_RTS_FAIL,
-      DMAC_TX_NOT_COMPRASS_BA,
-      DMAC_TX_TID_MISMATCH,
-      DMAC_TX_KEY_SEARCH_FAIL,
-      DMAC_TX_AMPDU_MISMATCH,
-      DMAC_TX_PENDING,
-      DMAC_TX_SOFT_PSM_BACK,    /*软件节能回退*/
-      DMAC_TX_SOFT_RESET_BACK,  /*软件RESET回退*/
 } dmac_tx_dscr_status_enum;
 #endif
 typedef oal_uint8 dmac_tx_dscr_status_enum_uint8;
@@ -585,6 +560,11 @@ typedef enum
     WLAN_ACTION_SMPS_FRAME_SUBTYPE,        /* SMPS节能action */
     WLAN_ACTION_OPMODE_FRAME_SUBTYPE,      /* 工作模式通知action */
     WLAN_ACTION_P2PGO_FRAME_SUBTYPE,       /* host发送的P2P go帧，主要是discoverability request */
+
+#ifdef _PRE_WLAN_FEATURE_11AX
+    WLAN_ACTION_TWT_SETUP_REQ,
+    WLAN_ACTION_TWT_TEARDOWN_REQ,
+#endif
 
     WLAN_FRAME_TYPE_ACTION_BUTT
 }wlan_cb_action_subtype_enum;
@@ -651,6 +631,25 @@ typedef enum
 }btcoex_rate_state_enum;
 typedef oal_uint8 btcoex_rate_state_enum_uint8;
 #endif
+
+/* 配置命令带宽能力枚举 */
+typedef enum
+{
+    WLAN_BANDWITH_CAP_20M,
+    WLAN_BANDWITH_CAP_40M,
+    WLAN_BANDWITH_CAP_40M_DUP,
+    WLAN_BANDWITH_CAP_80M,
+    WLAN_BANDWITH_CAP_80M_DUP,
+    WLAN_BANDWITH_CAP_160M,
+    WLAN_BANDWITH_CAP_160M_DUP,
+    WLAN_BANDWITH_CAP_80PLUS80,
+#ifdef _PRE_WLAN_FEATURE_11AX_ER_SU
+    WLAN_BANDWITH_CAP_ER_242_TONE,
+    WLAN_BANDWITH_CAP_ER_106_TONE,
+#endif
+    WLAN_BANDWITH_CAP_BUTT
+}wlan_bandwith_cap_enum;
+typedef oal_uint8 wlan_bandwith_cap_enum_uint8;
 
 /*****************************************************************************
   4 全局变量声明
@@ -845,6 +844,20 @@ typedef struct
 #endif
  }dmac_ctx_action_event_stru;
 
+#ifdef _PRE_WLAN_FEATURE_11AX
+typedef struct
+{
+    mac_category_enum_uint8     en_action_category;     /* ACTION帧的类型 */
+    oal_uint8           uc_action;              /* 不同ACTION类下的子帧类型 */
+    oal_uint16          us_user_idx;
+    oal_uint64      ull_twt_start_time;
+    oal_uint64      ull_twt_interval;
+    oal_uint8           uc_twt_duration;
+    oal_uint8           uc_twt_flow_id;
+    oal_uint8           uc_twt_announce_bit;
+}dmac_ctx_action_twt_event_stru;
+#endif
+
 /* 添加用户事件payload结构体 */
 typedef struct
 {
@@ -925,6 +938,8 @@ typedef struct
     oal_bool_enum_uint8     en_dot11FortyMHzOperationImplemented;         /* dot11FortyMHzOperationImplemented */
     oal_uint8               auc_resv;
     dmac_set_rate_stru      st_min_rate;          /* Update join req 需要配置的速率集参数 */
+    mac_multi_bssid_info    st_mbssid_info;
+    mac_ap_type_enum_uint16 en_ap_type;
 }dmac_ctx_join_req_set_reg_stru;
 
 /* wait join写寄存器参数的结构体定义 */
@@ -957,79 +972,16 @@ typedef struct
     oal_uint16                           us_user_index;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
     wlan_mib_Dot11QAPEDCAEntry_stru      ast_wlan_mib_qap_edac[WLAN_WME_AC_BUTT];
-#ifdef _PRE_WLAN_FEATURE_WMMAC
-    mac_ts_info_stru                     st_ts_info[WLAN_WME_AC_BUTT];
-#endif
 #endif
 }dmac_ctx_sta_asoc_set_edca_reg_stru;
+/* sta更新edca参数寄存器的结构体定义 */
 
-#if 0
-#if defined(_PRE_PRODUCT_ID_HI110X_DEV)
-#pragma pack(push,1)
-/* 裸系统下DMAC模块与HMAC模块共用的接收流程控制信息数据结构定义, 与hal_rx_ctl_stru结构体保持一致*/
+/* sta更新sr参数寄存器的结构体定义 */
+#ifdef _PRE_WLAN_FEATURE_11AX
 typedef struct
 {
-    /*byte 0*/
-    oal_uint8                   bit_vap_id            :5;   /* 必须为5bits，与RX DSCR匹配，其他bss WLAN_HAL_OHTER_BSS_ID = 14 */
-    oal_uint8                   bit_amsdu_enable      :1;
-    oal_uint8                   bit_is_first_buffer   :1;
-    oal_uint8                   bit_is_fragmented     :1;
-
-    /*byte 1*/
-    oal_uint8                   uc_msdu_in_buffer;
-
-    /*byte 2*/
-    oal_uint8                   bit_ta_user_idx       :5;
-    oal_uint8                   bit_reserved2         :1;
-    oal_uint8                   bit_reserved3         :1;
-    oal_uint8                   bit_reserved4         :1;
-
-    /*byte 3*/
-    oal_uint8                   bit_mac_header_len    :6;   /* mac header帧头长度 */
-    oal_uint8                   bit_is_beacon         :1;
-    oal_uint8                   bit_reserved1         :1;
-
-    /*byte 4-5 */
-    oal_uint16                  us_frame_len;               /* 帧头与帧体的总长度 */
-
-    /*byte 6 */
-    oal_uint8                   uc_mac_vap_id         :4;
-    oal_uint8                   bit_buff_nums         :4; /* 每个MPDU占用的buf数 */
-
-    /*byte 7 */
-    oal_uint8                   uc_channel_number;          /* 接收帧的信道 */
-
-}mac_rx_ctl_stru;
-#pragma pack(pop)
-
-#else
-/* DMAC模块与HMAC模块共用的接收流程控制信息数据结构定义, 与hal_rx_ctl_stru结构体保持一致*/
-typedef struct
-{
-    /*word 0*/
-    oal_uint8                   bit_vap_id            :5;
-    oal_uint8                   bit_mgmt_to_hostapd   :1;
-    oal_uint8                   bit_reserved1         :2;
-
-    oal_uint8                   uc_msdu_in_buffer;
-    oal_uint8                   bit_amsdu_enable      :1;
-    oal_uint8                   bit_is_first_buffer   :1;
-    oal_uint8                   bit_is_fragmented     :1;
-    oal_uint8                   bit_is_beacon         :1;
-    oal_uint8                   bit_buff_nums         :4;   /* 每个MPDU占用的buf数目 */
-
-    oal_uint8                   uc_mac_header_len;          /* mac header帧头长度 */
-    /*word 1*/
-    oal_uint16                  us_frame_len;               /* 帧头与帧体的总长度 */
-    oal_uint16                  us_da_user_idx;             /* 目的地址用户索引 */
-    /*word 2*/
-    oal_uint32                 *pul_mac_hdr_start_addr;     /* 对应的帧的帧头地址,虚拟地址 */
-    /*word 3*/
-    oal_uint16                  us_ta_user_idx;             /* 发送端地址用户索引 */
-    oal_uint8                   uc_mac_vap_id;
-    oal_uint8                   uc_channel_number;          /* 接收帧的信道 */
-}mac_rx_ctl_stru;
-#endif
+    mac_frame_he_spatial_reuse_parameter_set_ie_stru  st_sr_ie;
+}dmac_ctx_sta_asoc_set_sr_reg_stru;
 #endif
 
 typedef  hal_rx_ctl_stru   mac_rx_ctl_stru;
@@ -1115,8 +1067,8 @@ struct  mac_tx_ctl
     dmac_user_alg_probe_enum_uint8          en_is_probe_data            :3;          /* 是否探测帧 */
     oal_uint8                               bit_is_eapol_key_ptk        :1;          /* 4 次握手过程中设置单播密钥EAPOL KEY 帧标识 */
     oal_uint8                               bit_is_m2u_data             :1;          /* 是否是组播转单播的数据 */
-    oal_uint8                               bit_is_large_skb_amsdu      :1;          /* 是否是多子帧大包聚合 */
-    oal_uint8                               bit_ether_head_including    :1;          /* offload下netbuf头部LLC之前是否有etherhead */
+    oal_uint8                               bit_is_tcp_ack              :1;          /* 用于标记tcp ack */
+    oal_uint8                               bit_is_rtsp                 :1;
     oal_uint8                               en_use_4_addr               :1;             /* 是否使用4地址，由WDS特性决定 */
     /* byte13-16 */
     oal_uint32                              ul_timestamp_us;                         /* 维测使用入TID队列的时间戳, 单位1us精度 */
@@ -1124,9 +1076,11 @@ struct  mac_tx_ctl
     oal_uint8                               uc_alg_pktno;                            /* 算法用到的字段，唯一标示该报文 */
     oal_uint8                               uc_alg_frame_tag;                        /* 用于算法对帧进行标记 */
     /* byte19 */
-    oal_uint8                               bit_align_padding_offset    :2;
-    oal_uint8                               bit_is_tcp_ack              :1;          /* 用于标记tcp ack */
-    oal_uint8                               bit_resv                    :5;
+    oal_uint8                               bit_large_amsdu_level       :2;          /* offload下大包AMSDU聚合度 */
+    oal_uint8                               bit_align_padding           :2;          /* SKB 头部包含ETHER HEADER时,4字节对齐需要的padding */
+    oal_uint8                               bit_msdu_num_in_amsdu       :2;          /* 大包聚合时每个AMSDU子帧数 */
+    oal_uint8                               bit_is_large_skb_amsdu      :1;          /* 是否是多子帧大包聚合 */
+    oal_uint8                               bit_htc_flag                :1;          /* 用于标记htc */
 
 #ifndef _PRE_PRODUCT_ID_HI110X_DEV
     /* OFFLOAD架构下，HOST相对DEVICE的CB增量 */
@@ -1136,62 +1090,6 @@ struct  mac_tx_ctl
 typedef struct mac_tx_ctl  mac_tx_ctl_stru;
 #pragma pack(pop)
 
-#else
-/* netbuf控制字段(CB)，总长度为48字节, 如果修改，一定要通知sdt同步修改. */
-typedef struct
-{
-    oal_uint8                               uc_mpdu_num;                                /* ampdu中包含的MPDU个数,实际描述符填写的值为此值-1 */
-    oal_uint8                               uc_netbuf_num;                              /* 每个MPDU占用的netbuf数目 */
-    oal_uint16                              us_mpdu_payload_len;                        /* 每个MPDU的长度不包括mac header length */
-    oal_uint8                               uc_frame_header_length;                     /* 该MPDU的802.11头长度 */
-
-    oal_uint8                               bit_is_amsdu                :1;             /* 是否AMSDU: OAL_FALSE不是，OAL_TRUE是 */
-    oal_uint8                               bit_ismcast                 :1;             /* 该MPDU是单播还是多播:OAL_FALSE单播，OAL_TRUE多播 */
-    oal_uint8                               en_use_4_addr               :1;             /* 是否使用4地址，由WDS特性决定 */
-    oal_uint8                               bit_is_get_from_ps_queue    :1;             /* 节能特性用，标识一个MPDU是否从节能队列中取出来的 */
-    oal_uint8                               bit_is_first_msdu           :1;             /* 是否是第一个子帧，OAL_FALSE不是 OAL_TRUE是 */
-    oal_uint8                               bit_is_m2u_data             :1;             /* 是否是组播转单播的数据 */
-    oal_uint8                               en__res                     :2;
-
-    oal_uint8                               en_is_qosdata               :1;             /* 指示该帧是否是qos data */
-    oal_uint8                               bit_80211_mac_head_type     :1;             /* 0: 802.11 mac头不在skb中，另外申请了内存存放； 1: 802.11 mac头在skb中*/
-    oal_uint8                               en_is_bar                   :1;
-    oal_uint8                               bit_is_needretry            :1;
-    oal_uint8                               en_seq_ctrl_bypass          :1;             /* 该帧的SN号由软件维护，硬件禁止维护(目前仅用于非QOS分片帧 ) */
-    oal_uint8                               bit_need_rsp                :1;             /* WPAS send mgmt,need dmac response tx status */
-    oal_uint8                               bit_is_eapol_key_ptk        :1;             /* 4 次握手过程中设置单播密钥EAPOL KEY 帧标识 */
-    oal_uint8                               bit_roam_data               :1;
-
-    wlan_frame_type_enum_uint8              en_frame_type;                              /* 帧类型：数据帧，管理帧... */
-    mac_ieee80211_frame_stru               *pst_frame_header;                           /* 该MPDU的帧头指针 */
-    wlan_wme_ac_type_enum_uint8             uc_ac;                                      /* ac */
-    oal_uint8                               uc_tid;                                     /* tid */
-    frw_event_type_enum_uint8               en_event_type;                              /* 取值:FRW_EVENT_TYPE_WLAN_DTX和FRW_EVENT_TYPE_HOST_DRX，作用:在释放时区分是内存池的netbuf还是原生态的 */
-    oal_uint8                               uc_event_sub_type;                          /* amsdu抛事件用的 */
-    wlan_tx_ack_policy_enum_uint8           en_ack_policy;                              /* ACK 策略 */
-    oal_uint8                               uc_tx_vap_index;
-    oal_uint16                              us_tx_user_idx;                             /* dmac tx 到 tx complete 传递的user结构体，目标用户地址 */
-    oal_uint8                               uc_retried_num;
-    dmac_user_alg_probe_enum_uint8          en_is_probe_data;                           /* 是否是探测帧 */
-    oal_uint16                              us_seqnum;                                  /* 记录软件分配的seqnum*/
-    hal_tx_dscr_stru                       *pst_bar_dscr;
-
-
-    oal_uint8                               bit_mgmt_frame_id           :4;             /* wpas 发送管理帧的frame id */
-    oal_uint8                               bit_is_large_skb_amsdu      :1;          /* 是否是多子帧大包聚合 */
-    oal_uint8                               bit_ether_head_including    :1;
-    oal_uint8                               bit_reserved3               :2;
-
-    wlan_cb_frame_type_enum_uint8           uc_frame_type;                              /* 自定义帧类型 */
-    wlan_cb_frame_subtype_enum_uint8        uc_frame_subtype;                           /* 自定义帧子类型 */
-
-
-    oal_uint32                              ul_timestamp_us;                            /* 维测使用入TID队列时的时间戳, 单位1us精度 */
-
-    oal_uint32                              ul_alg_pktno;                               /* 算法用到的字段，唯一标示该报文 */
-    oal_uint8                               uc_alg_frame_tag;                           /* 用于算法对帧进行标记 */
-
-}mac_tx_ctl_stru;
 #endif
 
 
@@ -1330,6 +1228,10 @@ typedef struct
 typedef struct
 {
     frw_timeout_stru                st_bar_send_timeout_timer;
+#ifdef _PRE_WLAN_FEATURE_AMPDU_TX_HW
+    oal_uint8                       uc_hw_ampdu_first_flag;    /* 是否为硬件聚合第一帧发送 */
+    oal_uint8                       auc_resv[3];
+#endif
 }dmac_tid_rom_stru;
 
 extern dmac_tid_rom_stru g_dmac_tid_rom[][WLAN_TID_MAX_NUM];
@@ -1345,7 +1247,7 @@ typedef struct
     oal_uint16              us_mpdu_num;            /* MPDU个数 */
     oal_uint16              us_user_idx;            /* 无效值为MAC_RES_MAC_USER_NUM */
 
-    oal_uint32              ul_mpdu_avg_len;        /* mpdu滑动平均长度 */
+    oal_uint32              ul_tid_buffer_frame_length;        /* 分tid统计缓存帧长 */
 #ifdef _PRE_WLAN_FEATURE_TX_DSCR_OPT
     oal_dlist_head_stru     st_retry_q;             /* 重传队列链表 */
     oal_netbuf_head_stru    st_buff_head;           /* 发送缓存队列链表 */
@@ -1365,24 +1267,13 @@ typedef struct
     oal_bool_enum_uint8     en_is_delba_ing;        /* 该tid是否正在发delba */
     oal_uint8               uc_rx_wrong_ampdu_num;  /* 该tid未建立BA会话时收到的聚合子帧数(一般是DELBA失败) */
     oal_uint8               uc_tcp_ack_proportion;  /* 衡量tid中tck ack大致比例 */
-    oal_uint8               uc_last_is_amsdu;       /* 上一帧是否为amsdu */
+    wlan_tx_amsdu_enum_uint8  en_last_amsdu_level;       /* 上一帧是否为amsdu */
 
     /* ROM化后资源扩展指针 */
     oal_void                           *_rom;
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-#ifdef _PRE_WLAN_DFT_STAT
-    dmac_tid_stats_stru    *pst_tid_stats;           /* 该TID下入队、出队包数，丢包数统计 */
-#endif
-#endif
 #ifdef _PRE_DEBUG_MODE
     dmac_tid_ampdu_stat_stru *pst_tid_ampdu_stat;    /* ampdu业务流程统计信息 */
 #endif
-
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    oal_uint16             us_last_seq_frag_num;          /* 保存的前一个QoS帧的seq + frag num */
-    oal_uint8              auc_resv2[2];
-#endif
-
 }dmac_tid_stru;
 
 /* 处理MPDU的MSDU的处理状态的结构体的定义 */
@@ -1554,7 +1445,7 @@ typedef struct
 
 typedef struct
 {
-    oal_uint32                   uc_dscr_status;
+    oal_uint32                  uc_dscr_status;
     oal_uint8                   mgmt_frame_id;
     oal_uint8                   auc_resv[1];
     oal_uint16                  us_user_idx;
@@ -1715,12 +1606,6 @@ typedef struct
     oal_uint32              ul_rx_multicast_msdu_num;           /*组播接收的MPDU个数*/
     oal_uint32              ul_fcs_err_mpdu_num;                /*过滤暂不统计*/
     oal_uint32              ul_tx_succ_msdu_num;                /*发送成功的MSDU个数*/
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-    oal_uint32              ul_tx_mcast_bytes;                  /* 发送多播报文字节数:  */
-    oal_uint32              ul_rx_mcast_bytes;                  /* 接收多播报文字节数:  */
-    oal_uint32              aul_sta_tx_mcs_cnt[16];
-    oal_uint32              aul_sta_rx_mcs_cnt[16];
-#endif
 }dmac_stat_count_mpdu_stru;
 
 typedef struct
@@ -1906,6 +1791,68 @@ typedef struct
 }dmac_scan_for_gnss_stru;
 #endif
 
+#ifdef _PRE_WLAN_FEATURE_NRCOEX
+typedef struct
+{
+    oal_uint32  ul_freq;
+    oal_uint32  ul_40m_20m_gap0;
+    oal_uint32  ul_160m_80m_gap0;
+    oal_uint32  ul_40m_20m_gap1;
+    oal_uint32  ul_160m_80m_gap1;
+    oal_uint32  ul_40m_20m_gap2;
+    oal_uint32  ul_160m_80m_gap2;
+    oal_uint32  ul_smallgap0_act;
+    oal_uint32  ul_gap01_act;
+    oal_uint32  ul_gap12_act;
+    oal_int32   l_rxslot_rssi;
+}nrcoex_rule_stru;
+
+typedef struct
+{
+    oal_uint32  us_freq_low_limit    : 16,
+                us_freq_high_limit   : 16;
+    oal_uint32  us_20m_w2m_gap0      : 16,
+                us_40m_w2m_gap0      : 16;
+    oal_uint32  us_80m_w2m_gap0      : 16,
+                us_160m_w2m_gap0     : 16;
+    oal_uint32  us_20m_w2m_gap1      : 16,
+                us_40m_w2m_gap1      : 16;
+    oal_uint32  us_80m_w2m_gap1      : 16,
+                us_160m_w2m_gap1     : 16;
+    oal_uint32  us_20m_w2m_gap2      : 16,
+                us_40m_w2m_gap2      : 16;
+    oal_uint32  us_80m_w2m_gap2      : 16,
+                us_160m_w2m_gap2     : 16;
+    oal_uint32  uc_20m_smallgap0_act : 8,
+                uc_40m_smallgap0_act : 8,
+                uc_80m_smallgap0_act : 8,
+                uc_160m_smallgap0_act: 8;
+    oal_uint32  uc_20m_gap01_act     : 8,
+                uc_40m_gap01_act     : 8,
+                uc_80m_gap01_act     : 8,
+                uc_160m_gap01_act    : 8;
+    oal_uint32  uc_20m_gap12_act     : 8,
+                uc_40m_gap12_act     : 8,
+                uc_80m_gap12_act     : 8,
+                uc_160m_gap12_act    : 8;
+    oal_uint32  uc_20m_rxslot_rssi   : 8,
+                uc_40m_rxslot_rssi   : 8,
+                uc_80m_rxslot_rssi   : 8,
+                uc_160m_rxslot_rssi  : 8;
+}nrcoex_rule_detail_stru;
+
+typedef union {
+    nrcoex_rule_stru st_nrcoex_rule_data;
+    nrcoex_rule_detail_stru st_nrcoex_rule_detail_data;
+}nrcoex_rule_data_union;
+
+typedef struct
+{
+    oal_uint8                      uc_nrcoex_enable;
+    nrcoex_rule_data_union         un_nrcoex_rule_data[DMAC_WLAN_NRCOEX_INTERFERE_RULE_NUM];
+}nrcoex_cfg_info_stru;
+#endif
+
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
@@ -1923,8 +1870,10 @@ typedef struct
 /* 不区分offload架构的CB字段 */
 #define MAC_GET_CB_IS_4ADDRESS(_pst_tx_ctrl)             ((_pst_tx_ctrl)->en_use_4_addr)
 #define MAC_GET_CB_IS_AMSDU(_pst_tx_ctrl)                ((_pst_tx_ctrl)->bit_is_amsdu)
+#define MAC_GET_CB_AMSDU_LEVEL(_pst_tx_ctrl)             ((_pst_tx_ctrl)->bit_large_amsdu_level)
+#define MAC_GET_CB_ETHER_HEAD_PADDING(_pst_tx_ctrl)      ((_pst_tx_ctrl)->bit_align_padding)
+#define MAC_GET_CB_HAS_MSDU_NUMBER(_pst_tx_ctrl)         ((_pst_tx_ctrl)->bit_msdu_num_in_amsdu)
 #define MAC_GET_CB_IS_LARGE_SKB_AMSDU(_pst_tx_ctrl)      ((_pst_tx_ctrl)->bit_is_large_skb_amsdu)
-#define MAC_GET_CB_HAS_EHTER_HEAD(_pst_tx_ctrl)          ((_pst_tx_ctrl)->bit_ether_head_including)
 #define MAC_GET_CB_IS_FIRST_MSDU(_pst_tx_ctrl)           ((_pst_tx_ctrl)->bit_is_first_msdu)
 #define MAC_GET_CB_IS_NEED_RESP(_pst_tx_ctrl)            ((_pst_tx_ctrl)->bit_need_rsp)
 #define MAC_GET_CB_IS_EAPOL_KEY_PTK(_pst_tx_ctrl)        ((_pst_tx_ctrl)->bit_is_eapol_key_ptk)
@@ -1933,6 +1882,7 @@ typedef struct
 #define MAC_GET_CB_IS_MCAST(_pst_tx_ctrl)                ((_pst_tx_ctrl)->bit_ismcast)
 #define MAC_GET_CB_IS_NEEDRETRY(_pst_tx_ctrl)            ((_pst_tx_ctrl)->bit_is_needretry)
 #define MAC_GET_CB_IS_PROBE_DATA(_pst_tx_ctrl)           ((_pst_tx_ctrl)->en_is_probe_data)
+#define MAC_GET_CB_IS_RTSP(_pst_tx_ctrl)                 ((_pst_tx_ctrl)->bit_is_rtsp)
 #define MAC_GET_CB_ALG_TAGS(_pst_tx_ctrl)                ((_pst_tx_ctrl)->uc_alg_frame_tag)
 
 #define MAC_GET_CB_MGMT_FRAME_ID(_pst_tx_ctrl)           ((_pst_tx_ctrl)->bit_mgmt_frame_id)
@@ -1971,6 +1921,7 @@ typedef struct
 #define MAC_GET_CB_RETRIED_NUM(_pst_tx_ctrl)             ((_pst_tx_ctrl)->bit_retried_num)
 #define MAC_GET_CB_ALG_PKTNO(_pst_tx_ctrl)               ((_pst_tx_ctrl)->uc_alg_pktno)
 #define MAC_GET_CB_TCP_ACK(_pst_tx_ctrl)                 ((_pst_tx_ctrl)->bit_is_tcp_ack)
+#define MAC_GET_CB_HTC_FLAG(_pst_tx_ctrl)                ((_pst_tx_ctrl)->bit_htc_flag)
 
 #define MAC_GET_CB_IS_DATA_FRAME(_pst_tx_ctrl)       \
         ((WLAN_DATA_BASICTYPE == MAC_GET_CB_WLAN_FRAME_TYPE(_pst_tx_ctrl)) &&    \
@@ -1986,7 +1937,10 @@ typedef struct
         (((mac_ieee80211_frame_stru *)((oal_uint8 *)(_pst_tx_ctrl) + OAL_MAX_CB_LEN))->st_frame_control.bit_type)
 #define MAC_GET_CB_WLAN_FRAME_SUBTYPE(_pst_tx_ctrl)   \
         (((mac_ieee80211_frame_stru *)((oal_uint8 *)(_pst_tx_ctrl) + OAL_MAX_CB_LEN))->st_frame_control.bit_sub_type)
-
+#ifdef _PRE_WLAN_FEATURE_TXBF_HW
+#define MAC_FRAME_TYPE_IS_VHT_NDPA(_uc_type, _uc_sub_type) \
+    ((WLAN_CONTROL == (_uc_type)) && (WLAN_VHT_NDPA == (_uc_sub_type)))
+#endif
 
 #define MAC_SET_CB_FRAME_HEADER_ADDR(_pst_tx_ctrl, _addr)
 #define MAC_GET_CB_FRAME_HEADER_ADDR(_pst_tx_ctrl)       ((mac_ieee80211_frame_stru *)((oal_uint8 *)_pst_tx_ctrl + OAL_MAX_CB_LEN))
@@ -2017,38 +1971,6 @@ typedef struct
 #define MAC_GET_CB_IS_QOS_DATA(_pst_tx_ctrl)             OAL_FALSE
 #endif //#if defined(_PRE_PRODUCT_ID_HI110X_DEV)
 
-
-#else
-/* 发送控制字段获取 */
-#define MAC_GET_CB_MPDU_NUM(_pst_tx_ctrl)                       ((_pst_tx_ctrl)->uc_mpdu_num)
-#define MAC_GET_CB_NETBUF_NUM(_pst_tx_ctrl)                     ((_pst_tx_ctrl)->uc_netbuf_num)
-#define MAC_GET_CB_FRAME_HEADER_LENGTH(_pst_tx_ctrl)            ((_pst_tx_ctrl)->uc_frame_header_length)
-#define MAC_GET_CB_ACK_POLACY(_pst_tx_ctrl)                     ((_pst_tx_ctrl)->en_ack_policy)
-#define MAC_GET_CB_WLAN_FRAME_TYPE(_pst_tx_ctrl)                ((_pst_tx_ctrl)->en_frame_type)
-#define MAC_GET_CB_WLAN_FRAME_SUBTYPE(_pst_tx_ctrl)             (((_pst_tx_ctrl)->pst_frame_header)->st_frame_control.bit_sub_type)
-#define MAC_GET_CB_TX_VAP_INDEX(_pst_tx_ctrl)                   ((_pst_tx_ctrl)->uc_tx_vap_index)
-#define MAC_GET_CB_TX_USER_IDX(_pst_tx_ctrl)                    ((_pst_tx_ctrl)->us_tx_user_idx)
-#define MAC_GET_CB_WME_AC_TYPE(_pst_tx_ctrl)                    ((_pst_tx_ctrl)->uc_ac)
-#define MAC_GET_CB_WME_TID_TYPE(_pst_tx_ctrl)                   ((_pst_tx_ctrl)->uc_tid)
-#define MAC_GET_CB_EVENT_TYPE(_pst_tx_ctrl)                     ((_pst_tx_ctrl)->en_event_type)
-#define MAC_GET_CB_EVENT_SUBTYPE(_pst_tx_ctrl)                  ((_pst_tx_ctrl)->uc_event_sub_type)
-#define MAC_GET_CB_RETRIED_NUM(_pst_tx_ctrl)                    ((_pst_tx_ctrl)->uc_retried_num)
-#define MAC_SET_CB_80211_MAC_HEAD_TYPE(_pst_tx_ctrl, _flag)     ((_pst_tx_ctrl)->bit_80211_mac_head_type = _flag)
-#define MAC_GET_CB_80211_MAC_HEAD_TYPE(_pst_tx_ctrl)            ((_pst_tx_ctrl)->bit_80211_mac_head_type)
-#define MAC_GET_CB_SEQ_CTRL_BYPASS(_pst_tx_ctrl)                ((_pst_tx_ctrl)->en_seq_ctrl_bypass)
-#define MAC_SET_CB_FRAME_HEADER_ADDR(_pst_tx_ctrl, _addr)       ((_pst_tx_ctrl)->pst_frame_header = _addr)
-#define MAC_GET_CB_FRAME_HEADER_ADDR(_pst_tx_ctrl)              ((_pst_tx_ctrl)->pst_frame_header)
-#define MAC_GET_CB_BAR_DSCR_ADDR(_pst_tx_ctrl)                  ((_pst_tx_ctrl)->pst_bar_dscr)
-#define MAC_SET_CB_BAR_DSCR_ADDR(_pst_tx_ctrl, _addr)           ((_pst_tx_ctrl)->pst_bar_dscr = _addr)
-#define MAC_GET_CB_SEQ_NUM(_pst_tx_ctrl)                        ((_pst_tx_ctrl)->us_seqnum)
-#define MAC_GET_CB_ALG_PKTNO(_pst_tx_ctrl)                      ((_pst_tx_ctrl)->ul_alg_pktno)
-
-#define MAC_SET_CB_IS_BAR(_pst_tx_ctrl, _flag)                  ((_pst_tx_ctrl)->en_is_bar = _flag)
-#define MAC_GET_CB_IS_BAR(_pst_tx_ctrl)                         ((_pst_tx_ctrl)->en_is_bar)
-#define MAC_SET_CB_IS_QOS_DATA(_pst_tx_ctrl, _flag)             ((_pst_tx_ctrl)->en_is_qosdata = _flag)
-#define MAC_GET_CB_IS_QOS_DATA(_pst_tx_ctrl)                    ((_pst_tx_ctrl)->en_is_qosdata)
-#define MAC_GET_CB_IS_DATA_FRAME(_pst_tx_ctrl)                  (WLAN_DATA_BASICTYPE == MAC_GET_CB_WLAN_FRAME_TYPE(_pst_tx_ctrl))
-#define MAC_GET_CB_IS_MORE_FRAGMENTS(_pst_tx_ctrl)              (((_pst_tx_ctrl)->pst_frame_header)->st_frame_control.bit_more_frag)
 #endif //#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 
 
@@ -2070,13 +1992,6 @@ typedef struct
             ((oal_uint8 *)(mac_get_rx_cb_mac_hdr(_pst_rx_ctl)) + MAC_GET_RX_CB_MAC_HEADER_LEN(_pst_rx_ctl))
 #endif
 
-#else
-#define MAC_GET_RX_CB_TA_USER_IDX(_pst_rx_ctl)                  ((_pst_rx_ctl)->us_ta_user_idx)
-#define MAC_GET_RX_CB_MAC_HEADER_ADDR(_pst_rx_ctl)              ((_pst_rx_ctl)->pul_mac_hdr_start_addr)
-#define MAC_GET_RX_CB_DA_USER_IDX(_pst_rx_ctl)                  ((_pst_rx_ctl)->us_da_user_idx)
-#define MAC_GET_RX_CB_PAYLOAD_LEN(_pst_rx_ctl)                  ((_pst_rx_ctl)->us_frame_len - (_pst_rx_ctl)->uc_mac_header_len)
-#define MAC_GET_RX_PAYLOAD_ADDR(_pst_rx_ctl, _pst_buf) \
-            ((oal_uint8 *)(mac_get_rx_cb_mac_hdr(_pst_rx_ctl)) + MAC_GET_RX_CB_MAC_HEADER_LEN(_pst_rx_ctl))
 #endif
 
 
@@ -2094,7 +2009,7 @@ OAL_STATIC OAL_INLINE oal_uint32  dmac_rx_free_netbuf_list(
                 oal_netbuf_stru           **pst_netbuf,
                 oal_uint16                  us_nums)
 {
-    oal_netbuf_stru    *pst_netbuf_temp;
+    oal_netbuf_stru    *pst_netbuf_temp = OAL_PTR_NULL;
     oal_uint16          us_netbuf_num;
 
 #if defined(_PRE_MEM_DEBUG_MODE) && (_PRE_OS_VERSION_RAW == _PRE_OS_VERSION)
@@ -2132,23 +2047,6 @@ OAL_STATIC OAL_INLINE oal_uint32  dmac_rx_free_netbuf_list(
 
     return OAL_SUCC;
 }
-
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-OAL_STATIC OAL_INLINE oal_uint8 mac_get_cb_is_seq_ctrl_bypass(mac_tx_ctl_stru *pst_cb)
-{
-    oal_uint8                   uc_frame_type = 0;           /* 802.11头 */
-
-    uc_frame_type = (oal_uint8)((MAC_GET_CB_FRAME_HEADER_ADDR(pst_cb))->st_frame_control.bit_type);
-
-    /* 更新非Qos数据帧的seq_ctl_hw_bypass 标志 */
-    if ((OAL_TRUE != MAC_GET_CB_IS_QOS_DATA(pst_cb)) && (WLAN_DATA_BASICTYPE == uc_frame_type))
-    {
-        return MAC_GET_CB_SEQ_CTRL_BYPASS(pst_cb);
-    }
-
-    return OAL_FALSE;
-}
-#endif
 
 
 OAL_STATIC OAL_INLINE oal_void mac_set_rx_cb_mac_hdr(mac_rx_ctl_stru *pst_cb_ctrl, oal_uint32 *pul_mac_hdr_start_addr)
@@ -2281,7 +2179,7 @@ extern oal_uint32 dmac_cfg_vap_init_event(frw_event_mem_stru *pst_event_mem);
 #endif
 #endif
 extern oal_uint32 dmac_tx_reinit_tx_queue(mac_device_stru *pst_mac_device, hal_to_dmac_device_stru *pst_hal_device);
-extern oal_uint32  mac_vap_set_cb_tx_user_idx(mac_vap_stru *pst_mac_vap, mac_tx_ctl_stru *pst_tx_ctl, oal_uint8 *puc_data);
+extern oal_uint32  mac_vap_set_cb_tx_user_idx(mac_vap_stru *pst_mac_vap, mac_tx_ctl_stru *pst_tx_ctl, const unsigned char *puc_data);
 
 extern oal_void dmac_tid_tx_queue_init_cb(dmac_tid_stru *past_tx_tid_queue, mac_user_stru *pst_user, oal_uint32 *pul_result);
 

@@ -87,7 +87,7 @@ extern oal_bool_enum_uint8 hmac_proxy_arp_proc(hmac_vap_stru *pst_hmac_vap, oal_
 extern oal_err_code_enum_uint32 hmac_proxy_remove_mac(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac);
 extern oal_void hmac_proxyarp_on(mac_vap_stru *pst_mac_vap, oal_bool_enum_uint8 en_on);
 extern oal_uint32 hmac_proxy_display_info(mac_vap_stru *pst_mac_vap);
-//extern oal_err_code_enum_uint32 mac_proxy_init_vap(mac_vap_stru * pst_mac_vap);
+
 
 
 #endif/* #ifdef _PRE_WLAN_FEATURE_PROXY_ARP */

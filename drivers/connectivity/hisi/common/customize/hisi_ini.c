@@ -19,6 +19,8 @@
 #include "hisi_ini.h"
 #include "board.h"
 
+#include "oal_util.h"
+
 /*
  * 2 Global Variable Definition
  */
@@ -44,7 +46,8 @@ static int32 ko_read_line(INI_FILE *fp, char *addr)
     int8  auc_tmp[MAX_READ_LINE_NUM] = {0};
     int32 cnt = 0;
 
-    l_ret = kernel_read(fp, fp->f_pos, auc_tmp, MAX_READ_LINE_NUM);
+    l_ret = oal_file_read_ext(fp, fp->f_pos, auc_tmp, MAX_READ_LINE_NUM);
+
     if (0 > l_ret)
     {
         INI_ERROR("kernel_line read l_ret < 0");

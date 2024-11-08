@@ -61,10 +61,10 @@ oal_void hmac_smps_all_vap_update(mac_device_stru *pst_mac_device, wlan_mib_mimo
 
 oal_uint32 hmac_smps_update_status(mac_vap_stru *pst_mac_vap, mac_user_stru *pst_mac_user, oal_bool_enum_uint8 en_plus_user)
 {
-    mac_device_stru                        *pst_mac_device;
+    mac_device_stru                        *pst_mac_device = OAL_PTR_NULL;
     wlan_mib_mimo_power_save_enum_uint8     en_user_smps_mode;
-    frw_event_mem_stru                     *pst_event_mem;
-    frw_event_stru                         *pst_event;
+    frw_event_mem_stru                     *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru                         *pst_event = OAL_PTR_NULL;
     oal_uint32                              ul_ret;
     oal_bool_enum_uint8                     en_ht_cap;
     mac_cfg_smps_mode_stru                  st_smps_mode = {0};

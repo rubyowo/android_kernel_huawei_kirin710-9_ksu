@@ -800,35 +800,35 @@ typedef struct
 
 #if defined(_PRE_PRODUCT_ID_HI110X_DEV)
 /* 裸系统下DMAC模块与HMAC模块共用的接收流程控制信息数据结构定义, 与hal_rx_ctl_stru结构体保持一致*/
-#if 0
-#pragma pack(push,1)
-typedef struct
-{
-    /*word 0*/
-    oal_uint8                   bit_vap_id            :5;
-    oal_uint8                   bit_amsdu_enable      :1;
-    oal_uint8                   bit_is_first_buffer   :1;
-    oal_uint8                   bit_is_last_buffer    :1;
 
-    oal_uint8                   uc_msdu_in_buffer     :6;
-    oal_uint8                   bit_is_fragmented     :1;
-    oal_uint8                   bit_reserved1         :1;
 
-    mac_data_type_enum_uint8    bit_data_frame_type   :4;
-    oal_uint8                   bit_ta_user_idx       :4;
 
-    oal_uint8                   bit_mac_header_len    :6;   /* mac header帧头长度 */
-    oal_uint8                   bit_is_beacon         :1;
-    oal_uint8                   bit_is_key_frame      :1;
-    /*word 1*/
-    oal_uint16                  us_frame_len;               /* 帧头与帧体的总长度 */
-    oal_uint8                   uc_mac_vap_id         :4;
-    oal_uint8                   bit_buff_nums         :4; /* 每个MPDU占用的buf数 */
-    oal_uint8                   uc_channel_number;          /* 接收帧的信道 */
-    /*word 2*/
-}mac_rx_ctl_stru;
-#pragma pack(pop)
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 typedef  hal_rx_ctl_stru   mac_rx_ctl_stru;
 #else
 /* DMAC模块与HMAC模块共用的接收流程控制信息数据结构定义, 与hal_rx_ctl_stru结构体保持一致*/
@@ -843,7 +843,8 @@ typedef struct
     oal_uint8                   bit_buff_nums         :4;   /* 每个MPDU占用的buf数目 */
     oal_uint8                   bit_is_beacon         :1;
     oal_uint8                   bit_is_last_buffer    :1;
-    oal_uint8                   bit_reserved1         :2;
+    oal_uint8                   bit_has_tcp_ack_info  :1;
+    oal_uint8                   bit_reserved1         :1;
     oal_uint8                   uc_mac_header_len;          /* mac header帧头长度 */
     /*word 1*/
     oal_uint16                  us_frame_len;               /* 帧头与帧体的总长度 */
@@ -878,14 +879,14 @@ typedef struct
 
 typedef dmac_config_syn_stru hmac_config_syn_stru;
 
-#if 0
-/* DMAC_WLAN_CRX_EVENT_SUB_TYPE_SCAN_COMP */
-typedef struct
-{
-    oal_uint32      ul_bss_num;
-    oal_void       *p_bss_list;
-}dmac_wlan_crx_scan_comp_stru;
-#endif
+
+
+
+
+
+
+
+
 
 #if defined(_PRE_PRODUCT_ID_HI110X_DEV)
 #pragma pack(push,1)
@@ -932,7 +933,8 @@ struct  mac_tx_ctl
     oal_uint8                               bit_is_eapol_key_ptk        :1;           /* 4 次握手过程中设置单播密钥EAPOL KEY 帧标识 */
 
     oal_uint32                              ul_timestamp_us;                           /* 维测使用入TID队列的时间戳, 单位1us精度 */
-    oal_uint8                               auc_resv[4];
+    oal_uint8                               uc_softretry_cnt;
+    oal_uint8                               auc_resv[3];
     oal_uint16                              us_mpdu_bytes;                             /* mpdu字节数，维测用，不包括头尾，不包括snap，不包括padding */
 
 }__OAL_DECLARE_PACKED;
@@ -1442,7 +1444,6 @@ typedef struct
 }dmac_sdt_sample_frame_stru;
 #endif
 
-
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/
@@ -1483,7 +1484,7 @@ typedef struct
 
 #define MAC_GET_CB_TIMESTAMP(_pst_tx_ctrl)                  ((_pst_tx_ctrl)->ul_timestamp_us)
 #define MAC_GET_CB_MPDU_BYTES(_pst_tx_ctrl)                 ((_pst_tx_ctrl)->us_mpdu_bytes)
-
+#define MAC_GET_CB_EXT_SOFTRETRY_CNT(_pst_tx_ctrl)              ((_pst_tx_ctrl)->uc_softretry_cnt)
 /* DMAC模块接收流程控制信息结构体的信息元素获取 */
 
 /* 02 51 mac_rx_ctl_stru 不同元素封装成宏 */
@@ -1714,8 +1715,8 @@ OAL_STATIC OAL_INLINE oal_void mac_set_cb_sub_type(mac_tx_ctl_stru *pst_tx_ctrl,
 OAL_STATIC OAL_INLINE wlan_wme_ac_type_enum_uint8 mac_get_cb_ac(mac_tx_ctl_stru *pst_tx_ctrl)
 {
 #if defined(_PRE_PRODUCT_ID_HI110X_DEV)
-    //oal_uint8   uc_tid = mac_get_cb_tid(pst_tx_ctrl);
-    //return (WLAN_WME_TID_TO_AC(uc_tid));
+
+
     return pst_tx_ctrl->bit_ac;
 #else
     return pst_tx_ctrl->uc_ac;
@@ -1986,11 +1987,11 @@ extern oal_uint32 mac_vap_set_cb_tx_user_idx(mac_vap_stru *pst_mac_vap, mac_tx_c
 extern oal_uint32 dmac_init_event_process(frw_event_mem_stru *pst_event_mem);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 
-#if 0
-extern oal_uint32 dmac_init_event_create_cfg_vap(frw_event_mem_stru *pst_event_mem);
-#else
+
+
+
 extern oal_uint32 dmac_cfg_vap_init_event(frw_event_mem_stru *pst_event_mem);
-#endif
+
 
 #endif
 #endif

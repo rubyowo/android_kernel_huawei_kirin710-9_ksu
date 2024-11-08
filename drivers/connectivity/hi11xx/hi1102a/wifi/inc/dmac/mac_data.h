@@ -59,9 +59,11 @@ typedef enum
     MAC_DATA_URGENT_TCP_ACK       ,                  /* 8 */
     MAC_DATA_NORMAL_TCP_ACK       ,                  /* 9 */
     MAC_DATA_TCP_SYN              ,                  /* 10 */
-    MAC_DATA_DNS                  ,                  /* 11*/
+    MAC_DATA_DNS                  ,                  /* 11 */
 
-    MAC_DATA_BUTT
+    MAC_DATA_BUTT                 ,                  /* 12 */
+
+    MAC_DATA_RTSP                 ,                  /* 13 */
 }mac_data_type_enum;
 typedef oal_uint8 mac_data_type_enum_uint8;
 
@@ -118,6 +120,7 @@ extern  oal_uint8 mac_get_data_type_from_80211(oal_netbuf_stru *pst_netbuff, oal
 extern oal_uint16 mac_get_eapol_keyinfo(oal_netbuf_stru *pst_netbuff);
 extern oal_uint8 mac_get_eapol_type(oal_netbuf_stru *pst_netbuff);
 extern oal_bool_enum_uint8 mac_is_eapol_key_ptk_4_4(oal_netbuf_stru *pst_netbuff);
+extern oal_bool_enum_uint8 mac_is_dns_frame(mac_ip_header_stru *pst_ip_hdr);
 #ifdef __cplusplus
     #if __cplusplus
         }

@@ -26,6 +26,8 @@
 #ifdef _PRE_WLAN_FEATURE_ROAM
 #include "hmac_roam_main.h"
 #endif
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_BTCOEX_C
@@ -63,9 +65,9 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_foreach_tid(mac_vap_stru *pst_mac_vap, m
 OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hmac_user_stru *pst_hmac_user)
 {
     mac_cfg_delba_req_param_stru st_mac_cfg_delba_param;
-    hmac_vap_stru                *pst_hmac_vap;
+    hmac_vap_stru                *pst_hmac_vap = OAL_PTR_NULL;
 
-    OAL_MEMZERO((oal_uint8*)&st_mac_cfg_delba_param, OAL_SIZEOF(st_mac_cfg_delba_param));
+    memset_s((oal_uint8*)&st_mac_cfg_delba_param, OAL_SIZEOF(st_mac_cfg_delba_param), 0, OAL_SIZEOF(st_mac_cfg_delba_param));
 
     st_mac_cfg_delba_param.en_direction = MAC_RECIPIENT_DELBA;
 
@@ -88,7 +90,6 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hma
             OAM_WARNING_LOG0(0, OAM_SF_COEX, "{hmac_btcoex_delba_from_user::need to reassoc to READDBA.}");
 
             /* 发起reassoc req */
-            //hmac_roam_trigger_handle_etc(pst_hmac_vap, -122, OAL_TRUE);
             hmac_roam_start_etc(pst_hmac_vap, ROAM_SCAN_CHANNEL_ORG_0, OAL_FALSE, NULL, ROAM_TRIGGER_COEX);
 
             /* 重关联之后，刷新为允许建立聚合 */
@@ -109,9 +110,9 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_from_user(mac_vap_stru *pst_mac_vap, hma
 
 oal_uint32 hmac_btcoex_rx_delba_trigger_etc(mac_vap_stru *pst_mac_vap, oal_uint8 uc_len, oal_uint8 *puc_param)
 {
-    dmac_to_hmac_btcoex_rx_delba_trigger_event_stru *pst_dmac_to_hmac_btcoex_rx_delba;
-    hmac_vap_stru                                   *pst_hmac_vap;
-    hmac_user_stru                                  *pst_hmac_user;
+    dmac_to_hmac_btcoex_rx_delba_trigger_event_stru *pst_dmac_to_hmac_btcoex_rx_delba = OAL_PTR_NULL;
+    hmac_vap_stru                                   *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_user_stru                                  *pst_hmac_user = OAL_PTR_NULL;
     oal_uint32                                       ul_ret;
 
     pst_hmac_vap = (hmac_vap_stru *)mac_res_get_hmac_vap(pst_mac_vap->uc_vap_id);
@@ -160,8 +161,8 @@ oal_uint32 hmac_btcoex_rx_delba_trigger_etc(mac_vap_stru *pst_mac_vap, oal_uint8
 
 OAL_STATIC oal_uint32 hmac_btcoex_delba_send_timeout(oal_void *p_arg)
 {
-    hmac_btcoex_arp_req_process_stru *pst_hmac_btcoex_arp_req_process;
-    hmac_user_btcoex_stru            *pst_hmac_user_btcoex;
+    hmac_btcoex_arp_req_process_stru *pst_hmac_btcoex_arp_req_process = OAL_PTR_NULL;
+    hmac_user_btcoex_stru            *pst_hmac_user_btcoex = OAL_PTR_NULL;
     hmac_user_stru                   *pst_hmac_user;
     oal_uint32                        ui_val;
 
@@ -230,10 +231,10 @@ OAL_STATIC oal_uint32 hmac_btcoex_delba_send_timeout(oal_void *p_arg)
 
 oal_void hmac_btcoex_arp_fail_delba_process_etc(oal_netbuf_stru *pst_netbuf, mac_vap_stru *pst_mac_vap)
 {
-    hmac_btcoex_arp_req_process_stru *pst_hmac_btcoex_arp_req_process;
-    hmac_user_btcoex_stru            *pst_hmac_user_btcoex;
-    mac_ether_header_stru            *pst_mac_ether_hdr;
-    hmac_user_stru                   *pst_hmac_user;
+    hmac_btcoex_arp_req_process_stru *pst_hmac_btcoex_arp_req_process = OAL_PTR_NULL;
+    hmac_user_btcoex_stru            *pst_hmac_user_btcoex = OAL_PTR_NULL;
+    mac_ether_header_stru            *pst_mac_ether_hdr = OAL_PTR_NULL;
+    hmac_user_stru                   *pst_hmac_user = OAL_PTR_NULL;
     oal_uint8                         uc_data_type;
 
     if (WLAN_BAND_2G != MAC_GET_VAP_BAND(pst_mac_vap))
@@ -299,7 +300,7 @@ oal_void hmac_btcoex_blacklist_handle_init(oal_void *p_arg)
 oal_uint32 hmac_btcoex_check_exception_in_list_etc(oal_void *p_arg, oal_uint8 *auc_addr)
 {
     hmac_vap_stru                    *pst_hmac_vap = (hmac_vap_stru *)p_arg;
-    hmac_btcoex_delba_exception_stru *pst_btcoex_exception;
+    hmac_btcoex_delba_exception_stru *pst_btcoex_exception = OAL_PTR_NULL;
     hmac_device_stru                 *pst_hmac_device;
     oal_uint8                         uc_index;
 
@@ -330,8 +331,8 @@ oal_uint32 hmac_btcoex_check_exception_in_list_etc(oal_void *p_arg, oal_uint8 *a
 
 OAL_STATIC oal_void hmac_btcoex_add_exception_to_list(hmac_vap_stru *pst_hmac_vap, oal_uint8 *auc_mac_addr)
 {
-    hmac_btcoex_delba_exception_stru *pst_btcoex_exception;
-    hmac_device_btcoex_stru          *pst_hmac_device_btcoex;
+    hmac_btcoex_delba_exception_stru *pst_btcoex_exception = OAL_PTR_NULL;
+    hmac_device_btcoex_stru          *pst_hmac_device_btcoex = OAL_PTR_NULL;
     hmac_device_stru                 *pst_hmac_device;
 
     pst_hmac_device = hmac_res_get_mac_dev_etc(pst_hmac_vap->st_vap_base_info.uc_device_id);
@@ -364,7 +365,7 @@ oal_void hmac_btcoex_check_rx_same_baw_start_from_addba_req_etc(oal_void *p_arg,
 {
     hmac_vap_stru                  *pst_hmac_vap = (hmac_vap_stru *)p_arg;
     hmac_user_stru                 *pst_hmac_user = (hmac_user_stru *)p_arg1;
-    hmac_btcoex_addba_req_stru     *pst_hmac_btcoex_addba_req;
+    hmac_btcoex_addba_req_stru     *pst_hmac_btcoex_addba_req = OAL_PTR_NULL;
     hmac_user_btcoex_stru          *pst_hmac_user_btcoex;
     oal_uint16                      us_baw_start;
     oal_uint8                       uc_tid;
@@ -439,7 +440,7 @@ oal_void hmac_btcoex_check_rx_same_baw_start_from_addba_req_etc(oal_void *p_arg,
 
 oal_uint32  hmac_config_print_btcoex_status_etc(mac_vap_stru *pst_mac_vap, oal_uint16 us_len, oal_uint8 *puc_param)
 {
-    hmac_btcoex_delba_exception_stru *pst_btcoex_exception;
+    hmac_btcoex_delba_exception_stru *pst_btcoex_exception = OAL_PTR_NULL;
     hmac_device_stru                 *pst_hmac_device;
     oal_uint32                        ul_ret;
     oal_uint8                         uc_index;

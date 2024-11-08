@@ -15,9 +15,6 @@ extern "C" {
 *****************************************************************************/
 #include "oal_ext_if.h"
 #include "frw_ext_if.h"
-#if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-#include "hal_ext_if.h"
-#endif
 #ifdef _PRE_WLAN_ALG_ENABLE
 #include "alg_ext_if.h"
 #endif

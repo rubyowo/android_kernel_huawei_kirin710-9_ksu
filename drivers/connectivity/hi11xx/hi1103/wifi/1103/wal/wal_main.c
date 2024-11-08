@@ -38,6 +38,8 @@ extern "C" {
 
 #include "hmac_vap.h"
 #include "wal_linux_atcmdsrv.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_WAL_MAIN_C
@@ -51,7 +53,6 @@ OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_crx_table[WAL_HOST_CRX_S
 OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_BUTT];
 
 /* HOST DRX子表 */
-/* OAL_STATIC frw_event_sub_table_item_stru g_ast_wal_host_drx_table[WAL_HOST_DRX_SUBTYPE_BUTT]; */
 
 /* wal对外钩子函数 */
 oam_wal_func_hook_stru     g_st_wal_drv_func_hook_etc;
@@ -75,6 +76,9 @@ st_rx_auth_to_host g_st_rx_auth_to_host;
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
 wal_hw_wlan_filter_ops g_st_ip_filter_ops_etc = {
     .set_filter_enable       = wal_set_ip_filter_enable_etc,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0))
+    .set_filter_enable_ex    = wal_set_assigned_filter_enable_etc,
+#endif
     .add_filter_items        = wal_add_ip_filter_items_etc,
     .clear_filters           = wal_clear_ip_filter_etc,
     .get_filter_pkg_stat     = NULL,
@@ -98,14 +102,11 @@ oal_uint32  wal_event_fsm_init_etc(oal_void)
 #endif
     frw_event_table_register_etc(FRW_EVENT_TYPE_HOST_CRX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_crx_table);
 
-    /* g_ast_wal_host_drx_table[WAL_HOST_DRX_SUBTYPE_TX].p_func = hmac_tx_lan_to_wlan_ap;
-    frw_event_table_register_etc(FRW_EVENT_TYPE_HOST_DRX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_drx_table); */
-
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_SCAN_COMP_STA].p_func     = wal_scan_comp_proc_sta_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_ASOC_COMP_STA].p_func     = wal_asoc_comp_proc_sta_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_DISASOC_COMP_STA].p_func  = wal_disasoc_comp_proc_sta_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_STA_CONNECT_AP].p_func    = wal_connect_new_sta_proc_ap_etc;
-    g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_STA_DISCONNECT_AP].p_func  = wal_disconnect_sta_proc_ap_etc;
+    g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_STA_DISCONNECT_AP].p_func = wal_disconnect_sta_proc_ap_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_MIC_FAILURE].p_func       = wal_mic_failure_proc_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_RX_MGMT].p_func           = wal_send_mgmt_to_host_etc;
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_LISTEN_EXPIRED].p_func    = wal_p2p_listen_timeout_etc;
@@ -119,9 +120,7 @@ oal_uint32  wal_event_fsm_init_etc(oal_void)
 #endif
 
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_INIT].p_func  = wal_cfg80211_init_evt_handle_etc;
-#if ((_PRE_PRODUCT_ID != _PRE_PRODUCT_ID_HI1151) || ((_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_E5) && (_PRE_CONFIG_TARGET_PRODUCT != _PRE_TARGET_PRODUCT_TYPE_CPE)))
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_MGMT_TX_STATUS].p_func  = wal_cfg80211_mgmt_tx_status_etc;
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_ROAM
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_ROAM_COMP_STA].p_func   = wal_roam_comp_proc_sta_etc;
@@ -148,16 +147,16 @@ oal_uint32  wal_event_fsm_init_etc(oal_void)
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_CAC_REPORT].p_func   = wal_cfg80211_cac_report;
 #endif
 
-#ifdef _PRE_WLAN_FEATURE_HILINK_TEMP_PROTECT
-    g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_NOTIFY_STA_RSSI].p_func = wal_receive_all_sta_rssi_proc;
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_M2S
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_M2S_STATUS].p_func   = wal_cfg80211_m2s_status_report;
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_TAS_ANT_SWITCH
     g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_TAS_NOTIFY_RSSI].p_func   = wal_cfg80211_tas_rssi_access_report;
+#endif
+
+#ifdef _PRE_WLAN_FEATURE_SAE
+    g_ast_wal_host_ctx_table[HMAC_HOST_CTX_EVENT_SUB_TYPE_EXT_AUTH_REQ].p_func    = wal_report_external_auth_req_etc;
 #endif
 
     frw_event_table_register_etc(FRW_EVENT_TYPE_HOST_CTX, FRW_EVENT_PIPELINE_STAGE_0, g_ast_wal_host_ctx_table);
@@ -168,9 +167,11 @@ oal_uint32  wal_event_fsm_init_etc(oal_void)
 
 oal_uint32  wal_event_fsm_exit_etc(oal_void)
 {
-    OAL_MEMZERO(g_ast_wal_host_crx_table, OAL_SIZEOF(g_ast_wal_host_crx_table));
+    memset_s(g_ast_wal_host_crx_table, OAL_SIZEOF(g_ast_wal_host_crx_table),
+             0, OAL_SIZEOF(g_ast_wal_host_crx_table));
 
-    OAL_MEMZERO(g_ast_wal_host_ctx_table, OAL_SIZEOF(g_ast_wal_host_ctx_table));
+    memset_s(g_ast_wal_host_ctx_table, OAL_SIZEOF(g_ast_wal_host_ctx_table),
+             0, OAL_SIZEOF(g_ast_wal_host_ctx_table));
 
     return OAL_SUCC;
 }
@@ -187,17 +188,18 @@ oal_int32 wal_wakelock_info_print_etc(char* buf, oal_int32 buf_len)
 #ifdef CONFIG_PRINTK
     if(g_st_wal_wakelock_etc.locked_addr)
     {
-        ret +=  OAL_SPRINTF(buf + ret , buf_len - ret,"wakelocked by:%pf\n",
-                    (oal_void*)g_st_wal_wakelock_etc.locked_addr);
+        ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1, "wakelocked by:%pf\n",
+                           (oal_void*)g_st_wal_wakelock_etc.locked_addr);
     }
 #endif
 
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret,"hold %lu locks\n", g_st_wal_wakelock_etc.lock_count);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "hold %lu locks\n", g_st_wal_wakelock_etc.lock_count);
 
     return ret;
 }
 
-OAL_STATIC ssize_t  wal_get_wakelock_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_wakelock_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
 
@@ -225,12 +227,12 @@ OAL_STATIC ssize_t  wal_get_wakelock_info(struct device *dev, struct device_attr
 }
 
 extern oal_int32 wal_atcmsrv_ioctl_get_rx_pckg_etc(oal_net_device_stru *pst_net_dev, oal_int32 *pl_rx_pckg_succ_num);
-OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     ssize_t                     ret = 0;
-    oal_net_device_stru*        pst_net_dev;
-    mac_vap_stru*               pst_vap;
-    hmac_vap_stru*              pst_hmac_vap;
+    oal_net_device_stru*        pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru*               pst_vap = OAL_PTR_NULL;
+    hmac_vap_stru*              pst_hmac_vap = OAL_PTR_NULL;
     oal_int32                   l_rx_pckg_succ_num;
     oal_int32                   l_ret;
 
@@ -287,24 +289,26 @@ OAL_STATIC ssize_t  wal_get_packet_statistics_wlan0_info(struct device *dev, str
         return ret;
     }
 
-    ret +=  OAL_SPRINTF(buf, PAGE_SIZE, "rx_packet=%d\r\n", l_rx_pckg_succ_num);
+    ret +=  snprintf_s(buf, PAGE_SIZE, PAGE_SIZE - 1, "rx_packet=%d\r\n", l_rx_pckg_succ_num);
 
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(wakelock, S_IRUGO, wal_get_wakelock_info, NULL);
-OAL_STATIC DEVICE_ATTR(packet_statistics_wlan0, S_IRUGO, wal_get_packet_statistics_wlan0_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_wakelock =
+    __ATTR(wakelock, S_IRUGO, wal_get_wakelock_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_packet_statistics_wlan0 =
+    __ATTR(packet_statistics_wlan0, S_IRUGO, wal_get_packet_statistics_wlan0_info, NULL);
 
 oal_int32 wal_msg_queue_info_print_etc(char* buf, oal_int32 buf_len)
 {
     oal_int32 ret = 0;
 
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret,"message count:%u\n", wal_get_request_msg_count_etc());
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1, "message count:%u\n", wal_get_request_msg_count_etc());
 
     return ret;
 }
 
-OAL_STATIC ssize_t  wal_get_msg_queue_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_msg_queue_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
 
@@ -333,13 +337,13 @@ OAL_STATIC ssize_t  wal_get_msg_queue_info(struct device *dev, struct device_att
 OAL_STATIC ssize_t  wal_get_dev_wifi_info_print(char* buf, oal_int32 buf_len)
 {
     ssize_t                     ret = 0;
-    oal_net_device_stru*        pst_net_dev;
-    mac_vap_stru*               pst_vap;
-    hmac_vap_stru*              pst_hmac_vap;
+    oal_net_device_stru*        pst_net_dev = OAL_PTR_NULL;
+    mac_vap_stru*               pst_vap = OAL_PTR_NULL;
+    hmac_vap_stru*              pst_hmac_vap = OAL_PTR_NULL;
 
     if(NULL == buf)
     {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "%s error: buf is null\r\n",__FUNCTION__);
+        OAM_WARNING_LOG1(0, OAM_SF_ANY, "%s error: buf is null\r\n",(uintptr_t)(__FUNCTION__));
         return 0;
     }
 
@@ -372,20 +376,30 @@ OAL_STATIC ssize_t  wal_get_dev_wifi_info_print(char* buf, oal_int32 buf_len)
     }
 
 
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tx_frame_amount:%d\n",pst_hmac_vap->station_info.tx_packets);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tx_byte_amount:%d\n",(oal_uint32)pst_hmac_vap->station_info.tx_bytes);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tx_data_frame_error_amount:%d\n",pst_hmac_vap->station_info.tx_failed);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "tx_retrans_amount:%d\n",pst_hmac_vap->station_info.tx_retries);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "rx_frame_amount:%d\n",pst_hmac_vap->station_info.rx_packets);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "rx_byte_amount:%d\n",(oal_uint32)pst_hmac_vap->station_info.rx_bytes);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "rx_beacon_from_assoc_ap:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_cnt);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "ap_distance:%d\n",pst_hmac_vap->st_station_info_extend.uc_distance);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "disturbing_degree:%d\n",pst_hmac_vap->st_station_info_extend.uc_cca_intr);
-    ret +=  OAL_SPRINTF(buf + ret , buf_len - ret, "lost_beacon_amount:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_tout_cnt);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "tx_frame_amount:%d\n",pst_hmac_vap->station_info.tx_packets);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "tx_byte_amount:%d\n",(oal_uint32)pst_hmac_vap->station_info.tx_bytes);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "tx_data_frame_error_amount:%d\n",pst_hmac_vap->station_info.tx_failed);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "tx_retrans_amount:%d\n",pst_hmac_vap->station_info.tx_retries);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "rx_frame_amount:%d\n",pst_hmac_vap->station_info.rx_packets);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "rx_byte_amount:%d\n",(oal_uint32)pst_hmac_vap->station_info.rx_bytes);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "rx_beacon_from_assoc_ap:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_cnt);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "ap_distance:%d\n",pst_hmac_vap->st_station_info_extend.uc_distance);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "disturbing_degree:%d\n",pst_hmac_vap->st_station_info_extend.uc_cca_intr);
+    ret +=  snprintf_s(buf + ret , buf_len - ret, (buf_len - ret) - 1,
+                       "lost_beacon_amount:%d\n",pst_hmac_vap->st_station_info_extend.ul_bcn_tout_cnt);
 
     return ret;
 }
-OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
 
@@ -411,9 +425,11 @@ OAL_STATIC ssize_t  wal_get_dev_wifi_info(struct device *dev, struct device_attr
 
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(dev_wifi_info, S_IRUGO, wal_get_dev_wifi_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_dev_wifi_info =
+    __ATTR(dev_wifi_info, S_IRUGO, wal_get_dev_wifi_info, NULL);
 
-OAL_STATIC DEVICE_ATTR(msg_queue, S_IRUGO, wal_get_msg_queue_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_msg_queue =
+    __ATTR(msg_queue, S_IRUGO, wal_get_msg_queue_info, NULL);
 
 OAL_STATIC struct attribute *wal_sysfs_entries[] = {
         &dev_attr_wakelock.attr,
@@ -479,22 +495,13 @@ oal_void wal_send_rx_auth_to_host_work(oal_work_stru *pst_work)
 }
 #endif
 
-/*lint -save -e578 -e19 */
-DEFINE_GET_BUILD_VERSION_FUNC(wal);
-/*lint -restore*/
-
 
 oal_int32  wal_main_init_etc(oal_void)
 {
     oal_uint32           ul_ret;
     frw_init_enum_uint16 en_init_state;
 
-    OAL_RET_ON_MISMATCH(wal, -OAL_EFAIL);
     oal_wake_lock_init(&g_st_wal_wakelock_etc, "wlan_wal_lock");
-#if (defined(_PRE_E5_722_PLATFORM) || defined(_PRE_CPE_711_PLATFORM) || defined(_PRE_CPE_722_PLATFORM))
-    //oal_wake_lock_init(&g_st_wifi_wakelock, "wifi_lock");
-    //wifi_wake_lock();
-#endif
     wal_msg_queue_init_etc();
 
     en_init_state = frw_get_init_state_etc();
@@ -518,6 +525,13 @@ oal_int32  wal_main_init_etc(oal_void)
         frw_timer_delete_all_timer_etc();
         return -OAL_EFAIL;
     }
+
+#ifdef _PRE_WLAN_FEATURE_DFR
+        wal_dfx_init_etc();
+#endif //#ifdef _PRE_WLAN_FEATURE_DFR
+#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
+        wal_set_custom_process_func_etc();
+#endif
 
     /* 初始化每个device硬件设备对应的wiphy */
     ul_ret = wal_cfg80211_init_etc();
@@ -551,13 +565,7 @@ oal_int32  wal_main_init_etc(oal_void)
 /*debug sysfs*/
     wal_sysfs_entry_init();
 #endif
-#ifdef _PRE_WLAN_FEATURE_DFR
-    wal_dfx_init_etc();
-#endif //#ifdef _PRE_WLAN_FEATURE_DFR
-#ifdef _PRE_PLAT_FEATURE_CUSTOMIZE
 
-    wal_set_custom_process_func_etc();
-#endif
 #ifdef _PRE_WLAN_FEATURE_11R_AP
     OAL_INIT_WORK(&g_st_rx_auth_to_host.st_rx_auth_work, wal_send_rx_auth_to_host_work);
 #endif
@@ -565,18 +573,6 @@ oal_int32  wal_main_init_etc(oal_void)
 #ifdef _PRE_WLAN_FEATURE_IP_FILTER
     wal_register_ip_filter_etc(&g_st_ip_filter_ops_etc);
 #endif /* _PRE_WLAN_FEATURE_IP_FILTER */
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_TEMP_PROTECT
-    wal_init_all_sta_rssi_info();
-#endif
-
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined(_PRE_E5_722_PLATFORM) || defined(_PRE_CPE_711_PLATFORM) || defined(_PRE_CPE_722_PLATFORM))
-    if (reg_at_hipriv_entry((hipriv_entry_t)wal_atcmdsrv_wifi_priv_cmd_etc))
-    {
-        OAM_ERROR_LOG0(0, OAM_SF_ANY, "{wal_main_init_etc:: register at hipriv entry failed}\r\n");
-    }
-    //OAL_IO_PRINT("wangweigang::wal_netdev_open_etc:reg_at_hipriv_entry.\n");
-#endif
 
     return OAL_SUCC;
 }
@@ -610,21 +606,12 @@ oal_void  wal_destroy_all_vap_etc(oal_void)
 
 oal_void  wal_main_exit_etc(oal_void)
 {
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && defined(_PRE_E5_722_PLATFORM)
-    unreg_at_hipriv_entry((hipriv_entry_t)wal_atcmdsrv_wifi_priv_cmd_etc);
-#endif
 #if defined(_PRE_CONFIG_CONN_HISI_SYSFS_SUPPORT) && (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 /*debug sysfs*/
     wal_sysfs_entry_exit();
 #endif
     /* down掉所有的vap */
     wal_destroy_all_vap_etc();
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151)
-    /* 此处02加载ko时出现，找不到符号的错误，待后续解决 TBD */
-
-    /* 卸载每个device硬件设备对应的wiphy */
-    wal_cfg80211_exit_etc();
-#endif
     wal_event_fsm_exit_etc();
 
     /* 删除proc */
@@ -648,10 +635,6 @@ oal_void  wal_main_exit_etc(oal_void)
 #endif //#ifdef _PRE_WLAN_FEATURE_DFR
 
     oal_wake_lock_exit(&g_st_wal_wakelock_etc);
-#if (defined(_PRE_E5_722_PLATFORM) || defined(_PRE_CPE_711_PLATFORM) || defined(_PRE_CPE_722_PLATFORM))
-    //wifi_wake_unlock();
-    //oal_wake_lock_exit(&g_st_wifi_wakelock);
-#endif
     frw_timer_clean_timer(OAM_MODULE_ID_WAL);
 
 #ifdef _PRE_WLAN_FEATURE_11R_AP
@@ -663,17 +646,11 @@ oal_void  wal_main_exit_etc(oal_void)
 }
 
 /*lint -e578*//*lint -e19*/
-#if (_PRE_PRODUCT_ID_HI1151==_PRE_PRODUCT_ID)
-oal_module_init(wal_main_init_etc);
-oal_module_exit(wal_main_exit_etc);
-#endif
 oal_module_symbol(wal_main_init_etc);
 oal_module_symbol(wal_main_exit_etc);
 
 oal_module_license("GPL");
 /*lint +e578*//*lint +e19*/
-
-
 
 
 #ifdef __cplusplus

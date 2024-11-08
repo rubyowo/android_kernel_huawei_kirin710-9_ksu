@@ -33,23 +33,6 @@ extern "C" {
 #define WAL_ATCMDSRB_NORM_TIME                   (1 * OAL_TIME_HZ)
 #define FEM_FAIL_TIME                            (3)
 
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) && defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST)
-enum WAL_ATCMDSRV_IOCTL_CMD
-{
-    WAL_ATCMDSRV_IOCTL_CMD_NORM_SET         = 0,
-    WAL_ATCMDSRV_IOCTL_CMD_RX_PCKG_GET      ,
-    WAL_ATCMDSRV_IOCTL_CMD_VAP_DOWN_SET     ,
-    WAL_ATCMDSRV_IOCTL_CMD_HW_ADDR_SET      ,
-    WAL_ATCMDSRV_IOCTL_CMD_VAP_UP_SET       ,
-    WAL_ATCMDSRV_IOCTL_CMD_CHIPCHECK_SET    ,
-    WAL_ATCMDSRV_IOCTL_CMD_REGINFO_SET      ,
-    WAL_ATCMDSRV_IOCTL_CMD_CALIINFO_SET     ,
-    WAL_ATCMDSRV_IOCTL_CMD_FEM_PA_INFO_GET  ,
-    WAL_ATCMDSRV_IOCTL_CMD_GET_POWER_PARAM  ,
-    HWIFI_IOCTL_CMD_TEST_BUTT
-};
-#endif
-
 #if (defined(_PRE_PRODUCT_ID_HI110X_DEV) || defined(_PRE_PRODUCT_ID_HI110X_HOST))
 /*atcmdsrvÀΩ”–√¸¡Ó∫Í∂®“Â*/
 #define WAL_ATCMDSRV_IOCTL_DBB_LEN               12
@@ -417,9 +400,8 @@ extern oal_void  wal_atcmsrv_ioctl_get_fem_pa_status_etc(oal_net_device_stru *ps
 extern oal_int32 wlan_device_mem_check_etc(oal_int32 l_runing_test_mode);
 extern oal_int32 wlan_device_mem_check_result_etc(unsigned long long *time);
 extern oal_int32 conn_test_uart_loop_etc(char *param);
-extern oal_int32 conn_test_wifi_chan_loop(char *param);
-extern oal_int32 conn_test_hcc_chann_switch(char* new_dev);
-extern oal_int32 hwifi_fetch_ori_caldata_etc(oal_uint8* auc_caldata, oal_int32 l_nvm_len);
+extern oal_int32 conn_test_wifi_chan_loop(const char *param);
+extern oal_int32 conn_test_hcc_chann_switch(const char* new_dev);
 extern oal_int32 hwifi_config_init_etc(oal_int32);
 extern oal_uint32 wal_regdomain_get_channel_5g_etc(oal_uint32 ul_start_freq, oal_uint32 ul_end_freq);
 extern oal_int32  hi1103_pcie_ip_test(oal_int32 test_count);
@@ -427,19 +409,9 @@ extern oal_int32 hi1103_dev_io_test(void);
 extern oal_void hmac_dump_cali_result_etc(oal_void);
 #endif
 
-#if defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST) && (defined(_PRE_E5_722_PLATFORM) || defined(_PRE_CPE_711_PLATFORM) || defined(_PRE_CPE_722_PLATFORM))
-typedef oal_int32 (*hipriv_entry_t)(void *, void*, void *);
-extern oal_int32 reg_at_hipriv_entry(hipriv_entry_t hipriv_entry);
-extern oal_int32 unreg_at_hipriv_entry(hipriv_entry_t hipriv_entry);
-#endif
-
 #ifdef _PRE_WLAN_FEATURE_11D
 extern oal_int32  wal_regdomain_update_for_dfs_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_country);
 extern oal_int32  wal_regdomain_update_etc(oal_net_device_stru *pst_net_dev, oal_int8 *pc_country);
-#endif
-
-#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1151) && defined(_PRE_WLAN_FEATURE_EQUIPMENT_TEST)
-extern oal_int32 wal_atcmdsrv_wifi_priv_cmd_etc(oal_int8 *ac_dev_name, oal_int32 ul_cmd, oal_uint8 *pc_param);
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_SMARTANT

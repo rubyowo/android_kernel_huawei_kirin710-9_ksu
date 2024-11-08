@@ -82,7 +82,7 @@ typedef struct
 /* 认证结果 */
 typedef struct
 {
-    oal_uint8                   auc_peer_sta_addr[6];   /* mesh下peer station的地址 */
+    oal_uint8                   auc_peer_sta_addr[WLAN_MAC_ADDR_LEN];   /* mesh下peer station的地址 */
     oal_uint16                  us_status_code;         /* 认证结果 */
 }hmac_auth_rsp_stru;
 
@@ -102,10 +102,10 @@ typedef struct
 /* 与dmac层的hi11xx_date_rate_stru g_ast_hi11xx_rates_11g同步修改 */
 typedef struct
 {
-    oal_uint8   uc_expand_rate;/* 扩展速率集 */
-    oal_uint8   uc_mac_rate; /* MAC对应速率 */
-    oal_uint8   uc_phy_rate; /* PHY对应速率 */
-    oal_uint8   uc_protocol;     /* 协议 */
+    oal_uint8   uc_expand_rate;             /* 扩展速率集 */
+    oal_uint8   uc_mac_rate;                /* MAC对应速率 */
+    oal_uint8   uc_hal_wlan_rate_index;     /* 速率index*/
+    oal_uint8   uc_rsv;
 }hmac_data_rate_stru;
 
 /*****************************************************************************
@@ -121,15 +121,12 @@ typedef struct
   10 函数声明
 *****************************************************************************/
 extern oal_uint32  hmac_sta_wait_join_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
-//extern oal_uint32  hmac_sta_wait_join_rx_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_auth_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_asoc_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_asoc_rx_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_auth_seq2_rx_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_wait_auth_seq4_rx_etc(hmac_vap_stru *pst_sta, oal_void *p_msg);
 extern oal_uint32  hmac_sta_auth_timeout_etc(hmac_vap_stru *pst_hmac_sta, oal_void *p_param);
-//extern oal_uint32  hmac_sta_wait_join_misc_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
-//extern oal_uint32  hmac_sta_wait_join_timeout_etc(hmac_vap_stru *pst_sta, oal_void *pst_msg);
 extern oal_uint32  hmac_sta_up_rx_mgmt_etc(hmac_vap_stru *pst_hmac_vap_sta, oal_void *p_param);
 extern oal_uint32  hmac_sta_wait_asoc_timeout_etc(hmac_vap_stru *pst_hmac_sta, oal_void *p_param);
 extern oal_void    hmac_sta_handle_disassoc_rsp_etc(hmac_vap_stru *pst_hmac_vap, oal_uint16 us_disasoc_reason_code);
@@ -137,7 +134,7 @@ extern oal_void    hmac_sta_handle_disassoc_rsp_etc(hmac_vap_stru *pst_hmac_vap,
 extern oal_uint32  hmac_p2p_remain_on_channel_etc(hmac_vap_stru *pst_hmac_vap_sta, oal_void *p_param);
 extern oal_uint32  hmac_p2p_listen_timeout_etc(hmac_vap_stru *pst_hmac_vap_sta, oal_void *p_param);
 
-#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P) || defined(_PRE_WLAN_FEATURE_HILINK)
+#if defined(_PRE_WLAN_FEATURE_HS20) || defined(_PRE_WLAN_FEATURE_P2P)
 extern oal_uint32  hmac_sta_not_up_rx_mgmt_etc(hmac_vap_stru *pst_hmac_vap_sta, oal_void *p_param);
 #endif
 

@@ -125,13 +125,13 @@ oal_uint16 hmac_encap_sa_query_rsp_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *pst
 }
 
 
-oal_uint16  hmac_mgmt_encap_deauth_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, oal_uint8 *puc_da, oal_uint16 us_err_code)
+oal_uint16  hmac_mgmt_encap_deauth_etc(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_data, const unsigned char *puc_da, oal_uint16 us_err_code)
 {
     oal_uint16          us_deauth_len = 0;
 #ifdef _PRE_WLAN_FEATURE_P2P
-    mac_device_stru    *pst_mac_device;
-    mac_vap_stru       *pst_up_vap1;
-    mac_vap_stru       *pst_up_vap2;
+    mac_device_stru    *pst_mac_device = OAL_PTR_NULL;
+    mac_vap_stru       *pst_up_vap1 = OAL_PTR_NULL;
+    mac_vap_stru       *pst_up_vap2 = OAL_PTR_NULL;
     oal_uint32          ul_ret;
 #endif
 

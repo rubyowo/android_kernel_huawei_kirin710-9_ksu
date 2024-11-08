@@ -27,6 +27,9 @@ extern "C" {
 #include "dmac_vap.h"
 #include "mac_vap.h"
 #endif
+#include "securec.h"
+#include "securectype.h"
+
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_TEST_MAIN_C
 
@@ -42,7 +45,7 @@ hmac_test_mng_stru  g_st_hmac_test_mng;
 
 oal_void  hmac_test_init(oal_void)
 {
-    OAL_MEMZERO(&g_st_hmac_test_mng, OAL_SIZEOF(hmac_test_mng_stru));
+    memset_s(&g_st_hmac_test_mng, OAL_SIZEOF(hmac_test_mng_stru), 0, OAL_SIZEOF(hmac_test_mng_stru));
 }
 
 

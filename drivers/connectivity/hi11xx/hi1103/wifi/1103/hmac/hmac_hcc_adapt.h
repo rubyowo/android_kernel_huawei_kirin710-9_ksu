@@ -125,6 +125,8 @@ extern frw_event_mem_stru * hmac_dpd_rx_adapt(frw_event_mem_stru * pst_hcc_event
 
 #ifdef _PRE_WLAN_FEATURE_11AX
 extern oal_uint32 hmac_proc_set_mu_edca_param_tx_adapt(frw_event_mem_stru *pst_event_mem);
+extern oal_uint32 hmac_proc_set_spatial_reuse_param_tx_adapt(frw_event_mem_stru *pst_event_mem);
+extern oal_uint32 hmac_proc_rx_process_twt_sync_event_tx_adapt_etc(frw_event_mem_stru *pst_event_mem);
 #endif
 
 #ifdef _PRE_WLAN_FEATURE_APF

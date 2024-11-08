@@ -71,7 +71,7 @@ oal_void  mac_get_regdomain_info(mac_regdomain_info_stru **ppst_rd_info)
 oal_void  mac_init_regdomain(oal_void)
 {
     oal_int8                ac_default_country[] = "99";
-    mac_regclass_info_stru *pst_regclass;
+    mac_regclass_info_stru *pst_regclass = OAL_PTR_NULL;
 
     oal_memcopy(g_st_mac_regdomain.ac_country, ac_default_country, OAL_SIZEOF(ac_default_country));
 
@@ -157,7 +157,7 @@ oal_uint32  mac_set_country_ie_2g(
 {
     oal_uint8                uc_rc_idx;
     oal_uint8                uc_lsb_bit_position;
-    mac_regclass_info_stru  *pst_reg_class;
+    mac_regclass_info_stru  *pst_reg_class = OAL_PTR_NULL;
     oal_uint32               ul_ret;
 
     oal_uint8                uc_len = 0;
@@ -210,8 +210,8 @@ oal_uint32  mac_set_country_ie_5g(
                 oal_uint8               *puc_buffer,
                 oal_uint8               *puc_len)
 {
-    mac_regclass_info_stru      *pst_reg_class;
-    mac_country_reg_field_stru  *pst_reg_field;
+    mac_regclass_info_stru      *pst_reg_class = OAL_PTR_NULL;
+    mac_country_reg_field_stru  *pst_reg_field = OAL_PTR_NULL;
     oal_uint8                    uc_chan_idx;
     oal_uint8                    uc_chan_num = 0;
     oal_uint8                    uc_len = 0;
@@ -253,7 +253,7 @@ oal_void  mac_init_channel_list(oal_void)
     oal_uint8                uc_freq;
     oal_uint8                uc_rc_idx;
     mac_regdomain_info_stru *pst_rd_info;
-    mac_regclass_info_stru  *pst_rc_info;
+    mac_regclass_info_stru  *pst_rc_info = OAL_PTR_NULL;
 
     pst_rd_info = &g_st_mac_regdomain;
 
@@ -343,7 +343,7 @@ oal_uint32 mac_get_channel_idx_from_num(
                    oal_uint8                    uc_channel_num,
                    oal_uint8                   *puc_channel_idx)
 {
-    mac_channel_info_stru       *pst_channel;
+    mac_channel_info_stru       *pst_channel = OAL_PTR_NULL;
     oal_uint8                    uc_total_channel_num  = 0;
     oal_uint8                    uc_idx;
 
@@ -381,7 +381,7 @@ oal_uint32 mac_get_channel_idx_from_num(
 oal_uint32 mac_is_channel_idx_valid(oal_uint8 uc_band, oal_uint8 uc_ch_idx)
 {
     oal_uint8               uc_max_ch_idx;
-    mac_channel_info_stru  *pst_ch_info;
+    mac_channel_info_stru  *pst_ch_info = OAL_PTR_NULL;
 
     switch (uc_band)
     {
@@ -444,7 +444,7 @@ oal_uint32  mac_is_channel_num_valid(oal_uint8 uc_band, oal_uint8 uc_ch_num)
 mac_regclass_info_stru* mac_get_channel_idx_rc_info(oal_uint8 uc_band, oal_uint8 uc_ch_idx)
 {
     oal_uint8               uc_max_ch_idx;
-    mac_channel_info_stru  *pst_ch_info;
+    mac_channel_info_stru  *pst_ch_info = OAL_PTR_NULL;
 
     switch (uc_band)
     {
@@ -508,6 +508,11 @@ oal_uint32  mac_regdomain_set_country(oal_uint16 us_len, oal_uint8 *puc_param)
 
     /* 计算配置命令 */
     ul_size = (oal_uint32)(OAL_SIZEOF(mac_regclass_info_stru) * uc_rc_num + MAC_RD_INFO_LEN);
+
+    if (ul_size > OAL_SIZEOF(mac_regdomain_info_stru))
+    {
+        return OAL_ERR_CODE_INVALID_CONFIG;
+    }
 
     /* 更新管制域信息 */
     oal_memcopy((oal_uint8 *)&g_st_mac_regdomain, (oal_uint8 *)pst_mac_regdom, ul_size);

@@ -37,10 +37,10 @@ oal_uint32  hmac_wpi_encrypt(oal_uint8 *puc_iv, oal_uint8 *puc_bufin, oal_uint32
                        oal_uint8 *puc_key, oal_uint8* puc_bufout)
 {
     oal_uint32       aul_iv_out[4];
-    oal_uint32      *pul_in;
-    oal_uint32      *pul_out;
-    oal_uint8       *puc_out;
-    oal_uint8       *puc_in;
+    oal_uint32      *pul_in = OAL_PTR_NULL;
+    oal_uint32      *pul_out = OAL_PTR_NULL;
+    oal_uint8       *puc_out = OAL_PTR_NULL;
+    oal_uint8       *puc_in = OAL_PTR_NULL;
     oal_uint32       ul_counter;
     oal_uint32       ul_comp;
     oal_uint32       ul_loop;
@@ -55,7 +55,7 @@ oal_uint32  hmac_wpi_encrypt(oal_uint8 *puc_iv, oal_uint8 *puc_bufin, oal_uint32
         return OAL_FAIL;
     }
 
-    hmac_sms4_keyext(puc_key,  aul_pr_keyin);
+    hmac_sms4_keyext(puc_key, aul_pr_keyin);
 
     ul_counter = ul_buflen / 16;
     ul_comp    = ul_buflen % 16;
@@ -119,11 +119,11 @@ void hmac_wpi_swap_pn(oal_uint8 *puc_pn, oal_uint8 uc_len)
 
 
 oal_uint32  hmac_wpi_pmac(oal_uint8* puc_iv, oal_uint8* puc_buf, oal_uint32 ul_pamclen,
-                    oal_uint8* puc_key, oal_uint8* puc_mic)
+                    oal_uint8* puc_key, oal_uint8* puc_mic, oal_uint8 uc_mic_len)
 {
     oal_uint32  aul_mic_tmp[4];
     oal_uint32  ul_loop;
-    oal_uint32 *pul_in;
+    oal_uint32 *pul_in = OAL_PTR_NULL;
     oal_uint32  aul_pr_macKeyin[32] = {0};
 
     if ((ul_pamclen < 1) || (ul_pamclen > 4096))
@@ -131,6 +131,10 @@ oal_uint32  hmac_wpi_pmac(oal_uint8* puc_iv, oal_uint8* puc_buf, oal_uint32 ul_p
         return OAL_FAIL;
     }
 	
+    if (uc_mic_len < OAL_SIZEOF(aul_mic_tmp)) {
+        return OAL_FAIL;
+    }
+
     hmac_sms4_keyext(puc_key, aul_pr_macKeyin);
     pul_in = (oal_uint32*)puc_buf;
     hmac_sms4_crypt(puc_iv, (oal_uint8*)aul_mic_tmp, aul_pr_macKeyin);

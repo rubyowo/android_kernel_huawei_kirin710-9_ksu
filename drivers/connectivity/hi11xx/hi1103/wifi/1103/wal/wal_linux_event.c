@@ -34,7 +34,7 @@ extern "C" {
 
 
 oal_int32 wal_cfg80211_start_req_etc(oal_net_device_stru    *pst_net_dev,
-                                void                        *ps_param,
+                                OAL_CONST void              *ps_param,
                                 oal_uint16                   us_len,
                                 wlan_cfgid_enum_uint16       en_wid,
                                 oal_bool_enum_uint8          en_need_rsp)
@@ -60,7 +60,10 @@ oal_int32 wal_cfg80211_start_req_etc(oal_net_device_stru    *pst_net_dev,
         OAM_ERROR_LOG2(0, OAM_SF_SCAN, "{wal_cfg80211_start_req_etc::us_len %d > WAL_MSG_WRITE_MAX_LEN %d err!}\r\n", us_len, WAL_MSG_WRITE_MAX_LEN);
         return OAL_ERR_CODE_INVALID_CONFIG;
     }
-    oal_memcopy(st_write_msg.auc_value, ps_param, us_len);
+    if (EOK != memcpy_s(st_write_msg.auc_value, us_len, ps_param, us_len)) {
+        OAM_ERROR_LOG0(0, OAM_SF_SCAN, "wal_cfg80211_start_req_etc::memcpy fail!");
+        return -OAL_EFAIL;
+    }
 
     /***************************************************************************
            抛事件到wal层处理
@@ -119,10 +122,10 @@ oal_uint32  wal_cfg80211_start_sched_scan_etc(oal_net_device_stru *pst_net_dev, 
         return OAL_ERR_CODE_PTR_NULL;
     }
 
-    oal_memcopy(pst_pno_scan_params, pst_pno_scan_info, OAL_SIZEOF(mac_pno_scan_stru));
+    memcpy_s(pst_pno_scan_params, OAL_SIZEOF(mac_pno_scan_stru), pst_pno_scan_info, OAL_SIZEOF(mac_pno_scan_stru));
 
     ul_ret = (oal_uint32)wal_cfg80211_start_req_etc(pst_net_dev, &pst_pno_scan_params,
-                                    OAL_SIZEOF(pst_pno_scan_params), WLAN_CFGID_CFG80211_START_SCHED_SCAN, OAL_TRUE);
+                                    OAL_SIZEOF(mac_pno_scan_stru *), WLAN_CFGID_CFG80211_START_SCHED_SCAN, OAL_TRUE);
 
     /* 无论wal_cfg80211_start_req内部执行成功与否，统一在外部释放 */
     OAL_MEM_FREE(pst_pno_scan_params, OAL_FALSE);
@@ -156,42 +159,6 @@ oal_int32  wal_cfg80211_start_disconnect_etc(oal_net_device_stru *pst_net_dev, m
        目前将去关联事件修改为等待消息处理结束后再上报，最后一个入参由OAL_FALSE改为OAL_TRUE */
     return wal_cfg80211_start_req_etc(pst_net_dev, pst_disconnect_param, OAL_SIZEOF(mac_cfg_kick_user_param_stru), WLAN_CFGID_KICK_USER, OAL_TRUE);
 }
-#ifdef _PRE_WLAN_FEATURE_HILINK
-
-oal_int32  wal_cfg80211_fbt_kick_user(oal_net_device_stru *pst_net_dev, mac_cfg_kick_user_param_stru *pst_disconnect_param)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pst_disconnect_param, OAL_SIZEOF(mac_cfg_kick_user_param_stru), WLAN_CFGID_FBT_KICK_USER, OAL_TRUE);
-}
-
-#ifdef _PRE_WLAN_FEATURE_HILINK_HERA_PRODUCT
-
-oal_int32 wal_cfg80211_set_okc_ie(oal_net_device_stru *pst_net_dev, oal_app_ie_stru *pst_okc_ie)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pst_okc_ie, OAL_SIZEOF(oal_app_ie_stru), WLAN_CFGID_SET_VENDOR_IE, OAL_TRUE);
-}
-
-oal_int32 wal_cfg80211_set_hiden_whitelist(oal_net_device_stru *pst_net_dev, oal_hilink_white_node_stru *pst_white_lst)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pst_white_lst, OAL_SIZEOF(oal_hilink_white_node_stru), WLAN_CFGID_SET_WHITE_LIST_SSIDHIDEN, OAL_TRUE);
-}
-
-oal_int32 wal_cfg80211_start_fbt_scan(oal_net_device_stru *pst_net_dev, oal_hilink_scan_params *pst_mac_cfg_fbt_scan_params)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pst_mac_cfg_fbt_scan_params, OAL_SIZEOF(oal_hilink_scan_params), WLAN_CFGID_FBT_START_SCAN, OAL_FALSE);
-}
-
-oal_int32 wal_cfg80211_set_mgmt_frame_filter(oal_net_device_stru *pst_net_dev, oal_uint32 *pul_mgmt_frame_filter)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pul_mgmt_frame_filter, OAL_SIZEOF(oal_uint32), WLAN_CFGID_SET_MGMT_FRAME_FILTERS, OAL_TRUE);
-}
-
-oal_int32 wal_cfg80211_set_sensing_bssid(oal_net_device_stru *pst_net_dev, oal_void *pst_sensing_bssid)
-{
-    return wal_cfg80211_start_req_etc(pst_net_dev, pst_sensing_bssid, OAL_SIZEOF(dmac_sensing_bssid_cfg_stru), WLAN_CFGID_SET_SENSING_BSSID, OAL_TRUE);
-}
-
-#endif
-#endif
 
 #ifdef _PRE_WLAN_FEATURE_AP_PM
 
@@ -201,6 +168,13 @@ oal_uint32 wal_config_sta_scan_connect_event(oal_net_device_stru * pst_net_dev, 
 }
 #endif
 
+#ifdef _PRE_WLAN_FEATURE_SAE
+
+oal_uint32 wal_cfg80211_do_external_auth(oal_net_device_stru * pst_netdev, hmac_external_auth_req_stru *pst_ext_auth)
+{
+    return (oal_uint32)wal_cfg80211_start_req_etc(pst_netdev, pst_ext_auth, OAL_SIZEOF(*pst_ext_auth), WLAN_CFGID_CFG80211_EXTERNAL_AUTH, OAL_TRUE);
+}
+#endif /* _PRE_WLAN_FEATURE_SAE */
 
 #ifdef __cplusplus
     #if __cplusplus

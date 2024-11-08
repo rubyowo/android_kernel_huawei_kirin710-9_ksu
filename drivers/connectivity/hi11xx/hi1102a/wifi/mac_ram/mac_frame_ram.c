@@ -20,11 +20,10 @@ extern "C" {
   2 函数原型声明
 *****************************************************************************/
 
-
 /*****************************************************************************
   3 全局变量定义
 *****************************************************************************/
-
+extern oal_uint32 g_customize_interworking;
 
 /*****************************************************************************
   4 函数实现
@@ -42,23 +41,20 @@ oal_void mac_set_vht_capabilities_ie_cb(oal_void *pst_vap, oal_uint8 *puc_buffer
 
 oal_void mac_set_ht_capabilities_ie_cb(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
-    mac_frame_ht_cap_stru *pst_ht_capinfo;
-    mac_vap_stru          *pst_mac_vap;
-
-    pst_mac_vap = (mac_vap_stru *)pst_vap;
-    /* 首先将pucbuffer指针指回到ht cap ie的首部 */
-    puc_buffer -= (MAC_IE_HDR_LEN + MAC_HT_CAPINFO_LEN + MAC_HT_AMPDU_PARAMS_LEN + MAC_HT_SUP_MCS_SET_LEN + MAC_HT_EXT_CAP_LEN + MAC_HT_TXBF_CAP_LEN);
-    /* 接下来的操作一定要按照元素的先后顺序进行避免指针跳错位置 */
-    puc_buffer += MAC_IE_HDR_LEN;
-    /* 更正ht_capinfo_field */
-    pst_ht_capinfo = (mac_frame_ht_cap_stru *)puc_buffer;
-    pst_ht_capinfo->bit_lsig_txop_protection = mac_mib_get_LsigTxopFullProtectionActivated(pst_mac_vap);
-    
 }
 
-
-oal_void mac_set_ext_capabilities_ie_cb(oal_void *pst_mac_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
+oal_void mac_set_ext_capabilities_ie_cb(oal_void *pst_vap, oal_uint8 *puc_buffer, oal_uint8 *puc_ie_len)
 {
+    mac_ext_cap_ie_stru     *pst_ext_cap = OAL_PTR_NULL;
+    mac_vap_stru            *pst_mac_vap;
+
+    pst_mac_vap = (mac_vap_stru *)pst_vap;
+
+    if ((OAL_FALSE == g_customize_interworking) || (WLAN_VAP_MODE_BSS_AP == pst_mac_vap->en_vap_mode))
+    {
+        pst_ext_cap = (mac_ext_cap_ie_stru *)(puc_buffer + MAC_IE_HDR_LEN);
+        pst_ext_cap->bit_interworking = 0;
+    }
 }
 
 

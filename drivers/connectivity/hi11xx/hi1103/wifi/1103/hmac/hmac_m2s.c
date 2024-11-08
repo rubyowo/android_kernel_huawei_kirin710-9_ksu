@@ -56,9 +56,9 @@ oal_void hmac_m2s_vap_arp_probe_process(oal_void *p_arg, oal_bool_enum_uint8 en_
 
 OAL_STATIC oal_uint32 hmac_m2s_arp_probe_timeout(oal_void *p_arg)
 {
-    hmac_vap_m2s_stru            *pst_hmac_vap_m2s;
-    hmac_vap_stru                *pst_hmac_vap;
-    hmac_user_stru               *pst_hmac_user;
+    hmac_vap_m2s_stru            *pst_hmac_vap_m2s = OAL_PTR_NULL;
+    hmac_vap_stru                *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_user_stru               *pst_hmac_user = OAL_PTR_NULL;
     oal_uint32                    ui_val;
     oal_bool_enum_uint8           en_reassoc_codeid;
 
@@ -132,9 +132,9 @@ OAL_STATIC oal_uint32 hmac_m2s_arp_probe_timeout(oal_void *p_arg)
 
 oal_void hmac_m2s_arp_fail_process(oal_netbuf_stru *pst_netbuf, oal_void *p_arg)
 {
-    hmac_vap_stru                    *pst_hmac_vap;
-    hmac_vap_m2s_stru                *pst_hmac_vap_m2s;
-    mac_ether_header_stru            *pst_mac_ether_hdr;
+    hmac_vap_stru                    *pst_hmac_vap = OAL_PTR_NULL;
+    hmac_vap_m2s_stru                *pst_hmac_vap_m2s = OAL_PTR_NULL;
+    mac_ether_header_stru            *pst_mac_ether_hdr = OAL_PTR_NULL;
     oal_uint8                         uc_data_type;
 
     pst_hmac_vap = (hmac_vap_stru *)p_arg;

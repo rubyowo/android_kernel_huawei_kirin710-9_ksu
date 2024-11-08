@@ -23,14 +23,14 @@ extern "C" {
 /*定制化待设计为一个结构体，并对外提供内联函数访问形态，而不是预编译访问形态*/
 
 /* 关联用户的最大个数 */
-extern oal_uint16   g_us_wlan_assoc_user_max_num;
+extern oal_uint16   wlan_assoc_user_max_num;
 extern oal_uint32   g_ul_wlan_vap_max_num_per_device;
 
 /*****************************************************************************
   0.1.2 热点入网功能
 *****************************************************************************/
 /* 关联用户的最大个数 启动Proxy STA时，ap最大关联用户数为15，关闭时为32*/
-#define WLAN_ASSOC_USER_MAX_NUM_SPEC        g_us_wlan_assoc_user_max_num
+#define WLAN_ASSOC_USER_MAX_NUM_SPEC        wlan_assoc_user_max_num
 
 /* 作为P2P GO 允许关联最大用户数 */
 #define WLAN_P2P_GO_ASSOC_USER_MAX_NUM_SPEC 4
@@ -564,15 +564,15 @@ extern oal_uint32   g_ul_wlan_vap_max_num_per_device;
 /*****************************************************************************
   2.8.2 STA AP规格
 *****************************************************************************/
-#if 0
-#define WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE     2
-#endif
+
+
+
  /* AP VAP的规格、STA VAP的规格、STA P2P共存的规格放入平台*/
 /* PROXY STA模式下VAP规格宏定义放入平台 */
 
 /* 每个device支持vap的最大个数已放入平台
 */
-//#define WLAN_VAP_MAX_NUM_PER_DEVICE         (WLAN_SERVICE_VAP_MAX_NUM_PER_DEVICE + 1)
+
 
 #define WLAN_HAL_OHTER_BSS_ID                   14   /* 其他BSS的ID */
 #define WLAN_HAL_OTHER_BSS_UCAST_ID             7    /* 来自其他bss的单播管理帧和数据帧，维测用 */

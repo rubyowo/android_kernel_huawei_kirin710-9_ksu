@@ -18,6 +18,8 @@ extern "C" {
 #include "mac_resource.h"
 #include "hmac_user.h"
 #include "hmac_mgmt_ap.h"
+#include "securec.h"
+#include "securectype.h"
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_ISOLATION_C
@@ -45,8 +47,8 @@ extern "C" {
 
 oal_uint32 hmac_isolation_set_mode(mac_vap_stru *pst_mac_vap, oal_uint8 uc_mode)
 {
-    mac_isolation_info_stru       *pst_isolation_info;
-    hmac_vap_stru                 *pst_hmac_vap;
+    mac_isolation_info_stru       *pst_isolation_info = OAL_PTR_NULL;
+    hmac_vap_stru                 *pst_hmac_vap = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -84,8 +86,8 @@ oal_uint32 hmac_isolation_set_mode(mac_vap_stru *pst_mac_vap, oal_uint8 uc_mode)
 
 oal_uint32 hmac_isolation_set_type(mac_vap_stru *pst_mac_vap, oal_uint8 uc_bss_type, oal_uint8 uc_isolation_type)
 {
-    mac_isolation_info_stru       *pst_isolation_info;
-    hmac_vap_stru                 *pst_hmac_vap;
+    mac_isolation_info_stru       *pst_isolation_info = OAL_PTR_NULL;
+    hmac_vap_stru                 *pst_hmac_vap = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -132,8 +134,8 @@ oal_uint32 hmac_isolation_set_type(mac_vap_stru *pst_mac_vap, oal_uint8 uc_bss_t
 
 oal_uint32 hmac_isolation_set_forward(mac_vap_stru *pst_mac_vap, oal_uint8 uc_forward)
 {
-    mac_isolation_info_stru       *pst_isolation_info;
-    hmac_vap_stru                 *pst_hmac_vap;
+    mac_isolation_info_stru       *pst_isolation_info = OAL_PTR_NULL;
+    hmac_vap_stru                 *pst_hmac_vap = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -166,8 +168,8 @@ oal_uint32 hmac_isolation_set_forward(mac_vap_stru *pst_mac_vap, oal_uint8 uc_fo
 
 oal_uint32 hmac_isolation_clear_counter(mac_vap_stru *pst_mac_vap)
 {
-    mac_isolation_info_stru       *pst_isolation_info;
-    hmac_vap_stru                 *pst_hmac_vap;
+    mac_isolation_info_stru       *pst_isolation_info = OAL_PTR_NULL;
+    hmac_vap_stru                 *pst_hmac_vap = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -196,9 +198,9 @@ oal_uint32 hmac_isolation_clear_counter(mac_vap_stru *pst_mac_vap)
 
 oal_void hmac_show_isolation_info(mac_vap_stru *pst_mac_vap)
 {
-    mac_isolation_info_stru         *pst_isolation_info;
-    oal_int8                        *pc_print_buff;
-    hmac_vap_stru                   *pst_hmac_vap;
+    mac_isolation_info_stru         *pst_isolation_info = OAL_PTR_NULL;
+    oal_int8                        *pc_print_buff = OAL_PTR_NULL;
+    hmac_vap_stru                   *pst_hmac_vap = OAL_PTR_NULL;
 
     /* 1.1 入参检查 */
     if (OAL_PTR_NULL == pst_mac_vap)
@@ -219,7 +221,7 @@ oal_void hmac_show_isolation_info(mac_vap_stru *pst_mac_vap)
         OAM_ERROR_LOG0(0, OAM_SF_CFG, "{hmac_show_autoblacklist_info::pc_print_buff null.}");
         return;
     }
-    OAL_MEMZERO(pc_print_buff, OAM_REPORT_MAX_STRING_LEN);
+    memset_s(pc_print_buff, OAM_REPORT_MAX_STRING_LEN, 0, OAM_REPORT_MAX_STRING_LEN);
 
     pst_isolation_info = &pst_hmac_vap->st_isolation_info;
 
@@ -230,18 +232,19 @@ oal_void hmac_show_isolation_info(mac_vap_stru *pst_mac_vap)
     OAM_INFO_LOG3(pst_mac_vap->uc_vap_id, OAM_SF_ANY, "{ bcast_cnt: %u.mcast_cnt: %u.ucast_cnt: %u.}",
         pst_isolation_info->ul_counter_bcast,pst_isolation_info->ul_counter_mcast,pst_isolation_info->ul_counter_ucast);
 
-    OAL_SPRINTF(pc_print_buff,OAM_REPORT_MAX_STRING_LEN,
-            "vap%d isolation info is :\n"
-            "\tmode:%d. single_type:%d. multi_tyep:%d. forward:%d.\n"
-            "\tbcast_cnt: %u\n"
-            "\tmcast_cnt: %u\n"
-            "\tucast_cnt: %u\n",
-            pst_mac_vap->uc_vap_id,
-            pst_isolation_info->uc_mode,pst_isolation_info->uc_single_type,pst_isolation_info->uc_multi_type,
-            pst_isolation_info->uc_forward,
-            pst_isolation_info->ul_counter_bcast,
-            pst_isolation_info->ul_counter_mcast,
-            pst_isolation_info->ul_counter_ucast);
+    snprintf_s(pc_print_buff,OAM_REPORT_MAX_STRING_LEN, OAM_REPORT_MAX_STRING_LEN - 1,
+               "vap%d isolation info is :\n"
+               "\tmode:%d. single_type:%d. multi_tyep:%d. forward:%d.\n"
+               "\tbcast_cnt: %u\n"
+               "\tmcast_cnt: %u\n"
+               "\tucast_cnt: %u\n",
+               pst_mac_vap->uc_vap_id,
+               pst_isolation_info->uc_mode,pst_isolation_info->uc_single_type,
+               pst_isolation_info->uc_multi_type,
+               pst_isolation_info->uc_forward,
+               pst_isolation_info->ul_counter_bcast,
+               pst_isolation_info->ul_counter_mcast,
+               pst_isolation_info->ul_counter_ucast);
 
     oam_print_etc(pc_print_buff);
     OAL_MEM_FREE(pc_print_buff, OAL_TRUE);
@@ -253,14 +256,14 @@ oal_void hmac_show_isolation_info(mac_vap_stru *pst_mac_vap)
 
 cs_isolation_forward_enum hmac_isolation_filter(mac_vap_stru *pst_mac_vap, oal_uint8 *puc_mac_addr)
 {
-    mac_isolation_info_stru      *pst_isolation_info;
+    mac_isolation_info_stru      *pst_isolation_info = OAL_PTR_NULL;
     cs_isolation_forward_enum     uc_ret = CS_ISOLATION_FORWORD_NONE;
-    mac_user_stru                *pst_mac_user;
-    hmac_vap_stru                *pst_hmac_vap;
+    mac_user_stru                *pst_mac_user = OAL_PTR_NULL;
+    hmac_vap_stru                *pst_hmac_vap = OAL_PTR_NULL;
     oal_uint16                    us_user_idx;
 
     /* 1.1 入参检查 */
-    if ((OAL_PTR_NULL == pst_mac_vap) || (OAL_PTR_NULL == puc_mac_addr))
+    if (OAL_ANY_NULL_PTR2(pst_mac_vap,puc_mac_addr))
     {
         OAM_ERROR_LOG0(0, OAM_SF_ANY, "{hmac_isolation_filter::null mac_vap or null mac addr}");
         return CS_ISOLATION_FORWORD_NONE;
@@ -315,8 +318,6 @@ cs_isolation_forward_enum hmac_isolation_filter(mac_vap_stru *pst_mac_vap, oal_u
             {
             #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
                 if (OAL_SUCC == mac_chip_find_user_by_macaddr(pst_mac_vap->uc_chip_id, puc_mac_addr, &us_user_idx))
-            #else
-                if (OAL_SUCC == mac_board_find_user_by_macaddr(puc_mac_addr, &us_user_idx))
             #endif
                 {
                     pst_mac_user = mac_res_get_mac_user_etc(us_user_idx);
@@ -389,43 +390,6 @@ cs_isolation_forward_enum hmac_isolation_filter(mac_vap_stru *pst_mac_vap, oal_u
     }
     return uc_ret;
 }
-#if 0
-
-oal_void hmac_config_get_isolation(mac_vap_stru *pst_mac_vap,oal_uint8 *pst_info_str,oal_int16 str_len)
-{
-    oal_int16                    strlen,str_idex;
-    oal_int16                    str_len_left;
-    mac_isolation_info_stru      *pst_isolation_info;
-    oal_time_us_stru             st_cur_time;
-
-    str_len_left = str_len;
-    pst_isolation_info = &pst_mac_vap->st_isolation_info;
-
-    str_idex = OAL_SPRINTF(pst_info_str,str_len_left,"isolation type = %d; mode = 0x%x; forward = %d\n"
-        "\t[type multi:1; sigle:2] [mode bcast:1; mcast:2; ucast:4] [forward tolan:1; drop:2]",
-        pst_isolation_info->uc_type,pst_isolation_info->uc_mode,pst_isolation_info->uc_forward);
-    str_len_left -= str_idex;
-    if(str_len_left <= 0) return;
-
-    strlen = OAL_SPRINTF(pst_info_str + str_idex,str_len_left,
-        "\tisolation counter_bcast=%d\n" "  mcast=%d\n" "  ucast=%d\n",
-        pst_isolation_info->ul_counter_bcast,pst_isolation_info->ul_counter_mcast,pst_isolation_info->ul_counter_ucast);
-    str_idex += strlen;
-    str_len_left -= strlen;
-    if(str_len_left <= 0) return;
-
-    oal_time_get_stamp_us(&st_cur_time);
-    strlen = OAL_SPRINTF(pst_info_str + str_idex,str_len_left,"\ntotal str_len=%d. curr_time=%d\n",
-        str_idex,(oal_uint32)st_cur_time.i_sec);
-
-    oam_print_etc(pst_info_str);    /* Add log to SDT */
-
-    return;
-}
-
-/*lint -e578*//*lint -e19*/
-oal_module_symbol(hmac_config_get_isolation);
-#endif
 
 #ifdef __cplusplus
     #if __cplusplus

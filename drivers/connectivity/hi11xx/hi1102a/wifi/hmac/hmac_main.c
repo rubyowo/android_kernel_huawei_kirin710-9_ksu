@@ -16,10 +16,18 @@ extern "C" {
 #include "oal_profiling.h"
 #endif
 
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+#include <linux/hisi/hisi_cpufreq_req.h>
+#include <linux/cpufreq.h>
+#include <linux/hisi/hisi_core_ctl.h>
+#include <linux/pm_qos.h>
+#endif
+#endif
+
 #include "oam_ext_if.h"
 #include "oam_trace.h"
 #include "frw_ext_if.h"
-
 #include "mac_device.h"
 #include "mac_resource.h"
 #include "mac_regdomain.h"
@@ -84,6 +92,9 @@ extern "C" {
 #include "plat_pm_wlan.h"
 #endif
 
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST)
+#include "hmac_auto_ddr_freq.h"
+#endif
 
 #undef  THIS_FILE_ID
 #define THIS_FILE_ID OAM_FILE_ID_HMAC_MAIN_C
@@ -100,8 +111,12 @@ oal_wakelock_stru g_st_hmac_wakelock;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
 hmac_rxdata_thread_stru     g_st_rxdata_thread;
 #endif
-
-
+/* 锁频率接口 */
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+struct cpufreq_req g_ast_cpufreq[OAL_BUS_MAXCPU_NUM];
+struct pm_qos_request g_st_pmqos_requset;
+oal_uint32 g_aul_cpumaxfreq[OAL_BUS_MAXCPU_NUM];
+#endif
 OAL_STATIC oal_uint32  hmac_create_ba_event(frw_event_mem_stru  *pst_event_mem);
 OAL_STATIC oal_uint32  hmac_del_ba_event(frw_event_mem_stru  *pst_event_mem);
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC == _PRE_MULTI_CORE_MODE)
@@ -146,10 +161,10 @@ oal_void  hmac_board_get_instance(mac_board_stru **ppst_hmac_board)
 
  oal_uint32 hmac_init_event_process(frw_event_mem_stru *pst_event_mem)
 {
-    frw_event_stru        *pst_event;             /* 事件结构体 */
-    mac_data_rate_stru    *pst_data_rate;
-    dmac_tx_event_stru    *pst_ctx_event;
-    mac_device_stru       *pst_mac_device;
+    frw_event_stru        *pst_event = OAL_PTR_NULL;             /* 事件结构体 */
+    mac_data_rate_stru    *pst_data_rate = OAL_PTR_NULL;
+    dmac_tx_event_stru    *pst_ctx_event = OAL_PTR_NULL;
+    mac_device_stru       *pst_mac_device = OAL_PTR_NULL;
 
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
     {
@@ -185,7 +200,7 @@ oal_void  hmac_board_get_instance(mac_board_stru **ppst_hmac_board)
  oal_uint32 hmac_init_event_process(frw_event_mem_stru *pst_event_mem)
 {
     frw_event_stru        *pst_event;             /* 事件结构体 */
-    mac_chip_stru         *pst_chip;
+    mac_chip_stru         *pst_chip = OAL_PTR_NULL;
     oal_uint32             ul_return;
     oal_uint32             ul_chip_max_num;
 
@@ -224,66 +239,65 @@ oal_void  hmac_board_get_instance(mac_board_stru **ppst_hmac_board)
 OAL_STATIC oal_void hmac_event_fsm_tx_adapt_subtable_register(oal_void)
 {
     /* 注册WLAN_CTX事件处理函数表 */
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ACTION].p_tx_adapt_func    = hmac_proc_tx_process_action_event_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ADD_USER].p_tx_adapt_func  = hmac_proc_add_user_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_DEL_USER].p_tx_adapt_func  = hmac_proc_del_user_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_MGMT].p_tx_adapt_func      = hmac_proc_mgmt_ctx_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_EDCA_REG].p_tx_adapt_func = hmac_proc_set_edca_param_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SCAN_REQ].p_tx_adapt_func = hmac_scan_proc_scan_req_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ACTION].p_tx_adapt_func    = hmac_proc_tx_process_action_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ADD_USER].p_tx_adapt_func  = hmac_proc_add_user_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_DEL_USER].p_tx_adapt_func  = hmac_proc_del_user_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_MGMT].p_tx_adapt_func      = hmac_proc_mgmt_ctx_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_STA_SET_EDCA_REG].p_tx_adapt_func = hmac_proc_set_edca_param_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SCAN_REQ].p_tx_adapt_func = hmac_scan_proc_scan_req_event_tx_adapt;
 #ifdef _PRE_WLAN_RF_110X_CALI_DPD
-        g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_DPD_DATA_PROCESSED].p_tx_adapt_func = hmac_dpd_data_processed_event_tx_adapt;
+        dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_DPD_DATA_PROCESSED].p_tx_adapt_func = hmac_dpd_data_processed_event_tx_adapt;
 #endif
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_HMAC2DMAC].p_tx_adapt_func = hmac_send_event_netbuf_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_MATRIX_HMAC2DMAC].p_tx_adapt_func  = hmac_send_event_netbuf_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_APP_IE_H2D].p_tx_adapt_func     = hmac_send_event_netbuf_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_HMAC2DMAC].p_tx_adapt_func = hmac_send_event_netbuf_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CALI_MATRIX_HMAC2DMAC].p_tx_adapt_func  = hmac_send_event_netbuf_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_APP_IE_H2D].p_tx_adapt_func     = hmac_send_event_netbuf_tx_adapt;
 #ifdef _PRE_WLAN_FEATURE_IP_FILTER
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_IP_FILTER].p_tx_adapt_func = hmac_config_update_ip_filter_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_IP_FILTER].p_tx_adapt_func = hmac_config_update_ip_filter_tx_adapt;
 #endif //_PRE_WLAN_FEATURE_IP_FILTER
 #ifdef _PRE_WLAN_FEATURE_APF
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_APF].p_tx_adapt_func = hmac_send_event_netbuf_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_APF].p_tx_adapt_func = hmac_send_event_netbuf_tx_adapt;
 #endif
 
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SCHED_SCAN_REQ].p_tx_adapt_func = hmac_scan_proc_sched_scan_req_event_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ASOC_WRITE_REG].p_tx_adapt_func = hmac_mgmt_update_user_qos_table_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_JOIN_SET_REG].p_tx_adapt_func      = hmac_proc_join_set_reg_event_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_JOIN_DTIM_TSF_REG].p_tx_adapt_func    = hmac_proc_join_set_dtim_reg_event_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CONN_RESULT].p_tx_adapt_func    = hmac_hcc_tx_convert_event_to_netbuf_uint32;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SCHED_SCAN_REQ].p_tx_adapt_func = hmac_scan_proc_sched_scan_req_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_ASOC_WRITE_REG].p_tx_adapt_func = hmac_mgmt_update_user_qos_table_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_JOIN_SET_REG].p_tx_adapt_func      = hmac_proc_join_set_reg_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_JOIN_DTIM_TSF_REG].p_tx_adapt_func    = hmac_proc_join_set_dtim_reg_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_CONN_RESULT].p_tx_adapt_func    = hmac_hcc_tx_convert_event_to_netbuf_uint32;
 #ifdef _PRE_WLAN_FEATURE_OPMODE_NOTIFY
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_PSM_OPMODE_NOTIFY].p_tx_adapt_func  = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_PSM_OPMODE_NOTIFY].p_tx_adapt_func  = hmac_hcc_tx_convert_event_to_netbuf_uint16;
 #endif
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SET_RX_FILTER].p_tx_adapt_func  = hmac_hcc_tx_convert_event_to_netbuf_uint32;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_NOTIFY_ALG_ADD_USER].p_tx_adapt_func  = hmac_user_add_notify_alg_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BA_SYNC].p_tx_adapt_func           = hmac_proc_rx_process_sync_event_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_SELECT_CHAN].p_tx_adapt_func    = hmac_chan_select_channel_mac_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SWITCH_TO_NEW_CHAN].p_tx_adapt_func = hmac_chan_initiate_switch_to_new_channel_tx_adapt;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_RESTART_NETWORK].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_DISABLE_TX].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_ENABLE_TX].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SET_RX_FILTER].p_tx_adapt_func  = hmac_hcc_tx_convert_event_to_netbuf_uint32;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_NOTIFY_ALG_ADD_USER].p_tx_adapt_func  = hmac_user_add_notify_alg_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_BA_SYNC].p_tx_adapt_func           = hmac_proc_rx_process_sync_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_SELECT_CHAN].p_tx_adapt_func    = hmac_chan_select_channel_mac_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_SWITCH_TO_NEW_CHAN].p_tx_adapt_func = hmac_chan_initiate_switch_to_new_channel_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_RESTART_NETWORK].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_DISABLE_TX].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WALN_CTX_EVENT_SUB_TYPR_ENABLE_TX].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
 
 #ifdef _PRE_WLAN_FEATURE_EDCA_OPT_AP
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_EDCA_OPT].p_tx_adapt_func  = hmac_edca_opt_stat_event_tx_adapt;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_EDCA_OPT].p_tx_adapt_func  = hmac_edca_opt_stat_event_tx_adapt;
 #endif
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_DSCR_OPT].p_tx_adapt_func  = hmac_hcc_tx_convert_event_to_netbuf_uint8;
 
 #ifdef _PRE_WLAN_FEATURE_DFS
 #ifdef _PRE_WLAN_FEATURE_OFFCHAN_CAC
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_SWITCH_TO_OFF_CHAN].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_SWITCH_TO_HOME_CHAN].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_SWITCH_TO_OFF_CHAN].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_SWITCH_TO_HOME_CHAN].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
 #endif
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_DFS_TEST].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPR_DFS_TEST].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
 #endif
-    g_ast_dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_RESET_PSM].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_wlan_ctx_event_sub_table[DMAC_WLAN_CTX_EVENT_SUB_TYPE_RESET_PSM].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
 
     /* 注册HOST_DRX事件处理函数表 */
-    g_ast_dmac_tx_host_drx[DMAC_TX_HOST_DRX].p_tx_adapt_func = hmac_proc_tx_host_tx_adapt;
+    dmac_tx_host_drx[DMAC_TX_HOST_DRX].p_tx_adapt_func = hmac_proc_tx_host_tx_adapt;
 
     /* 注册HOST_CRX事件处理函数表 */
-    g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_INIT].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
-    g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_CREATE_CFG_VAP].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
-    g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_CFG].p_tx_adapt_func = hmac_proc_config_syn_tx_adapt;
-    g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_ALG].p_tx_adapt_func = hmac_proc_config_syn_alg_tx_adapt;
+    dmac_host_crx_table[HMAC_TO_DMAC_SYN_INIT].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_host_crx_table[HMAC_TO_DMAC_SYN_CREATE_CFG_VAP].p_tx_adapt_func = hmac_hcc_tx_convert_event_to_netbuf_uint16;
+    dmac_host_crx_table[HMAC_TO_DMAC_SYN_CFG].p_tx_adapt_func = hmac_proc_config_syn_tx_adapt;
+    dmac_host_crx_table[HMAC_TO_DMAC_SYN_ALG].p_tx_adapt_func = hmac_proc_config_syn_alg_tx_adapt;
 #if defined(_PRE_WLAN_FEATURE_DATA_SAMPLE)
-    g_ast_dmac_host_crx_table[HMAC_TO_DMAC_SYN_SAMPLE].p_tx_adapt_func = hmac_sdt_recv_sample_cmd_tx_adapt;
+    dmac_host_crx_table[HMAC_TO_DMAC_SYN_SAMPLE].p_tx_adapt_func = hmac_sdt_recv_sample_cmd_tx_adapt;
 #endif
     /* liuming add support keep alive code for 1102 */
     /* 注册WLAN_DTX事件处理函数表 */
@@ -395,7 +409,7 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 
 #ifdef _PRE_WLAN_FEATURE_DFS
     g_ast_hmac_wlan_misc_event_sub_table[DMAC_MISC_SUB_TYPE_RADAR_DETECT].p_func          = hmac_dfs_radar_detect_event;
-   // frw_event_table_register(FRW_EVENT_TYPE_DMAC_MISC, FRW_EVENT_PIPELINE_STAGE_1, g_ast_hmac_wlan_misc_event_sub_table);
+
 #endif   /* end of _PRE_WLAN_FEATURE_DFS */
     g_ast_hmac_wlan_misc_event_sub_table[DMAC_MISC_SUB_TYPE_DISASOC].p_func               = hmac_proc_disasoc_misc_event;
 
@@ -409,7 +423,7 @@ OAL_STATIC oal_void hmac_event_fsm_action_subtable_register(oal_void)
 #ifdef _PRE_WLAN_FEATURE_ROAM
     g_ast_hmac_wlan_misc_event_sub_table[DMAC_MISC_SUB_TYPE_ROAM_TRIGGER].p_func          = hmac_proc_roam_trigger_event;
 #endif //_PRE_WLAN_FEATURE_ROAM
-//    frw_event_table_register(FRW_EVENT_TYPE_DMAC_MISC, FRW_EVENT_PIPELINE_STAGE_1, g_ast_hmac_wlan_misc_event_sub_table);
+
 
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
     g_ast_hmac_host_drx_event_sub_table[HMAC_TX_HOST_DRX].p_func = hmac_tx_event_process;
@@ -508,7 +522,7 @@ OAL_STATIC oal_int32 hmac_print_vap_stat(oal_void* data, char* buf, oal_int32 bu
     return ret;
 }
 
-OAL_STATIC ssize_t  hmac_get_vap_stat(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_get_vap_stat(struct kobject *dev, struct kobj_attribute *attr, char* buf)
 {
     int ret = 0;
 
@@ -533,9 +547,10 @@ OAL_STATIC ssize_t  hmac_get_vap_stat(struct device *dev, struct device_attribut
     ret += hmac_print_vap_stat(NULL,buf,PAGE_SIZE - ret);
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(vap_info, S_IRUGO, hmac_get_vap_stat, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_vap_info =
+    __ATTR(vap_info, S_IRUGO, hmac_get_vap_stat, NULL);
 
-OAL_STATIC ssize_t  hmac_get_adapt_info(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_get_adapt_info(struct kobject *dev, struct kobj_attribute *attr, char* buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -578,7 +593,7 @@ oal_int32 hmac_wakelock_info_print(char* buf, oal_int32 buf_len)
     return ret;
 }
 
-OAL_STATIC ssize_t  hmac_get_wakelock_info(struct device *dev, struct device_attribute *attr, char*buf)
+OAL_STATIC ssize_t  hmac_get_wakelock_info(struct kobject *dev, struct kobj_attribute *attr, char*buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -605,10 +620,12 @@ OAL_STATIC ssize_t  hmac_get_wakelock_info(struct device *dev, struct device_att
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(adapt_info, S_IRUGO, hmac_get_adapt_info, NULL);
-OAL_STATIC DEVICE_ATTR(wakelock, S_IRUGO, hmac_get_wakelock_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_adapt_info =
+    __ATTR(adapt_info, S_IRUGO, hmac_get_adapt_info, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_wakelock =
+    __ATTR(wakelock, S_IRUGO, hmac_get_wakelock_info, NULL);
 
-OAL_STATIC ssize_t  hmac_show_roam_status(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t  hmac_show_roam_status(struct kobject *dev, struct kobj_attribute *attr, char* buf)
 {
     oal_int32               ret = 0;
     oal_uint8               uc_vap_id;
@@ -691,10 +708,11 @@ OAL_STATIC ssize_t  hmac_show_roam_status(struct device *dev, struct device_attr
     return ret;
 }
 
-OAL_STATIC DEVICE_ATTR(roam_status, S_IRUGO, hmac_show_roam_status, NULL);
+OAL_STATIC struct kobj_attribute dev_attr_roam_status =
+    __ATTR(roam_status, S_IRUGO, hmac_show_roam_status, NULL);
 
 
-OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+OAL_STATIC ssize_t hmac_set_rxthread_enable(struct kobject *dev, struct kobj_attribute *attr, const char *buf, size_t count)
 {
     oal_uint32 ul_val;
 
@@ -716,7 +734,7 @@ OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_at
         return 0;
     }
 
-    if (OAL_SSCANF(buf, "%u", &ul_val) != 1)
+    if (sscanf(buf, "%u", &ul_val) != 1)
     {
         OAL_IO_PRINT("set value one char!\n");
         return -OAL_EINVAL;
@@ -726,7 +744,7 @@ OAL_STATIC ssize_t hmac_set_rxthread_enable(struct device *dev, struct device_at
 
     return count;
 }
-OAL_STATIC ssize_t hmac_get_rxthread_info(struct device *dev, struct device_attribute *attr, char* buf)
+OAL_STATIC ssize_t hmac_get_rxthread_info(struct kobject *dev, struct kobj_attribute *attr, char* buf)
 {
     int ret = 0;
     if (NULL == buf)
@@ -753,7 +771,8 @@ OAL_STATIC ssize_t hmac_get_rxthread_info(struct device *dev, struct device_attr
 
     return ret;
 }
-OAL_STATIC DEVICE_ATTR(rxdata_info, S_IRUGO|S_IWUSR, hmac_get_rxthread_info, hmac_set_rxthread_enable);
+OAL_STATIC struct kobj_attribute dev_attr_rxdata_info =
+    __ATTR(rxdata_info, S_IRUGO|S_IWUSR, hmac_get_rxthread_info, hmac_set_rxthread_enable);
 
 OAL_STATIC struct attribute *hmac_sysfs_entries[] = {
         &dev_attr_vap_info.attr,
@@ -892,7 +911,7 @@ oal_void hmac_register_pm_callback(oal_void)
 
     pst_wifi_srv_handler = wlan_pm_get_wifi_srv_handler();
 
-    if(pst_wifi_srv_handler)
+    if(pst_wifi_srv_handler != OAL_PTR_NULL)
     {
         pst_wifi_srv_handler->p_wifi_srv_get_pm_pause_func = hmac_get_pm_pause_func;
         pst_wifi_srv_handler->p_wifi_srv_open_notify       = hmac_wifi_state_notify;
@@ -914,8 +933,8 @@ oal_bool_enum_uint8 hmac_get_rxthread_enable(oal_void)
 
 oal_void hmac_rxdata_sched(oal_void)
 {
-    //OAL_IO_PRINT("[hcc]timestamp:%llu , netbuf_num:%d.", oal_cpu_clock(), oal_netbuf_list_len(&g_st_rxdata_netbuf_head));
-    //OAL_WAIT_QUEUE_WAKE_UP_INTERRUPT(&g_st_rxdata_wq);
+
+
 #if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
     up(&g_st_rxdata_thread.st_rxdata_sema);
 #endif
@@ -948,13 +967,13 @@ oal_void hmac_rxdata_update_napi_weight(oal_netdev_priv_stru  * pst_netdev_priv)
         {
             uc_new_napi_weight = NAPI_POLL_WEIGHT_MAX;
         }
-        pst_netdev_priv->ul_period_pkts = 0;
         if (uc_new_napi_weight != pst_netdev_priv->uc_napi_weight)
         {
             pst_netdev_priv->uc_napi_weight = uc_new_napi_weight;
             pst_netdev_priv->st_napi.weight = uc_new_napi_weight;
-            OAM_WARNING_LOG1(0, OAM_SF_CFG, "{hmac_rxdata_update_napi_weight: new_napi_weight[%d]}",uc_new_napi_weight);
+            OAM_WARNING_LOG2(0, OAM_SF_CFG, "{hmac_rxdata_update_napi_weight: new_napi_weight[%d],totoal pkts[%d]}",uc_new_napi_weight,pst_netdev_priv->ul_period_pkts);
         }
+        pst_netdev_priv->ul_period_pkts = 0;
     }
 }
 oal_void hmac_rxdata_netbuf_enqueue(oal_netbuf_stru  *pst_netbuf)
@@ -974,12 +993,12 @@ oal_void hmac_rxdata_netbuf_enqueue(oal_netbuf_stru  *pst_netbuf)
 
 OAL_STATIC oal_int32 hmac_rxdata_thread(oal_void* p_data)
 {
-    //oal_int32           l_ret = 20000;
+
     oal_netbuf_stru      *pst_netbuf = OAL_PTR_NULL;
-    mac_device_stru      *pst_mac_device;
+    mac_device_stru      *pst_mac_device = OAL_PTR_NULL;
     oal_uint8            uc_vap_idx;
-    hmac_vap_stru        *pst_hmac_vap;
-    oal_netdev_priv_stru *pst_netdev_priv;
+    hmac_vap_stru        *pst_hmac_vap = OAL_PTR_NULL;
+    oal_netdev_priv_stru *pst_netdev_priv = OAL_PTR_NULL;
     struct sched_param       param;
 
     param.sched_priority = 97;
@@ -1036,9 +1055,9 @@ OAL_STATIC oal_int32 hmac_rxdata_thread(oal_void* p_data)
             {
             /*netif_rx提交内核*/
                 pst_netbuf = oal_netbuf_delist(&pst_netdev_priv->st_rx_netbuf_queue);
-                if( pst_netbuf)
+                if(pst_netbuf != OAL_PTR_NULL)
                 {
-                    //oal_notice_netif_rx(pst_netbuf);
+
                     oal_netif_rx_ni(pst_netbuf);
                 }
             }
@@ -1143,13 +1162,70 @@ OAL_STATIC oal_void hmac_hisi_thread_exit(oal_void)
         hcc_get_110x_handler()->hcc_transer_info.hcc_transfer_thread = NULL;
     }
 #endif
-    if (g_st_rxdata_thread.pst_rxdata_thread)
+    if (g_st_rxdata_thread.pst_rxdata_thread != OAL_PTR_NULL)
     {
         oal_thread_stop(g_st_rxdata_thread.pst_rxdata_thread, &g_st_rxdata_thread.st_rxdata_sema);
         g_st_rxdata_thread.pst_rxdata_thread = NULL;
     }
 }
 #endif
+
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+oal_uint32 hisi_cpufreq_get_maxfreq(unsigned int cpu)
+{
+    struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
+    oal_uint32 ul_max_freq;
+
+    if (!policy)
+    {
+        OAM_ERROR_LOG0(0, OAM_SF_ANY, "hisi_cpufreq_get_maxfreq: get cpufreq policy fail!");
+        return 0;
+    }
+
+    ul_max_freq = (policy->cpuinfo).max_freq;
+
+    /* 减小CPU调用计数 */
+    cpufreq_cpu_put(policy);
+    return ul_max_freq;
+}
+
+#endif
+OAL_STATIC oal_uint32 hmac_hisi_cpufreq_init(oal_void)
+{
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    oal_uint8    uc_cpuid;
+
+    for(uc_cpuid=0; uc_cpuid<OAL_BUS_MAXCPU_NUM; uc_cpuid++)
+    {
+        hisi_cpufreq_init_req(&g_ast_cpufreq[uc_cpuid], uc_cpuid);
+        g_aul_cpumaxfreq[uc_cpuid] = hisi_cpufreq_get_maxfreq(uc_cpuid);
+    }
+
+    /* 申请Pm Qos cpu idle latecy */
+    pm_qos_add_request(&g_st_pmqos_requset, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+    
+#endif
+    return OAL_SUCC;
+}
+OAL_STATIC oal_uint32 hmac_hisi_cpufreq_exit(oal_void)
+{
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+    oal_uint8    uc_cpuid;
+
+    for(uc_cpuid=0; uc_cpuid<OAL_BUS_MAXCPU_NUM; uc_cpuid++)
+    {
+        hisi_cpufreq_exit_req(&g_ast_cpufreq[uc_cpuid]);
+    }
+#endif
+    /* 删除Pm Qos cpu idle latecy */
+    pm_qos_remove_request(&g_st_pmqos_requset);
+
+    return OAL_SUCC;
+}
+#endif
+
 
 oal_int32  hmac_main_init(oal_void)
 {
@@ -1159,8 +1235,8 @@ oal_int32  hmac_main_init(oal_void)
 #endif
     frw_init_enum_uint16  en_init_state;
 #if (_PRE_MULTI_CORE_MODE_OFFLOAD_DMAC != _PRE_MULTI_CORE_MODE)
-    frw_event_mem_stru   *pst_event_mem;
-    frw_event_stru       *pst_event;
+    frw_event_mem_stru   *pst_event_mem = OAL_PTR_NULL;
+    frw_event_stru       *pst_event = OAL_PTR_NULL;
 #endif
 
     oal_wake_lock_init(&g_st_hmac_wakelock, "wlan_hmac_wakelock");
@@ -1198,6 +1274,9 @@ oal_int32  hmac_main_init(oal_void)
         return -OAL_EFAIL;
     }
 
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+    hmac_hisi_cpufreq_init();
+#endif
     ul_return = mac_res_init();
     if (OAL_SUCC != ul_return)
     {
@@ -1283,8 +1362,14 @@ oal_int32  hmac_main_init(oal_void)
     /* DFX 模块初始化 */
     hmac_dfx_init();
 
-#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && defined(_PRE_WLAN_CHIP_TEST_ALG)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST)
+    hmac_auto_ddr_init();
+#endif
+
+#if defined(_PRE_WLAN_CHIP_TEST_ALG)
     hmac_alg_test_main_common_init();
+#endif
 #endif
 
 #ifdef _PRE_WLAN_PROFLING_MIPS
@@ -1330,21 +1415,25 @@ oal_void  hmac_main_exit(oal_void)
     hmac_hisi_thread_exit();
 #endif
 
-#if 0
-    ul_return = mac_device_board_destroy(&g_st_hmac_board);
-    if (OAL_UNLIKELY(OAL_SUCC != ul_return))
-    {
-        OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_main_exit::mac_device_board_destroy failed[%d].}", ul_return);
-        return ;
-    }
-#else
+#if defined(_PRE_FEATURE_PLAT_LOCK_CPUFREQ) && !defined(CONFIG_HI110X_KERNEL_MODULES_BUILD_SUPPORT)
+    hmac_hisi_cpufreq_exit();
+#endif
+
+
+
+
+
+
+
+
+
     ul_return = hmac_board_exit(&g_st_hmac_board);
     if (OAL_UNLIKELY(OAL_SUCC != ul_return))
     {
         OAM_WARNING_LOG1(0, OAM_SF_ANY, "{hmac_main_exit::hmac_board_exit failed[%d].}", ul_return);
         return ;
     }
-#endif
+
 
     mac_res_exit();
 
@@ -1365,8 +1454,14 @@ oal_void  hmac_main_exit(oal_void)
 #else
     frw_set_init_state(FRW_INIT_STATE_DMAC_CONFIG_VAP_SUCC);
 #endif
-#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION) && defined(_PRE_WLAN_CHIP_TEST_ALG)
+#if (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)
+#if (_PRE_PRODUCT_ID == _PRE_PRODUCT_ID_HI1102A_HOST)
+    hmac_auto_ddr_exit();
+#endif
+
+#if defined(_PRE_WLAN_CHIP_TEST_ALG)
     hmac_alg_test_main_common_exit();
+#endif
 #endif
 
     oal_wake_lock_exit(&g_st_hmac_wakelock);
@@ -1388,7 +1483,7 @@ oal_uint32  hmac_sdt_recv_reg_cmd(
                             oal_uint16     us_len)
 {
     frw_event_mem_stru          *pst_event_mem;
-    frw_event_stru              *pst_event;
+    frw_event_stru              *pst_event = OAL_PTR_NULL;
 
     pst_event_mem = FRW_EVENT_ALLOC(us_len - OAL_IF_NAME_SIZE);
     if (OAL_UNLIKELY(OAL_PTR_NULL == pst_event_mem))
@@ -1422,7 +1517,7 @@ oal_uint32  hmac_sdt_up_reg_val(frw_event_mem_stru  *pst_event_mem)
 {
     frw_event_stru      *pst_event;
     hmac_vap_stru       *pst_hmac_vap;
-    oal_uint32          *pst_reg_val;
+    oal_uint32          *pst_reg_val = OAL_PTR_NULL;
 
     pst_event = (frw_event_stru  *)pst_event_mem->puc_data;
 
@@ -1568,7 +1663,7 @@ OAL_STATIC oal_uint32  hmac_create_ba_event(frw_event_mem_stru  *pst_event_mem)
 {
     frw_event_stru      *pst_event;
     hmac_user_stru      *pst_hmac_user;
-    hmac_vap_stru       *pst_hmac_vap;
+    hmac_vap_stru       *pst_hmac_vap = OAL_PTR_NULL;
     mac_tx_ctl_stru      st_cb;
     dmac_to_hmac_ctx_event_stru    *pst_create_ba_event;
 
@@ -1603,10 +1698,10 @@ OAL_STATIC oal_uint32  hmac_del_ba_event(frw_event_mem_stru  *pst_event_mem)
     oal_uint8           uc_tid;
     frw_event_stru     *pst_event;
     hmac_user_stru     *pst_hmac_user;
-    hmac_vap_stru      *pst_hmac_vap;
+    hmac_vap_stru      *pst_hmac_vap = OAL_PTR_NULL;
 
     mac_action_mgmt_args_stru       st_action_args;   /* 用于填写ACTION帧的参数 */
-    hmac_tid_stru                  *pst_hmac_tid;
+    hmac_tid_stru                  *pst_hmac_tid = OAL_PTR_NULL;
     oal_uint32                      ul_ret;
     dmac_to_hmac_ctx_event_stru    *pst_del_ba_event;
 
@@ -1673,7 +1768,7 @@ OAL_STATIC oal_uint32  hmac_syn_info_event(frw_event_mem_stru  *pst_event_mem)
 {
     frw_event_stru      *pst_event;
     hmac_user_stru      *pst_hmac_user;
-    mac_vap_stru        *pst_mac_vap;
+    mac_vap_stru        *pst_mac_vap = OAL_PTR_NULL;
     oal_uint32           ul_relt;
 
     dmac_to_hmac_syn_info_event_stru    *pst_syn_info_event;
