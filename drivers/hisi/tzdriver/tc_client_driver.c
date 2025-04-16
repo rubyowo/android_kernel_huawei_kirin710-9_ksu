@@ -1565,6 +1565,12 @@ HASH Original Huawei EMUI 9.1 Potter
 [   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 [   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 [   52.883941] [pid:1974,cpu4,vdec tvp task]TC_NS_OpenSession(1974, vdec tvp task): 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+[   91.065399] [pid:6111,cpu6,drm@1.1-service]TC_NS_OpenSession(6111, drm@1.1-service): TC_NS_OpenSession try to hash for /vendor/bin/hw/android.hardware.drm@1.1-service.widevine
+[   91.065399] [pid:6111,cpu6,drm@1.1-service]TC_NS_OpenSession(6111, drm@1.1-service): 0xE1, 0xE5, 0x73, 0x5C, 0x0C, 0x00, 0xA0, 0x0E, 
+[   91.065399] [pid:6111,cpu6,drm@1.1-service]TC_NS_OpenSession(6111, drm@1.1-service): 0x09, 0xCA, 0xFF, 0x44, 0x7A, 0xFA, 0xBB, 0x87, 
+[   91.065429] [pid:6111,cpu6,drm@1.1-service]TC_NS_OpenSession(6111, drm@1.1-service): 0x15, 0x3A, 0x16, 0x1E, 0xAC, 0x46, 0x09, 0xDB,  
+[   91.065429] [pid:6111,cpu6,drm@1.1-service]TC_NS_OpenSession(6111, drm@1.1-service): 0x25, 0xC4, 0xB3, 0x09, 0xE9, 0x41, 0x2E, 0x86, 
 */
 
 /*
