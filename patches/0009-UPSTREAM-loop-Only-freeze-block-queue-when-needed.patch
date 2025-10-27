@@ -1,0 +1,46 @@
+From 52aa38eb1b4a90c423a4bd198349d16882bb4b08 Mon Sep 17 00:00:00 2001
+From: Martijn Coenen <maco@android.com>
+Date: Tue, 10 Mar 2020 14:06:54 +0100
+Subject: [PATCH 02839/10000] UPSTREAM: loop: Only freeze block queue when
+ needed.
+
+__loop_update_dio() can be called as a part of loop_set_fd(), when the
+block queue is not yet up and running; avoid freezing the block queue in
+that case, since that is an expensive operation.
+
+Bug: 148607611
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
+Signed-off-by: Martijn Coenen <maco@android.com>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+(cherry picked from commit 0fbcf57982346763ec636f176d5afaa367b5f71b)
+Change-Id: I17d8de6b6b54a667703d60ea1c62449bb14331da
+---
+ drivers/block/loop.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index 9398d9bc60ac..3a4dd58931c9 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -211,13 +211,15 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
+ 	 * LO_FLAGS_READ_ONLY, both are set from kernel, and losetup
+ 	 * will get updated by ioctl(LOOP_GET_STATUS)
+ 	 */
+-	blk_mq_freeze_queue(lo->lo_queue);
++	if (lo->lo_state == Lo_bound)
++		blk_mq_freeze_queue(lo->lo_queue);
+ 	lo->use_dio = use_dio;
+ 	if (use_dio)
+ 		lo->lo_flags |= LO_FLAGS_DIRECT_IO;
+ 	else
+ 		lo->lo_flags &= ~LO_FLAGS_DIRECT_IO;
+-	blk_mq_unfreeze_queue(lo->lo_queue);
++	if (lo->lo_state == Lo_bound)
++		blk_mq_unfreeze_queue(lo->lo_queue);
+ }
+ 
+ static int
+-- 
+2.25.1
+

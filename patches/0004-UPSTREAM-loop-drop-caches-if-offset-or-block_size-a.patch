@@ -1,0 +1,108 @@
+From 97a5589a46e71a148d028497d4393ea81c257e9c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Date: Fri, 14 Dec 2018 11:14:38 -0800
+Subject: [PATCH 13944/26525] UPSTREAM: loop: drop caches if offset or
+ block_size are changed
+
+If we don't drop caches used in old offset or block_size, we can get old data
+from new offset/block_size, which gives unexpected data to user.
+
+For example, Martijn found a loopback bug in the below scenario.
+1) LOOP_SET_FD loads first two pages on loop file
+2) LOOP_SET_STATUS64 changes the offset on the loop file
+3) mount is failed due to the cached pages having wrong superblock
+
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org
+Reported-by: Martijn Coenen <maco@google.com>
+Reviewed-by: Bart Van Assche <bvanassche@acm.org>
+Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+(cherry picked from commit 490b8c65b9db45896769e1095e78725775f47b3e)
+Change-Id: Iffb7e1f04ab587e1a8785bc862a425efb654be24
+---
+ drivers/block/loop.c | 38 +++++++++++++++++++++++++++++++++++---
+ 1 file changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index ec0d66b67f51..4e35361784c5 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -1110,6 +1110,12 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 	if ((unsigned int) info->lo_encrypt_key_size > LO_KEY_SIZE)
+ 		return -EINVAL;
+ 
++	if (lo->lo_offset != info->lo_offset ||
++	    lo->lo_sizelimit != info->lo_sizelimit) {
++		sync_blockdev(lo->lo_device);
++		kill_bdev(lo->lo_device);
++	}
++
+ 	/* I/O need to be drained during transfer transition */
+ 	blk_mq_freeze_queue(lo->lo_queue);
+ 
+@@ -1137,11 +1143,20 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 		goto exit;
+ 
+ 	if (lo->lo_offset != info->lo_offset ||
+-	    lo->lo_sizelimit != info->lo_sizelimit)
++	    lo->lo_sizelimit != info->lo_sizelimit) {
++		/* kill_bdev should have truncated all the pages */
++		if (lo->lo_device->bd_inode->i_mapping->nrpages) {
++			err = -EAGAIN;
++			pr_warn("%s: loop%d (%s) has still dirty pages (nrpages=%lu)\n",
++				__func__, lo->lo_number, lo->lo_file_name,
++				lo->lo_device->bd_inode->i_mapping->nrpages);
++			goto exit;
++		}
+ 		if (figure_loop_size(lo, info->lo_offset, info->lo_sizelimit)) {
+ 			err = -EFBIG;
+ 			goto exit;
+ 		}
++	}
+ 
+ 	loop_config_discard(lo);
+ 
+@@ -1347,20 +1362,37 @@ static int loop_set_dio(struct loop_device *lo, unsigned long arg)
+ 
+ static int loop_set_block_size(struct loop_device *lo, unsigned long arg)
+ {
++	int err = 0;
++
+ 	if (lo->lo_state != Lo_bound)
+ 		return -ENXIO;
+ 
+ 	if (arg < 512 || arg > PAGE_SIZE || !is_power_of_2(arg))
+ 		return -EINVAL;
+ 
++	if (lo->lo_queue->limits.logical_block_size != arg) {
++		sync_blockdev(lo->lo_device);
++		kill_bdev(lo->lo_device);
++	}
++
+ 	blk_mq_freeze_queue(lo->lo_queue);
+ 
++	/* kill_bdev should have truncated all the pages */
++	if (lo->lo_queue->limits.logical_block_size != arg &&
++			lo->lo_device->bd_inode->i_mapping->nrpages) {
++		err = -EAGAIN;
++		pr_warn("%s: loop%d (%s) has still dirty pages (nrpages=%lu)\n",
++			__func__, lo->lo_number, lo->lo_file_name,
++			lo->lo_device->bd_inode->i_mapping->nrpages);
++		goto out_unfreeze;
++	}
++
+ 	blk_queue_logical_block_size(lo->lo_queue, arg);
+ 	loop_update_dio(lo);
+-
++out_unfreeze:
+ 	blk_mq_unfreeze_queue(lo->lo_queue);
+ 
+-	return 0;
++	return err;
+ }
+ 
+ static int lo_ioctl(struct block_device *bdev, fmode_t mode,
+-- 
+2.25.1
+

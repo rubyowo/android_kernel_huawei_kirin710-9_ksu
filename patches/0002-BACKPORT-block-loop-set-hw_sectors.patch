@@ -1,0 +1,35 @@
+From b1e7b4e2886b1d504ebaea4f4956c56b13836b35 Mon Sep 17 00:00:00 2001
+From: Shaohua Li <shli@fb.com>
+Date: Thu, 31 Aug 2017 22:09:45 -0700
+Subject: [PATCH 12420/26525] BACKPORT: block/loop: set hw_sectors
+
+Loop can handle any size of request. Limiting it to 255 sectors just
+burns the CPU for bio split and request merge for underlayer disk and
+also cause bad fs block allocation in directio mode.
+
+Change-Id: I15d93462de28a9b25c33f6c38a23a96a6d0f1dc8
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Reviewed-by: Ming Lei <ming.lei@redhat.com>
+Signed-off-by: Shaohua Li <shli@fb.com>
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+(cherry picked from commit 54bb0ade6627a183c211345761ec46e4bf0048fe)
+Signed-off-by: Martijn Coenen <maco@android.com>
+---
+ drivers/block/loop.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index 0c1df0566051..84705c42edfe 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -1805,6 +1805,7 @@ static int loop_add(struct loop_device **l, int i)
+ 	}
+ 	lo->lo_queue->queuedata = lo;
+ 
++	blk_queue_max_hw_sectors(lo->lo_queue, BLK_DEF_MAX_SECTORS);
+ 	/*
+ 	 * It doesn't make sense to enable merge because the I/O
+ 	 * submitted to backing file is handled page by page.
+-- 
+2.25.1
+
