@@ -1,8 +1,7 @@
-From 52aa38eb1b4a90c423a4bd198349d16882bb4b08 Mon Sep 17 00:00:00 2001
+From 67dd4bfe352018b7aea55670cabddd7bcaee2081 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Tue, 10 Mar 2020 14:06:54 +0100
-Subject: [PATCH 02839/10000] UPSTREAM: loop: Only freeze block queue when
- needed.
+Subject: [PATCH 09/30] UPSTREAM: loop: Only freeze block queue when needed.
 
 __loop_update_dio() can be called as a part of loop_set_fd(), when the
 block queue is not yet up and running; avoid freezing the block queue in
@@ -20,7 +19,7 @@ Change-Id: I17d8de6b6b54a667703d60ea1c62449bb14331da
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 9398d9bc60ac..3a4dd58931c9 100644
+index 9398d9bc6..3a4dd5893 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -211,13 +211,15 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)

@@ -1,7 +1,7 @@
-From a0aa3c80d312cbaf135995c650dceb4367b22280 Mon Sep 17 00:00:00 2001
+From 0b6d27cb18edf4c6f57f73dff74522f6532d8118 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Wed, 13 May 2020 15:38:39 +0200
-Subject: [PATCH 20244/26525] BACKPORT: loop: Refactor loop_set_status() size
+Subject: [PATCH 13/30] BACKPORT: loop: Refactor loop_set_status() size
  calculation
 
 figure_loop_size() calculates the loop size based on the passed in
@@ -26,7 +26,7 @@ Change-Id: Ib8e10eb734c3f95f3c433c13012b378373336d10
  1 file changed, 17 insertions(+), 18 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index cd2e4477be73..d60d60630fa6 100644
+index cd2e4477b..d60d60630 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -245,11 +245,6 @@ figure_loop_size(struct loop_device *lo, loff_t offset, loff_t sizelimit)

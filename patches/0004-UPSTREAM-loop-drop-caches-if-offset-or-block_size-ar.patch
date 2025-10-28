@@ -1,8 +1,8 @@
-From 97a5589a46e71a148d028497d4393ea81c257e9c Mon Sep 17 00:00:00 2001
+From f909378f44b861264c07b3d918768e0dc5207254 Mon Sep 17 00:00:00 2001
 From: Jaegeuk Kim <jaegeuk@kernel.org>
 Date: Fri, 14 Dec 2018 11:14:38 -0800
-Subject: [PATCH 13944/26525] UPSTREAM: loop: drop caches if offset or
- block_size are changed
+Subject: [PATCH 04/30] UPSTREAM: loop: drop caches if offset or block_size are
+ changed
 
 If we don't drop caches used in old offset or block_size, we can get old data
 from new offset/block_size, which gives unexpected data to user.
@@ -25,7 +25,7 @@ Change-Id: Iffb7e1f04ab587e1a8785bc862a425efb654be24
  1 file changed, 35 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index ec0d66b67f51..4e35361784c5 100644
+index 1a92c2f97..ab0dfd3f9 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1110,6 +1110,12 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)

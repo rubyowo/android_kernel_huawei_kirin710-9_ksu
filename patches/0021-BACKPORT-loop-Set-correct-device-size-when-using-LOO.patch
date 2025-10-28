@@ -1,8 +1,8 @@
-From e9b670bd6823a4cc657ee72b3863ade668b15534 Mon Sep 17 00:00:00 2001
+From 7e82e16c27c97aa5a7d202185541745c65af6813 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Tue, 25 Aug 2020 09:18:29 +0200
-Subject: [PATCH 23517/26525] BACKPORT: loop: Set correct device size when
- using LOOP_CONFIGURE
+Subject: [PATCH 21/30] BACKPORT: loop: Set correct device size when using
+ LOOP_CONFIGURE
 
 The device size calculation was done before processing the loop
 configuration, which meant that the we set the size on the underlying
@@ -24,7 +24,7 @@ Change-Id: I823aba7e482eaf347992d507c875c10469a27c16
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 77b459cfa0e2..b7fa1d9f6f2a 100644
+index 77b459cfa..b7fa1d9f6 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1027,8 +1027,6 @@ static int loop_configure(struct loop_device *lo, fmode_t mode,

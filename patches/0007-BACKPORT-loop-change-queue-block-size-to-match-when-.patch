@@ -1,8 +1,8 @@
-From 7e210e176e3541b976d639c83c4b3f432237b9ec Mon Sep 17 00:00:00 2001
+From 076c89a893b1d1505d6088f2941b2c896de58fdb Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Wed, 4 Sep 2019 21:49:01 +0200
-Subject: [PATCH 02837/10000] BACKPORT: loop: change queue block size to match
- when using DIO
+Subject: [PATCH 07/30] BACKPORT: loop: change queue block size to match when
+ using DIO
 
 The loop driver assumes that if the passed in fd is opened with
 O_DIRECT, the caller wants to use direct I/O on the loop device.
@@ -25,7 +25,7 @@ Change-Id: I753830e548b3bc33a0baa2baaaf710e1d169ab67
  1 file changed, 8 insertions(+)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index d06e15879b17..c0aba1580155 100644
+index d06e15879..c0aba1580 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -946,6 +946,14 @@ static int loop_set_fd(struct loop_device *lo, fmode_t mode,

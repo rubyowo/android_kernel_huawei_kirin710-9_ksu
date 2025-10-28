@@ -1,7 +1,7 @@
-From 940b6c73e3a822d79f130d349f29f433f1ac96c3 Mon Sep 17 00:00:00 2001
+From d0e7637569e493d11839d6abbd008feffc94368b Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Thu, 4 Jun 2020 22:25:20 +0200
-Subject: [PATCH 20251/26525] BACKPORT: loop: Fix wrong masking of status flags
+Subject: [PATCH 20/30] BACKPORT: loop: Fix wrong masking of status flags
 
 In faf1d25440d6, loop_set_status() now assigns lo_status directly from
 the passed in lo_flags, but then fixes it up by masking out flags that
@@ -42,7 +42,7 @@ Change-Id: I2bc249ad0e0b33b7d1f4e8ae994667727574d2d5
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 170872201a6d..77b459cfa0e2 100644
+index 170872201..77b459cfa 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1230,7 +1230,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)

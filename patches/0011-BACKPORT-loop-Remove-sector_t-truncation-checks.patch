@@ -1,7 +1,7 @@
-From 6d607a41ef689917c6b02a2511ce8d7b8c196ca1 Mon Sep 17 00:00:00 2001
+From e38f69e93d6a6fb20965ed7e3cfa7d3b9d2a4afb Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Wed, 13 May 2020 15:38:36 +0200
-Subject: [PATCH 20242/26525] BACKPORT: loop: Remove sector_t truncation checks
+Subject: [PATCH 11/30] BACKPORT: loop: Remove sector_t truncation checks
 
 sector_t is now always u64, so we don't need to check for truncation.
 
@@ -16,7 +16,7 @@ Change-Id: I1db87e391aca6226d542c5b74e569184ec059073
  1 file changed, 7 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index c2b01561a9e5..f8d9967e3635 100644
+index c2b01561a..f8d9967e3 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -222,24 +222,20 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)

@@ -1,7 +1,7 @@
-From b1e7b4e2886b1d504ebaea4f4956c56b13836b35 Mon Sep 17 00:00:00 2001
+From bd687867bf712a96d00d6f36a9663053a9b47b83 Mon Sep 17 00:00:00 2001
 From: Shaohua Li <shli@fb.com>
 Date: Thu, 31 Aug 2017 22:09:45 -0700
-Subject: [PATCH 12420/26525] BACKPORT: block/loop: set hw_sectors
+Subject: [PATCH 02/30] BACKPORT: block/loop: set hw_sectors
 
 Loop can handle any size of request. Limiting it to 255 sectors just
 burns the CPU for bio split and request merge for underlayer disk and
@@ -19,10 +19,10 @@ Signed-off-by: Martijn Coenen <maco@android.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 0c1df0566051..84705c42edfe 100644
+index ec0d66b67..fe32188bb 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
-@@ -1805,6 +1805,7 @@ static int loop_add(struct loop_device **l, int i)
+@@ -1814,6 +1814,7 @@ static int loop_add(struct loop_device **l, int i)
  	}
  	lo->lo_queue->queuedata = lo;
  

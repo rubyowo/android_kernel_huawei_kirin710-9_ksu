@@ -1,8 +1,7 @@
-From a144472d407b00fb3fc68256b2d3e8b0368f2061 Mon Sep 17 00:00:00 2001
+From 13080bbb916525fc61bd2879c6e9c6c7098ca8ff Mon Sep 17 00:00:00 2001
 From: Evan Green <evgreen@chromium.org>
 Date: Mon, 2 Jul 2018 16:03:46 -0700
-Subject: [PATCH 12421/26525] UPSTREAM: loop: Add LOOP_SET_BLOCK_SIZE in compat
- ioctl
+Subject: [PATCH 03/30] UPSTREAM: loop: Add LOOP_SET_BLOCK_SIZE in compat ioctl
 
 This change adds LOOP_SET_BLOCK_SIZE as one of the supported ioctls
 in lo_compat_ioctl. It only takes an unsigned long argument, and
@@ -19,7 +18,7 @@ Signed-off-by: Martijn Coenen <maco@android.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 84705c42edfe..a08c223e2f61 100644
+index fe32188bb..1a92c2f97 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1570,6 +1570,7 @@ static int lo_compat_ioctl(struct block_device *bdev, fmode_t mode,

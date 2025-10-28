@@ -1,7 +1,7 @@
-From 599cacb0cb2017e7888fd7ecfc7b584a07478c36 Mon Sep 17 00:00:00 2001
+From 78f3c6ea9a8697782f932496d03be015bd8f6ec0 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Wed, 13 May 2020 15:38:40 +0200
-Subject: [PATCH 20245/26525] BACKPORT: loop: Remove figure_loop_size()
+Subject: [PATCH 14/30] BACKPORT: loop: Remove figure_loop_size()
 
 This function was now only used by loop_set_capacity(). Just open code
 the remaining code in the caller instead.
@@ -17,7 +17,7 @@ Change-Id: Icc5ef56a5f0264b9bfa15fbbe8062a74a59d88cb
  1 file changed, 6 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index d60d60630fa6..ca7b4952324c 100644
+index d60d60630..ca7b49523 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -240,14 +240,6 @@ static void loop_set_size(struct loop_device *lo, loff_t size)

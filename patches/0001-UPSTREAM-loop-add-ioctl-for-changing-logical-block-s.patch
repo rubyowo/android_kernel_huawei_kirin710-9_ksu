@@ -1,8 +1,8 @@
-From cc7cefae2a57caffd88459794b314e8c38a358c5 Mon Sep 17 00:00:00 2001
+From ea297f154eab3e7f6ee989eecdad38ab2b4d80af Mon Sep 17 00:00:00 2001
 From: Omar Sandoval <osandov@fb.com>
 Date: Thu, 24 Aug 2017 00:03:43 -0700
-Subject: [PATCH 12419/26525] UPSTREAM: loop: add ioctl for changing logical
- block size
+Subject: [PATCH 01/30] UPSTREAM: loop: add ioctl for changing logical block
+ size
 
 This is a different approach from the first attempt in f2c6df7dbf9a
 ("loop: support 4k physical blocksize"). Rather than extending
@@ -22,7 +22,7 @@ Signed-off-by: Martijn Coenen <maco@android.com>
  2 files changed, 25 insertions(+)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 9f840d9fdfcb..0c1df0566051 100644
+index 5081e33bc..ec0d66b67 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1059,6 +1059,7 @@ static int loop_clr_fd(struct loop_device *lo)
@@ -71,7 +71,7 @@ index 9f840d9fdfcb..0c1df0566051 100644
  		err = lo->ioctl ? lo->ioctl(lo, cmd, arg) : -EINVAL;
  	}
 diff --git a/include/uapi/linux/loop.h b/include/uapi/linux/loop.h
-index c8125ec1f4f2..23158dbe2424 100644
+index c8125ec1f..23158dbe2 100644
 --- a/include/uapi/linux/loop.h
 +++ b/include/uapi/linux/loop.h
 @@ -88,6 +88,7 @@ struct loop_info64 {

@@ -1,7 +1,7 @@
-From 9b4d4c2dce1d3ca473404ff743e0587b894d036e Mon Sep 17 00:00:00 2001
+From a83059c30dc94b5730e3dedcebd50ed8676c9939 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Wed, 13 May 2020 15:38:45 +0200
-Subject: [PATCH 20250/26525] BACKPORT: loop: Add LOOP_CONFIGURE ioctl
+Subject: [PATCH 19/30] BACKPORT: loop: Add LOOP_CONFIGURE ioctl
 
 This allows userspace to completely setup a loop device with a single
 ioctl, removing the in-between state where the device can be partially
@@ -50,7 +50,7 @@ Change-Id: I839ee9c9df8dbd9f4cc0fa5c8119c01abfcac1d9
  2 files changed, 94 insertions(+), 24 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 67316db61689..170872201a6d 100644
+index 67316db61..170872201 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -222,6 +222,19 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
@@ -227,7 +227,7 @@ index 67316db61689..170872201a6d 100644
  	case LOOP_SET_FD:
  	case LOOP_CHANGE_FD:
 diff --git a/include/uapi/linux/loop.h b/include/uapi/linux/loop.h
-index 3544d81bb6f2..2bb48ed86144 100644
+index 3544d81bb..2bb48ed86 100644
 --- a/include/uapi/linux/loop.h
 +++ b/include/uapi/linux/loop.h
 @@ -30,6 +30,10 @@ enum {

@@ -1,0 +1,40 @@
+From 2da5bea15f36f8b98aa1ea0dd6cd74e6fb004b71 Mon Sep 17 00:00:00 2001
+From: Huawei_Dev <surdu_petru@yahoo.com>
+Date: Sun, 7 Apr 2024 17:33:54 +0200
+Subject: [PATCH 25/30] block: Fixup : UPSTREAM: mm: don't cap request size
+ based on read-ahead setting
+
+---
+ block/blk-settings.c | 2 +-
+ block/blk-sysfs.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/block/blk-settings.c b/block/blk-settings.c
+index 3f698c848..565d75757 100755
+--- a/block/blk-settings.c
++++ b/block/blk-settings.c
+@@ -249,7 +249,7 @@ void blk_queue_max_hw_sectors(struct request_queue *q, unsigned int max_hw_secto
+ 	max_sectors = min_not_zero(max_hw_sectors, limits->max_dev_sectors);
+ 	max_sectors = min_t(unsigned int, max_sectors, BLK_DEF_MAX_SECTORS);
+ 	limits->max_sectors = max_sectors;
+-	q->backing_dev_info.io_pages = max_sectors >> (PAGE_SHIFT - 9);
++	q->backing_dev_info->io_pages = max_sectors >> (PAGE_SHIFT - 9);
+ }
+ EXPORT_SYMBOL(blk_queue_max_hw_sectors);
+ 
+diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
+index 6827d03c4..318bf52a2 100755
+--- a/block/blk-sysfs.c
++++ b/block/blk-sysfs.c
+@@ -236,7 +236,7 @@ queue_max_sectors_store(struct request_queue *q, const char *page, size_t count)
+ 
+ 	spin_lock_irq(q->queue_lock);
+ 	q->limits.max_sectors = max_sectors_kb << 1;
+-	q->backing_dev_info.io_pages = max_sectors_kb >> (PAGE_SHIFT - 10);
++	q->backing_dev_info->io_pages = max_sectors_kb >> (PAGE_SHIFT - 10);
+ 	spin_unlock_irq(q->queue_lock);
+ 
+ 	return ret;
+-- 
+2.25.1
+

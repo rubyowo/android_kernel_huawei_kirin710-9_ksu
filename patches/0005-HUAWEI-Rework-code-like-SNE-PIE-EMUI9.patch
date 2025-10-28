@@ -1,7 +1,7 @@
 From d1a93cf353df47821e23e5d809a90bdd32beeaaa Mon Sep 17 00:00:00 2001
 From: Raphael Mounier <mounierr07@gmail.com>
 Date: Mon, 27 Oct 2025 19:07:32 +0100
-Subject: [PATCH] HUAWEI: Rework code like SNE PIE EMUI9
+Subject: [PATCH 05/30] HUAWEI: Rework code like SNE PIE EMUI9
 
 ---
  drivers/block/loop.c | 2 --

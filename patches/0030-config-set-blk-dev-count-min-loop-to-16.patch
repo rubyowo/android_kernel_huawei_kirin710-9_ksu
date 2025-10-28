@@ -1,0 +1,25 @@
+From 98fe615793b98becc969689e32e5cea2a99e01e2 Mon Sep 17 00:00:00 2001
+From: Raphael Mounier <mounierr07@gmail.com>
+Date: Tue, 28 Oct 2025 12:46:00 +0100
+Subject: [PATCH 30/30] config: set blk dev count min loop to 16
+
+---
+ arch/arm64/configs/merge_kirin710_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/merge_kirin710_defconfig b/arch/arm64/configs/merge_kirin710_defconfig
+index 91dd64321..a59c11b17 100644
+--- a/arch/arm64/configs/merge_kirin710_defconfig
++++ b/arch/arm64/configs/merge_kirin710_defconfig
+@@ -1373,7 +1373,7 @@ CONFIG_ZRAM=y
+ # CONFIG_ZRAM_MEMORY_TRACKING is not set
+ # CONFIG_BLK_DEV_COW_COMMON is not set
+ CONFIG_BLK_DEV_LOOP=y
+-CONFIG_BLK_DEV_LOOP_MIN_COUNT=8
++CONFIG_BLK_DEV_LOOP_MIN_COUNT=16
+ # CONFIG_BLK_DEV_CRYPTOLOOP is not set
+ # CONFIG_BLK_DEV_DRBD is not set
+ # CONFIG_BLK_DEV_NBD is not set
+-- 
+2.25.1
+

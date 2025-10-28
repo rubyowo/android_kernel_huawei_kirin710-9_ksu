@@ -1,8 +1,7 @@
-From d54f4399c59391a132d21b1ee58e3060dd7b722e Mon Sep 17 00:00:00 2001
+From fd368650dd558edc36c06b92609ab8d051265324 Mon Sep 17 00:00:00 2001
 From: Martijn Coenen <maco@android.com>
 Date: Tue, 10 Mar 2020 14:12:30 +0100
-Subject: [PATCH 02838/10000] UPSTREAM: loop: Only change blocksize when
- needed.
+Subject: [PATCH 08/30] UPSTREAM: loop: Only change blocksize when needed.
 
 Return early in loop_set_block_size() if the requested block size is
 identical to the one we already have; this avoids expensive calls to
@@ -19,7 +18,7 @@ Change-Id: I61778680579dbfeeb193133527a3926d376e0bac
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index c0aba1580155..9398d9bc60ac 100644
+index c0aba1580..9398d9bc6 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1378,16 +1378,16 @@ static int loop_set_block_size(struct loop_device *lo, unsigned long arg)

@@ -1,7 +1,7 @@
-From 8c1d883d58f6ba541a7625e29cbd69a7a223b7a1 Mon Sep 17 00:00:00 2001
+From f969b4839ec1d1b6b93b18aaed1419893be88fa9 Mon Sep 17 00:00:00 2001
 From: Alessio Balsini <balsini@android.com>
 Date: Wed, 23 Oct 2019 18:17:36 +0100
-Subject: [PATCH 16941/26525] loop: Add LOOP_SET_DIRECT_IO to compat ioctl
+Subject: [PATCH 06/30] loop: Add LOOP_SET_DIRECT_IO to compat ioctl
 
 [ Upstream commit fdbe4eeeb1aac219b14f10c0ed31ae5d1123e9b8 ]
 
@@ -24,7 +24,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+)
 
 diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 4e35361784c5..d06e15879b17 100644
+index 4e3536178..d06e15879 100644
 --- a/drivers/block/loop.c
 +++ b/drivers/block/loop.c
 @@ -1602,6 +1602,7 @@ static int lo_compat_ioctl(struct block_device *bdev, fmode_t mode,
