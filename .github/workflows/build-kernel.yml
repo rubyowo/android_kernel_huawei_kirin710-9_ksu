@@ -22,20 +22,22 @@ jobs:
         run: |
           sudo apt update
 
-          sudo apt install -y \
+           sudo apt install -y \
             bc \
             bison \
             build-essential \
+            ccache \
             curl \
             flex \
             git \
             libelf-dev \
             libssl-dev \
+            lld \
+            llvm \
             python3 \
             unzip \
             zip \
-            cpio \
-            binwalk
+            cpio
 
       # - name: Setup GCC 4.9 toolchain
       #   run: |
@@ -47,14 +49,18 @@ jobs:
 
       #     echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
-      - name: Setup AOSP GCC 4.9 toolchain
+      - name: Setup AOSP GCC 4.9 (AArch64)
         run: |
-          mkdir -p $HOME/toolchains/gcc49
-          # Fetch the aarch64-linux-android-4.9 toolchain from AOSP
-          curl -LSs "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/heads/master.tar.gz" -o gcc.tar.gz
-          tar -xzf gcc.tar.gz -C $HOME/toolchains/gcc49
-    
-          # Add the bin folder to the environment path
+          mkdir -p $HOME/toolchains
+          cd $HOME/toolchains
+
+          git clone \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+            gcc49
+
+          cd gcc49
+          git checkout android-9.0.0_r61
+
           echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
       - name: Setup Cache
