@@ -11,6 +11,8 @@ jobs:
       ARCH: arm64
       SUBARCH: arm64
       DEFCONFIG: merge_kirin710_defconfig
+      CCACHE_DIR: ~/.ccache
+      USE_CCACHE: 1
 
     steps:
       - name: Checkout source
@@ -39,41 +41,68 @@ jobs:
             zip \
             cpio
 
-      # - name: Setup GCC 4.9 toolchain
+      # - name: Setup AOSP GCC 4.9
       #   run: |
       #     mkdir -p $HOME/toolchains
+      #     cd $HOME/toolchains
 
-      #     git clone --depth=1 \
-      #       https://github.com/arter97/arm64-gcc.git \
-      #       $HOME/toolchains/gcc49
+      #     git clone \
+      #       https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+      #       gcc49
+
+      #     cd gcc49
+      #     git checkout android-9.0.0_r61
 
       #     echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
-      - name: Setup AOSP GCC 4.9 (AArch64)
+      - name: Cache AOSP GCC 4.9 Toolchain
+        uses: actions/cache@v4
+        with:
+          path: $HOME/toolchains/gcc49
+          key: gcc49-aarch64-android-9.0.0_r61
+
+      - name: Setup AOSP GCC 4.9
         run: |
           mkdir -p $HOME/toolchains
           cd $HOME/toolchains
 
-          git clone \
-            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
-            gcc49
+          if [ ! -d gcc49 ]; then
+            git clone \
+              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+              gcc49
 
-          cd gcc49
-          git checkout android-9.0.0_r61
+            cd gcc49
+            git checkout android-9.0.0_r61
+          else
+            echo "Using cached toolchain"
+          fi
 
           echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
-      - name: Setup Cache
+      - name: Setup ccache
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: kernel-ccache-${{ github.sha }}
-          restore-keys: kernel-ccache-
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
+      - name: Configure ccache
+        run: |
+          ccache -M 5G
+          ccache -s
 
       - name: Clean source
         run: |
           rm -rf include/config || true
           mkdir -p out
+
+      - name: Add KernelSU v0.9.5
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+
+          echo
+          echo "KernelSU v0.9.5 added successfully"
 
       - name: Configure kernel
         run: |
@@ -87,7 +116,7 @@ jobs:
           make -j$(nproc) \
                ARCH=arm64 \
                O=out \
-               CROSS_COMPILE=aarch64-linux-android- \
+               CROSS_COMPILE="ccache aarch64-linux-android-" \
                2>&1 | tee build.log
 
       - name: Package Kernel Images
@@ -141,6 +170,9 @@ jobs:
           echo
           echo "==== Sizes ===="
           ls -lah out/arch/arm64/boot/
+
+      - name: Show ccache stats
+        run: ccache -s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
