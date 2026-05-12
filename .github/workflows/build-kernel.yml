@@ -10,9 +10,13 @@ jobs:
     env:
       ARCH: arm64
       SUBARCH: arm64
-      DEFCONFIG: merge_kirin710_defconfig
-      CCACHE_DIR: ~/.ccache
+      # DEFCONFIG: merge_kirin710_defconfig
+      DEFCONFIG: JSN_kirin710_KSU_defconfig
       USE_CCACHE: 1
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_MAXSIZE: "2G"
+      CCACHE_HARDLINK: "true"
 
     steps:
       - name: Checkout source
@@ -87,9 +91,6 @@ jobs:
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: kirin710-kernel
-          max-size: 2G
 
       - name: Show ccache stats before build
         run: ccache -s
@@ -105,6 +106,11 @@ jobs:
 
           echo
           echo "KernelSU v0.9.5 added successfully"
+
+      - name: GetTime
+        id: get_time
+        run: |
+          echo "TIME=$(TZ=UTC-8 date +%m%d%H%M )" >> $GITHUB_OUTPUT
 
       - name: Configure kernel
         run: |
@@ -125,8 +131,6 @@ jobs:
         run: |
           set -e
 
-          END_TIME=$(date +%Y.%m.%d-%H_%M)
-
           echo "Packing kernel images..."
 
           # Ensure mkbootimg exists
@@ -143,7 +147,7 @@ jobs:
             --header_version 1 \
             --os_version 9 \
             --os_patch_level 2019-05-05 \
-            --output Kirin710_EMUI9.1-${END_TIME}.img
+            --output Kirin710_EMUI9.1-${{ steps.get_time.outputs.TIME }}.img
 
           # Permissive build
           tools/mkbootimg \
@@ -156,7 +160,7 @@ jobs:
             --header_version 1 \
             --os_version 9 \
             --os_patch_level 2019-05-05 \
-            --output Kirin710_EMUI9.1_PM-${END_TIME}.img
+            --output Kirin710_EMUI9.1_PM-${{ steps.get_time.outputs.TIME }}.img
 
           echo "Done packaging kernel images."
 
@@ -176,12 +180,18 @@ jobs:
       - name: Show ccache stats
         run: ccache -s
 
-      - name: Upload artifacts
+      - name: Upload kernel image.gz
         uses: actions/upload-artifact@v4
         with:
           name: kirin710-kernel-build
           path: |
             out/arch/arm64/boot/**
             build.log
+
+      - name: Upload kernel images
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kirin710_EMUI9.1_KSU-kernel-${{ steps.get_time.outputs.TIME }}
+          path: |
             Kirin710_EMUI9.1-*.img
             Kirin710_EMUI9.1_PM-*.img
