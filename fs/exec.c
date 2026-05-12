@@ -947,7 +947,7 @@ int kernel_read_file(struct file *file, void **buf, loff_t *size,
 				    i_size - pos);
 		if (bytes < 0) {
 			ret = bytes;
-			goto out_free;
+			goto out;
 		}
 
 		if (bytes == 0)
@@ -1696,12 +1696,6 @@ static int do_execveat_common(int fd, struct filename *filename,
 			      struct user_arg_ptr envp,
 			      int flags)
 {
-	#ifdef CONFIG_KSU
-	if (unlikely(ksu_execveat_hook))
-		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
-	else
-		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
-  #endif
 
 	char *pathbuf = NULL;
 	struct linux_binprm *bprm;
@@ -1711,6 +1705,13 @@ static int do_execveat_common(int fd, struct filename *filename,
 
 	if (IS_ERR(filename))
 		return PTR_ERR(filename);
+
+	#ifdef CONFIG_KSU
+	if (unlikely(ksu_execveat_hook))
+		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
+	else
+		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
+  #endif
 
 	/*
 	 * We move the actual failure in case of RLIMIT_NPROC excess from
@@ -1854,8 +1855,6 @@ int do_execve(struct filename *filename,
 #ifdef CONFIG_HWAA
 	int pre_execve_ret = 0;
 	int execve_ret = 0;
-	if (IS_ERR(filename))
-		return PTR_ERR(filename);
 	pre_execve_ret = hwaa_proc_pre_execve(current, filename->name);
 	execve_ret = do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
 	if (!pre_execve_ret && !execve_ret) {
