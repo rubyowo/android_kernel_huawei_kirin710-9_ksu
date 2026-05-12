@@ -1,0 +1,87 @@
+name: Build Huawei Kirin710 Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    env:
+      ARCH: arm64
+      SUBARCH: arm64
+      DEFCONFIG: merge_kirin710_defconfig
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          sudo apt update
+
+          sudo apt install -y \
+            bc \
+            bison \
+            build-essential \
+            curl \
+            flex \
+            git \
+            libelf-dev \
+            libssl-dev \
+            python3 \
+            unzip \
+            zip \
+            cpio \
+            binwalk
+
+      - name: Setup GCC 4.9 toolchain
+        run: |
+          mkdir -p $HOME/toolchains
+
+          git clone --depth=1 \
+            https://github.com/arter97/arm64-gcc.git \
+            $HOME/toolchains/gcc49
+
+          echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
+
+      - name: Clean source
+        run: |
+          rm -rf include/config || true
+          mkdir -p out
+
+      - name: Configure kernel
+        run: |
+          make ARCH=arm64 \
+               O=out \
+               CROSS_COMPILE=aarch64-linux-android- \
+               $DEFCONFIG
+
+      - name: Build kernel
+        run: |
+          make -j$(nproc) \
+               ARCH=arm64 \
+               O=out \
+               CROSS_COMPILE=aarch64-linux-android- \
+               2>&1 | tee build.log
+
+      - name: Show generated artifacts
+        run: |
+          echo "==== Generated boot artifacts ===="
+          find out/arch/arm64/boot -type f
+
+          echo
+          echo "==== File info ===="
+          file out/arch/arm64/boot/* || true
+
+          echo
+          echo "==== Sizes ===="
+          ls -lah out/arch/arm64/boot/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kirin710-kernel-build
+          path: |
+            out/arch/arm64/boot/**
+            build.log
