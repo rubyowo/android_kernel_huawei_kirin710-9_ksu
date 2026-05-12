@@ -55,18 +55,24 @@ jobs:
 
       #     echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
+      - name: Prepare toolchain directory
+        run: mkdir -p $HOME/toolchains/gcc49
+
       - name: Cache AOSP GCC 4.9 Toolchain
         uses: actions/cache@v4
         with:
           path: $HOME/toolchains/gcc49
           key: gcc49-aarch64-android-9.0.0_r61
+          restore-keys: |
+            gcc49-aarch64-
 
       - name: Setup AOSP GCC 4.9
         run: |
           mkdir -p $HOME/toolchains
           cd $HOME/toolchains
 
-          if [ ! -d gcc49 ]; then
+          if [ ! -f gcc49/bin/aarch64-linux-android-gcc ]; then
+            rm -rf gcc49
             git clone \
               https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
               gcc49
