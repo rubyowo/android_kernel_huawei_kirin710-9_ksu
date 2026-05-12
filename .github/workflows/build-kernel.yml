@@ -86,17 +86,13 @@ jobs:
           echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
       - name: Setup ccache
-        uses: actions/cache@v4
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
-          path: ~/.ccache
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}
-          restore-keys: |
-            ccache-${{ runner.os }}-
+          key: kirin710-kernel
+          max-size: 2G
 
-      - name: Configure ccache
-        run: |
-          ccache -M 5G
-          ccache -s
+      - name: Show ccache stats before build
+        run: ccache -s
 
       - name: Clean source
         run: |
@@ -122,7 +118,7 @@ jobs:
           make -j$(nproc) \
                ARCH=arm64 \
                O=out \
-               CROSS_COMPILE="ccache aarch64-linux-android-" \
+               CROSS_COMPILE=aarch64-linux-android- \
                2>&1 | tee build.log
 
       - name: Package Kernel Images
