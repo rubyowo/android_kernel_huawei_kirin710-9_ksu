@@ -21,9 +21,10 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
+          submodules: 'true'
 
       # - name: Install packages
       #   run: |
@@ -60,35 +61,9 @@ jobs:
 
       #     echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
 
-      - name: Prepare toolchain directory
-        run: mkdir -p $HOME/toolchains/gcc49
-
-      - name: Cache AOSP GCC 4.9 Toolchain
-        uses: actions/cache@v4
-        with:
-          path: $HOME/toolchains/gcc49
-          key: gcc49-aarch64-android-9.0.0_r61
-          restore-keys: |
-            gcc49-aarch64-
-
       - name: Setup AOSP GCC 4.9
         run: |
-          mkdir -p $HOME/toolchains
-          cd $HOME/toolchains
-
-          if [ ! -f gcc49/bin/aarch64-linux-android-gcc ]; then
-            rm -rf gcc49
-            git clone \
-              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
-              gcc49
-
-            cd gcc49
-            git checkout android-9.0.0_r61
-          else
-            echo "Using cached toolchain"
-          fi
-
-          echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
+          echo "$(pwd)/aarch64-linux-android" >> $GITHUB_PATH
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -101,12 +76,12 @@ jobs:
           rm -rf include/config || true
           mkdir -p out
 
-      - name: Add KernelSU v0.9.5
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+      # - name: Add KernelSU v0.9.5
+      #   run: |
+      #     curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
 
-          echo
-          echo "KernelSU v0.9.5 added successfully"
+      #     echo
+      #     echo "KernelSU v0.9.5 added successfully"
 
       - name: GetTime
         id: get_time
@@ -151,17 +126,17 @@ jobs:
             --output Kirin710_EMUI9.1-${{ steps.get_time.outputs.TIME }}.img
 
           # Permissive build
-          tools/mkbootimg \
-            --kernel out/arch/arm64/boot/Image.gz \
-            --base 0x0 \
-            --cmdline "loglevel=4 initcall_debug=n page_tracker=on unmovable_isolate1=2:192M,3:224M,4:256M printktimer=0xfff0a000,0x534,0x538 androidboot.selinux=permissive buildvariant=user" \
-            --tags_offset 0x07A00000 \
-            --kernel_offset 0x00080000 \
-            --ramdisk_offset 0x07c00000 \
-            --header_version 1 \
-            --os_version 9 \
-            --os_patch_level 2019-05-05 \
-            --output Kirin710_EMUI9.1_PM-${{ steps.get_time.outputs.TIME }}.img
+          # tools/mkbootimg \
+          #   --kernel out/arch/arm64/boot/Image.gz \
+          #   --base 0x0 \
+          #   --cmdline "loglevel=4 initcall_debug=n page_tracker=on unmovable_isolate1=2:192M,3:224M,4:256M printktimer=0xfff0a000,0x534,0x538 androidboot.selinux=permissive buildvariant=user" \
+          #   --tags_offset 0x07A00000 \
+          #   --kernel_offset 0x00080000 \
+          #   --ramdisk_offset 0x07c00000 \
+          #   --header_version 1 \
+          #   --os_version 9 \
+          #   --os_patch_level 2019-05-05 \
+          #   --output Kirin710_EMUI9.1_PM-${{ steps.get_time.outputs.TIME }}.img
 
           echo "Done packaging kernel images."
 
@@ -190,9 +165,8 @@ jobs:
             build.log
 
       - name: Upload kernel images
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Kirin710_EMUI9.1_KSU-kernel-${{ steps.get_time.outputs.TIME }}
-          path: |
-            Kirin710_EMUI9.1-*.img
-            Kirin710_EMUI9.1_PM-*.img
+          path: "Kirin710_EMUI9.1-*.img"
+          archive: false
