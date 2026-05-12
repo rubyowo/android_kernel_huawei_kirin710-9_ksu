@@ -76,12 +76,12 @@ jobs:
           rm -rf include/config || true
           mkdir -p out
 
-      # - name: Add KernelSU v0.9.5
-      #   run: |
-      #     curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+      - name: Add KernelSU v0.9.5
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
 
-      #     echo
-      #     echo "KernelSU v0.9.5 added successfully"
+          echo
+          echo "KernelSU v0.9.5 added successfully"
 
       - name: GetTime
         id: get_time
