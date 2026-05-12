@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Install packages
         run: |
@@ -35,15 +37,32 @@ jobs:
             cpio \
             binwalk
 
-      - name: Setup GCC 4.9 toolchain
+      # - name: Setup GCC 4.9 toolchain
+      #   run: |
+      #     mkdir -p $HOME/toolchains
+
+      #     git clone --depth=1 \
+      #       https://github.com/arter97/arm64-gcc.git \
+      #       $HOME/toolchains/gcc49
+
+      #     echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
+
+      - name: Setup AOSP GCC 4.9 toolchain
         run: |
-          mkdir -p $HOME/toolchains
-
-          git clone --depth=1 \
-            https://github.com/arter97/arm64-gcc.git \
-            $HOME/toolchains/gcc49
-
+          mkdir -p $HOME/toolchains/gcc49
+          # Fetch the aarch64-linux-android-4.9 toolchain from AOSP
+          curl -LSs "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/heads/master.tar.gz" -o gcc.tar.gz
+          tar -xzf gcc.tar.gz -C $HOME/toolchains/gcc49
+    
+          # Add the bin folder to the environment path
           echo "$HOME/toolchains/gcc49/bin" >> $GITHUB_PATH
+
+      - name: Setup Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: kernel-ccache-${{ github.sha }}
+          restore-keys: kernel-ccache-
 
       - name: Clean source
         run: |
